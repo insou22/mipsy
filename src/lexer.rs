@@ -37,7 +37,7 @@ pub fn tokenise(program: &str) -> Result<Vec<Token>, String> {
     };
 
     loop {
-        if let None = context.chars.peek() {
+        if context.chars.peek().is_none() {
             break;
         } else if let Some(string) = match_string(&mut context, false) {
             match context.tokens.last() {
