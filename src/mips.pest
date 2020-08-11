@@ -1,2 +1,0 @@
-ident = { (CASED_LETTER | ASCII_DIGIT | "_") }
-field = { (ASCII_DIGIT | "." | "-")+ }
