@@ -1,3 +1,8 @@
+// TODO: Clean this whole file up
+// First lexer I've written, so I changed
+// how I wanted to do things ~5 times while
+// still writing. Rewrite when can be bothered.
+
 use std::iter::Peekable;
 use std::str::Chars;
 
