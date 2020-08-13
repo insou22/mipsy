@@ -15,15 +15,16 @@ struct ParseContext<'a> {
 
 #[derive(Debug, Clone)]
 pub enum Token {
-    Text(String),
+    LabelReference(String),
     Instruction(String),
     Label(String),
     Register(String),
     OffsetRegister(String),
+    PlusMinus(i8),
     Comma,
     Directive(String),
-    Number(isize),
-    Float(f32),
+    Number(i32),
+    Float(f64),
     ConstStr(String),
     ConstChar(char),
     LineNumber(usize),
@@ -45,12 +46,12 @@ pub fn tokenise(program: &str) -> Result<Vec<Token>, String> {
                     context.tokens.push(Token::Instruction(string));
                 }
                 _ => {
-                    context.tokens.push(Token::Text(string));
+                    context.tokens.push(Token::LabelReference(string));
                 }
             }
         } else if let Some(()) = match_label(&mut context) {
             match context.tokens.last() {
-                Some(Token::Text(string)) | Some(Token::Instruction(string)) => {
+                Some(Token::LabelReference(string)) | Some(Token::Instruction(string)) => {
                     let mut new_token = Token::Label(string.clone());
                     std::mem::swap(context.tokens.last_mut().unwrap(), &mut new_token);
                 }
@@ -65,6 +66,8 @@ pub fn tokenise(program: &str) -> Result<Vec<Token>, String> {
             context.tokens.push(Token::Register(string))
         } else if let Some(string) = match_offset_register(&mut context) {
             context.tokens.push(Token::OffsetRegister(string));
+        } else if let Some(magnitude) = match_plus_minus(&mut context) {
+            context.tokens.push(Token::PlusMinus(magnitude));
         } else if let Some(()) = match_comma(&mut context) {
             context.tokens.push(Token::Comma);
         } else if let Some(string) = match_directive(&mut context) {
@@ -160,6 +163,22 @@ fn match_offset_register(context: &mut ParseContext) -> Option<String> {
     None
 }
 
+fn match_plus_minus(context: &mut ParseContext) -> Option<i8> {
+    match context.tokens.last() {
+        Some(Token::LabelReference(_)) => {}
+        _ => return None,
+    }
+
+    match context.chars.peek() {
+        Some('+') | Some('-') => match context.chars.next() {
+            Some('+') => Some(1),
+            Some('-') => Some(-1),
+            _ => unreachable!(),
+        },
+        _ => None,
+    }
+}
+
 fn match_register(context: &mut ParseContext) -> Option<String> {
     let mut context_clone = context.clone();
 
@@ -218,7 +237,7 @@ fn match_directive(context: &mut ParseContext) -> Option<String> {
     None
 }
 
-fn match_float(context: &mut ParseContext) -> Option<f32> {
+fn match_float(context: &mut ParseContext) -> Option<f64> {
     let mut iter_clone = context.chars.clone();
 
     let mut digits = vec![];
@@ -252,7 +271,7 @@ fn match_float(context: &mut ParseContext) -> Option<f32> {
                     return None;
                 }
 
-                if let Some(result) = chars_to_f32(digits.into_iter().collect()) {
+                if let Some(result) = chars_to_f64(digits.into_iter().collect()) {
                     std::mem::swap(&mut context.chars, &mut iter_clone);
                     return Some(result);
                 }
@@ -265,7 +284,7 @@ fn match_float(context: &mut ParseContext) -> Option<f32> {
     None
 }
 
-fn match_num(context: &mut ParseContext) -> Option<isize> {
+fn match_num(context: &mut ParseContext) -> Option<i32> {
     let mut iter_clone = context.chars.clone();
 
     let mut digits = vec![];
@@ -316,7 +335,7 @@ fn match_num(context: &mut ParseContext) -> Option<isize> {
                 return None;
             }
             _ => {
-                if let Some(result) = chars_to_isize(digits.into_iter().collect(), base) {
+                if let Some(result) = chars_to_i32(digits.into_iter().collect(), base) {
                     std::mem::swap(&mut context.chars, &mut iter_clone);
                     return Some(result);
                 }
@@ -329,23 +348,23 @@ fn match_num(context: &mut ParseContext) -> Option<isize> {
     None
 }
 
-fn chars_to_isize(numbers: String, base: u32) -> Option<isize> {
+fn chars_to_i32(numbers: String, base: u32) -> Option<i32> {
     if numbers.is_empty() {
         return None;
     }
 
-    match isize::from_str_radix(&numbers, base) {
+    match i32::from_str_radix(&numbers, base) {
         Ok(i) => Some(i),
         Err(_) => None,
     }
 }
 
-fn chars_to_f32(numbers: String) -> Option<f32> {
+fn chars_to_f64(numbers: String) -> Option<f64> {
     if numbers.is_empty() {
         return None;
     }
 
-    match numbers.parse::<f32>() {
+    match numbers.parse::<f64>() {
         Ok(i) => Some(i),
         Err(_) => None,
     }
