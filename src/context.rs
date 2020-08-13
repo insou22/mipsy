@@ -31,7 +31,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new(tokens: &'a Vec<Token>) -> Self {
+    pub fn new(tokens: &'a [Token]) -> Self {
         let tokens = Tokens {
             iter: tokens.iter(),
         }
@@ -51,7 +51,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn peek_token(&mut self) -> Option<&'a Token> {
-        self.tokens.peek().map(|t| *t)
+        self.tokens.peek().copied()
     }
 
     pub fn next_useful_token(&mut self) -> Option<&'a Token> {

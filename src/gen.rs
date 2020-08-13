@@ -18,7 +18,3 @@ pub fn generate(tokens: Vec<Token>) -> GenRes<Program> {
 
     Ok(context.program)
 }
-
-fn ok<T: Default>() -> GenRes<T> {
-    Ok(T::default())
-}

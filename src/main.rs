@@ -2,17 +2,13 @@ mod context;
 mod data_label_gen;
 mod gen;
 mod lexer;
+mod util;
 mod vm;
-
-use num_traits::FromPrimitive;
-use num_traits::ToPrimitive;
 
 #[macro_use]
 extern crate num_derive;
 #[macro_use]
 extern crate enum_display_derive;
-
-use lexer::Token;
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().collect();

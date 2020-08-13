@@ -1,6 +1,7 @@
 use crate::context::*;
 use crate::gen::*;
 use crate::lexer::Token;
+use crate::util::*;
 use std::convert::TryInto;
 
 pub fn generate_labels_and_data(context: &mut Context) -> GenRes<()> {
@@ -206,10 +207,6 @@ fn ensure_segment(context: &mut Context, seg: Segment) -> GenRes<()> {
             context.line, seg, context.seg
         ))
     }
-}
-
-fn ok<T: Default>() -> GenRes<T> {
-    Ok(T::default())
 }
 
 trait ToMipsBytes {
