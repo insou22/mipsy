@@ -63,7 +63,7 @@ pub const ADDIU : IInstruction = inst_i("addiu",0b001001, |&(rs, rt, imm), cpu| 
 
 // Set
 pub const SLTI  : IInstruction = inst_i("slti", 0b001010, |&(rs, rt, imm), cpu| cpu.registers[rt] = (cpu.registers[rs] < imm) as i32);
-pub const SLTIU : IInstruction = inst_i("sltiu",0b001010, |&(rs, rt, imm), cpu| cpu.registers[rt] = ((cpu.registers[rs] as u32) < imm as u32) as i32);
+pub const SLTIU : IInstruction = inst_i("sltiu",0b001011, |&(rs, rt, imm), cpu| cpu.registers[rt] = ((cpu.registers[rs] as u32) < imm as u32) as i32);
 
 // Bitwise
 pub const ANDI  : IInstruction = inst_i("andi", 0b001100, |&(rs, rt, imm), cpu| cpu.registers[rt] = cpu.registers[rs] & imm);
