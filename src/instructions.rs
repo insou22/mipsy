@@ -92,64 +92,64 @@ pub const JAL   : JInstruction = inst_j("jal",  0b000011, |&j, cpu| { cpu.regist
 
 
 // =========== Pseudo Instructions ===========
-pub static NOP   : RPseudoInstruction = inst_psuedo_r("nop", |_| vec![
+pub static NOP  : RPseudoInstruction = inst_psuedo_r("nop", |_| vec![
     wrap_r(&SLL, (0, 0, 0, 0)),
 ]);
 
-pub static MOVE  : RPseudoInstruction = inst_psuedo_r("move", |&(rs, _, rd, _)| vec![
+pub static MOVE : RPseudoInstruction = inst_psuedo_r("move", |&(rs, _, rd, _)| vec![
     wrap_r(&ADDU, (rd, rs, 0, 0)),
 ]);
 
-pub static B     : IPseudoInstruction = inst_psuedo_i("b", |&(_, _, imm)| vec![
+pub static B    : IPseudoInstruction = inst_psuedo_i("b", |&(_, _, imm)| vec![
     wrap_i(&BEQ, (0, 0, imm.trunc_imm())),
 ]);
 
-pub static BGE   : IPseudoInstruction = inst_psuedo_i("bge", |&(rs, rt, imm)| vec![
+pub static BGE  : IPseudoInstruction = inst_psuedo_i("bge", |&(rs, rt, imm)| vec![
     wrap_r(&SLT, (rs, rt, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BGEU  : IPseudoInstruction = inst_psuedo_i("bgeu", |&(rs, rt, imm)| vec![
+pub static BGEU : IPseudoInstruction = inst_psuedo_i("bgeu", |&(rs, rt, imm)| vec![
     wrap_r(&SLTU, (rs, rt, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLT   : IPseudoInstruction = inst_psuedo_i("blt", |&(rs, rt, imm)| vec![
+pub static BLT  : IPseudoInstruction = inst_psuedo_i("blt", |&(rs, rt, imm)| vec![
     wrap_r(&SLT, (rs, rt, 1, 0)),
     wrap_i(&BNE, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLTU  : IPseudoInstruction = inst_psuedo_i("bltu", |&(rs, rt, imm)| vec![
+pub static BLTU : IPseudoInstruction = inst_psuedo_i("bltu", |&(rs, rt, imm)| vec![
     wrap_r(&SLTU, (rs, rt, 1, 0)),
     wrap_i(&BNE, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLEU  : IPseudoInstruction = inst_psuedo_i("bleu", |&(rs, rt, imm)| vec![
+pub static BLEU : IPseudoInstruction = inst_psuedo_i("bleu", |&(rs, rt, imm)| vec![
     wrap_r(&SLTU, (rt, rs, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLE   : IPseudoInstruction = inst_psuedo_i("ble", |&(rs, rt, imm)| vec![
+pub static BLE  : IPseudoInstruction = inst_psuedo_i("ble", |&(rs, rt, imm)| vec![
     wrap_r(&SLT, (rt, rs, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BGT   : IPseudoInstruction = inst_psuedo_i("bgt", |&(rs, rt, imm)| vec![
+pub static BGT  : IPseudoInstruction = inst_psuedo_i("bgt", |&(rs, rt, imm)| vec![
     wrap_r(&SLT, (rt, rs, 1, 0)),
     wrap_i(&BNE, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BGTU  : IPseudoInstruction = inst_psuedo_i("bgtu", |&(rs, rt, imm)| vec![
+pub static BGTU : IPseudoInstruction = inst_psuedo_i("bgtu", |&(rs, rt, imm)| vec![
     wrap_r(&SLTU, (rt, rs, 1, 0)),
     wrap_i(&BNE, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static MUL   : RPseudoInstruction = inst_psuedo_r("mul", |&(rd, rs, rt, _)| vec![
+pub static MUL  : RPseudoInstruction = inst_psuedo_r("mul", |&(rd, rs, rt, _)| vec![
     wrap_r(&MULTU, (rs, rt, 0, 0)),
     wrap_r(&MFLO, (0, 0, rd, 0)),
 ]);
 
-pub static LI    : IPseudoInstruction = inst_psuedo_i("li", |&(_, rt, imm)| {
+pub static LI   : IPseudoInstruction = inst_psuedo_i("li", |&(_, rt, imm)| {
     if imm as u32 & 0xFFFF0000 == imm as u32 & 0x8000 {
         vec![wrap_i(&ADDIU, (0, rt, imm.trunc_imm()))]
     } else if imm & 0xFFFF == 0 {
@@ -162,7 +162,7 @@ pub static LI    : IPseudoInstruction = inst_psuedo_i("li", |&(_, rt, imm)| {
     }
 });
 
-pub static LA    : IPseudoInstruction = inst_psuedo_i("la", LI.expand);
+pub static LA   : IPseudoInstruction = inst_psuedo_i("la", LI.expand);
 
 ////////////////////////////////////////////////////////////////////////////////
 
