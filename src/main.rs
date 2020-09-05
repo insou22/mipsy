@@ -1,12 +1,18 @@
+#![feature(const_fn)]
+#![allow(dead_code)]
+
 mod context;
 mod data_label_gen;
 mod gen;
 mod lexer;
 mod util;
-mod vm;
+mod types;
+mod runtime;
+mod instructions;
 
-#[macro_use]
-extern crate num_derive;
+// TODO: May need later
+// #[macro_use]
+// extern crate num_derive;
 #[macro_use]
 extern crate enum_display_derive;
 
@@ -27,7 +33,7 @@ fn main() -> Result<(), String> {
     println!("Tokens: {:?}", tokens);
     println!("\n\n");
 
-    let program = gen::generate(tokens);
+    let program = gen::generate(tokens)?;
 
     println!("Program: {:#x?}", program);
 

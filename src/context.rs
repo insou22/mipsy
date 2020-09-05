@@ -1,11 +1,9 @@
 use crate::lexer::Token;
+use crate::types::*;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::iter::Peekable;
 use std::slice::Iter;
-
-pub type Address = u32;
-pub type Instruction = u32;
 
 #[derive(Clone, Debug, Default)]
 pub struct Program {
@@ -105,15 +103,9 @@ impl<'a> Iterator for Tokens<'a> {
 }
 
 fn is_useful_token(token: &Token) -> bool {
-    match token {
-        Token::Comma | Token::LineNumber(_) => false,
-        _ => true,
-    }
+    ! matches!(token, Token::Comma | Token::LineNumber(_))
 }
 
 fn is_newline_token(token: &Token) -> bool {
-    match token {
-        Token::LineNumber(_) => true,
-        _ => false,
-    }
+    matches!(token, Token::LineNumber(_))
 }
