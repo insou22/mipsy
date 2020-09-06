@@ -26,8 +26,8 @@ pub const MFLO  : RInstruction = inst_r("mflo", 0b010010, |&(_, _, rd, _), cpu| 
 pub const MTLO  : RInstruction = inst_r("mtlo", 0b010011, |&(rs, _, _, _), cpu| cpu.lo = cpu.registers[rs]);
 pub const MULT  : RInstruction = inst_r("mult", 0b011000, |&(_rs, _rt, _, _), _cpu| unimplemented!());
 pub const MULTU : RInstruction = inst_r("multu",0b011001, |&(_rs, _rt, _, _), _cpu| unimplemented!());
-pub const DIV   : RInstruction = inst_r("div",  0b011010, |&(_rs, _rt, _, _), _cpu| unimplemented!());
-pub const DIVU  : RInstruction = inst_r("divu", 0b011011, |&(_rs, _rt, _, _), _cpu| unimplemented!());
+pub const DIV2  : RInstruction = inst_r("div",  0b011010, |&(rs, rt, _, _), cpu| { cpu.lo = cpu.registers[rs] / cpu.registers[rt]; cpu.hi = cpu.registers[rs] % cpu.registers[rt] });
+pub const DIVU2 : RInstruction = inst_r("divu", 0b011011, |&(rs, rt, _, _), cpu| { cpu.lo = (cpu.registers[rs] as u32 / cpu.registers[rt] as u32) as i32; cpu.hi = (cpu.registers[rs] as u32 % cpu.registers[rt] as u32) as i32 });
 
 // Arithmetic
 pub const ADD   : RInstruction = inst_r("add",  0b100000, |&(rs, rt, rd, _), cpu| cpu.registers[rd] = cpu.registers[rs] + cpu.registers[rt]);
@@ -104,6 +104,10 @@ pub static B    : IPseudoInstruction = inst_psuedo_i("b", |&(_, _, imm)| vec![
     wrap_i(&BEQ, (0, 0, imm.trunc_imm())),
 ]);
 
+pub static BEQZ : IPseudoInstruction = inst_psuedo_i("beqz", |&(rs, _, imm)| vec![
+    wrap_i(&BEQ, (rs, 0, imm.trunc_imm())),
+]);
+
 pub static BGE  : IPseudoInstruction = inst_psuedo_i("bge", |&(rs, rt, imm)| vec![
     wrap_r(&SLT, (rs, rt, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
@@ -147,6 +151,34 @@ pub static BGTU : IPseudoInstruction = inst_psuedo_i("bgtu", |&(rs, rt, imm)| ve
 pub static MUL  : RPseudoInstruction = inst_psuedo_r("mul", |&(rd, rs, rt, _)| vec![
     wrap_r(&MULTU, (rs, rt, 0, 0)),
     wrap_r(&MFLO, (0, 0, rd, 0)),
+]);
+
+pub static DIV3 : RPseudoInstruction = inst_psuedo_r("div", |&(rd, rs, rt, _)| vec![
+    wrap_r(&DIV2, (rs, rt, 0, 0)),
+    wrap_r(&MFLO, (0, 0, rd, 0)),
+]);
+
+pub static DIVU3: RPseudoInstruction = inst_psuedo_r("divu", |&(rd, rs, rt, _)| vec![
+    wrap_r(&DIVU2, (rs, rt, 0, 0)),
+    wrap_r(&MFLO,  (0, 0, rd, 0)),
+]);
+
+pub static REM : RPseudoInstruction = inst_psuedo_r("rem", |&(rd, rs, rt, _)| vec![
+    wrap_r(&DIV2, (rs, rt, 0, 0)),
+    wrap_r(&MFHI, (0, 0, rd, 0)),
+]);
+
+pub static REMU: RPseudoInstruction = inst_psuedo_r("remu", |&(rd, rs, rt, _)| vec![
+    wrap_r(&DIVU2, (rs, rt, 0, 0)),
+    wrap_r(&MFHI,  (0, 0, rd, 0)),
+]);
+
+pub static NEG: RPseudoInstruction = inst_psuedo_r("neg", |&(rd, rs, _, _)| vec![
+    wrap_r(&SUB, (0, rs, rd, 0)),
+]);
+
+pub static NOT: RPseudoInstruction = inst_psuedo_r("not", |&(rd, rs, _, _)| vec![
+    wrap_r(&NOR, (rs, 0, rd, 0)),
 ]);
 
 pub static LI   : IPseudoInstruction = inst_psuedo_i("li", |&(_, rt, imm)| {
