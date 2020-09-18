@@ -45,6 +45,12 @@ pub const NOR   : RInstruction = inst_r("nor",  0b100111, |&(rs, rt, rd, _), cpu
 pub const SLT   : RInstruction = inst_r("slt",  0b101010, |&(rs, rt, rd, _), cpu| cpu.registers[rd] = (cpu.registers[rs] < cpu.registers[rt]) as i32);
 pub const SLTU  : RInstruction = inst_r("sltu", 0b101011, |&(rs, rt, rd, _), cpu| cpu.registers[rd] = ((cpu.registers[rs] as u32) < (cpu.registers[rt] as u32)) as i32);
 
+pub static R_INSTRUCTIONS: [&RInstruction; 28] = [
+    &ADD, &ADDU, &AND, &BREAK, &DIV2, &DIVU2, &JALR, 
+    &JR, &MFHI, &MFLO, &MTHI, &MTLO, &MULT, &MULTU, 
+    &NOR, &OR, &SLL, &SLLV, &SLT, &SLTU, &SRA, &SRAV, 
+    &SRL, &SRLV, &SUB, &SUBU, &SYSCALL, &XOR,
+];
 
 // =========== I Instructions ===========
 // Branch
@@ -85,11 +91,19 @@ pub const SW    : IInstruction = inst_i("sw",   0b101011, |&(rs, rt, imm), cpu| 
 pub const LWC1  : IInstruction = inst_i("lwc1", 0b110001, |&(_rs, _rt, _imm), _cpu| unimplemented!());
 pub const SWC1  : IInstruction = inst_i("swc1", 0b111001, |&(_rs, _rt, _imm), _cpu| unimplemented!());
 
+pub static I_INSTRUCTIONS: [&IInstruction; 22] = [
+    &ADDI, &ADDIU, &ANDI, &BEQ, &BLTZ, &BGEZ, 
+    &BGTZ, &BLEZ, &BNE, &LB, &LBU, &LH, &LHU, &LUI, 
+    &LW, &ORI, &SB, &SLTI, &SLTIU, &SH, &SW, &XORI,
+];
 
 // =========== J Instructions ===========
 pub const J     : JInstruction = inst_j("j",    0b000010, |&j, cpu| cpu.pc = (cpu.pc & 0xF0000000) | ((j & 0x03FFFFFF) << 2));
 pub const JAL   : JInstruction = inst_j("jal",  0b000011, |&j, cpu| { cpu.registers[31] = (cpu.pc + 4) as i32; cpu.pc = (cpu.pc & 0xF0000000) | ((j & 0x03FFFFFF) << 2) });
 
+pub static J_INSTRUCTIONS: [&JInstruction; 2] = [
+    &J, &JAL,
+];
 
 // =========== Pseudo Instructions ===========
 pub static NOP  : RPseudoInstruction = inst_psuedo_r("nop", |_| vec![
@@ -128,13 +142,13 @@ pub static BLTU : IPseudoInstruction = inst_psuedo_i("bltu", |&(rs, rt, imm)| ve
     wrap_i(&BNE, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLEU : IPseudoInstruction = inst_psuedo_i("bleu", |&(rs, rt, imm)| vec![
-    wrap_r(&SLTU, (rt, rs, 1, 0)),
+pub static BLE  : IPseudoInstruction = inst_psuedo_i("ble", |&(rs, rt, imm)| vec![
+    wrap_r(&SLT, (rt, rs, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
-pub static BLE  : IPseudoInstruction = inst_psuedo_i("ble", |&(rs, rt, imm)| vec![
-    wrap_r(&SLT, (rt, rs, 1, 0)),
+pub static BLEU : IPseudoInstruction = inst_psuedo_i("bleu", |&(rs, rt, imm)| vec![
+    wrap_r(&SLTU, (rt, rs, 1, 0)),
     wrap_i(&BEQ, (1, 0, imm.trunc_imm())),
 ]);
 
@@ -196,6 +210,16 @@ pub static LI   : IPseudoInstruction = inst_psuedo_i("li", |&(_, rt, imm)| {
 
 pub static LA   : IPseudoInstruction = inst_psuedo_i("la", LI.expand);
 
+
+pub static R_PSEUDO_INSTRUCTIONS: [&RPseudoInstruction; 9] = [
+    &NOP, &MOVE, &MUL, &DIV3, &DIVU3, &REM, &REMU, &NEG, &NOT
+];
+
+pub static I_PSEUDO_INSTRUCTIONS: [&IPseudoInstruction; 12] = [
+    &B, &BEQZ, &BGE, &BGEU, &BLT, &BLTU, 
+    &BLE, &BLEU, &BGT, &BGTU, &LI, &LA,
+];
+
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -213,6 +237,30 @@ pub trait StaticInstruction<'a> {
     fn inst(&self) -> &'a dyn Instruction<Param = Self::Param>;
     fn param(&'a self) -> &'a Self::Param;
     fn exec(&self, cpu: &mut CPU);
+}
+
+pub enum RType {
+    R0,
+    Rd(u8),
+    Rs(u8),
+    RdRs(u8, u8),
+    RsRt(u8, u8),
+    RdRsRt(u8, u8, u8),
+    RdRtRs(u8, u8, u8),
+    RdRtSa(u8, u8, u8),
+
+}
+
+pub enum IType {
+    RsIm(u8, i32),
+    RtIm(u8, i32),
+    RsRtIm(u8, u8, i32),
+    RtRsIm(u8, u8, i32),
+    RtImRs(u8, i32, u8),
+}
+
+pub enum InstructionType {
+    R(RType), I(IType), J(u32)
 }
 
 pub enum PseudoExpand<'a> {
@@ -234,8 +282,8 @@ pub trait PseudoInstruction<'a> {
 
 #[derive(Copy, Clone)]
 pub struct InstructionInfo {
-    opcode: Opcode,
-    name: &'static str,
+    pub opcode: Opcode,
+    pub name: &'static str,
 }
 
 pub struct RInstruction {
@@ -298,6 +346,12 @@ impl Instruction for RInstruction {
     }
 }
 
+impl RInstruction {
+    pub fn fill(&self, param: <Self as Instruction>::Param) -> RStaticInstruction<'_> {
+        inst_static_r(self, param)
+    }
+}
+
 impl<'a> StaticInstruction<'a> for RStaticInstruction<'a> {
     type Param = RParam;
 
@@ -326,6 +380,12 @@ impl Instruction for IInstruction {
     }
 }
 
+impl IInstruction {
+    pub fn fill(&self, param: <Self as Instruction>::Param) -> IStaticInstruction<'_> {
+        inst_static_i(self, param)
+    }
+}
+
 impl<'a> StaticInstruction<'a> for IStaticInstruction<'a> {
     type Param = IParam;
 
@@ -351,6 +411,12 @@ impl Instruction for JInstruction {
 
     fn info(&self) -> InstructionInfo {
         self.info
+    }
+}
+
+impl JInstruction {
+    pub fn fill(&self, param: <Self as Instruction>::Param) -> JStaticInstruction<'_> {
+        inst_static_j(self, param)
     }
 }
 

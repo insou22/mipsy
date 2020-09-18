@@ -9,6 +9,10 @@ mod util;
 mod types;
 mod runtime;
 mod instructions;
+mod instructions_new;
+mod decode;
+mod encode;
+mod inst;
 
 // TODO: May need later
 // #[macro_use]
@@ -17,6 +21,9 @@ mod instructions;
 extern crate enum_display_derive;
 
 fn main() -> Result<(), String> {
+    println!("{} {:?} {}", inst::signature::SLL.name(), inst::signature::SLL.inst_format(), inst::signature::SLL.pseudo());
+    return Ok(());
+
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {

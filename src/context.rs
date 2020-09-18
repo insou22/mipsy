@@ -7,7 +7,7 @@ use std::slice::Iter;
 
 #[derive(Clone, Debug, Default)]
 pub struct Program {
-    pub text: Vec<Instruction>,
+    pub text: Vec<RawInstruction>,
     pub data: Vec<u8>,
     pub labels: HashMap<String, Address>,
 }

@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use crate::types::*;
+use crate::decode::*;
+use crate::instructions::InstructionType;
+use crate::instructions::StaticInstruction;
 
 pub const PAGE_SIZE: usize = 0x1000; // 4096 bytes
 pub const REGISTERS: usize = 32;
@@ -20,8 +23,45 @@ pub struct CPU {
 }
 
 impl CPU {
+    pub fn step(&mut self) {
+        let inst = self.get_word(self.pc) as u32;
+        self.pc += 4;
+
+        /*match inst_type(inst) {
+            InstructionType::R(_) => decode_r(inst).exec(self),
+            InstructionType::I(_) => decode_i(inst).exec(self),
+            InstructionType::J(_) => decode_j(inst).exec(self),
+        }*/
+    }
+
     pub fn syscall(&mut self) {
-        unimplemented!()
+        // temporary
+        match self.registers[2] {
+            1  => print!("{}", self.registers[4]),
+            4  => {
+                let mut addr = self.registers[4];
+                let mut b = self.get_byte(addr as u32);
+
+                while b != 0 {
+                    print!("{}", b as u8 as char);
+
+                    addr += 1;
+                    b = self.get_byte(addr as u32);
+                }
+            },
+            5  => {
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).expect("pls input");
+                self.registers[2] = input.trim().parse::<i32>().unwrap();
+            },
+            10 => {
+                panic!("happy panic :)");
+            },
+            11 => {
+                print!("{}", self.registers[4] as u8 as char);
+            },
+            other => println!("Unknown syscall: {}", other)
+        }
     }
 
     pub fn r#break(&mut self) {

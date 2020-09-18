@@ -46,6 +46,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc_macros"
+version = "0.1.0"
+
+[[package]]
 name = "quote"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -67,6 +71,7 @@ dependencies = [
  "enum-display-derive",
  "num-derive",
  "num-traits",
+ "proc_macros",
 ]
 
 [[package]]
