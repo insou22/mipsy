@@ -1,0 +1,500 @@
+instructions:
+  # R-Type Instructions
+  - name: SLL
+    desc_short: Shifts the value in $Rt left by Sa logically, storing the result in $Rd
+    desc_long: >
+      insert long description here if you so please
+    compile:
+      format: RdRtSa
+    runtime:
+      type: R
+      funct: 0x00
+
+  - name: SRL
+    desc_short: Shifts the value in $Rt right by Sa logically, storing the result in $Rd
+    compile:
+      format: RdRtSa
+    runtime:
+      type: R
+      funct: 0x02
+
+  - name: SRA
+    desc_short: Shifts the value in $Rt right by Sa arithmetically, storing the result in $Rd
+    compile:
+      format: RdRtSa
+    runtime:
+      type: R
+      funct: 0x03
+
+  - name: SLLV
+    desc_short: Shifts the value in $Rt left by the value in $Rs logically, storing the result in $Rd
+    compile:
+      format: RdRtRs
+    runtime:
+      type: R
+      funct: 0x04
+
+  - name: SRLV
+    desc_short: Shifts the value in $Rt right by the value in $Rs logically, storing the result in $Rd
+    compile:
+      format: RdRtRs
+    runtime:
+      type: R
+      funct: 0x06
+
+  - name: SRAV
+    desc_short: Shifts the value in $Rt right by the value in $Rs arithmetically, storing the result in $Rd
+    compile:
+      format: RdRtRs
+    runtime:
+      type: R
+      funct: 0x07
+
+
+  - name: JR
+    desc_short: Jumps to the address stored in the register $Rs
+    compile:
+      format: Rs
+    runtime:
+      type: R
+      funct: 0x08
+
+  - name: JALR
+    desc_short: Jump-and-links to the address stored in the register $Rs
+    compile:
+      format: Rs
+    runtime:
+      type: R
+      funct: 0x09
+
+
+  - name: SYSCALL
+    desc_short: Causes a system-call interrupt
+    compile:
+      format: R0
+    runtime:
+      type: R
+      funct: 0x0C
+
+  - name: BREAK
+    desc_short: Causes a break interrupt
+    compile:
+      format: R0
+    runtime:
+      type: R
+      funct: 0x0D
+
+
+  - name: MFHI
+    desc_short: Copies the value from the HI register to $Rd
+    compile:
+      format: Rd
+    runtime:
+      type: R
+      funct: 0x10
+
+  - name: MTHI
+    desc_short: Copies the value from $Rs to the HI register
+    compile:
+      format: Rs
+    runtime:
+      type: R
+      funct: 0x11
+
+  - name: MFLO
+    desc_short: Copies the value from the LO register to $Rd
+    compile:
+      format: Rd
+    runtime:
+      type: R
+      funct: 0x12
+
+  - name: MTLO
+    desc_short: Copies the value from $Rs to the LO register
+    compile:
+      format: Rs
+    runtime:
+      type: R
+      funct: 0x13
+
+  - name: MULT
+    desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers
+    compile:
+      format: RsRt
+    runtime:
+      type: R
+      funct: 0x18
+
+  - name: MULTU
+    desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers, unsigned
+    compile:
+      format: RsRt
+    runtime:
+      type: R
+      funct: 0x19
+
+  - name: DIV
+    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO
+    compile:
+      format: RsRt
+    runtime:
+      type: R
+      funct: 0x1A
+
+  - name: DIVU
+    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO, unsigned
+    compile:
+      format: RsRt
+    runtime:
+      type: R
+      funct: 0x1B
+
+
+  - name: ADD
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x24
+
+  - name: OR
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x25
+
+  - name: XOR
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x26
+
+  - name: NOR
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x27
+
+
+  - name: SLT
+    desc_short: Set $Rd to 1 if $Rs < $Rt, otherwise set $Rd to 0, unsigned
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x2A
+
+  - name: SLTU
+    desc_short: Set $Rd to 1 if $Rs < $Rt, otherwise set $Rd to 0, unsigned
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x2B
+      
+  # I-Type instructions
+
+  - name: BLTZ
+    desc_short: Branch to the immediate address if the value in $Rs < 0
+    compile:
+      format: RsIm
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x00
+
+  - name: BGEZ
+    desc_short: Branch to the immediate address if the value in $Rs >= 0
+    compile:
+      format: RsIm
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x01
+
+  - name: BEQ
+    desc_short: Branch to the immediate address if the values in $Rs == $Rt
+    compile:
+      format: RsRtIm
+    runtime:
+      type: I
+      opcode: 0x04
+
+  - name: BNE
+    desc_short: Branch to the immediate address if the values in $Rs != $Rt
+    compile:
+      format: RsRtIm
+    runtime:
+      type: I
+      opcode: 0x05
+
+  - name: BLEZ
+    desc_short: Branch to the immediate address if the value in $Rs <= 0
+    compile:
+      format: RsIm
+    runtime:
+      type: I
+      opcode: 0x06
+
+  - name: BGTZ
+    desc_short: Branch to the immediate address if the value in $Rs > 0
+    compile:
+      format: RsIm
+    runtime:
+      type: I
+      opcode: 0x07
+
+
+  - name: ADDI
+    desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x08
+
+  - name: ADDIU
+    desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt, unsigned
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x09
+
+
+  - name: SLTI
+    desc_short: Sets $Rt to 1 if the value in $Rs is less than the immediate value, otherwise sets $Rt to 0
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x0A
+
+  - name: SLTIU
+    desc_short: Sets $Rt to 1 if the value in $Rs is less than the immediate value, otherwise sets $Rt to 0, unsigned
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x0B
+
+
+  - name: ANDI
+    desc_short: Bitwise and of the value in $Rs and the immediate value, stores the result in $Rt
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x0C
+
+  - name: ORI
+    desc_short: Bitwise or of the value in $Rs and the immediate value, stores the result in $Rt
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x0D
+
+  - name: XORI
+    desc_short: Bitwise xor of the value in $Rs and the immediate value, stores the result in $Rt
+    compile:
+      format: RtRsIm
+    runtime:
+      type: I
+      opcode: 0x0E
+
+  - name: LUI
+    desc_short: Load the immediate value into the upper 16 bits of $Rt
+    compile:
+      format: RtIm
+    runtime:
+      type: I
+      opcode: 0x0F
+
+
+  - name: LB
+    desc_short: Load one byte at the immediate address + $Rs into $Rt
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x20
+
+  - name: LH
+    desc_short: Load two bytes at the immediate address + $Rs into $Rt
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x21
+
+  - name: LW
+    desc_short: Load four bytes at the immediate address + $Rs into $Rt
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x23
+
+  - name: LBU
+    desc_short: Load one byte at the immediate address + $Rs into $Rt, don't sign extend
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x24
+
+  - name: LHU
+    desc_short: Load two bytes at the immediate address + $Rs into $Rt, don't sign extend
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x25
+
+  - name: SB
+    desc_short: Store one byte from $Rt into the immediate address + $Rs
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x28
+
+  - name: SH
+    desc_short: Store two bytes from $Rt into the immediate address + $Rs
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x29
+
+  - name: SW
+    desc_short: Store four bytes from $Rt into the immediate address + $Rs
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x2B
+
+  - name: LWC1
+    desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register) 
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x31
+
+  - name: SWC1
+    desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs 
+    compile:
+      format: RtImRs
+    runtime:
+      type: I
+      opcode: 0x39
+
+  # J-Type Instructions
+  - name: J
+    desc_short: Jump to the immediate address 
+    compile:
+      format: J
+    runtime:
+      type: J
+      opcode: 0x02
+
+  - name: JAL
+    desc_short: Jump-and-link to the immediate address 
+    compile:
+      format: J
+    runtime:
+      type: J
+      opcode: 0x03
+
+
+pseudoinstructions:
+  - name: NOP
+    desc_short: No-Operation - doesn't do anything
+    compile:
+      format: R0
+    expand:
+      - inst: SLL
+        data: [0, 0, 0]
+
+  - name: MOVE
+    desc_short: Copy the value from $Rs into $Rd
+    compile:
+      format: RdRs
+    expand:
+      - inst: ADD
+        data: [$Rd, $Rs, 0]
+
+  - name: B
+    desc_short: Branch unconditionally
+    compile:
+      format: Im
+    expand:
+      - inst: BEQ
+        data: [0, 0, Im]
+
+  - name: BEQZ
+    desc_short: Branch if $Rs > 0
+    compile:
+      format: RsIm
+    expand:
+      - inst: BEQ
+        data: [$Rs, 0, Im]
+
+  - name: BGE
+    desc_short: Branch if $Rs >= $Rt
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLT
+        data: [$At, $Rt, $Rs]
+      - inst: BEQ
+        data: [$At, 0, Im]
+
+  - name: BGEU
+    desc_short: Branch if $Rs >= $Rt unsigned
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLTU
+        data: [$At, $Rt, $Rs]
+      - inst: BEQ
+        data: [$At, 0, Im]
+
+  - name: NEG
+    desc_short: Flip all the bits in $Rs, store result in $Rd
+    compile:
+      format: RdRs
+    expand:
+      - inst: SUB
+        data: [$Rd, 0, $Rs]
+
+  - name: NOT
+    desc_short: $Rd = ! $Rs
+    compile:
+      format: RdRs
+    expand:
+      - inst: NOR
+        data: [$Rd, 0, $Rs]
+
+  - name: LI
+    desc_short: Load the immediate value into $Rs
+    compile:
+      format: RsIm
+    expand: null
+
+
+  - name: LA
+    desc_short: Load the immediate address into $Rs
+    compile:
+      format: RsIm
+    expand: null
