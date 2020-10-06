@@ -324,6 +324,19 @@ fn match_num(context: &mut ParseContext) -> Option<i32> {
                 digits.push(chr);
                 iter_clone.next();
             }
+            'a'..='f' | 'A'..='F' => {
+                if base != 16 {
+                    if let Some(result) = chars_to_i32(digits.into_iter().collect(), base) {
+                        std::mem::swap(&mut context.chars, &mut iter_clone);
+                        return Some(result);
+                    }
+    
+                    break;
+                }
+
+                digits.push(chr);
+                iter_clone.next();
+            }
             '.' => {
                 // this is a job for match_float
                 return None;

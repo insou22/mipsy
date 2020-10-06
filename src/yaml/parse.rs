@@ -50,7 +50,6 @@ pub struct PsuedoInstructionYaml {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct InstructionExpansionYaml {
     pub inst: String,
-    pub format: Option<InstFormat>,
     pub data: Vec<String>,
 }
 

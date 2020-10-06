@@ -3,7 +3,7 @@ use super::context::Token;
 use super::context::Context;
 use super::context::Program;
 use super::data_label_compiler;
-use super::gen_text;
+use super::text_compiler;
 use crate::inst::instruction::InstSet;
 
 
@@ -19,7 +19,7 @@ pub fn generate(tokens: Vec<Token>, iset: &InstSet) -> RSpimResult<Program> {
     data_label_compiler::generate_labels_and_data(&mut context, iset)?;
     context.reset_state();
 
-    gen_text::generate_text(&mut context, iset)?;
+    text_compiler::generate_text(&mut context, iset)?;
 
     Ok(context.program)
 }

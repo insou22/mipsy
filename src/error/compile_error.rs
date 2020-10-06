@@ -1,4 +1,5 @@
 use crate::inst::instruction::InstSignature;
+use crate::inst::instruction::GenericSignature;
 use crate::inst::instruction::InstFormat;
 use crate::inst::instruction::SimpleArgType;
 use crate::compile::context::Token;
@@ -35,7 +36,15 @@ pub enum CompileError {
     UnknownRegister(String),
 
     UnknownInstruction(String),
+    InstructionBadFormat(String),
     UnknownInstructionExact { name: String, format: InstFormat },
     UnknownInstructionSAT { name: String, format: Vec<SimpleArgType> },
-    MultipleMatchingInstructions(Vec<InstSignature>), // (name, format)
+    MultipleMatchingInstructions(Vec<GenericSignature>), // (name, format)
+
+    MissingComma,
+    UnexpectedComma,
+    InstructionInDataSegment,
+    UnresolvedLabel(String),
+
+    PseudoUnknownVariable(String),
 }

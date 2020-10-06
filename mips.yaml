@@ -156,6 +156,38 @@ instructions:
       format: RdRsRt
     runtime:
       type: R
+      funct: 0x20
+
+  - name: ADDU
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x21
+
+  - name: SUB
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x22
+
+  - name: SUBU
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
+      funct: 0x23
+
+  - name: AND
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    runtime:
+      type: R
       funct: 0x24
 
   - name: OR
@@ -440,7 +472,17 @@ pseudoinstructions:
       format: Im
     expand:
       - inst: BEQ
-        data: [0, 0, Im]
+        data: [0, 0, $Im]
+
+  - name: BEQ
+    desc_short: Branch if $Rs == Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, 0, $Im1]
+      - inst: BEQ
+        data: [$Rs, $At, $Im2]
 
   - name: BEQZ
     desc_short: Branch if $Rs > 0
@@ -448,7 +490,7 @@ pseudoinstructions:
       format: RsIm
     expand:
       - inst: BEQ
-        data: [$Rs, 0, Im]
+        data: [$Rs, 0, $Im]
 
   - name: BGE
     desc_short: Branch if $Rs >= $Rt
@@ -456,9 +498,21 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: SLT
-        data: [$At, $Rt, $Rs]
+        data: [$At, $Rs, $Rt]
       - inst: BEQ
-        data: [$At, 0, Im]
+        data: [$At, 0, $Im]
+
+  - name: BGE
+    desc_short: Branch if $Rs >= Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLT
+        data: [$At, $Rs, $At]
+      - inst: BEQ
+        data: [$At, 0, $Im2]
 
   - name: BGEU
     desc_short: Branch if $Rs >= $Rt unsigned
@@ -466,9 +520,153 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: SLTU
+        data: [$At, $Rs, $Rt]
+      - inst: BEQ
+        data: [$At, 0, $Im]
+
+  - name: BGEU
+    desc_short: Branch if $Rs >= Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLTU
+        data: [$At, $Rs, $At]
+      - inst: BEQ
+        data: [$At, 0, $Im2]
+
+  - name: BLT
+    desc_short: Branch if $Rs < $Rt
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLT
+        data: [$At, $Rs, $Rt]
+      - inst: BNE
+        data: [$At, 0, $Im]
+
+  - name: BLT
+    desc_short: Branch if $Rs < Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLT
+        data: [$At, $Rs, $At]
+      - inst: BNE
+        data: [$At, 0, $Im2]
+
+  - name: BLTU
+    desc_short: Branch if $Rs < $Rt unsigned
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLTU
+        data: [$At, $Rs, $Rt]
+      - inst: BNE
+        data: [$At, 0, $Im]
+
+  - name: BLTU
+    desc_short: Branch if $Rs < Im1 unsigned
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLTU
+        data: [$At, $Rs, $At]
+      - inst: BNE
+        data: [$At, 0, $Im2]
+
+  - name: BLE
+    desc_short: Branch if $Rs <= $Rt
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLT
         data: [$At, $Rt, $Rs]
       - inst: BEQ
-        data: [$At, 0, Im]
+        data: [$At, 0, $Im]
+
+  - name: BLE
+    desc_short: Branch if $Rs <= Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLT
+        data: [$At, $At, $Rs]
+      - inst: BEQ
+        data: [$At, 0, $Im2]
+
+  - name: BLEU
+    desc_short: Branch if $Rs <= $Rt
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLTU
+        data: [$At, $Rt, $Rs]
+      - inst: BEQ
+        data: [$At, 0, $Im]
+
+  - name: BLEU
+    desc_short: Branch if $Rs <= Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLTU
+        data: [$At, $At, $Rs]
+      - inst: BEQ
+        data: [$At, 0, $Im2]
+
+  - name: BGT
+    desc_short: Branch if $Rs > $Rt
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLT
+        data: [$At, $Rt, $Rs]
+      - inst: BNE
+        data: [$At, 0, $Im]
+
+  - name: BGT
+    desc_short: Branch if $Rs > Im1
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLT
+        data: [$At, $At, $Rs]
+      - inst: BNE
+        data: [$At, 0, $Im2]
+
+  - name: BGTU
+    desc_short: Branch if $Rs > $Rt unsigned
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: SLTU
+        data: [$At, $Rt, $Rs]
+      - inst: BNE
+        data: [$At, 0, $Im]
+
+  - name: BGTU
+    desc_short: Branch if $Rs > Im1 unsigned
+    compile:
+      format: RsIm1Im2
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im1]
+      - inst: SLTU
+        data: [$At, $At, $Rs]
+      - inst: BNE
+        data: [$At, 0, $Im2]
 
   - name: NEG
     desc_short: Flip all the bits in $Rs, store result in $Rd
@@ -486,15 +684,88 @@ pseudoinstructions:
       - inst: NOR
         data: [$Rd, 0, $Rs]
 
+  - name: MUL
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: MULT
+        data: [$Rs, $Rt]
+      - inst: MFLO
+        data: [$Rd]
+
+  - name: MUL
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im]
+      - inst: MULT
+        data: [$Rt, $At]
+      - inst: MFLO
+        data: [$Rs]
+
+  - name: DIV
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: DIV
+        data: [$Rs, $Rt]
+      - inst: MFLO
+        data: [$Rd]
+
+  - name: DIV
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im]
+      - inst: DIV
+        data: [$Rt, $At]
+      - inst: MFLO
+        data: [$Rs]
+
   - name: LI
     desc_short: Load the immediate value into $Rs
     compile:
       format: RsIm
     expand: null
 
-
   - name: LA
     desc_short: Load the immediate address into $Rs
     compile:
       format: RsIm
     expand: null
+
+  - name: ADD
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im]
+      - inst: ADD
+        data: [$Rs, $Rt, $At]
+
+  - name: SUB
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im]
+      - inst: SUB
+        data: [$Rs, $Rt, $At]
+
+  - name: AND
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, $0, $Im]
+      - inst: AND
+        data: [$Rs, $Rt, $At]

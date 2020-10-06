@@ -8,10 +8,11 @@ use crate::error::CompileError;
 use crate::cerr;
 use std::convert::TryInto;
 use crate::inst::instruction::InstSet;
+use crate::inst::pseudo::PseudoInst;
 
 
 pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimResult<()> {
-    let mut inst = 0;
+    let mut inst: usize = 0;
 
     while let Some(token) = context.next_useful_token() {
         match token {
@@ -26,7 +27,7 @@ pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimR
                     context
                         .program
                         .labels
-                        .insert(name.to_string(), TEXT_BOT + 4 * inst);
+                        .insert(name.to_string(), TEXT_BOT + 4 * inst as u32);
                 }
                 Segment::Data => {
                     context.program.labels.insert(
@@ -203,12 +204,10 @@ fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
     }
 }
 
-fn get_instruction_length(context: &Context, iset: &InstSet, inst: &str) -> u32 {
-    let _context = context.clone();
-
+fn get_instruction_length(context: &Context, iset: &InstSet, inst: &str) -> usize {
     for pseudo in &iset.pseudo_set {
-        if pseudo.name == inst.to_ascii_lowercase() {
-            
+        if pseudo.name == inst.to_ascii_lowercase() { // TODO - check inst signature
+            return pseudo.len();
         }
     }
 

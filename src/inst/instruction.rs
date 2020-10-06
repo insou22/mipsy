@@ -5,6 +5,7 @@ use serde::{Serialize, Deserialize};
 use super::pseudo::PseudoInst;
 use crate::yaml::parse::YamlFile;
 use crate::yaml::parse::InstructionType;
+use crate::compile::context::Token;
 
 #[derive(Debug)]
 pub struct InstSet {
@@ -49,6 +50,9 @@ pub enum InstFormat {
     RsRtIm,
     RtRsIm,
     RtImRs,
+
+    // Pseudo-Only
+    RsIm1Im2,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -59,12 +63,16 @@ pub enum ArgType {
     Sa,
     Im,
     J,
+
+    // Pseudo-only
+    Im1,
+    Im2,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SimpleArgType {
     Register,
-    Immediate,    
+    Immediate,
 }
 
 #[derive(Clone, Debug)]
@@ -73,22 +81,28 @@ pub struct InstMetadata {
     pub desc_long:  Option<String>,
 }
 
+#[derive(Clone)]
 pub enum PseudoExpansion {
     Simple(Vec<PseudoExpand>),
     Complex(Box<dyn PseudoInst>),
 }
 
 #[derive(Debug)]
+pub enum GenericSignature {
+    Native(InstSignature),
+    Pseudo(PseudoSignature),
+}
+
+#[derive(Debug, Clone)]
 pub struct PseudoSignature {
     pub name: String,
     pub compile: CompileSignature,
     pub expand: PseudoExpansion,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PseudoExpand {
     pub inst: String,
-    pub format: Option<InstFormat>,
     pub data: Vec<String>,
 }
 
@@ -146,7 +160,6 @@ impl InstSet {
                     Some(v) => PseudoExpansion::Simple(v.iter().map(|expand|
                         PseudoExpand {
                             inst: expand.inst.clone(),
-                            format: expand.format,
                             data: expand.data.clone(),
                         }
                     ).collect()),
@@ -168,12 +181,16 @@ impl InstSet {
     pub fn find_instruction<'a>(&'a self, name: &str, format: Option<Vec<SimpleArgType>>) -> RSpimResult<&'a InstSignature> {
         let mut matches = vec![];
 
+        let name = name.to_lowercase();
+
         for inst in &self.native_set {
             if inst.name == name {
                 if let Some(ref format) = format {
                     if inst.compile.format.matches(format) {
                         matches.push(inst)
                     }
+                } else {
+                    matches.push(inst)
                 }
             }
         }
@@ -187,7 +204,7 @@ impl InstSet {
 
         if matches.len() > 1 {
             return cerr!(CompileError::MultipleMatchingInstructions(
-                matches.iter().map(|&i| i.clone()).collect())
+                matches.iter().map(|&i| GenericSignature::Native(i.clone())).collect())
             );
         }
 
@@ -206,6 +223,43 @@ impl InstSet {
 }
 
 impl InstFormat {
+    pub fn tokens_match(&self, tokens: &mut Vec<&Token>) -> bool {
+        let types: Vec<SimpleArgType> = 
+            self.arg_formats().iter()
+                .map(ArgType::simple)
+                .collect();
+        
+        if types.len() != tokens.len() {
+            if *self == InstFormat::RtImRs && types.len() == 3 && tokens.len() == 2 {
+                if matches!(tokens[0], Token::Register(_)) && matches!(tokens[1], Token::Number(_) | Token::LabelReference(_)) {
+                    // TODO - disgusting hack
+                    tokens.push(Box::leak(Box::new(Token::OffsetRegister("zero".to_string()))));
+                } else { 
+                    return false; 
+                }
+            } else { 
+                return false; 
+            }
+        }
+
+        for (token, &simple_type) in tokens.iter().zip(types.iter()) {
+            let token_type = match token {
+                Token::Register(_) | Token::OffsetRegister(_) => SimpleArgType::Register,
+
+                Token::Number(_) | Token::Float(_) | 
+                  Token::LabelReference(_) | Token::ConstChar(_) => SimpleArgType::Immediate,
+
+                other => panic!("tokens_match: {:?} - This should never happen", other),
+            };
+            
+            if token_type != simple_type {
+                return false;
+            }
+        }
+
+        true
+    }
+
     pub fn arg_formats(&self) -> Vec<ArgType> {
         match *self {
             InstFormat::R0     => vec![],
@@ -223,6 +277,9 @@ impl InstFormat {
             InstFormat::RsRtIm => vec![ArgType::Rs, ArgType::Rt, ArgType::Im],
             InstFormat::RtRsIm => vec![ArgType::Rt, ArgType::Rs, ArgType::Im],
             InstFormat::RtImRs => vec![ArgType::Rt, ArgType::Im, ArgType::Rs],
+
+            // Pseudo-only
+            InstFormat::RsIm1Im2 => vec![ArgType::Rs, ArgType::Im1, ArgType::Im2],
         }
     }
 
@@ -261,6 +318,10 @@ impl ArgType {
             Self::Sa => false,
             Self::Im => false,
             Self::J  => false,
+
+            // Pseudo-only
+            Self::Im1 => false,
+            Self::Im2 => false,
         }
     }
 
@@ -272,15 +333,43 @@ impl ArgType {
             Self::Sa => true,
             Self::Im => true,
             Self::J  => true,
+
+            // Pseudo-only
+            Self::Im1 => true,
+            Self::Im2 => true,
+        }
+    }
+
+    pub fn simple(&self) -> SimpleArgType {
+        if self.is_register() {
+            SimpleArgType::Register
+        } else {
+            SimpleArgType::Immediate
+        }
+    }
+
+    pub fn to_string(&self) -> &'static str {
+        match *self {
+            Self::Rd => "rd",
+            Self::Rs => "rs",
+            Self::Rt => "rt",
+            Self::Sa => "sa",
+            Self::Im => "im",
+            Self::J  => "j",
+
+            // Pseudo-only
+            Self::Im1 => "im1",
+            Self::Im2 => "im2",
         }
     }
 }
 
 impl InstSignature {
-    pub fn gen_op(&self, args: &Vec<u32>) -> RSpimResult<u32> {
+    pub fn gen_op(&self, args: &[u32]) -> RSpimResult<u32> {
         let format = self.compile.format.arg_formats();
 
         if args.len() != format.len() {
+            println!("{} {:?}", self.name, args);
             cerr!(CompileError::Str("SHOULDN'T HAPPEN - InstSignature::gen_op"))
         } else {
             let mut op: u32 = 0;
@@ -309,6 +398,7 @@ impl InstSignature {
                     ArgType::Sa => op |= (val & 0x0000001F) << 6,
                     ArgType::Im => op |= (val & 0x0000FFFF) << 0,
                     ArgType::J  => op |= (val & 0x03FFFFFF) << 0,
+                    _           => unreachable!(),
                 }
             }
 
