@@ -1,6 +1,5 @@
 use crate::inst::instruction::InstFormat;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
 
 static CONFIG_FILE: &'static str = include_str!("../../mips.yaml");
 

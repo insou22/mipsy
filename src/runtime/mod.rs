@@ -507,6 +507,7 @@ impl State {
         self.get_reg(reg).map(|x| x as u32)
     }
 
+    #[allow(unreachable_code)]
     fn write_reg(&mut self, reg: u32, value: i32) {
         if reg == 0 && value != 0 {
             todo!("warning: cannot write to $ZERO");

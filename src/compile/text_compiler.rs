@@ -96,7 +96,7 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
         } else {
             let pseudo = &poss_pseudo.get(0).unwrap();
 
-            (&pseudo.compile, pseudo.len(context))
+            (&pseudo.compile, pseudo.len(&original_context))
         };
 
     let mut input: Vec<u32> = vec![];
@@ -110,7 +110,7 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
             Token::Number(num) => {
                 input.push(*num as u32);
             }
-            Token::Float(flt) => {
+            Token::Float(_flt) => {
                 unimplemented!()
             }
             Token::ConstChar(chr) => {

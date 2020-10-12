@@ -27,7 +27,6 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
 
         for native_inst in &iset.native_set {
             match &native_inst.runtime {
-
                 RuntimeSignature::R { funct: inst_funct } => {
                     if opcode != 0 || *inst_funct as u32 != funct {
                         continue;
@@ -40,8 +39,6 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
                         continue;
                     }
                 }
-
-                _ => continue,
             }
 
             inst = Some(native_inst);

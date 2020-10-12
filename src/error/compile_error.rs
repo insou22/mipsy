@@ -1,4 +1,3 @@
-use crate::inst::instruction::InstSignature;
 use crate::inst::instruction::GenericSignature;
 use crate::inst::instruction::InstFormat;
 use crate::inst::instruction::SimpleArgType;

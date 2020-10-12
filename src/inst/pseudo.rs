@@ -2,7 +2,6 @@ use super::instruction::PseudoSignature;
 use super::instruction::PseudoExpansion;
 use super::instruction::InstFormat;
 use super::instruction::InstSet;
-use super::instruction::ArgType;
 use crate::error::RSpimResult;
 use crate::cerr;
 use crate::error::CompileError;
