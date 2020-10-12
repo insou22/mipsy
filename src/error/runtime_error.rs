@@ -4,4 +4,12 @@ pub type RuntimeResult<T> = Result<T, RuntimeError>;
 pub enum RuntimeError {
     Str(&'static str),
     String(String),
+
+    PageNotExist(u32),
+    UninitializedMemory(u32),
+    UninitializedRegister(u32),
+    UninitializedHi,
+    UninitializedLo,
+
+    IntegerOverflow,
 }

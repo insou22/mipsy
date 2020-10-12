@@ -24,6 +24,7 @@ pub struct InstSignature {
 #[derive(Clone, Debug)]
 pub struct CompileSignature {
     pub format: InstFormat,
+    pub relative_label: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -114,7 +115,8 @@ impl InstSet {
             let native_inst = InstSignature {
                 name: inst.name.to_ascii_lowercase(),
                 compile: CompileSignature {
-                    format: inst.compile.format
+                    format: inst.compile.format,
+                    relative_label: inst.compile.relative_label,
                 },
                 runtime: match inst.runtime.inst_type {
                     InstructionType::R => {
@@ -155,6 +157,7 @@ impl InstSet {
                 name: inst.name.to_ascii_lowercase(),
                 compile: CompileSignature {
                     format: inst.compile.format,
+                    relative_label: inst.compile.relative_label,
                 },
                 expand: match &inst.expand {
                     Some(v) => PseudoExpansion::Simple(v.iter().map(|expand|

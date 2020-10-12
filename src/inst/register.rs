@@ -124,8 +124,16 @@ impl Register {
             29 => Ok(Self::SP),
             30 => Ok(Self::FP),
             31 => Ok(Self::RA),
-            _  => cerr!(CompileError::NumRegisterOutOfRange(num as i32))
+            _  => cerr!(CompileError::NumRegisterOutOfRange(num))
         }
+    }
+
+    pub fn from_u32(num: u32) -> RSpimResult<Self> {
+        Self::from_number(num as i32)
+    }
+
+    pub fn u32_to_str(num: u32) -> &'static str {
+        Self::from_u32(num).unwrap().to_str()
     }
 
     pub fn from_str(name: &str) -> RSpimResult<Self> {

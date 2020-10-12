@@ -1,6 +1,8 @@
-use std::fs::File;
 use crate::inst::instruction::InstFormat;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+
+static CONFIG_FILE: &'static str = include_str!("../../mips.yaml");
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct YamlFile {
@@ -20,6 +22,8 @@ pub struct InstructionYaml {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompileYaml {
     pub format: InstFormat,
+    #[serde(default)]
+    pub relative_label: bool,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -42,7 +46,7 @@ pub enum InstructionType {
 pub struct PsuedoInstructionYaml {
     pub name: String,
     pub desc_short: Option<String>,
-    pub desc_long:  Option<String>,
+    pub desc_long: Option<String>,
     pub compile: CompileYaml,
     pub expand: Option<Vec<InstructionExpansionYaml>>,
 }
@@ -55,8 +59,9 @@ pub struct InstructionExpansionYaml {
 
 // Should be Result -- but not user facing
 pub fn get_instructions() -> YamlFile {
-    let file = File::open("mips.yaml").expect("Failed to find mips.yaml!");
-    let yaml: YamlFile = serde_yaml::from_reader(file).expect("Failed to parse mips.yaml!");
+    // let file = File::open("mips.yaml").expect("Failed to find mips.yaml!");
+    // let yaml: YamlFile = serde_yaml::from_reader(file).expect("Failed to parse mips.yaml!");
+    let yaml: YamlFile = serde_yaml::from_str(CONFIG_FILE).expect("Failed to parse mips.yaml!");
 
     yaml
 }

@@ -207,7 +207,7 @@ fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
 fn get_instruction_length(context: &Context, iset: &InstSet, inst: &str) -> usize {
     for pseudo in &iset.pseudo_set {
         if pseudo.name == inst.to_ascii_lowercase() { // TODO - check inst signature
-            return pseudo.len();
+            return pseudo.len(context);
         }
     }
 

@@ -8,13 +8,15 @@ use crate::cerr;
 use crate::error::CompileError;
 use crate::util::TruncImm;
 use crate::inst::register::Register;
+use crate::compile::context::Context;
+use crate::compile::context::Token;
 use std::collections::HashMap;
 
 const NOP: u32 = 0;
 
 pub trait PseudoInst : PseudoInstClone {
     fn expand(&self, set: &InstSet, input: &[u32]) -> RSpimResult<Vec<u32>>;
-    fn len(&self) -> usize;
+    fn len(&self, context: &Context) -> usize;
 }
 
 #[derive(Clone)]
@@ -29,12 +31,10 @@ impl PseudoInst for Li {
         let imm = input[1];
 
         Ok(
-            if imm as u32 & 0xFFFF0000 == imm as u32 & 0x8000 {
+            if imm as u32 & 0xFFFF0000 == 0 {
                 vec![
                     set.find_instruction_exact("ori", InstFormat::RtRsIm)?
                         .gen_op(&vec![rt, 0, imm.trunc_imm()])?,
-
-                    NOP
                 ]
             } else if imm & 0xFFFF == 0 {
                 vec![
@@ -49,13 +49,24 @@ impl PseudoInst for Li {
                         .gen_op(&vec![rt, imm >> 16])?,
 
                     set.find_instruction_exact("ori", InstFormat::RtRsIm)?
-                        .gen_op(&vec![rt, 0, imm.trunc_imm()])?
+                        .gen_op(&vec![rt, rt, imm.trunc_imm()])?
                 ]
             }
         )
     }
 
-    fn len(&self) -> usize {
+    fn len(&self, context: &Context) -> usize {
+        let mut context = context.clone();
+
+        let _reg = context.next_useful_token();
+        let imm = context.next_useful_token();
+
+        if let Some(&Token::Number(imm)) = imm {
+            if imm as u32 & 0xFFFF0000 == 0 {
+                return 1;
+            }
+        }
+
         2
     }
 }
@@ -72,12 +83,10 @@ impl PseudoInst for La {
         let imm = input[1];
 
         Ok(
-            if imm as u32 & 0xFFFF0000 == imm as u32 & 0x8000 {
+            if imm as u32 & 0xFFFF0000 == 0 {
                 vec![
                     set.find_instruction_exact("ori", InstFormat::RtRsIm)?
                         .gen_op(&vec![rt, 0, imm.trunc_imm()])?,
-
-                    NOP
                 ]
             } else if imm & 0xFFFF == 0 {
                 vec![
@@ -92,13 +101,24 @@ impl PseudoInst for La {
                         .gen_op(&vec![rt, imm >> 16])?,
 
                     set.find_instruction_exact("ori", InstFormat::RtRsIm)?
-                        .gen_op(&vec![rt, 0, imm.trunc_imm()])?
+                        .gen_op(&vec![rt, rt, imm.trunc_imm()])?
                 ]
             }
         )
     }
 
-    fn len(&self) -> usize {
+    fn len(&self, context: &Context) -> usize {
+        let mut context = context.clone();
+
+        let _reg = context.next_useful_token();
+        let imm = context.next_useful_token();
+
+        if let Some(&Token::Number(imm)) = imm {
+            if imm as u32 & 0xFFFF0000 == 0 {
+                return 1;
+            }
+        }
+
         2
     }
 }
@@ -176,10 +196,10 @@ impl PseudoInst for PseudoSignature {
         Ok(insts)
     }
 
-    fn len(&self) -> usize {
+    fn len(&self, context: &Context) -> usize {
         match &self.expand {
             PseudoExpansion::Simple(expands) => expands.len(),
-            PseudoExpansion::Complex(complex) => complex.len(),
+            PseudoExpansion::Complex(complex) => complex.len(context),
         }
     }
 }

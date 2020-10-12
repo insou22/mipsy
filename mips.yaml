@@ -237,6 +237,7 @@ instructions:
     desc_short: Branch to the immediate address if the value in $Rs < 0
     compile:
       format: RsIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x01
@@ -246,6 +247,7 @@ instructions:
     desc_short: Branch to the immediate address if the value in $Rs >= 0
     compile:
       format: RsIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x01
@@ -255,6 +257,7 @@ instructions:
     desc_short: Branch to the immediate address if the values in $Rs == $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x04
@@ -263,6 +266,7 @@ instructions:
     desc_short: Branch to the immediate address if the values in $Rs != $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x05
@@ -271,6 +275,7 @@ instructions:
     desc_short: Branch to the immediate address if the value in $Rs <= 0
     compile:
       format: RsIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x06
@@ -279,6 +284,7 @@ instructions:
     desc_short: Branch to the immediate address if the value in $Rs > 0
     compile:
       format: RsIm
+      relative_label: true
     runtime:
       type: I
       opcode: 0x07
@@ -463,13 +469,14 @@ pseudoinstructions:
     compile:
       format: RdRs
     expand:
-      - inst: ADD
+      - inst: ADDU
         data: [$Rd, $Rs, 0]
 
   - name: B
     desc_short: Branch unconditionally
     compile:
       format: Im
+      relative_label: true
     expand:
       - inst: BEQ
         data: [0, 0, $Im]
@@ -478,16 +485,29 @@ pseudoinstructions:
     desc_short: Branch if $Rs == Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, 0, $Im1]
       - inst: BEQ
         data: [$Rs, $At, $Im2]
 
+  - name: BNE
+    desc_short: Branch if $Rs != Im1
+    compile:
+      format: RsIm1Im2
+      relative_label: true
+    expand:
+      - inst: ORI
+        data: [$At, 0, $Im1]
+      - inst: BNE
+        data: [$Rs, $At, $Im2]
+
   - name: BEQZ
     desc_short: Branch if $Rs > 0
     compile:
       format: RsIm
+      relative_label: true
     expand:
       - inst: BEQ
         data: [$Rs, 0, $Im]
@@ -496,6 +516,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs >= $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLT
         data: [$At, $Rs, $Rt]
@@ -506,6 +527,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs >= Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -518,6 +540,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs >= $Rt unsigned
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLTU
         data: [$At, $Rs, $Rt]
@@ -528,6 +551,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs >= Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -540,6 +564,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs < $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLT
         data: [$At, $Rs, $Rt]
@@ -550,6 +575,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs < Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -562,6 +588,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs < $Rt unsigned
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLTU
         data: [$At, $Rs, $Rt]
@@ -572,6 +599,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs < Im1 unsigned
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -584,6 +612,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs <= $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLT
         data: [$At, $Rt, $Rs]
@@ -594,6 +623,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs <= Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -606,6 +636,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs <= $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLTU
         data: [$At, $Rt, $Rs]
@@ -616,6 +647,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs <= Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -628,6 +660,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs > $Rt
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLT
         data: [$At, $Rt, $Rs]
@@ -638,6 +671,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs > Im1
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]
@@ -650,6 +684,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs > $Rt unsigned
     compile:
       format: RsRtIm
+      relative_label: true
     expand:
       - inst: SLTU
         data: [$At, $Rt, $Rs]
@@ -660,6 +695,7 @@ pseudoinstructions:
     desc_short: Branch if $Rs > Im1 unsigned
     compile:
       format: RsIm1Im2
+      relative_label: true
     expand:
       - inst: ORI
         data: [$At, $0, $Im1]

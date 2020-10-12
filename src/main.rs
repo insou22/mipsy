@@ -3,6 +3,8 @@ pub mod inst;
 pub mod yaml;
 pub mod util;
 pub mod compile;
+pub mod decompile;
+pub mod runtime;
 
 use error::RSpimResult;
 
@@ -29,6 +31,9 @@ fn main() -> RSpimResult<()> {
 
     let program = compile::compiler::generate(tokens, &iset)?;
     println!("Successfully generated program: \n\n{:#010x?}\n\n", program);
+
+    let decompiled = decompile::decompile(&program, &iset);
+    println!("Successfully decompiled program: \n\n{}\n\n", decompiled);
 
     Ok(())
 }
