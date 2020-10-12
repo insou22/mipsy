@@ -2,7 +2,7 @@
 
 A MIPS I R2000 emulator, written in Rust.
 
-RSpim is entirely intended for educational purposes - it by no means is a complete, correct, or rigorous implementation of the MIPS specification. It tries to implement *most* common MIPS I \[psuedo\]instructions, with correct behaviour, however many features are left out in the interests of simplicity and agility of development.
+RSpim is entirely intended for educational purposes - it by no means is a complete, correct, or rigorous implementation of the MIPS specification. It tries to implement *most* common MIPS I \[psuedo\]instructions, with correct behaviour, however many features are left out in the interests of simplicity, agility of development, and focus on education.
 
 Features you will NOT find include:
 - Delay slots
