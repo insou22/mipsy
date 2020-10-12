@@ -27,4 +27,4 @@ This project is a work-in-progress, and is not currently intended to be used for
 
 1. Install the latest stable rust with rustup at https://www.rust-lang.org/tools/install
 2. `git clone https://github.com/insou22/rspim.git && cd rspim`
-3. `cargo build` will build a binary for your machine into `./target/debug/rspim`, or you can simply do `cargo run -- test_files/{file}.s` to build and run rspim with your MIPS file
+3. `cargo build` will build a binary for your machine into `./target/debug/rspim`, or you can simply do `cargo run -- test_files/{file}.s` to automatically build and run rspim with your MIPS file
