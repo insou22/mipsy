@@ -7,7 +7,7 @@ RSpim is entirely intended for educational purposes - it by no means is a comple
 Features you will NOT find include:
 - Delay slots
 - Big-Endian mode
-- Kernel mode/segments
+- Kernel mode
 - An extensive trap file
 - ... more to be included here ...
 
