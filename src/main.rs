@@ -53,13 +53,10 @@ fn main() -> RSpimResult<()> {
     println!("Loaded runtime: {:}", runtime.state());
     pause();
 
-    if true {
-        return Ok(());
-    }
-
     loop {
         match runtime.step() {
             Ok(_) => {},
+            Err(error::RSpimError::Runtime(error::runtime_error::RuntimeError::UninitializedRegister(31))) => { break; }
             Err(e) => {
                 println!("Error: {:x?}", e);
                 let timeline_len = runtime.timeline_len();

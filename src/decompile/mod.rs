@@ -57,7 +57,7 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
             if inst.name == "sll" && rd == 0 && rt == 0 && shamt == 0 {
                 text.push_str("nop");
             } else {
-                text.push_str(&format!("{}\t", inst.name));
+                text.push_str(&format!("{:6} ", inst.name));
 
                 text.push_str(
                     &match inst.compile.format {
