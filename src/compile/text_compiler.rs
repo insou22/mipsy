@@ -172,11 +172,7 @@ pub fn generate_text(context: &mut Context, iset: &InstSet) -> RSpimResult<()> {
                     return cerr!(CompileError::InstructionInDataSegment);
                 }
 
-                println!("SIZE = {}", context.program.text.len());
-
                 let parsed = &mut parse_instruction(name, context, iset)?;
-
-                println!("  parse got {} instns", parsed.len());
 
                 context.program.text.append(parsed);
             }

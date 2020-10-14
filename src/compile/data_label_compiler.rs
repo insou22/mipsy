@@ -45,6 +45,29 @@ pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimR
     ok()
 }
 
+fn align(context: &mut Context, multiple: usize) {
+    let mut extra = 0;
+
+    let mut labels = vec![];
+
+    for (label, &addr) in &context.program.labels {
+        if addr == DATA_BOT + context.program.data.len() as u32 {
+            labels.push((label.clone(), addr));
+        }
+    }
+
+    while context.program.data.len() % multiple != 0 {
+        extra += 1;
+        context.program.data.push(0); // TODO - make uninitialized
+    }
+
+    if extra > 0 {
+        for (label, addr) in labels {
+            context.program.labels.insert(label, addr + extra);
+        }
+    }
+}
+
 fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()> {
     match directive {
         "text" => {
@@ -97,18 +120,22 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             ok()
         }
         "half" => {
+            align(context, 2);
             push_data_integer::<u16>(context, |i| i as u16);
             ok()
         }
         "word" => {
+            align(context, 4);
             push_data_integer::<u32>(context, |i| i as u32);
             ok()
         }
         "float" => {
+            align(context, 4);
             push_data_float::<f32>(context, |i| i as f32);
             ok()
         }
         "double" => {
+            align(context, 8);
             push_data_float::<f64>(context, |i| i as f64);
             ok()
         }
@@ -126,10 +153,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
                 // unwrap ok since num < 0 check
                 let multiple = 2usize.pow(num.try_into().unwrap());
 
-                while context.program.data.len() % multiple != 0 {
-                    context.program.data.push(0);
-                }
-
+                align(context, multiple);
                 ok()
             }
             other => cerr!(
@@ -151,7 +175,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
                 }
 
                 for _ in 0..num {
-                    context.program.data.push(0);
+                    context.program.data.push(0); // TODO - make uninitialized
                 }
 
                 ok()
@@ -207,18 +231,12 @@ fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
 fn get_instruction_length(context: &Context, iset: &InstSet, inst_name: &str) -> RSpimResult<usize> {
     let (inst, _) = super::text_compiler::find_instruction(&inst_name.to_ascii_lowercase(), &mut context.clone(), iset)?;
 
-    println!("{} will be {} instns", inst_name, match inst {
+    let length = match inst {
         super::text_compiler::ParsedInst::Native(_) => 1,
         super::text_compiler::ParsedInst::Pseudo(p) => p.len(context),
-    });
+    };
 
-    Ok(
-        match inst {
-            super::text_compiler::ParsedInst::Native(_) => 1,
-            super::text_compiler::ParsedInst::Pseudo(p) => p.len(context),
-        }
-    )
-
+    Ok(length)
 }
 
 fn ensure_segment(context: &mut Context, seg: Segment) -> RSpimResult<()> {

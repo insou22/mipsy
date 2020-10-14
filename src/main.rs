@@ -26,22 +26,37 @@ fn main() -> RSpimResult<()> {
 
 
     let yaml = yaml::parse::get_instructions();
-    println!("Parsed mips.yaml: \n\n{:#x?}\n\n", yaml);
+    // println!("Parsed mips.yaml: \n\n{:#x?}\n\n", yaml);
 
     let iset = inst::instruction::InstSet::new(&yaml)?;
-    println!("Loaded instruction set: \n\n{:#x?}\n\n", iset);
+    // println!("Loaded instruction set: \n\n{:#x?}\n\n", iset);
 
     let tokens = compile::lexer::tokenise(&file_contents)?;
     println!("Lexed {} into tokens: \n\n{:x?}\n\n", file_name, tokens);
+    pause();
 
     let program = compile::compiler::generate(tokens, &iset)?;
-    println!("Successfully generated program: \n\n{:#010x?}\n\n", program);
+    // println!("Successfully generated program: \n\n{:#010x?}\n\n", program);
 
     let decompiled = decompile::decompile(&program, &iset);
-    println!("Successfully decompiled program: \n\n{}\n\n", decompiled);
+    println!("Successfully compiled program: \n\n{}\n\n", decompiled);
+    pause();
+
+    println!("Labels: ");
+    for (label, addr) in &program.labels {
+        println!("    {:9} => 0x{:08x}", label, addr);
+    }
+    println!("\n");
+    pause();
 
     let mut runtime = runtime::Runtime::new(&program);
-    // println!("Current state: {:}", runtime.state());
+    println!("Loaded runtime: {:}", runtime.state());
+    pause();
+
+    if true {
+        return Ok(());
+    }
+
     loop {
         match runtime.step() {
             Ok(_) => {},
