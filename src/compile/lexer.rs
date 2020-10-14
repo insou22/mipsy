@@ -331,7 +331,7 @@ fn match_num(context: &mut ParseContext) -> Option<i32> {
                         return Some(result);
                     }
     
-                    break;
+                    return None;
                 }
 
                 digits.push(chr);
@@ -347,9 +347,14 @@ fn match_num(context: &mut ParseContext) -> Option<i32> {
                     return Some(result);
                 }
 
-                break;
+                return None;
             }
         }
+    }
+
+    if let Some(result) = chars_to_i32(digits.into_iter().collect(), base) {
+        std::mem::swap(&mut context.chars, &mut iter_clone);
+        return Some(result);
     }
 
     None
