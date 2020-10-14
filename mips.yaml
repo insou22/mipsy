@@ -470,7 +470,7 @@ pseudoinstructions:
       format: RdRs
     expand:
       - inst: ADDU
-        data: [$Rd, $Rs, 0]
+        data: [$Rd, 0, $Rs]
 
   - name: B
     desc_short: Branch unconditionally
@@ -478,8 +478,8 @@ pseudoinstructions:
       format: Im
       relative_label: true
     expand:
-      - inst: BEQ
-        data: [0, 0, $Im]
+      - inst: BGEZ
+        data: [0, $Im]
 
   - name: BEQ
     desc_short: Branch if $Rs == Im1
@@ -530,7 +530,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BEQ
@@ -554,7 +554,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLTU
         data: [$At, $Rs, $At]
       - inst: BEQ
@@ -578,7 +578,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BNE
@@ -602,7 +602,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLTU
         data: [$At, $Rs, $At]
       - inst: BNE
@@ -626,7 +626,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BEQ
@@ -650,7 +650,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BEQ
@@ -674,7 +674,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BNE
@@ -698,7 +698,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, $0, $Im1]
+        data: [$At, 0, $Im1]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BNE
@@ -736,7 +736,7 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: ORI
-        data: [$At, $0, $Im]
+        data: [$At, 0, $Im]
       - inst: MULT
         data: [$Rt, $At]
       - inst: MFLO
@@ -758,7 +758,7 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: ORI
-        data: [$At, $0, $Im]
+        data: [$At, 0, $Im]
       - inst: DIV
         data: [$Rt, $At]
       - inst: MFLO
@@ -781,10 +781,24 @@ pseudoinstructions:
     compile:
       format: RsRtIm
     expand:
-      - inst: ORI
-        data: [$At, $0, $Im]
-      - inst: ADD
-        data: [$Rs, $Rt, $At]
+      - inst: ADDI
+        data: [$Rs, $Rt, $Im]
+
+  - name: ADDU
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ADDIU
+        data: [$Rs, $Rt, $Im]
+
+  - name: ADDIU
+    desc_short: todo!()
+    compile:
+      format: RsIm
+    expand:
+      - inst: ADDIU
+        data: [$Rs, $Rs, $Im]
 
   - name: SUB
     desc_short: todo!()
@@ -792,8 +806,18 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: ORI
-        data: [$At, $0, $Im]
+        data: [$At, 0, $Im]
       - inst: SUB
+        data: [$Rs, $Rt, $At]
+
+  - name: SUBU
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, 0, $Im]
+      - inst: SUBU
         data: [$Rs, $Rt, $At]
 
   - name: AND
@@ -802,6 +826,102 @@ pseudoinstructions:
       format: RsRtIm
     expand:
       - inst: ORI
-        data: [$At, $0, $Im]
+        data: [$At, 0, $Im]
       - inst: AND
         data: [$Rs, $Rt, $At]
+
+  - name: SEQ
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: ORI
+        data: [$Rd, 0, 0]
+      - inst: BNE
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, 0, 1]
+
+  - name: SEQ
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$Rs, 0, 0]
+      - inst: ORI
+        data: [$At, 0, $Im]
+      - inst: BNE
+        data: [$Rt, $At, 2]
+      - inst: ORI
+        data: [$Rs, 0, 1]
+
+  - name: SNE
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: ORI
+        data: [$Rd, 0, 0]
+      - inst: BEQ
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, 0, 1]
+
+  - name: SNE
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$Rs, 0, 0]
+      - inst: ORI
+        data: [$At, 0, $Im]
+      - inst: BEQ
+        data: [$Rt, $At, 2]
+      - inst: ORI
+        data: [$Rs, 0, 1]
+
+  - name: SGE
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: SLT
+        data: [$Rd, $Rt, $Rs]
+      - inst: SUBU
+        data: [$Rd, $0, $Rd]
+      - inst: ADDIU
+        data: [$Rd, $Rd, 1]
+
+  - name: SGE
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, 0, $Im]
+      - inst: SLTI
+        data: [$Rs, $At, $Rt]
+      - inst: SUBU
+        data: [$Rs, $0, $Rs]
+      - inst: ADDIU
+        data: [$Rs, $Rs, 1]
+
+  - name: SGT
+    desc_short: todo!()
+    compile:
+      format: RdRsRt
+    expand:
+      - inst: SLT
+        data: [$Rd, $Rt, $Rs]
+
+  - name: SGT
+    desc_short: todo!()
+    compile:
+      format: RsRtIm
+    expand:
+      - inst: ORI
+        data: [$At, 0, $Im]
+      - inst: SLT
+        data: [$Rs, $At, $Rt]

@@ -5,28 +5,128 @@ use crate::error::RSpimResult;
 use crate::error::RuntimeError;
 use crate::rerr;
 use crate::inst::register::Register;
+use std::fmt::{self, Display, Debug};
 
 pub const PAGE_SIZE: u32 = 4096;
 
 pub struct Runtime {
     timeline: Vec<State>,
-    program_len: usize, // intrinsic
+    current_state: usize,
+    program_len: usize,           // intrinsic
     labels: HashMap<String, u32>, // intrinsic
 }
 
 #[derive(Clone)]
-pub struct State {
-    pages: HashMap<u32, [Safe<u8>; PAGE_SIZE as usize]>,
+pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
+    pages: HashMap<u32, Box<[Safe<u8>]>>,
     pc: u32,
     registers: [Safe<i32>; 32],
     hi: Safe<i32>,
     lo: Safe<i32>,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Debug)]
 pub enum Safe<T> {
     Valid(T),
     Uninitialised,
+}
+
+impl Display for State {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
+        fmt.write_str("State {\n")?;
+        fmt.write_str("    pages: {\n")?; // WIP
+        
+        let mut sorted: Vec<(&u32, &Box<[Safe<u8>]>)> = self.pages.iter().collect();
+        sorted.sort_by(|a, b| a.0.cmp(b.0));
+
+        let mut first = true;
+        for (base_addr, page) in sorted {
+            if first {
+                first = false;
+            } else {
+                fmt.write_str("\n")?;
+            }
+
+            for x in 0..(4096/16) {
+                let mut any_init = false;
+                for y in 0..16 {
+                    if matches!(page[x * 16 + y], Safe::Valid(_)) {
+                        any_init = true;
+                        break;
+                    }
+                }
+
+                if any_init {
+                    fmt.write_str(&format!("        0x{:08x}: [", base_addr + x as u32 * 16))?;
+                    for y in 0..16 {
+                        if y != 0 && y % 4 == 0 {
+                            fmt.write_str("  ")?;
+                        }
+
+                        match page[x * 16 + y] {
+                            Safe::Valid(b) => fmt.write_str(&format!("{:02x}", b))?,
+                            Safe::Uninitialised => fmt.write_str("__")?,
+                        }
+
+                        if y != 15 {
+                            fmt.write_str(", ")?;
+                        }
+                    }
+                    fmt.write_str("]\n")?;
+                }
+            }
+        }
+
+        fmt.write_str("    },\n")?;
+        fmt.write_str("    pc: ")?;
+        fmt.write_str(&format!("0x{:08x}", self.pc))?;
+        fmt.write_str(",\n")?;
+        fmt.write_str("    registers: {\n")?;
+        
+        for (reg, &value) in self.registers.iter().enumerate() {
+            match value {
+                Safe::Valid(value) => {
+                    fmt.write_str(&format!("        ${}: 0x{:08x}\n", Register::from_number(reg as i32).unwrap().to_str().to_ascii_lowercase(), value))?;
+                },
+                Safe::Uninitialised => {}
+            }
+        }
+        
+        fmt.write_str("    },\n")?;
+        fmt.write_str("    hi: ")?;
+        Display::fmt(&self.hi, fmt)?;
+        fmt.write_str(",\n")?;
+        fmt.write_str("    lo: ")?;
+        Display::fmt(&self.lo, fmt)?;
+        fmt.write_str(",\n")?;
+
+        fmt.write_str("}\n")?;
+
+        Ok(())
+    }
+}
+
+impl<T> Display for Safe<T>
+where T: Display {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
+        match self {
+            Self::Valid(t) => t.fmt(fmt)?,
+            Self::Uninitialised => fmt.write_str("Uninitialised")?,
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::LowerHex for Safe<i32> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
+        match self {
+            Self::Valid(t) => fmt.write_str(&format!("0x{:08x}", t))?,
+            Self::Uninitialised => fmt.write_str("Uninitialised")?,
+        }
+
+        Ok(())
+    }
 }
 
 impl<T> Safe<T> {
@@ -64,7 +164,7 @@ impl Runtime {
                 hi: Default::default(),
                 lo: Default::default(),
             };
-        
+
         let mut text_addr = TEXT_BOT;
         for &word in &program.text {
             initial_state.write_word(text_addr, word);
@@ -74,15 +174,17 @@ impl Runtime {
         let mut data_addr = DATA_BOT;
         for &byte in &program.data {
             initial_state.write_byte(data_addr, byte);
-            data_addr += 4;
+            data_addr += 1;
         }
 
         initial_state.write_ureg(Register::ZERO.to_number() as u32, 0);
         initial_state.write_ureg(Register::SP.to_number() as u32, STACK_TOP);
+        initial_state.write_ureg(Register::FP.to_number() as u32, STACK_TOP);
         initial_state.write_ureg(Register::GP.to_number() as u32, HEAP_BOT);
 
         let runtime = Runtime {
             timeline: vec![initial_state],
+            current_state: 0,
             program_len: program.text.len(),
             labels: program.labels.clone(),
         };
@@ -92,7 +194,9 @@ impl Runtime {
 
     pub fn step(&mut self) -> RSpimResult<()> {
         self.timeline.push(self.timeline.last().unwrap().clone());
-        let state = self.timeline.last_mut().unwrap();
+        self.current_state += 1;
+
+        let state = self.state_mut();
 
         let inst = state.get_word(state.pc)?;
         state.pc += 4;
@@ -102,7 +206,15 @@ impl Runtime {
         Ok(())
     }
 
-    fn state(&self) -> &State {
+    pub fn timeline_len(&self) -> usize {
+        self.timeline.len()
+    }
+
+    pub fn nth_state(&self, n: usize) -> Option<&State> {
+        self.timeline.get(n)
+    }
+
+    pub fn state(&self) -> &State {
         self.timeline.last().unwrap()
     }
 
@@ -120,6 +232,8 @@ impl Runtime {
         let imm    = (inst & 0xFFFF) as i16;
         let addr   =  inst & 0x3FFFFFF;
 
+        // println!("Executing inst: 0x{:08x}\n", inst);
+
         match opcode {
             0 => {
                 // R-Type
@@ -135,10 +249,51 @@ impl Runtime {
             }
         }
 
+        self.state_mut().registers[Register::ZERO.to_number() as usize] = Safe::Valid(0);
+
         Ok(())
     }
 
     fn syscall(&mut self) -> RSpimResult<()> {
+        let state = self.state_mut();
+
+        // println!("SYSCALL {}", state.get_reg(Register::V0.to_number() as u32)?);
+
+        match state.get_reg(Register::V0.to_number() as u32)? {
+            1 => { print!("{}", state.get_reg(Register::A0.to_number() as u32)?); },
+            2 => {},
+            3 => {},
+            4 => { 
+                let mut pointer = state.get_ureg(Register::A0.to_number() as u32)?;
+
+                loop {
+                    let value = state.get_byte(pointer)?;
+
+                    if value == 0 {
+                        break;
+                    }
+
+                    print!("{}", value as char);
+                    pointer += 1;
+                }
+            },
+            5 => {
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).unwrap();
+                let n: i32 = input.trim().parse().unwrap();
+
+                state.write_reg(Register::V0.to_number() as u32, n);
+            },
+            6 => {},
+            7 => {},
+            8 => {},
+            10 => { panic!("Happy panic :) Exit status 10. ") }
+            11 => { print!("{}", state.get_ureg(Register::A0.to_number() as u32)? as u8 as char); },
+            _ => {},
+        }
+
+        std::io::Write::flush(&mut std::io::stdout()).expect("Couldnt flush stdout??");
+        
         Ok(())
     }
 
@@ -318,16 +473,21 @@ impl Runtime {
     }
 
     fn execute_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> RSpimResult<()> {
+        let state = self.state_mut();
+
+        let imm_zero_extend = imm as u16 as u32 as i32;
+        let imm_sign_extend = imm as i32;
+
         match opcode {
             // R-Type
             0x00 => unreachable!(),
 
             0x01 => match rt {
                 // BLTZ $Rs, Im
-                0x00 => {},
+                0x00 => { if state.get_reg(rs)? < 0 { state.branch(imm); } },
 
                 // BGEZ $Rs, Im
-                0x01 => {},
+                0x01 => { if state.get_reg(rs)? >= 0 { state.branch(imm); } },
 
                 // Error
                 _ => todo!(),
@@ -340,61 +500,61 @@ impl Runtime {
             0x03 => {},
             
             // BEQ  $Rs, $Rt, Im
-            0x04 => {},
+            0x04 => { if state.get_reg(rs)? == state.get_reg(rt)? { state.branch(imm); } },
             
             // BNE  $Rs, $Rt, Im
-            0x05 => {},
+            0x05 => { if state.get_reg(rs)? != state.get_reg(rt)? { state.branch(imm); } },
             
             // BLEZ $Rs, Im
-            0x06 => {},
+            0x06 => { if state.get_reg(rs)? <= 0 { state.branch(imm); } },
             
             // BGTZ $Rs, Im
-            0x07 => {},
+            0x07 => { if state.get_reg(rs)? > 0 { state.branch(imm); } },
             
             // ADDI $Rt, $Rs, Im
-            0x08 => {},
+            0x08 => { state.write_reg(rt, checked_add_imm(state.get_reg(rs)?, imm)?) },
             
             // ADDIU $Rt, $Rs, Im
-            0x09 => {},
+            0x09 => { state.write_reg(rt, state.get_reg(rs)?.wrapping_add(imm_sign_extend)) },
             
             // SLTI $Rt, $Rs, Im
-            0x0A => {},
+            0x0A => { if state.get_reg(rs)? < imm_sign_extend { state.write_reg(rt, 1); } else { state.write_reg(rt, 0); } },
             
             // SLTIU $Rt, $Rs, Im
-            0x0B => {},
+            0x0B => { if (state.get_reg(rs)? as u32) < imm_sign_extend as u32 { state.write_reg(rt, 1); } else { state.write_reg(rt, 0); } },
             
             // ANDI $Rt, $Rs, Im
-            0x0C => {},
+            0x0C => { state.write_reg(rt, state.get_reg(rs)? & imm_zero_extend); },
             
             // ORI  $Rt, $Rs, Im
-            0x0D => {},
+            0x0D => { state.write_reg(rt, state.get_reg(rs)? | imm_zero_extend); },
             
             // XORI $Rt, $Rs, Im
-            0x0E => {},
+            0x0E => { state.write_reg(rt, state.get_reg(rs)? ^ imm_zero_extend); },
             
             // LUI  $Rt, Im
-            0x0F => {},
+            0x0F => { state.write_reg(rt, imm_zero_extend << 16 as i32); },
             
             // Unused
             0x10..=0x1F => {},
             
             // LB   $Rt, Im($Rs)
-            0x20 => {},
+            0x20 => { state.load_byte(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // LH   $Rt, Im($Rs)
-            0x21 => {},
+            0x21 => { state.load_half(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // Unused
             0x22 => {},
             
             // LW   $Rt, Im($Rs)
-            0x23 => {},
+            0x23 => { state.load_word(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // LBU  $Rt, Im($Rs)
-            0x24 => {},
+            0x24 => { state.load_ubyte(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // LHU  $Rt, Im($Rs)
-            0x25 => {},
+            0x25 => { state.load_uhalf(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // Unused
             0x26 => {},
@@ -403,16 +563,16 @@ impl Runtime {
             0x27 => {},
             
             // SB   $Rt, Im($Rs)
-            0x28 => {},
+            0x28 => { state.store_byte(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // SH   $Rt, Im($Rs)
-            0x29 => {},
+            0x29 => { state.store_half(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // Unused
             0x2A => {},
             
             // SW   $Rt, Im($Rs)
-            0x2B => {},
+            0x2B => { state.store_word(rt, state.get_ureg(rs)?.wrapping_add(imm_sign_extend as u32)); },
             
             // Unused
             0x2C => {},
@@ -430,7 +590,7 @@ impl Runtime {
             0x30 => {},
             
             // LWC1 $Rt, Im($Rs)
-            0x31 => {},
+            0x31 => { todo!() },
             
             // Unused
             0x32 => {},
@@ -454,7 +614,7 @@ impl Runtime {
             0x38 => {},
             
             // SWC1 $Rt, Im($Rs)
-            0x39 => {},
+            0x39 => { todo!() },
             
             // Unused
             0x3A => {},
@@ -482,12 +642,19 @@ impl Runtime {
     }
 
     fn execute_j(&mut self, opcode: u32, target: u32) -> RSpimResult<()> {
+        let state = self.state_mut();
+
         match opcode {
             // J    addr
-            0x02 => {},
+            0x02 => { 
+                state.pc = (state.pc & 0xF000_0000) | (target << 2); 
+            },
 
             // JAL  addr
-            0x03 => {},
+            0x03 => { 
+                state.write_ureg(Register::RA.to_number() as u32, state.pc);
+                state.pc = (state.pc & 0xF000_0000) | (target << 2);
+            },
 
             _ => unreachable!(),
         }
@@ -496,6 +663,71 @@ impl Runtime {
 }
 
 impl State {
+    fn branch(&mut self, imm: i16) {
+        // println!("Branching with imm = {} --  pc 0x{:08x} ==> 0x{:08x}", imm, self.pc, self.pc.wrapping_add(((imm as i32 - 1) * 4) as u32));
+        self.pc = self.pc.wrapping_add(((imm as i32 - 1) * 4) as u32);
+    }
+
+    fn load_word(&mut self, reg: u32, addr: u32) {
+        match self.get_word(addr) {
+            Ok(w)  => self.write_ureg(reg, w),
+            Err(_) => self.reset_reg(reg),
+        }
+    }
+
+    fn load_half(&mut self, reg: u32, addr: u32) {
+        match self.get_half(addr) {
+            Ok(h)  => self.write_reg(reg, h as i16 as i32),
+            Err(_) => self.reset_reg(reg),
+        }
+    }
+
+    fn load_byte(&mut self, reg: u32, addr: u32) {
+        match self.get_byte(addr) {
+            Ok(b)  => self.write_reg(reg, b as i8 as i32),
+            Err(_) => self.reset_reg(reg),
+        }
+    }
+
+    fn load_uhalf(&mut self, reg: u32, addr: u32) {
+        match self.get_half(addr) {
+            Ok(h)  => self.write_ureg(reg, h as u32),
+            Err(_) => self.reset_reg(reg),
+        }
+    }
+
+    fn load_ubyte(&mut self, reg: u32, addr: u32) {
+        match self.get_byte(addr) {
+            Ok(b)  => self.write_ureg(reg, b as u32),
+            Err(_) => self.reset_reg(reg),
+        }
+    }
+
+    fn store_word(&mut self, reg: u32, addr: u32) {
+        match self.get_reg(reg) {
+            Ok(val) => self.write_word(addr, val as u32),
+            Err(_)  => self.reset_word(addr),
+        }
+    }
+
+    fn store_half(&mut self, reg: u32, addr: u32) {
+        match self.get_reg(reg) {
+            Ok(val) => self.write_half(addr, val as u16),
+            Err(_)  => self.reset_half(addr),
+        }
+    }
+
+    fn store_byte(&mut self, reg: u32, addr: u32) {
+        match self.get_reg(reg) {
+            Ok(val) => self.write_byte(addr, val as u8),
+            Err(_)  => self.reset_byte(addr),
+        }
+    }
+
+    fn reset_reg(&mut self, reg: u32) {
+        self.registers[reg as usize] = Safe::Uninitialised;
+    }
+
     fn get_reg(&self, reg: u32) -> RSpimResult<i32> {
         match self.registers[reg as usize] {
             Safe::Valid(reg) => Ok(reg),
@@ -557,6 +789,8 @@ impl State {
         let b3 = self.get_byte(address + 2)? as u32;
         let b4 = self.get_byte(address + 3)? as u32;
 
+        // println!("Loaded word @ [{:08x}]: {:02x} {:02x} {:02x} {:02x}", address, b4, b3, b2, b1);
+
         Ok(b1 | (b2 << 8) | (b3 << 16) | (b4 << 24))
     }
 
@@ -583,11 +817,13 @@ impl State {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
+        // println!("Writing word 0x{:08x} to address [0x{:08x}] (page={}, offset={})", word, address, Self::get_page_index(address), offset);
+
         // Little endian
         page[offset as usize + 0] = Safe::Valid((word & 0x000000FF) as u8);
-        page[offset as usize + 1] = Safe::Valid((word & 0x0000FF00) as u8);
-        page[offset as usize + 2] = Safe::Valid((word & 0x00FF0000) as u8);
-        page[offset as usize + 3] = Safe::Valid((word & 0xFF000000) as u8);
+        page[offset as usize + 1] = Safe::Valid(((word & 0x0000FF00) >> 8) as u8);
+        page[offset as usize + 2] = Safe::Valid(((word & 0x00FF0000) >> 16) as u8);
+        page[offset as usize + 3] = Safe::Valid(((word & 0xFF000000) >> 24) as u8);
     }
 
     fn write_half(&mut self, address: u32, half: u16) {
@@ -596,7 +832,7 @@ impl State {
 
         // Little endian
         page[offset as usize + 0] = Safe::Valid((half & 0x00FF) as u8);
-        page[offset as usize + 1] = Safe::Valid((half & 0xFF00) as u8);
+        page[offset as usize + 1] = Safe::Valid(((half & 0xFF00) >> 8) as u8);
     }
 
     fn write_byte(&mut self, address: u32, byte: u8) {
@@ -606,14 +842,40 @@ impl State {
         page[offset as usize] = Safe::Valid(byte);
     }
 
-    fn get_page_or_create(&'_ mut self, address: u32) -> &'_ mut [Safe<u8>; PAGE_SIZE as usize] {
+    fn reset_word(&mut self, address: u32) {
+        let page = self.get_page_or_create(address);
+        let offset = Self::offset_in_page(address);
+
+        page[offset as usize + 0] = Safe::Uninitialised;
+        page[offset as usize + 1] = Safe::Uninitialised;
+        page[offset as usize + 2] = Safe::Uninitialised;
+        page[offset as usize + 3] = Safe::Uninitialised;
+
+    }
+
+    fn reset_half(&mut self, address: u32) {
+        let page = self.get_page_or_create(address);
+        let offset = Self::offset_in_page(address);
+
+        page[offset as usize + 0] = Safe::Uninitialised;
+        page[offset as usize + 1] = Safe::Uninitialised;
+    }
+
+    fn reset_byte(&mut self, address: u32) {
+        let page = self.get_page_or_create(address);
+        let offset = Self::offset_in_page(address);
+
+        page[offset as usize] = Safe::Uninitialised;
+    }
+
+    fn get_page_or_create(&'_ mut self, address: u32) -> &'_ mut Box<[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
-        let page = self.pages.entry(base_addr).or_insert([Default::default(); PAGE_SIZE as usize]);
+        let page = self.pages.entry(base_addr).or_insert(Box::new([Default::default(); PAGE_SIZE as usize]));
 
         page
     }
 
-    fn get_page(&'_ self, address: u32) -> RSpimResult<&'_ [Safe<u8>; PAGE_SIZE as usize]> {
+    fn get_page(&'_ self, address: u32) -> RSpimResult<&'_ Box<[Safe<u8>]>> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get(&base_addr);
 
@@ -623,7 +885,7 @@ impl State {
         }
     }
 
-    fn get_page_mut(&'_ mut self, address: u32) -> RSpimResult<&'_ mut [Safe<u8>; PAGE_SIZE as usize]> {
+    fn get_page_mut(&'_ mut self, address: u32) -> RSpimResult<&'_ mut Box<[Safe<u8>]>> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get_mut(&base_addr);
 
@@ -657,8 +919,22 @@ fn checked_add(x: i32, y: i32) -> RSpimResult<i32> {
     }
 }
 
+fn checked_add_imm(x: i32, y: i16) -> RSpimResult<i32> {
+    match x.checked_add(y as i32) {
+        Some(z) => Ok(z),
+        None => rerr!(RuntimeError::IntegerOverflow),
+    }
+}
+
 fn checked_sub(x: i32, y: i32) -> RSpimResult<i32> {
     match x.checked_sub(y) {
+        Some(z) => Ok(z),
+        None => rerr!(RuntimeError::IntegerOverflow),
+    }
+}
+
+fn checked_sub_imm(x: i32, y: i16) -> RSpimResult<i32> {
+    match x.checked_sub(y as i32) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),
     }

@@ -33,7 +33,12 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
                     }
                 }
 
-                RuntimeSignature::I { opcode: inst_opcode, .. } | 
+                RuntimeSignature::I { opcode: inst_opcode, rt: inst_rt } => {
+                    if *inst_opcode as u32 != opcode || inst_rt.is_some() && inst_rt.unwrap() as u32 != rt {
+                        continue;
+                    }
+                }
+
                 RuntimeSignature::J { opcode: inst_opcode, .. } => {
                     if *inst_opcode as u32 != opcode {
                         continue;
@@ -64,7 +69,7 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
                         InstFormat::RdRsRt => format!(" ${}, ${}, ${}", Register::u32_to_str(rd), Register::u32_to_str(rs), Register::u32_to_str(rt)),
                         InstFormat::RdRtRs => format!(" ${}, ${}, ${}", Register::u32_to_str(rd), Register::u32_to_str(rt), Register::u32_to_str(rs)),
                         InstFormat::RdRtSa => format!(" ${}, ${}, {}", Register::u32_to_str(rd), Register::u32_to_str(rt), shamt),
-                        InstFormat::J =>      format!(" 0x{:x}", addr),
+                        InstFormat::J =>      format!(" 0x{:08x}", (text_addr + 4) & 0xF000_0000 | addr << 2),
                         InstFormat::Im =>     format!(" {}", imm),
                         InstFormat::RsIm =>   format!(" ${}, {}", Register::u32_to_str(rs), imm),
                         InstFormat::RtIm =>   format!(" ${}, {}", Register::u32_to_str(rt), imm),

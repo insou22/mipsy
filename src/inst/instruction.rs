@@ -54,6 +54,8 @@ pub enum InstFormat {
 
     // Pseudo-Only
     RsIm1Im2,
+    RsWd,
+    RtWdRs,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -68,12 +70,14 @@ pub enum ArgType {
     // Pseudo-only
     Im1,
     Im2,
+    Wd,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SimpleArgType {
     Register,
     Immediate,
+    Word,
 }
 
 #[derive(Clone, Debug)]
@@ -283,6 +287,8 @@ impl InstFormat {
 
             // Pseudo-only
             InstFormat::RsIm1Im2 => vec![ArgType::Rs, ArgType::Im1, ArgType::Im2],
+            InstFormat::RsWd     => vec![ArgType::Rs, ArgType::Wd],
+            InstFormat::RtWdRs   => vec![ArgType::Rt, ArgType::Wd, ArgType::Rs],
         }
     }
 
@@ -296,12 +302,17 @@ impl InstFormat {
         for (arg_type, simple_arg_type) in format.iter().zip(other.iter()) {
             match simple_arg_type {
                 SimpleArgType::Register => {
-                    if arg_type.is_immediate() {
+                    if !arg_type.is_register() {
                         return false;
                     }
                 }
                 SimpleArgType::Immediate => { 
-                    if arg_type.is_register() {
+                    if !arg_type.is_immediate() {
+                        return false;
+                    }
+                }
+                SimpleArgType::Word => {
+                    if !arg_type.is_word() {
                         return false;
                     }
                 }
@@ -325,6 +336,7 @@ impl ArgType {
             // Pseudo-only
             Self::Im1 => false,
             Self::Im2 => false,
+            Self::Wd  => true,
         }
     }
 
@@ -335,19 +347,36 @@ impl ArgType {
             Self::Rt => false,
             Self::Sa => true,
             Self::Im => true,
-            Self::J  => true,
+            Self::J  => false,
 
             // Pseudo-only
             Self::Im1 => true,
             Self::Im2 => true,
+            Self::Wd  => false,
+        }
+    }
+
+    pub fn is_word(&self) -> bool {
+        match *self {
+            Self::Rd => false,
+            Self::Rs => false,
+            Self::Rt => false,
+            Self::Sa => false,
+            Self::Im => false,
+            Self::J  => false,
+
+            // Pseudo-only
+            Self::Im1 => false,
+            Self::Im2 => false,
+            Self::Wd  => true,
         }
     }
 
     pub fn simple(&self) -> SimpleArgType {
-        if self.is_register() {
-            SimpleArgType::Register
-        } else {
-            SimpleArgType::Immediate
+        match self {
+            Self::Rd | Self::Rs | Self::Rt => SimpleArgType::Register,
+            Self::Sa | Self::Im | Self::Im1 | Self::Im2 => SimpleArgType::Immediate,
+            Self::J  | Self::Wd => SimpleArgType::Word,
         }
     }
 
@@ -363,6 +392,7 @@ impl ArgType {
             // Pseudo-only
             Self::Im1 => "im1",
             Self::Im2 => "im2",
+            Self::Wd  => "wd",
         }
     }
 }
@@ -400,7 +430,7 @@ impl InstSignature {
                     ArgType::Rd => op |= (val & 0x0000001F) << 11,
                     ArgType::Sa => op |= (val & 0x0000001F) << 6,
                     ArgType::Im => op |= (val & 0x0000FFFF) << 0,
-                    ArgType::J  => op |= (val & 0x03FFFFFF) << 0,
+                    ArgType::J  => op |=  val >> 2 & 0x03FFFFFF,
                     _           => unreachable!(),
                 }
             }

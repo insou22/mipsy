@@ -5,14 +5,16 @@ use crate::cerr;
 use super::context::Context;
 use super::context::Token;
 use super::compiler::TEXT_BOT;
-use crate::inst::instruction::InstSet;
+use crate::inst::instruction::{InstSet, InstSignature, PseudoSignature};
 use crate::inst::instruction::GenericSignature;
 use crate::inst::pseudo::PseudoInst;
 
-pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> RSpimResult<Vec<u32>> {
-    // need this for instn length checking unfortunately
-    let original_context = context.clone();
+pub enum ParsedInst<'a> {
+    Native(&'a InstSignature),
+    Pseudo(&'a PseudoSignature),
+}
 
+pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a InstSet) -> RSpimResult<(ParsedInst<'a>, Vec<&'b Token>)> {
     let name = name.to_ascii_lowercase();
     
     let mut poss_native = vec![];
@@ -41,13 +43,13 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
         if let Some(token) = context.peek_useful_token() {
             match token {
                 Token::Register(_) | Token::Number(_) | Token::Float(_)
-                  | Token::LabelReference(_) | Token::OffsetRegister(_) | Token::ConstChar(_) => {
+                    | Token::LabelReference(_) | Token::OffsetRegister(_) | Token::ConstChar(_) => {
                     if !comma {
                         return cerr!(CompileError::MissingComma);
                     }
 
                     if matches!(token, Token::OffsetRegister(_)) {
-                        if arg_tokens.is_empty() || !matches!(arg_tokens.last().unwrap(), Token::Number(_)) {
+                        if arg_tokens.is_empty() || !matches!(arg_tokens.last().unwrap(), Token::Number(_) | Token::LabelReference(_)) {
                             arg_tokens.push(&Token::Number(0));
                         }
                     }
@@ -88,15 +90,26 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
         ));
     }
 
-    let (format, len) = 
-        if !poss_native.is_empty() {
-            let native = &poss_native.get(0).unwrap();
-
-            (&native.compile, 1)
+    Ok((
+        if poss_native.is_empty() {
+            ParsedInst::Pseudo(poss_pseudo[0])
         } else {
-            let pseudo = &poss_pseudo.get(0).unwrap();
+            ParsedInst::Native(poss_native[0])
+        }, 
 
-            (&pseudo.compile, pseudo.len(&original_context))
+        arg_tokens
+    ))
+}
+
+pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> RSpimResult<Vec<u32>> {
+    let mut context_clone = context.clone();
+
+    let (inst, arg_tokens) = find_instruction(name, &mut context_clone, iset)?;
+
+    let (format, len) = 
+        match inst {
+            ParsedInst::Native(n) => (&n.compile, 1),
+            ParsedInst::Pseudo(p) => (&p.compile, p.len(context)),
         };
 
     let mut input: Vec<u32> = vec![];
@@ -129,10 +142,6 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
 
                         let current_inst_addr = (context.program.text.len() + len - 1) as u32 * 4 + TEXT_BOT;
 
-                        println!(
-                            "relative label {} - current len = {} current addr = 0x{:08x}, label addr = 0x{:08x}", 
-                            label, context.program.text.len(), current_inst_addr, addr);
-
                         (addr.wrapping_sub(current_inst_addr)) / 4
                     } else {
                         addr
@@ -147,14 +156,9 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
         }
     }
 
-    if !poss_native.is_empty() {
-        let inst = poss_native.get(0).unwrap();
-
-        Ok(vec![inst.gen_op(&input)?])
-    } else {
-        let inst = poss_pseudo.get(0).unwrap();
-
-        Ok(inst.expand(iset, &input)?)
+    match inst {
+        ParsedInst::Native(n) => Ok(vec![n.gen_op(&input)?]),
+        ParsedInst::Pseudo(p) => Ok(p.expand(iset, &input)?),
     }
 }
 

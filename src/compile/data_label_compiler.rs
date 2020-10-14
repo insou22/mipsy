@@ -17,7 +17,7 @@ pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimR
     while let Some(token) = context.next_useful_token() {
         match token {
             Token::Instruction(inst_name) => {
-                inst += get_instruction_length(context, iset, inst_name);
+                inst += get_instruction_length(context, iset, inst_name)?;
             }
             Token::Directive(directive) => {
                 generate_directive(context, directive)?;
@@ -204,14 +204,21 @@ fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
     }
 }
 
-fn get_instruction_length(context: &Context, iset: &InstSet, inst: &str) -> usize {
-    for pseudo in &iset.pseudo_set {
-        if pseudo.name == inst.to_ascii_lowercase() { // TODO - check inst signature
-            return pseudo.len(context);
-        }
-    }
+fn get_instruction_length(context: &Context, iset: &InstSet, inst_name: &str) -> RSpimResult<usize> {
+    let (inst, _) = super::text_compiler::find_instruction(&inst_name.to_ascii_lowercase(), &mut context.clone(), iset)?;
 
-    1
+    println!("{} will be {} instns", inst_name, match inst {
+        super::text_compiler::ParsedInst::Native(_) => 1,
+        super::text_compiler::ParsedInst::Pseudo(p) => p.len(context),
+    });
+
+    Ok(
+        match inst {
+            super::text_compiler::ParsedInst::Native(_) => 1,
+            super::text_compiler::ParsedInst::Pseudo(p) => p.len(context),
+        }
+    )
+
 }
 
 fn ensure_segment(context: &mut Context, seg: Segment) -> RSpimResult<()> {

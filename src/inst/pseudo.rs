@@ -66,6 +66,12 @@ impl PseudoInst for Li {
             }
         }
 
+        if let Some(&Token::ConstChar(chr)) = imm {
+            if chr as u32 & 0xFFFF0000 == 0 {
+                return 1;
+            }
+        }
+
         2
     }
 }
@@ -114,6 +120,12 @@ impl PseudoInst for La {
 
         if let Some(&Token::Number(imm)) = imm {
             if imm as u32 & 0xFFFF0000 == 0 {
+                return 1;
+            }
+        }
+
+        if let Some(&Token::ConstChar(chr)) = imm {
+            if chr as u32 & 0xFFFF0000 == 0 {
                 return 1;
             }
         }
