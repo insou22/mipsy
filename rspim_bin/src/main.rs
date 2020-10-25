@@ -1,6 +1,15 @@
 use rspim_lib::*;
 use error::RSpimResult;
 use std::io::{stdin, Read};
+use clap::Clap;
+
+#[derive(Clap, Debug)]
+#[clap(version = "1.0", author = "Zac K. <zac.kologlu@gmail.com>")]
+struct Opts {
+    #[clap(long, about("Step-by-step compilation and runtime"))]
+    steps: bool,
+    file: String,
+}
 
 #[allow(dead_code)]
 fn pause() {
@@ -14,16 +23,9 @@ fn print_info(s: String) {
 }
 
 fn main() -> RSpimResult<()> {
-    let args: Vec<String> = std::env::args().collect();
+    let opts: Opts = Opts::parse();
 
-    if args.len() < 2 {
-        println!("Usage: {} <file>", &args[0]);
-        return Ok(());
-    }
-
-    let file_name = &args[1];
-    let file_contents = std::fs::read_to_string(file_name).expect("Could not read file {}");
-
+    let file_contents = std::fs::read_to_string(&opts.file).expect("Could not read file {}");
 
     let yaml = yaml::parse::get_instructions();
     // println!("Parsed mips.yaml: \n\n{:#x?}\n\n", yaml);
@@ -32,7 +34,7 @@ fn main() -> RSpimResult<()> {
     // println!("Loaded instruction set: \n\n{:#x?}\n\n", iset);
 
     let tokens = compile::lexer::tokenise(&file_contents)?;
-    print_info(format!("Lexed {} into tokens: \n\n{:x?}\n\n", file_name, tokens));
+    print_info(format!("Lexed {} into tokens: \n\n{:x?}\n\n", &opts.file, tokens));
     // pause();
 
     let program = compile::compiler::generate(tokens, &iset)?;

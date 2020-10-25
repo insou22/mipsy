@@ -7,12 +7,13 @@ edition = "2018"
 [lib]
 name = "rspim_lib"
 path = "src/lib.rs"
+crate-type = ["cdylib"]
 
-[[bin]]
-name = "rspim"
-path = "src/bin/bin.rs"
+[profile.release]
+opt-level = 's'
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see mips.yaml
 strsim = "0.10.0"   # for error-reporting - string similarity
+wasm-bindgen = "0.2"
