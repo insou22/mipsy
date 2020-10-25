@@ -5,6 +5,7 @@ main:
     add  $t2, $t1, $t0
     li   $t3, 17
     sw   $t3, 0($t2)
+    jr   $ra
     # ...
 .data
 x:  .space 40

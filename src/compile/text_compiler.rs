@@ -42,15 +42,15 @@ pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a 
     loop {
         if let Some(token) = context.peek_useful_token() {
             match token {
-                Token::Register(_) | Token::Number(_) | Token::Float(_)
+                Token::Register(_) | Token::Word(_) | Token::Immediate(_) | Token::Float(_)
                     | Token::LabelReference(_) | Token::OffsetRegister(_) | Token::ConstChar(_) => {
                     if !comma {
                         return cerr!(CompileError::MissingComma);
                     }
 
                     if matches!(token, Token::OffsetRegister(_)) {
-                        if arg_tokens.is_empty() || !matches!(arg_tokens.last().unwrap(), Token::Number(_) | Token::LabelReference(_)) {
-                            arg_tokens.push(&Token::Number(0));
+                        if arg_tokens.is_empty() || !matches!(arg_tokens.last().unwrap(), Token::Word(_) | Token::Immediate(_) | Token::LabelReference(_)) {
+                            arg_tokens.push(&Token::Immediate(0));
                         }
                     }
 
@@ -72,8 +72,8 @@ pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a 
         context.next_useful_token();
     }
 
-    poss_native.retain(|inst| inst.compile.format.tokens_match(&mut arg_tokens));
-    poss_pseudo.retain(|inst| inst.compile.format.tokens_match(&mut arg_tokens));
+    poss_native.retain(|inst| inst.compile.tokens_match(&mut arg_tokens));
+    poss_pseudo.retain(|inst| inst.compile.tokens_match(&mut arg_tokens));
 
     if poss_native.is_empty() && poss_pseudo.is_empty() {
         return cerr!(CompileError::InstructionBadFormat(name.into()));
@@ -120,7 +120,11 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
             Token::Register(reg) => {
                 input.push(crate::inst::register::Register::from_str(reg)?.to_number() as u32);
             }
-            Token::Number(num) => {
+            Token::Immediate(num) => {
+                input.push(*num as u32);
+            }
+            // TODO
+            Token::Word(num) => {
                 input.push(*num as u32);
             }
             Token::Float(_flt) => {

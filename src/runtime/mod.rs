@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::compile::context::Program;
-use crate::compile::compiler::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP};
+use crate::compile::compiler::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
 use crate::error::RSpimResult;
 use crate::error::RuntimeError;
 use crate::rerr;
@@ -8,7 +8,16 @@ use crate::inst::register::Register;
 use std::fmt::{self, Display, Debug};
 
 pub const PAGE_SIZE: u32 = 4096;
+pub const KERN_INSTNS: [u32; 6] = [
+    0x3c1a0040, // li      $k0, 0x00400000
+    0x34020000, // li      $v0, 0
+    0x03400009, // jalr    $k0
+    0x00022021, // move    $a0, $v0
+    0x34020011, // li      $v0, 17
+    0x0000000c, // syscall
+];
 
+#[allow(dead_code)]
 pub struct Runtime {
     timeline: Vec<State>,
     current_state: usize,
@@ -130,6 +139,7 @@ impl fmt::LowerHex for Safe<i32> {
 }
 
 impl<T> Safe<T> {
+    #[allow(dead_code)]
     fn as_option(self) -> Option<T> {
         match self {
             Self::Valid(t) => Some(t),
@@ -159,7 +169,7 @@ impl Runtime {
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
-                pc: TEXT_BOT,
+                pc: KTEXT_BOT,
                 registers: Default::default(),
                 hi: Default::default(),
                 lo: Default::default(),
@@ -175,6 +185,12 @@ impl Runtime {
         for &byte in &program.data {
             initial_state.write_byte(data_addr, byte);
             data_addr += 1;
+        }
+
+        let mut ktext_addr = KTEXT_BOT;
+        for &word in &KERN_INSTNS {
+            initial_state.write_word(ktext_addr, word);
+            ktext_addr += 4;
         }
 
         initial_state.write_ureg(Register::ZERO.to_number() as u32, 0);
@@ -287,8 +303,9 @@ impl Runtime {
             6 => {},
             7 => {},
             8 => {},
-            10 => { panic!("Happy panic :) Exit status 10. ") }
+            10 => { std::process::exit(0) }
             11 => { print!("{}", state.get_ureg(Register::A0.to_number() as u32)? as u8 as char); },
+            17 => { std::process::exit(state.get_reg(Register::A0.to_number() as u32).unwrap_or(0)); }
             _ => {},
         }
 
@@ -885,6 +902,7 @@ impl State {
         }
     }
 
+    #[allow(dead_code)]
     fn get_page_mut(&'_ mut self, address: u32) -> RSpimResult<&'_ mut Box<[Safe<u8>]>> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get_mut(&base_addr);
@@ -933,6 +951,7 @@ fn checked_sub(x: i32, y: i32) -> RSpimResult<i32> {
     }
 }
 
+#[allow(dead_code)]
 fn checked_sub_imm(x: i32, y: i16) -> RSpimResult<i32> {
     match x.checked_sub(y as i32) {
         Some(z) => Ok(z),

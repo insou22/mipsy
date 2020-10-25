@@ -10,7 +10,8 @@ use crate::inst::instruction::InstSet;
 pub const TEXT_BOT:  u32 = 0x00400000;
 pub const DATA_BOT:  u32 = 0x10000000;
 pub const HEAP_BOT:  u32 = 0x10008000;
-pub const STACK_TOP: u32 = 0x80000000;
+pub const STACK_TOP: u32 = 0x7FFFFF00;
+pub const KTEXT_BOT: u32 = 0x80000000;
 
 pub const LITTLE_ENDIAN: bool = true;
 

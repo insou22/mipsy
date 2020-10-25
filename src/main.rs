@@ -7,10 +7,17 @@ pub mod decompile;
 pub mod runtime;
 
 use error::RSpimResult;
-use std::io::{stdin, stdout, Read, Write};
+use std::io::{stdin, Read};
 
+#[allow(dead_code)]
 fn pause() {
     stdin().read(&mut [0]).unwrap();
+}
+
+fn print_info(s: String) {
+    if false {
+        println!("{}", s);
+    }
 }
 
 fn main() -> RSpimResult<()> {
@@ -32,26 +39,29 @@ fn main() -> RSpimResult<()> {
     // println!("Loaded instruction set: \n\n{:#x?}\n\n", iset);
 
     let tokens = compile::lexer::tokenise(&file_contents)?;
-    println!("Lexed {} into tokens: \n\n{:x?}\n\n", file_name, tokens);
-    pause();
+    print_info(format!("Lexed {} into tokens: \n\n{:x?}\n\n", file_name, tokens));
+    // pause();
 
     let program = compile::compiler::generate(tokens, &iset)?;
     // println!("Successfully generated program: \n\n{:#010x?}\n\n", program);
 
     let decompiled = decompile::decompile(&program, &iset);
-    println!("Successfully compiled program: \n\n{}\n\n", decompiled);
-    pause();
+    print_info(format!("Successfully compiled program: \n\n{}\n\n", decompiled));
+    // pause();
 
-    println!("Labels: ");
+    print_info(format!("Labels: "));
     for (label, addr) in &program.labels {
-        println!("    {:9} => 0x{:08x}", label, addr);
+        print_info(format!("    {:9} => 0x{:08x}", label, addr));
     }
-    println!("\n");
-    pause();
+    print_info(format!("\n"));
+    // pause();
 
     let mut runtime = runtime::Runtime::new(&program);
-    println!("Loaded runtime: {:}", runtime.state());
-    pause();
+    print_info(format!("Loaded runtime: {:}", runtime.state()));
+    // pause();
+
+    // LOL
+    println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s");
 
     loop {
         match runtime.step() {
@@ -60,14 +70,14 @@ fn main() -> RSpimResult<()> {
             Err(e) => {
                 println!("Error: {:x?}", e);
                 let timeline_len = runtime.timeline_len();
-                // println!("Timeline length: {}", timeline_len);
+                println!("Timeline length: {}", timeline_len);
 
                 for i in (1..=5).rev() {
                     if (timeline_len as isize - i) < 0 {
                         continue;
                     }
 
-                    // println!("{}", runtime.nth_state(timeline_len - i as usize).unwrap());
+                    println!("{}", runtime.nth_state(timeline_len - i as usize).unwrap());
                 }
 
                 break;

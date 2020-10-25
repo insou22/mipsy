@@ -54,11 +54,14 @@ pub enum InstFormat {
 
     // Pseudo-Only
     RsIm1Im2,
+    RsWdIm,
     RsWd,
+    RtWd,
+    RsRtWd,
     RtWdRs,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ArgType {
     Rd,
     Rs,
@@ -229,32 +232,33 @@ impl InstSet {
     }
 }
 
-impl InstFormat {
+impl CompileSignature {
     pub fn tokens_match(&self, tokens: &mut Vec<&Token>) -> bool {
         let types: Vec<SimpleArgType> = 
-            self.arg_formats().iter()
+            self.format.arg_formats().iter()
                 .map(ArgType::simple)
                 .collect();
         
-        if types.len() != tokens.len() {
-            if *self == InstFormat::RtImRs && types.len() == 3 && tokens.len() == 2 {
-                if matches!(tokens[0], Token::Register(_)) && matches!(tokens[1], Token::Number(_) | Token::LabelReference(_)) {
-                    // TODO - disgusting hack
-                    tokens.push(Box::leak(Box::new(Token::OffsetRegister("zero".to_string()))));
-                } else { 
-                    return false; 
-                }
-            } else { 
-                return false; 
-            }
+        if tokens.len() != types.len() {
+            return false;
         }
 
         for (token, &simple_type) in tokens.iter().zip(types.iter()) {
             let token_type = match token {
                 Token::Register(_) | Token::OffsetRegister(_) => SimpleArgType::Register,
 
-                Token::Number(_) | Token::Float(_) | 
-                  Token::LabelReference(_) | Token::ConstChar(_) => SimpleArgType::Immediate,
+                Token::Immediate(_) | Token::Float(_) | // TODO - float here?
+                  Token::ConstChar(_) => SimpleArgType::Immediate,
+
+                Token::Word(_) => SimpleArgType::Word,
+
+                Token::LabelReference(_) => {
+                    if self.relative_label {
+                        SimpleArgType::Immediate
+                    } else {
+                        SimpleArgType::Word
+                    }
+                }
 
                 other => panic!("tokens_match: {:?} - This should never happen", other),
             };
@@ -266,7 +270,9 @@ impl InstFormat {
 
         true
     }
+}
 
+impl InstFormat {
     pub fn arg_formats(&self) -> Vec<ArgType> {
         match *self {
             InstFormat::R0     => vec![],
@@ -287,7 +293,10 @@ impl InstFormat {
 
             // Pseudo-only
             InstFormat::RsIm1Im2 => vec![ArgType::Rs, ArgType::Im1, ArgType::Im2],
+            InstFormat::RsWdIm   => vec![ArgType::Rs, ArgType::Wd, ArgType::Im],
             InstFormat::RsWd     => vec![ArgType::Rs, ArgType::Wd],
+            InstFormat::RtWd     => vec![ArgType::Rt, ArgType::Wd],
+            InstFormat::RsRtWd   => vec![ArgType::Rs, ArgType::Rt, ArgType::Wd],
             InstFormat::RtWdRs   => vec![ArgType::Rt, ArgType::Wd, ArgType::Rs],
         }
     }
@@ -336,7 +345,7 @@ impl ArgType {
             // Pseudo-only
             Self::Im1 => false,
             Self::Im2 => false,
-            Self::Wd  => true,
+            Self::Wd  => false,
         }
     }
 

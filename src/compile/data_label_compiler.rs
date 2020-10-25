@@ -116,17 +116,17 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             ),
         },
         "byte" => {
-            push_data_integer::<u8>(context, |i| i as u8);
+            push_data_integer::<u8>(context, |i| i as u8, |i| i as u8);
             ok()
         }
         "half" => {
             align(context, 2);
-            push_data_integer::<u16>(context, |i| i as u16);
+            push_data_integer::<u16>(context, |i| i as u16, |i| i as u16);
             ok()
         }
         "word" => {
             align(context, 4);
-            push_data_integer::<u32>(context, |i| i as u32);
+            push_data_integer::<u32>(context, |i| i as u32, |i| i as u32);
             ok()
         }
         "float" => {
@@ -139,53 +139,59 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             push_data_float::<f64>(context, |i| i as f64);
             ok()
         }
-        "align" => match context.next_useful_token() {
-            Some(&Token::Number(num)) => {
-                if num < 0 {
-                    return cerr!(
-                        CompileError::CompilerAlignExpectedPos {
-                            line: context.line,
-                            got_instead: num,
-                        }
-                    );
-                }
-
-                // unwrap ok since num < 0 check
-                let multiple = 2usize.pow(num.try_into().unwrap());
-
-                align(context, multiple);
-                ok()
+        "align" => {
+            let num = match context.next_useful_token() {
+                Some(&Token::Immediate(num)) => num as i32,
+                Some(&Token::Word(num)) => num,
+                other => return cerr!(
+                    CompileError::CompilerAlignExpectedNum {
+                        line: context.line,
+                        got_instead: other.unwrap_or(&Token::EOF).clone()
+                    }
+                ),
+            };
+            
+            if num < 0 {
+                return cerr!(
+                    CompileError::CompilerAlignExpectedPos {
+                        line: context.line,
+                        got_instead: num,
+                    }
+                );
             }
-            other => cerr!(
-                CompileError::CompilerAlignExpectedNum {
-                    line: context.line,
-                    got_instead: other.unwrap_or(&Token::EOF).clone()
-                }
-            ),
-        },
-        "space" => match context.next_useful_token() {
-            Some(&Token::Number(num)) => {
-                if num < 0 {
-                    return cerr!(
-                        CompileError::CompilerSpaceExpectedPos {
-                            line: context.line,
-                            got_instead: num,
-                        }
-                    );
-                }
 
-                for _ in 0..num {
-                    context.program.data.push(0); // TODO - make uninitialized
-                }
+            // unwrap ok since num < 0 check
+            let multiple = 2usize.pow(num.try_into().unwrap());
 
-                ok()
+            align(context, multiple);
+            ok()
+        }
+        "space" => {
+            let num = match context.next_useful_token() {
+                Some(&Token::Immediate(num)) => num as i32,
+                Some(&Token::Word(num)) => num,
+                other => return cerr!(
+                    CompileError::CompilerAlignExpectedNum {
+                        line: context.line,
+                        got_instead: other.unwrap_or(&Token::EOF).clone()
+                    }
+                ),
+            };
+
+            if num < 0 {
+                return cerr!(
+                    CompileError::CompilerSpaceExpectedPos {
+                        line: context.line,
+                        got_instead: num as i32,
+                    }
+                );
             }
-            other => cerr!(
-                CompileError::CompilerSpaceExpectedNum {
-                    line: context.line,
-                    got_instead: other.unwrap_or(&Token::EOF).clone()
-                }
-            ),
+
+            for _ in 0..num {
+                context.program.data.push(0); // TODO - make uninitialized
+            }
+
+            ok()
         },
         "globl" => {
             // handled later - can't resolve label reference yet.
@@ -198,11 +204,16 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
     }
 }
 
-fn push_data_integer<T: ToMipsBytes>(context: &mut Context, f: fn(i32) -> T) {
+fn push_data_integer<T: ToMipsBytes>(context: &mut Context, f: fn(i32) -> T, g: fn(i16) -> T) {
     while let Some(token) = context.peek_useful_token() {
         match *token {
-            Token::Number(num) => {
+            Token::Word(num) => {
                 context.program.data.append(&mut f(num).to_mips_bytes());
+
+                context.next_token();
+            }
+            Token::Immediate(num) => {
+                context.program.data.append(&mut g(num).to_mips_bytes());
 
                 context.next_token();
             }

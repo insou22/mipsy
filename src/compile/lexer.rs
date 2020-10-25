@@ -67,7 +67,11 @@ pub fn tokenise1(program: &str) -> Result<Vec<Token>, String> {
         } else if let Some(string) = match_directive(&mut context) {
             context.tokens.push(Token::Directive(string));
         } else if let Some(num) = match_num(&mut context) {
-            context.tokens.push(Token::Number(num));
+            if num as i16 as i32 == num {
+                context.tokens.push(Token::Immediate(num as i16));
+            } else {
+                context.tokens.push(Token::Word(num));
+            }
         } else if let Some(float) = match_float(&mut context) {
             context.tokens.push(Token::Float(float));
         } else if let Some(string) = match_const_str(&mut context) {
@@ -294,7 +298,7 @@ fn match_num(context: &mut ParseContext) -> Option<i32> {
     while let Some(&chr) = iter_clone.peek() {
         match chr {
             '0' => {
-                if digits.is_empty() || digits.len() == 1 && digits[0] == '-' {
+                if base == 10 && (digits.is_empty() || digits.len() == 1 && digits[0] == '-') {
                     iter_clone.next();
 
                     if let Some(&next) = iter_clone.peek() {
