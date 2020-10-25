@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see mips.yaml
-proc_macros = { path = "proc_macros" } # project's proc_macros
 strsim = "0.10.0"   # for error-reporting - string similarity
