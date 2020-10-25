@@ -1,11 +1,4 @@
-pub mod error;
-pub mod inst;
-pub mod yaml;
-pub mod util;
-pub mod compile;
-pub mod decompile;
-pub mod runtime;
-
+use rspim_lib::*;
 use error::RSpimResult;
 use std::io::{stdin, Read};
 
@@ -61,7 +54,7 @@ fn main() -> RSpimResult<()> {
     // pause();
 
     // LOL
-    println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s");
+    // println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s");
 
     loop {
         match runtime.step() {
@@ -89,4 +82,3 @@ fn main() -> RSpimResult<()> {
 
     Ok(())
 }
-
