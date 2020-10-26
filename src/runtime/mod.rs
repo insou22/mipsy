@@ -5,7 +5,8 @@ use crate::error::RSpimResult;
 use crate::error::RuntimeError;
 use crate::rerr;
 use crate::inst::register::Register;
-use std::fmt::{self, Display, Debug};
+use crate::util::Safe;
+use std::fmt::{self, Display};
 
 pub const PAGE_SIZE: u32 = 4096;
 pub const KERN_INSTNS: [u32; 6] = [
@@ -32,12 +33,6 @@ pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
     registers: [Safe<i32>; 32],
     hi: Safe<i32>,
     lo: Safe<i32>,
-}
-
-#[derive(Copy, Debug)]
-pub enum Safe<T> {
-    Valid(T),
-    Uninitialised,
 }
 
 impl Display for State {
@@ -158,12 +153,6 @@ where T: Clone {
     }
 }
 
-impl<T> Default for Safe<T> {
-    fn default() -> Self {
-        Self::Uninitialised
-    }
-}
-
 impl Runtime {
     pub fn new(program: &Program) -> Self {
         let mut initial_state = 
@@ -183,7 +172,11 @@ impl Runtime {
 
         let mut data_addr = DATA_BOT;
         for &byte in &program.data {
-            initial_state.write_byte(data_addr, byte);
+            match byte {
+                Safe::Valid(byte) => initial_state.write_byte(data_addr, byte),
+                Safe::Uninitialised => {}
+            }
+
             data_addr += 1;
         }
 

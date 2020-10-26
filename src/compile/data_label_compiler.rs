@@ -9,6 +9,7 @@ use crate::cerr;
 use std::convert::TryInto;
 use crate::inst::instruction::InstSet;
 use crate::inst::pseudo::PseudoInst;
+use crate::util::Safe;
 
 
 pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimResult<()> {
@@ -58,7 +59,7 @@ fn align(context: &mut Context, multiple: usize) {
 
     while context.program.data.len() % multiple != 0 {
         extra += 1;
-        context.program.data.push(0); // TODO - make uninitialized
+        context.program.data.push(Safe::Uninitialised);
     }
 
     if extra > 0 {
@@ -83,7 +84,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
                 ensure_segment(context, Segment::Data)?;
 
                 for chr in string.chars() {
-                    context.program.data.push(chr as u8);
+                    context.program.data.push(Safe::Valid(chr as u8));
                 }
 
                 ok()
@@ -100,11 +101,11 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
                 ensure_segment(context, Segment::Data)?;
 
                 for chr in string.chars() {
-                    context.program.data.push(chr as u8);
+                    context.program.data.push(Safe::Valid(chr as u8));
                 }
 
                 // terminating null-byte
-                context.program.data.push(0);
+                context.program.data.push(Safe::Valid(0));
 
                 ok()
             }
@@ -188,7 +189,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             }
 
             for _ in 0..num {
-                context.program.data.push(0); // TODO - make uninitialized
+                context.program.data.push(Safe::Uninitialised);
             }
 
             ok()
@@ -208,12 +209,12 @@ fn push_data_integer<T: ToMipsBytes>(context: &mut Context, f: fn(i32) -> T, g: 
     while let Some(token) = context.peek_useful_token() {
         match *token {
             Token::Word(num) => {
-                context.program.data.append(&mut f(num).to_mips_bytes());
+                context.program.data.append(&mut f(num).to_mips_bytes().iter().map(|&b| Safe::Valid(b)).collect());
 
                 context.next_token();
             }
             Token::Immediate(num) => {
-                context.program.data.append(&mut g(num).to_mips_bytes());
+                context.program.data.append(&mut g(num).to_mips_bytes().iter().map(|&b| Safe::Valid(b)).collect());
 
                 context.next_token();
             }
@@ -228,7 +229,7 @@ fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
     while let Some(token) = context.peek_useful_token() {
         match *token {
             Token::Float(num) => {
-                context.program.data.append(&mut f(num).to_mips_bytes());
+                context.program.data.append(&mut f(num).to_mips_bytes().iter().map(|&b| Safe::Valid(b)).collect());
 
                 context.next_token();
             }

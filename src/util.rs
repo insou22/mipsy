@@ -1,3 +1,15 @@
+#[derive(Copy, Debug)]
+pub enum Safe<T> {
+    Valid(T),
+    Uninitialised,
+}
+
+impl<T> Default for Safe<T> {
+    fn default() -> Self {
+        Self::Uninitialised
+    }
+}
+
 pub trait TruncImm {
     fn trunc_imm(&self) -> Self;
 }

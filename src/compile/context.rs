@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::slice::Iter;
+use std::default::Default;
+use crate::util::Safe;
 
 pub type Address = u32;
 
@@ -27,7 +29,7 @@ pub enum Token {
 #[derive(Clone, Debug, Default)]
 pub struct Program {
     pub text: Vec<u32>,
-    pub data: Vec<u8>,
+    pub data: Vec<Safe<u8>>,
     pub labels: HashMap<String, Address>,
 }
 
