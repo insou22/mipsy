@@ -17,10 +17,10 @@ pub fn generate_labels_and_data(context: &mut Context, iset: &InstSet) -> RSpimR
 
     while let Some(token) = context.next_useful_token() {
         match token {
-            Token::Instruction(inst_name) => {
+            Token::Instruction(ref inst_name) => {
                 inst += get_instruction_length(context, iset, inst_name)?;
             }
-            Token::Directive(directive) => {
+            Token::Directive(ref directive) => {
                 generate_directive(context, directive)?;
             }
             Token::Label(name) => match context.seg {
@@ -92,7 +92,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             other => cerr!(
                 CompileError::CompilerAsciiExpectedString { 
                     line: context.line, 
-                    got_instead: other.unwrap_or(&Token::EOF).clone()
+                    got_instead: other.unwrap_or(Token::EOF).clone()
                 } 
             ),
         },
@@ -112,7 +112,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
             other => cerr!(
                 CompileError::CompilerAsciiExpectedString { 
                     line: context.line, 
-                    got_instead: other.unwrap_or(&Token::EOF).clone()
+                    got_instead: other.unwrap_or(Token::EOF).clone()
                 } 
             ),
         },
@@ -142,12 +142,12 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
         }
         "align" => {
             let num = match context.next_useful_token() {
-                Some(&Token::Immediate(num)) => num as i32,
-                Some(&Token::Word(num)) => num,
+                Some(Token::Immediate(num)) => num as i32,
+                Some(Token::Word(num)) => num,
                 other => return cerr!(
                     CompileError::CompilerAlignExpectedNum {
                         line: context.line,
-                        got_instead: other.unwrap_or(&Token::EOF).clone()
+                        got_instead: other.unwrap_or(Token::EOF).clone()
                     }
                 ),
             };
@@ -169,12 +169,12 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
         }
         "space" => {
             let num = match context.next_useful_token() {
-                Some(&Token::Immediate(num)) => num as i32,
-                Some(&Token::Word(num)) => num,
+                Some(Token::Immediate(num)) => num as i32,
+                Some(Token::Word(num)) => num,
                 other => return cerr!(
                     CompileError::CompilerAlignExpectedNum {
                         line: context.line,
-                        got_instead: other.unwrap_or(&Token::EOF).clone()
+                        got_instead: other.unwrap_or(Token::EOF).clone()
                     }
                 ),
             };
@@ -207,7 +207,7 @@ fn generate_directive(context: &mut Context, directive: &str) -> RSpimResult<()>
 
 fn push_data_integer<T: ToMipsBytes>(context: &mut Context, f: fn(i32) -> T, g: fn(i16) -> T) {
     while let Some(token) = context.peek_useful_token() {
-        match *token {
+        match token {
             Token::Word(num) => {
                 context.program.data.append(&mut f(num).to_mips_bytes().iter().map(|&b| Safe::Valid(b)).collect());
 
@@ -227,7 +227,7 @@ fn push_data_integer<T: ToMipsBytes>(context: &mut Context, f: fn(i32) -> T, g: 
 
 fn push_data_float<T: ToMipsBytes>(context: &mut Context, f: fn(f64) -> T) {
     while let Some(token) = context.peek_useful_token() {
-        match *token {
+        match token {
             Token::Float(num) => {
                 context.program.data.append(&mut f(num).to_mips_bytes().iter().map(|&b| Safe::Valid(b)).collect());
 

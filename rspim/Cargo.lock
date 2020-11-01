@@ -165,17 +165,17 @@ dependencies = [
 name = "rspim"
 version = "0.1.0"
 dependencies = [
- "serde",
- "serde_yaml",
- "strsim",
+ "clap",
+ "rspim_lib",
 ]
 
 [[package]]
-name = "rspim_bin"
+name = "rspim_lib"
 version = "0.1.0"
 dependencies = [
- "clap",
- "rspim",
+ "serde",
+ "serde_yaml",
+ "strsim",
 ]
 
 [[package]]

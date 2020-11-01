@@ -1,3 +1,5 @@
-/rspim_bin/target
+/rspim/target
+/rspim/release
 /target
+/release
 /pkg

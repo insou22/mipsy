@@ -14,7 +14,7 @@ pub enum ParsedInst<'a> {
     Pseudo(&'a PseudoSignature),
 }
 
-pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a InstSet) -> RSpimResult<(ParsedInst<'a>, Vec<&'b Token>)> {
+pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a InstSet) -> RSpimResult<(ParsedInst<'a>, Vec<Token>)> {
     let name = name.to_ascii_lowercase();
     
     let mut poss_native = vec![];
@@ -36,7 +36,7 @@ pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a 
         return cerr!(CompileError::UnknownInstruction(name.into()));
     }
 
-    let mut arg_tokens: Vec<&Token> = vec![];
+    let mut arg_tokens: Vec<Token> = vec![];
 
     let mut comma = true;
     loop {
@@ -50,7 +50,7 @@ pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a 
 
                     if matches!(token, Token::OffsetRegister(_)) {
                         if arg_tokens.is_empty() || !matches!(arg_tokens.last().unwrap(), Token::Word(_) | Token::Immediate(_) | Token::LabelReference(_)) {
-                            arg_tokens.push(&Token::Immediate(0));
+                            arg_tokens.push(Token::Immediate(0));
                         }
                     }
 
@@ -72,8 +72,8 @@ pub fn find_instruction<'a, 'b>(name: &str, context: &'b mut Context, iset: &'a 
         context.next_useful_token();
     }
 
-    poss_native.retain(|inst| inst.compile.tokens_match(&mut arg_tokens));
-    poss_pseudo.retain(|inst| inst.compile.tokens_match(&mut arg_tokens));
+    poss_native.retain(|inst| inst.compile.tokens_match(&arg_tokens));
+    poss_pseudo.retain(|inst| inst.compile.tokens_match(&arg_tokens));
 
     if poss_native.is_empty() && poss_pseudo.is_empty() {
         return cerr!(CompileError::InstructionBadFormat(name.into()));
@@ -118,22 +118,22 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
     for token in arg_tokens {
         match token {
             Token::Register(reg) => {
-                input.push(crate::inst::register::Register::from_str(reg)?.to_number() as u32);
+                input.push(crate::inst::register::Register::from_str(&reg)?.to_number() as u32);
             }
             Token::Immediate(num) => {
-                input.push(*num as u32);
+                input.push(num as u32);
             }
             // TODO
             Token::Word(num) => {
-                input.push(*num as u32);
+                input.push(num as u32);
             }
             Token::Float(_flt) => {
                 unimplemented!()
             }
             Token::ConstChar(chr) => {
-                input.push(*chr as u32);
+                input.push(chr as u32);
             }
-            Token::LabelReference(label) => {
+            Token::LabelReference(ref label) => {
                 let addr = *context.program.labels.get(label)
                     .ok_or_else(||
                         RSpimError::Compile(
@@ -154,7 +154,7 @@ pub fn parse_instruction(name: &str, context: &mut Context, iset: &InstSet) -> R
                 input.push(value);
             }
             Token::OffsetRegister(oreg) => {
-                input.push(crate::inst::register::Register::from_str(oreg)?.to_number() as u32);
+                input.push(crate::inst::register::Register::from_str(&oreg)?.to_number() as u32);
             }
             _ => unreachable!(),
         }
@@ -171,7 +171,7 @@ pub fn generate_text(context: &mut Context, iset: &InstSet) -> RSpimResult<()> {
 
     while let Some(token) = context.next_useful_token() {
         match token {
-            Token::Instruction(name) => {
+            Token::Instruction(ref name) => {
                 if !text {
                     return cerr!(CompileError::InstructionInDataSegment);
                 }

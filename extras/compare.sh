@@ -9,7 +9,7 @@ for test_file in test_files/*; do
         continue;
     fi
 
-    rspim_out=`yes 3 | ./target/debug/rspim "$test_file" 2>&1`;
+    rspim_out=`yes 3 | ./rspim/target/debug/rspim --spim-compare "$test_file" 2>&1`;
     spim_out=`yes 3 | /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/spim/spim -ef /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s -f "$test_file" 2>&1`;
 
     if diff <(echo "$rspim_out") <(echo "$spim_out") >/dev/null;

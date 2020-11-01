@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::slice::Iter;
 use std::default::Default;
 use crate::util::Safe;
 
@@ -40,19 +39,20 @@ pub enum Segment {
     // TODO: KText, Kdata
 }
 
-#[derive(Clone)]
-pub struct Context<'a> {
-    tokens: Peekable<Tokens<'a>>,
-    tokens_clone: Peekable<Tokens<'a>>, // do not modify
+#[derive(Clone, Debug)]
+pub struct Context {
+    tokens: Peekable<Tokens>,
+    tokens_clone: Peekable<Tokens>, // do not modify
     pub program: Program,
     pub seg: Segment,
     pub line: usize,
 }
 
-impl<'a> Context<'a> {
-    pub fn new(tokens: &'a [Token]) -> Self {
+impl Context {
+    pub fn new(tokens: Vec<Token>) -> Self {
         let tokens = Tokens {
-            iter: tokens.iter(),
+            tokens,
+            curr: 0,
         }
         .peekable();
 
@@ -65,21 +65,21 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn next_token(&mut self) -> Option<&'a Token> {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.tokens.next()
     }
 
-    pub fn peek_token(&mut self) -> Option<&'a Token> {
-        self.tokens.peek().copied()
+    pub fn peek_token(&mut self) -> Option<&Token> {
+        self.tokens.peek()
     }
 
-    pub fn next_useful_token(&mut self) -> Option<&'a Token> {
+    pub fn next_useful_token(&mut self) -> Option<Token> {
         while let Some(token) = self.next_token() {
-            if is_useful_token(token) {
+            if is_useful_token(&token) {
                 return Some(token);
             }
 
-            if is_newline_token(token) {
+            if is_newline_token(&token) {
                 self.line += 1;
             }
         }
@@ -87,10 +87,10 @@ impl<'a> Context<'a> {
         None
     }
 
-    pub fn peek_useful_token(&mut self) -> Option<&'a Token> {
+    pub fn peek_useful_token(&mut self) -> Option<Token> {
         while let Some(token) = self.peek_token() {
             if is_useful_token(token) {
-                return Some(token);
+                return Some(token.clone());
             }
 
             if is_newline_token(token) {
@@ -111,15 +111,22 @@ impl<'a> Context<'a> {
 }
 
 #[derive(Clone, Debug)]
-struct Tokens<'a> {
-    iter: Iter<'a, Token>,
+struct Tokens {
+    tokens: Vec<Token>,
+    curr: usize,
 }
 
-impl<'a> Iterator for Tokens<'a> {
-    type Item = &'a Token;
+impl Iterator for Tokens {
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        match self.tokens.get(self.curr) {
+            Some(token) => {
+                self.curr += 1;
+                Some(token.clone())
+            }
+            None => None,
+        }
     }
 }
 

@@ -233,7 +233,7 @@ impl InstSet {
 }
 
 impl CompileSignature {
-    pub fn tokens_match(&self, tokens: &mut Vec<&Token>) -> bool {
+    pub fn tokens_match(&self, tokens: &Vec<Token>) -> bool {
         let types: Vec<SimpleArgType> = 
             self.format.arg_formats().iter()
                 .map(ArgType::simple)

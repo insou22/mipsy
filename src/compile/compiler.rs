@@ -5,7 +5,7 @@ use super::context::Program;
 use super::data_label_compiler;
 use super::text_compiler;
 use crate::inst::instruction::InstSet;
-
+use crate::error::RSpimError;
 
 pub const TEXT_BOT:  u32 = 0x00400000;
 pub const DATA_BOT:  u32 = 0x10000000;
@@ -16,12 +16,20 @@ pub const KTEXT_BOT: u32 = 0x80000000;
 pub const LITTLE_ENDIAN: bool = true;
 
 pub fn generate(tokens: Vec<Token>, iset: &InstSet) -> RSpimResult<Program> {
-    let mut context = Context::new(&tokens);
+    let mut context = Context::new(tokens);
 
-    data_label_compiler::generate_labels_and_data(&mut context, iset)?;
+    match generate_without_err_context(&mut context, iset) {
+        Ok(_) => Ok(context.program),
+        Err(RSpimError::Compile(err)) => Err(RSpimError::CompileContext(err, context)),
+        Err(err) => Err(err),
+    }
+}
+
+pub fn generate_without_err_context(context: &mut Context, iset: &InstSet) -> RSpimResult<()> {
+    data_label_compiler::generate_labels_and_data(context, iset)?;
     context.reset_state();
 
-    text_compiler::generate_text(&mut context, iset)?;
+    text_compiler::generate_text(context, iset)?;
 
-    Ok(context.program)
+    Ok(())
 }

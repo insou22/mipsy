@@ -8,55 +8,65 @@ use clap::Clap;
 struct Opts {
     #[clap(long, about("Step-by-step compilation and runtime"))]
     steps: bool,
-    file: String,
+    #[clap(long("spim-compare"), about("Print exceptions line for diff to SPIM"))]
+    spim_compare: bool,
+    file: Option<String>,
 }
 
-#[allow(dead_code)]
-fn pause() {
-    stdin().read(&mut [0]).unwrap();
-}
+impl Opts {
+    fn print_step_info(&self, print: &str) {
+        if self.steps {
+            println!("{}", print);
+        }
+    }
 
-fn print_info(s: String) {
-    if false {
-        println!("{}", s);
+    fn step(&self, print: &str) {
+        if self.steps {
+            println!("{}", print);
+
+            stdin().read(&mut [0]).unwrap();
+        }
     }
 }
+
+
 
 fn main() -> RSpimResult<()> {
     let opts: Opts = Opts::parse();
 
-    let file_contents = std::fs::read_to_string(&opts.file).expect("Could not read file {}");
+    if let None = opts.file {
+        return Ok(());
+    }
+
+    let file_contents = std::fs::read_to_string(&opts.file.as_ref().unwrap()).expect("Could not read file {}");
 
     let yaml = yaml::parse::get_instructions();
-    // println!("Parsed mips.yaml: \n\n{:#x?}\n\n", yaml);
+    opts.step(&format!("Parsed mips.yaml: \n\n{:#x?}\n\n", yaml));
 
     let iset = inst::instruction::InstSet::new(&yaml)?;
-    // println!("Loaded instruction set: \n\n{:#x?}\n\n", iset);
+    opts.step(&format!("Loaded instruction set: \n\n{:#x?}\n\n", iset));
 
     let tokens = compile::lexer::tokenise(&file_contents)?;
-    print_info(format!("Lexed {} into tokens: \n\n{:x?}\n\n", &opts.file, tokens));
-    // pause();
+    opts.step(&format!("Lexed {} into tokens: \n\n{:x?}\n\n", &opts.file.as_ref().unwrap(), tokens));
 
     let program = compile::compiler::generate(tokens, &iset)?;
-    // println!("Successfully generated program: \n\n{:#010x?}\n\n", program);
+    opts.step(&format!("Successfully generated program: \n\n{:#010x?}\n\n", program));
 
     let decompiled = decompile::decompile(&program, &iset);
-    print_info(format!("Successfully compiled program: \n\n{}\n\n", decompiled));
-    // pause();
+    opts.step(&format!("Successfully compiled program: \n\n{}\n\n", decompiled));
 
-    print_info(format!("Labels: "));
+    opts.print_step_info("Labels: ");
     for (label, addr) in &program.labels {
-        print_info(format!("    {:9} => 0x{:08x}", label, addr));
+        opts.print_step_info(&format!("    {:9} => 0x{:08x}", label, addr));
     }
-    print_info(format!("\n"));
-    // pause();
+    opts.step(&format!("\n"));
 
     let mut runtime = runtime::Runtime::new(&program);
-    print_info(format!("Loaded runtime: {:}", runtime.state()));
-    // pause();
+    opts.step(&format!("Loaded runtime: {:}", runtime.state()));
 
-    // LOL
-    // println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s");
+    if opts.spim_compare {
+        println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s");
+    }
 
     loop {
         match runtime.step() {
