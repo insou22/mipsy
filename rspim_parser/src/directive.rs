@@ -34,7 +34,7 @@ use nom::{
     number::complete::le_u32,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Directive {
     Text,
     Data,

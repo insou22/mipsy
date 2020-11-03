@@ -24,13 +24,13 @@ use nom::{
     },
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Instruction {
     name: String,
     arguments: Vec<Argument>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Argument {
     Register(Register),
     Number(Number),

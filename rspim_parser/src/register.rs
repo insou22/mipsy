@@ -16,13 +16,13 @@ use nom::{
     },
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Register {
     Normal(RegisterIdentifier),
     Offset(Immediate, RegisterIdentifier),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum RegisterIdentifier {
     Numbered(u8),
     Named(String),

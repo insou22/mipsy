@@ -19,12 +19,12 @@ use nom::{
 };
 
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Program {
     items: Vec<Item>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Item {
     Instruction(Instruction),
     Directive(Directive),

@@ -13,7 +13,7 @@ use nom::{
     },
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Number {
     Immediate(Immediate),
     Float32(f32),
@@ -21,7 +21,7 @@ pub enum Number {
     Char(char),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Immediate {
     I16(i16),
     I32(i32),
