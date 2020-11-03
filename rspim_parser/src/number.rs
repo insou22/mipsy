@@ -5,11 +5,20 @@ use crate::misc::{
 use nom::{
     IResult,
     branch::alt,
-    combinator::map,
+    combinator::{
+        map,
+        map_res,
+        opt,
+    },
     sequence::tuple,
-    character::complete::char,
+    character::complete::{
+        char, digit1, hex_digit1, oct_digit1,
+    },
+    bytes::complete::{
+        tag,
+    },
     number::complete::{
-        le_i8, le_i16, le_i32, le_f32, le_f64
+        float, double,
     },
 };
 
@@ -45,16 +54,55 @@ pub fn parse_immediate(i: &[u8]) -> IResult<&[u8], Immediate> {
     ))(i)
 }
 
+pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
+    map_res(
+        alt((
+            map(
+                tuple((
+                    opt(char('-')),
+                    tag("0x"),
+                    hex_digit1,
+                )),
+                |(neg, _, digits)| (if let Some(_) = neg { "-" } else { "" }, 16, digits)
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
+                    tag("0"),
+                    oct_digit1,
+                )),
+                |(neg, _, digits)| (if let Some(_) = neg { "-" } else { "" }, 8, digits)
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
+                    digit1,
+                )),
+                |(neg, digits)| (if let Some(_) = neg { "-" } else { "" }, 10, digits)
+            )
+        )),
+        |(sign, base, digits)| 
+            O::from_str_radix(
+                &format!(
+                    "{}{}",
+                    sign,
+                    String::from_utf8((digits as &[u8]).into()).unwrap()
+                ),
+                base,
+            )
+    )(i)
+}
+
 pub fn parse_i8(i: &[u8]) -> IResult<&[u8], i8> {
-    le_i8(i)
+    parse_num(i)
 }
 
 pub fn parse_i16(i: &[u8]) -> IResult<&[u8], i16> {
-    le_i16(i)
+    parse_num(i)
 }
 
 pub fn parse_i32(i: &[u8]) -> IResult<&[u8], i32> {
-    le_i32(i)
+    parse_num(i)
 }
 
 pub fn parse_labelref(i: &[u8]) -> IResult<&[u8], String> {
@@ -62,11 +110,11 @@ pub fn parse_labelref(i: &[u8]) -> IResult<&[u8], String> {
 }
 
 pub fn parse_f32(i: &[u8]) -> IResult<&[u8], f32> {
-    le_f32(i)
+    float(i)
 }
 
 pub fn parse_f64(i: &[u8]) -> IResult<&[u8], f64> {
-    le_f64(i)
+    double(i)
 }
 
 fn parse_char(i: &[u8]) -> IResult<&[u8], char> {
@@ -114,5 +162,27 @@ mod tests {
         for (chr, escaped) in escaped {
             assert_eq!(parse_char(format!("'\\{}'", chr).as_bytes()), Ok(("".as_bytes(), escaped)));
         }
+    }
+}
+
+pub trait RadixNum<O> {
+    fn from_str_radix(src: &str, radix: u32) -> Result<O, std::num::ParseIntError>;
+}
+
+impl RadixNum<Self> for i8 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for i16 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for i32 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
     }
 }

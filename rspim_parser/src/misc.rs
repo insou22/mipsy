@@ -9,7 +9,6 @@ use nom::{
         char,
         one_of,
         none_of,
-        multispace0,
         multispace1,
     },
     multi::{
@@ -87,17 +86,7 @@ pub fn parse_any1(i: &[u8]) -> IResult<&[u8], u8> {
 
 pub fn comment_multispace0(i: &[u8]) -> IResult<&[u8], ()> {
     map(
-        many0(
-            tuple((
-                multispace0,
-                opt(
-                    tuple((
-                        preceded(char('#'), many0(none_of("\n"))),
-                        char('\n'),
-                    ))
-                ),
-            )),
-        ),
+        opt(comment_multispace1),
         |_| ()
     )(i)
 }
@@ -112,7 +101,7 @@ pub fn comment_multispace1(i: &[u8]) -> IResult<&[u8], ()> {
                         opt(
                             tuple((
                                 preceded(char('#'), many0(none_of("\n"))),
-                                char('\n'),
+                                opt(char('\n')),
                             ))
                         ),
                     )),
@@ -121,11 +110,10 @@ pub fn comment_multispace1(i: &[u8]) -> IResult<&[u8], ()> {
                 map(
                     tuple((
                         preceded(char('#'), many0(none_of("\n"))),
-                        char('\n'),
+                        opt(char('\n')),
                     )),
                     |_| (),
                 ),
-                
             )),
         ),
         |_| ()
