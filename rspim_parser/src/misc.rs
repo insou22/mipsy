@@ -6,14 +6,24 @@ use nom::{
         ErrorKind,
     },
     character::complete::{
-        one_of,
         char,
+        one_of,
+        none_of,
+        multispace0,
+        multispace1,
+    },
+    multi::{
+        many0,
+        many1
     },
     combinator::{
         map,
         opt,
     },
-    sequence::tuple,
+    sequence::{
+        tuple,
+        preceded,
+    },
     branch::alt,
     bytes::complete::is_a,
 };
@@ -73,6 +83,53 @@ pub fn parse_any1(i: &[u8]) -> IResult<&[u8], u8> {
     } else {
         Err(Error(ParseError::from_error_kind(i, ErrorKind::Eof)))
     }
+}
+
+pub fn comment_multispace0(i: &[u8]) -> IResult<&[u8], ()> {
+    map(
+        many0(
+            tuple((
+                multispace0,
+                opt(
+                    tuple((
+                        preceded(char('#'), many0(none_of("\n"))),
+                        char('\n'),
+                    ))
+                ),
+            )),
+        ),
+        |_| ()
+    )(i)
+}
+
+pub fn comment_multispace1(i: &[u8]) -> IResult<&[u8], ()> {
+    map(
+        many1(
+            alt((
+                map(
+                    tuple((
+                        multispace1,
+                        opt(
+                            tuple((
+                                preceded(char('#'), many0(none_of("\n"))),
+                                char('\n'),
+                            ))
+                        ),
+                    )),
+                    |_| (),
+                ),
+                map(
+                    tuple((
+                        preceded(char('#'), many0(none_of("\n"))),
+                        char('\n'),
+                    )),
+                    |_| (),
+                ),
+                
+            )),
+        ),
+        |_| ()
+    )(i)
 }
 
 #[cfg(test)]

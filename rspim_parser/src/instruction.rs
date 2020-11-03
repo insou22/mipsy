@@ -7,7 +7,10 @@ use crate::{
         Number,
         parse_number,
     },
-    misc::parse_ident,
+    misc::{
+        parse_ident,
+        comment_multispace0,
+    },
 };
 use nom::{
     IResult,
@@ -16,9 +19,8 @@ use nom::{
     branch::alt,
     multi::separated_list0,
     character::complete::{
-        space0,
-        multispace0,
         char,
+        space0,
     },
 };
 
@@ -54,7 +56,7 @@ pub fn parse_instruction(i: &[u8]) -> IResult<&[u8], Instruction> {
             )),
             parse_argument,
         ),
-        multispace0,
+        comment_multispace0,
     ))(i)?;
 
     Ok((remaining_data, Instruction { name, arguments }))

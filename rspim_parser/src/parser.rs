@@ -8,12 +8,14 @@ use crate::{
         parse_instruction,
     },
     label::parse_label,
+    misc::comment_multispace0,
 };
 use nom::{
     IResult,
+    sequence::tuple,
     combinator::map,
     multi::many0,
-    branch::alt
+    branch::alt,
 };
 
 
@@ -30,11 +32,17 @@ pub enum Item {
 }
 
 pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], Item> {
-    alt((
-        map(parse_instruction, |i| Item::Instruction(i)),
-        map(parse_directive,   |d| Item::Directive(d)),
-        map(parse_label,       |l| Item::Label(l)),
-    ))(i)
+    map(
+        tuple((
+            alt((
+                map(parse_instruction, |i| Item::Instruction(i)),
+                map(parse_directive,   |d| Item::Directive(d)),
+                map(parse_label,       |l| Item::Label(l)),
+            )),
+            comment_multispace0,
+        )),
+        |(directive, ..)| directive 
+    )(i)
 }
 
 pub fn parse_mips_bytes(i: &[u8]) -> IResult<&[u8], Program> {

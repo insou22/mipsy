@@ -1,5 +1,9 @@
 use crate::{
-    misc::parse_ident,
+    misc::{
+        parse_ident,
+        comment_multispace0,
+        comment_multispace1,
+    },
     number::{
         parse_i8,
         parse_i16,
@@ -18,12 +22,10 @@ use nom::{
     branch::alt,
     multi::separated_list0,
     character::complete::{
-        space0,
-        none_of,
-        multispace0,
-        multispace1,
         char,
+        none_of,
         one_of,
+        space0,
     },
     bytes::complete::{
         tag,
@@ -140,11 +142,11 @@ fn parse_num_type<T>(tag_str: &'static str, parser: fn(&[u8]) -> IResult<&[u8], 
             tag(tag_str),
             separated_list0(
                 tuple((
-                    multispace0,
+                    comment_multispace0,
                     opt(
                         tuple((
                             char(','),
-                            multispace0,
+                            comment_multispace0,
                         ))
                     ),
                 )),
@@ -203,7 +205,7 @@ fn parse_u32_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], 
             )
         ) = tuple((
             tag(tag_str),
-            multispace0,
+            comment_multispace0,
             le_u32,
         ))(i)?;
 
@@ -235,7 +237,7 @@ fn parse_globl(i: &[u8]) -> IResult<&[u8], Directive> {
         )
     ) = tuple((
         tag(".globl"),
-        multispace1,
+        comment_multispace1,
         parse_ident
     ))(i)?;
 
