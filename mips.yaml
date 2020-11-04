@@ -5,7 +5,7 @@ instructions:
     desc_long: >
       insert long description here if you so please
     compile:
-      format: RdRtSa
+      format: [Rd, Rt, Sa]
     runtime:
       type: R
       funct: 0x00
@@ -13,7 +13,7 @@ instructions:
   - name: SRL
     desc_short: Shifts the value in $Rt right by Sa logically, storing the result in $Rd
     compile:
-      format: RdRtSa
+      format: [Rd, Rt, Sa]
     runtime:
       type: R
       funct: 0x02
@@ -21,7 +21,7 @@ instructions:
   - name: SRA
     desc_short: Shifts the value in $Rt right by Sa arithmetically, storing the result in $Rd
     compile:
-      format: RdRtSa
+      format: [Rd, Rt, Sa]
     runtime:
       type: R
       funct: 0x03
@@ -29,7 +29,7 @@ instructions:
   - name: SLLV
     desc_short: Shifts the value in $Rt left by the value in $Rs logically, storing the result in $Rd
     compile:
-      format: RdRtRs
+      format: [Rd, Rt, Rs]
     runtime:
       type: R
       funct: 0x04
@@ -37,7 +37,7 @@ instructions:
   - name: SRLV
     desc_short: Shifts the value in $Rt right by the value in $Rs logically, storing the result in $Rd
     compile:
-      format: RdRtRs
+      format: [Rd, Rt, Rs]
     runtime:
       type: R
       funct: 0x06
@@ -45,7 +45,7 @@ instructions:
   - name: SRAV
     desc_short: Shifts the value in $Rt right by the value in $Rs arithmetically, storing the result in $Rd
     compile:
-      format: RdRtRs
+      format: [Rd, Rt, Rs]
     runtime:
       type: R
       funct: 0x07
@@ -54,7 +54,7 @@ instructions:
   - name: JR
     desc_short: Jumps to the address stored in the register $Rs
     compile:
-      format: Rs
+      format: [Rs]
     runtime:
       type: R
       funct: 0x08
@@ -62,7 +62,7 @@ instructions:
   - name: JALR
     desc_short: Jump-and-links to the address stored in the register $Rs
     compile:
-      format: Rs
+      format: [Rs]
     runtime:
       type: R
       funct: 0x09
@@ -71,7 +71,7 @@ instructions:
   - name: SYSCALL
     desc_short: Causes a system-call interrupt
     compile:
-      format: R0
+      format: []
     runtime:
       type: R
       funct: 0x0C
@@ -79,7 +79,7 @@ instructions:
   - name: BREAK
     desc_short: Causes a break interrupt
     compile:
-      format: R0
+      format: []
     runtime:
       type: R
       funct: 0x0D
@@ -88,7 +88,7 @@ instructions:
   - name: MFHI
     desc_short: Copies the value from the HI register to $Rd
     compile:
-      format: Rd
+      format: [Rd]
     runtime:
       type: R
       funct: 0x10
@@ -96,7 +96,7 @@ instructions:
   - name: MTHI
     desc_short: Copies the value from $Rs to the HI register
     compile:
-      format: Rs
+      format: [Rs]
     runtime:
       type: R
       funct: 0x11
@@ -104,7 +104,7 @@ instructions:
   - name: MFLO
     desc_short: Copies the value from the LO register to $Rd
     compile:
-      format: Rd
+      format: [Rd]
     runtime:
       type: R
       funct: 0x12
@@ -112,7 +112,7 @@ instructions:
   - name: MTLO
     desc_short: Copies the value from $Rs to the LO register
     compile:
-      format: Rs
+      format: [Rs]
     runtime:
       type: R
       funct: 0x13
@@ -120,7 +120,7 @@ instructions:
   - name: MULT
     desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers
     compile:
-      format: RsRt
+      format: [Rs, Rt]
     runtime:
       type: R
       funct: 0x18
@@ -128,7 +128,7 @@ instructions:
   - name: MULTU
     desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers, unsigned
     compile:
-      format: RsRt
+      format: [Rs, Rt]
     runtime:
       type: R
       funct: 0x19
@@ -136,7 +136,7 @@ instructions:
   - name: DIV
     desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO
     compile:
-      format: RsRt
+      format: [Rs, Rt]
     runtime:
       type: R
       funct: 0x1A
@@ -144,7 +144,7 @@ instructions:
   - name: DIVU
     desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO, unsigned
     compile:
-      format: RsRt
+      format: [Rs, Rt]
     runtime:
       type: R
       funct: 0x1B
@@ -153,7 +153,7 @@ instructions:
   - name: ADD
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x20
@@ -161,7 +161,7 @@ instructions:
   - name: ADDU
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x21
@@ -169,7 +169,7 @@ instructions:
   - name: SUB
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x22
@@ -177,7 +177,7 @@ instructions:
   - name: SUBU
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x23
@@ -185,7 +185,7 @@ instructions:
   - name: AND
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x24
@@ -193,7 +193,7 @@ instructions:
   - name: OR
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x25
@@ -201,7 +201,7 @@ instructions:
   - name: XOR
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x26
@@ -209,7 +209,7 @@ instructions:
   - name: NOR
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x27
@@ -218,7 +218,7 @@ instructions:
   - name: SLT
     desc_short: Set $Rd to 1 if $Rs < $Rt, otherwise set $Rd to 0, unsigned
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x2A
@@ -226,7 +226,7 @@ instructions:
   - name: SLTU
     desc_short: Set $Rd to 1 if $Rs < $Rt, otherwise set $Rd to 0, unsigned
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     runtime:
       type: R
       funct: 0x2B
@@ -236,7 +236,7 @@ instructions:
   - name: BLTZ
     desc_short: Branch to the immediate address if the value in $Rs < 0
     compile:
-      format: RsIm
+      format: [Rs, Im]
       relative_label: true
     runtime:
       type: I
@@ -246,7 +246,7 @@ instructions:
   - name: BGEZ
     desc_short: Branch to the immediate address if the value in $Rs >= 0
     compile:
-      format: RsIm
+      format: [Rs, Im]
       relative_label: true
     runtime:
       type: I
@@ -256,7 +256,7 @@ instructions:
   - name: BEQ
     desc_short: Branch to the immediate address if the values in $Rs == $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     runtime:
       type: I
@@ -265,7 +265,7 @@ instructions:
   - name: BNE
     desc_short: Branch to the immediate address if the values in $Rs != $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     runtime:
       type: I
@@ -274,7 +274,7 @@ instructions:
   - name: BLEZ
     desc_short: Branch to the immediate address if the value in $Rs <= 0
     compile:
-      format: RsIm
+      format: [Rs, Im]
       relative_label: true
     runtime:
       type: I
@@ -283,7 +283,7 @@ instructions:
   - name: BGTZ
     desc_short: Branch to the immediate address if the value in $Rs > 0
     compile:
-      format: RsIm
+      format: [Rs, Im]
       relative_label: true
     runtime:
       type: I
@@ -293,7 +293,7 @@ instructions:
   - name: ADDI
     desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x08
@@ -301,7 +301,7 @@ instructions:
   - name: ADDIU
     desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt, unsigned
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x09
@@ -310,7 +310,7 @@ instructions:
   - name: SLTI
     desc_short: Sets $Rt to 1 if the value in $Rs is less than the immediate value, otherwise sets $Rt to 0
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x0A
@@ -318,7 +318,7 @@ instructions:
   - name: SLTIU
     desc_short: Sets $Rt to 1 if the value in $Rs is less than the immediate value, otherwise sets $Rt to 0, unsigned
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x0B
@@ -327,7 +327,7 @@ instructions:
   - name: ANDI
     desc_short: Bitwise and of the value in $Rs and the immediate value, stores the result in $Rt
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x0C
@@ -335,7 +335,7 @@ instructions:
   - name: ORI
     desc_short: Bitwise or of the value in $Rs and the immediate value, stores the result in $Rt
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x0D
@@ -343,7 +343,7 @@ instructions:
   - name: XORI
     desc_short: Bitwise xor of the value in $Rs and the immediate value, stores the result in $Rt
     compile:
-      format: RtRsIm
+      format: [Rt, Rs, Im]
     runtime:
       type: I
       opcode: 0x0E
@@ -351,7 +351,7 @@ instructions:
   - name: LUI
     desc_short: Load the immediate value into the upper 16 bits of $Rt
     compile:
-      format: RtIm
+      format: [Rt, Im]
     runtime:
       type: I
       opcode: 0x0F
@@ -360,7 +360,7 @@ instructions:
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x20
@@ -368,7 +368,7 @@ instructions:
   - name: LH
     desc_short: Load two bytes at the immediate address + $Rs into $Rt
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x21
@@ -376,7 +376,7 @@ instructions:
   - name: LW
     desc_short: Load four bytes at the immediate address + $Rs into $Rt
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x23
@@ -384,7 +384,7 @@ instructions:
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt, don't sign extend
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x24
@@ -392,7 +392,7 @@ instructions:
   - name: LHU
     desc_short: Load two bytes at the immediate address + $Rs into $Rt, don't sign extend
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x25
@@ -400,7 +400,7 @@ instructions:
   - name: SB
     desc_short: Store one byte from $Rt into the immediate address + $Rs
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x28
@@ -408,7 +408,7 @@ instructions:
   - name: SH
     desc_short: Store two bytes from $Rt into the immediate address + $Rs
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x29
@@ -416,7 +416,7 @@ instructions:
   - name: SW
     desc_short: Store four bytes from $Rt into the immediate address + $Rs
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x2B
@@ -424,7 +424,7 @@ instructions:
   - name: LWC1
     desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register) 
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x31
@@ -432,7 +432,7 @@ instructions:
   - name: SWC1
     desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs 
     compile:
-      format: RtImRs
+      format: [Rt, Im, Rs]
     runtime:
       type: I
       opcode: 0x39
@@ -441,7 +441,7 @@ instructions:
   - name: J
     desc_short: Jump to the immediate address 
     compile:
-      format: J
+      format: [J]
     runtime:
       type: J
       opcode: 0x02
@@ -449,7 +449,7 @@ instructions:
   - name: JAL
     desc_short: Jump-and-link to the immediate address 
     compile:
-      format: J
+      format: [J]
     runtime:
       type: J
       opcode: 0x03
@@ -459,7 +459,7 @@ pseudoinstructions:
   - name: NOP
     desc_short: No-Operation - doesn't do anything
     compile:
-      format: R0
+      format: []
     expand:
       - inst: SLL
         data: [0, 0, 0]
@@ -467,7 +467,7 @@ pseudoinstructions:
   - name: MOVE
     desc_short: Copy the value from $Rs into $Rd
     compile:
-      format: RdRs
+      format: [Rd, Rs]
     expand:
       - inst: ADDU
         data: [$Rd, 0, $Rs]
@@ -475,7 +475,7 @@ pseudoinstructions:
   - name: B
     desc_short: Branch unconditionally
     compile:
-      format: Im
+      format: [Im]
       relative_label: true
     expand:
       - inst: BGEZ
@@ -484,7 +484,7 @@ pseudoinstructions:
   - name: BEQ
     desc_short: Branch if $Rs == Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -495,7 +495,7 @@ pseudoinstructions:
   - name: BEQ
     desc_short: Branch if $Rs == Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -508,7 +508,7 @@ pseudoinstructions:
   - name: BNE
     desc_short: Branch if $Rs != Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -519,7 +519,7 @@ pseudoinstructions:
   - name: BNE
     desc_short: Branch if $Rs != Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -532,7 +532,7 @@ pseudoinstructions:
   - name: BEQZ
     desc_short: Branch if $Rs > 0
     compile:
-      format: RsIm
+      format: [Rs, Im]
       relative_label: true
     expand:
       - inst: BEQ
@@ -541,7 +541,7 @@ pseudoinstructions:
   - name: BGE
     desc_short: Branch if $Rs >= $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLT
@@ -552,7 +552,7 @@ pseudoinstructions:
   - name: BGE
     desc_short: Branch if $Rs >= Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -565,7 +565,7 @@ pseudoinstructions:
   - name: BGE
     desc_short: Branch if $Rs >= Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -580,7 +580,7 @@ pseudoinstructions:
   - name: BGEU
     desc_short: Branch if $Rs >= $Rt unsigned
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLTU
@@ -591,7 +591,7 @@ pseudoinstructions:
   - name: BGEU
     desc_short: Branch if $Rs >= Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -606,7 +606,7 @@ pseudoinstructions:
   - name: BLT
     desc_short: Branch if $Rs < $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLT
@@ -617,7 +617,7 @@ pseudoinstructions:
   - name: BLT
     desc_short: Branch if $Rs < Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -630,7 +630,7 @@ pseudoinstructions:
   - name: BLT
     desc_short: Branch if $Rs < Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -645,7 +645,7 @@ pseudoinstructions:
   - name: BLTU
     desc_short: Branch if $Rs < $Rt unsigned
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLTU
@@ -656,7 +656,7 @@ pseudoinstructions:
   - name: BLTU
     desc_short: Branch if $Rs < Im1 unsigned
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -669,7 +669,7 @@ pseudoinstructions:
   - name: BLTU
     desc_short: Branch if $Rs < Im1 unsigned
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -684,7 +684,7 @@ pseudoinstructions:
   - name: BLE
     desc_short: Branch if $Rs <= $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLT
@@ -695,7 +695,7 @@ pseudoinstructions:
   - name: BLE
     desc_short: Branch if $Rs <= Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -708,7 +708,7 @@ pseudoinstructions:
   - name: BLE
     desc_short: Branch if $Rs <= Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -723,7 +723,7 @@ pseudoinstructions:
   - name: BLEU
     desc_short: Branch if $Rs <= $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLTU
@@ -734,7 +734,7 @@ pseudoinstructions:
   - name: BLEU
     desc_short: Branch if $Rs <= Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -747,7 +747,7 @@ pseudoinstructions:
   - name: BLEU
     desc_short: Branch if $Rs <= Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -762,7 +762,7 @@ pseudoinstructions:
   - name: BGT
     desc_short: Branch if $Rs > $Rt
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLT
@@ -773,7 +773,7 @@ pseudoinstructions:
   - name: BGT
     desc_short: Branch if $Rs > Im1
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -786,7 +786,7 @@ pseudoinstructions:
   - name: BGT
     desc_short: Branch if $Rs > Im1
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -801,7 +801,7 @@ pseudoinstructions:
   - name: BGTU
     desc_short: Branch if $Rs > $Rt unsigned
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
       relative_label: true
     expand:
       - inst: SLTU
@@ -812,7 +812,7 @@ pseudoinstructions:
   - name: BGTU
     desc_short: Branch if $Rs > Im1 unsigned
     compile:
-      format: RsIm1Im2
+      format: [Rs, Im, Im]
       relative_label: true
     expand:
       - inst: ORI
@@ -825,7 +825,7 @@ pseudoinstructions:
   - name: BGTU
     desc_short: Branch if $Rs > Im1 unsigned
     compile:
-      format: RsWdIm
+      format: [Rs, Wd, Im]
       relative_label: true
     expand:
       - inst: LUI
@@ -840,7 +840,7 @@ pseudoinstructions:
   - name: NEG
     desc_short: Flip all the bits in $Rs, store result in $Rd
     compile:
-      format: RdRs
+      format: [Rd, Rs]
     expand:
       - inst: SUB
         data: [$Rd, 0, $Rs]
@@ -848,7 +848,7 @@ pseudoinstructions:
   - name: NOT
     desc_short: $Rd = ! $Rs
     compile:
-      format: RdRs
+      format: [Rd, Rs]
     expand:
       - inst: NOR
         data: [$Rd, 0, $Rs]
@@ -856,7 +856,7 @@ pseudoinstructions:
   - name: MUL
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: MULT
         data: [$Rs, $Rt]
@@ -866,7 +866,7 @@ pseudoinstructions:
   - name: MUL
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -878,7 +878,7 @@ pseudoinstructions:
   - name: DIV
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: DIV
         data: [$Rs, $Rt]
@@ -888,7 +888,7 @@ pseudoinstructions:
   - name: DIV
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -900,7 +900,7 @@ pseudoinstructions:
   - name: LI
     desc_short: Load the immediate value into $Rs
     compile:
-      format: RsIm
+      format: [Rs, Im]
     expand:
       - inst: ORI
         data: [$Rs, 0, $Im]
@@ -908,7 +908,7 @@ pseudoinstructions:
   - name: LA
     desc_short: Load the immediate address into $Rs
     compile:
-      format: RsIm
+      format: [Rs, Im]
     expand:
       - inst: ORI
         data: [$Rs, 0, $Im]
@@ -916,7 +916,7 @@ pseudoinstructions:
   - name: LI
     desc_short: Load the immediate value into $Rs
     compile:
-      format: RsWd
+      format: [Rs, Wd]
     expand:
       - inst: LUI
         data: [$Rs, $Wdu]
@@ -926,7 +926,7 @@ pseudoinstructions:
   - name: LA
     desc_short: Load the immediate address into $Rs
     compile:
-      format: RsWd
+      format: [Rs, Wd]
     expand:
       - inst: LUI
         data: [$Rs, $Wdu]
@@ -936,7 +936,7 @@ pseudoinstructions:
   - name: ADD
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ADDI
         data: [$Rs, $Rt, $Im]
@@ -944,7 +944,7 @@ pseudoinstructions:
   - name: ADDU
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ADDIU
         data: [$Rs, $Rt, $Im]
@@ -952,7 +952,7 @@ pseudoinstructions:
   - name: ADDIU
     desc_short: todo!()
     compile:
-      format: RsIm
+      format: [Rs, Im]
     expand:
       - inst: ADDIU
         data: [$Rs, $Rs, $Im]
@@ -960,7 +960,7 @@ pseudoinstructions:
   - name: SUB
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -970,7 +970,7 @@ pseudoinstructions:
   - name: SUBU
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -980,7 +980,7 @@ pseudoinstructions:
   - name: AND
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -990,7 +990,7 @@ pseudoinstructions:
   - name: SEQ
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: ORI
         data: [$Rd, 0, 0]
@@ -1002,7 +1002,7 @@ pseudoinstructions:
   - name: SEQ
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$Rs, 0, 0]
@@ -1016,7 +1016,7 @@ pseudoinstructions:
   - name: SNE
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: ORI
         data: [$Rd, 0, 0]
@@ -1028,7 +1028,7 @@ pseudoinstructions:
   - name: SNE
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$Rs, 0, 0]
@@ -1042,7 +1042,7 @@ pseudoinstructions:
   - name: SGE
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: SLT
         data: [$Rd, $Rt, $Rs]
@@ -1054,7 +1054,7 @@ pseudoinstructions:
   - name: SGE
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -1068,7 +1068,7 @@ pseudoinstructions:
   - name: SGT
     desc_short: todo!()
     compile:
-      format: RdRsRt
+      format: [Rd, Rs, Rt]
     expand:
       - inst: SLT
         data: [$Rd, $Rt, $Rs]
@@ -1076,7 +1076,7 @@ pseudoinstructions:
   - name: SGT
     desc_short: todo!()
     compile:
-      format: RsRtIm
+      format: [Rs, Rt, Im]
     expand:
       - inst: ORI
         data: [$At, 0, $Im]
@@ -1086,7 +1086,8 @@ pseudoinstructions:
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1098,7 +1099,8 @@ pseudoinstructions:
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1112,7 +1114,8 @@ pseudoinstructions:
   - name: LH
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1124,7 +1127,8 @@ pseudoinstructions:
   - name: LH
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1138,7 +1142,8 @@ pseudoinstructions:
   - name: LW
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1150,7 +1155,8 @@ pseudoinstructions:
   - name: LW
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1164,7 +1170,8 @@ pseudoinstructions:
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1176,7 +1183,8 @@ pseudoinstructions:
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1190,7 +1198,8 @@ pseudoinstructions:
   - name: LHU
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1202,7 +1211,8 @@ pseudoinstructions:
   - name: LHU
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1216,7 +1226,8 @@ pseudoinstructions:
   - name: SB
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1228,7 +1239,8 @@ pseudoinstructions:
   - name: SB
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1242,7 +1254,8 @@ pseudoinstructions:
   - name: SH
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1254,7 +1267,8 @@ pseudoinstructions:
   - name: SH
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1268,7 +1282,8 @@ pseudoinstructions:
   - name: SW
     desc_short: todo!()
     compile:
-      format: RtWd
+      format: [Rt, Wd]
+
     expand:
       - inst: LUI
         data: [$At, $Wdu]
@@ -1280,7 +1295,8 @@ pseudoinstructions:
   - name: SW
     desc_short: todo!()
     compile:
-      format: RtWdRs
+      format: [Rt, Wd]
+Rs
     expand:
       - inst: LUI
         data: [$At, $Wdu]
