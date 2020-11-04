@@ -63,7 +63,7 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                     tag("0x"),
                     hex_digit1,
                 )),
-                |(neg, _, digits)| (if let Some(_) = neg { "-" } else { "" }, 16, digits)
+                |(neg, _, digits)| (get_sign(neg), 16, digits)
             ),
             map(
                 tuple((
@@ -71,14 +71,14 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                     tag("0"),
                     oct_digit1,
                 )),
-                |(neg, _, digits)| (if let Some(_) = neg { "-" } else { "" }, 8, digits)
+                |(neg, _, digits)| (get_sign(neg), 8, digits)
             ),
             map(
                 tuple((
                     opt(char('-')),
                     digit1,
                 )),
-                |(neg, digits)| (if let Some(_) = neg { "-" } else { "" }, 10, digits)
+                |(neg, digits)| (get_sign(neg), 10, digits)
             )
         )),
         |(sign, base, digits)| 
@@ -132,6 +132,14 @@ fn parse_char(i: &[u8]) -> IResult<&[u8], char> {
     ))(i)?;
 
     Ok((remaining_data, chr as char))
+}
+
+fn get_sign(neg: Option<char>) -> &'static str {
+    if let Some('-') = neg {
+        "-"
+    } else {
+        ""
+    }
 }
 
 #[cfg(test)]
