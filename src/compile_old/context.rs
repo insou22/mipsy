@@ -26,7 +26,7 @@ pub enum Token {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Program {
+pub struct Binary {
     pub text: Vec<u32>,
     pub data: Vec<Safe<u8>>,
     pub labels: HashMap<String, Address>,
@@ -43,7 +43,7 @@ pub enum Segment {
 pub struct Context {
     tokens: Peekable<Tokens>,
     tokens_clone: Peekable<Tokens>, // do not modify
-    pub program: Program,
+    pub program: Binary,
     pub seg: Segment,
     pub line: usize,
 }
@@ -59,7 +59,7 @@ impl Context {
         Context {
             tokens_clone: tokens.clone(),
             tokens,
-            program: Program::default(),
+            program: Binary::default(),
             seg: Segment::Text,
             line: 0,
         }

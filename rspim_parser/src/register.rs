@@ -1,6 +1,6 @@
 use crate::{
     number::{
-        Immediate,
+        MPImmediate,
         parse_immediate,
     }
 };
@@ -17,19 +17,19 @@ use nom::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Register {
-    Normal(RegisterIdentifier),
-    Offset(Immediate, RegisterIdentifier),
+pub enum MPRegister {
+    Normal(MPRegisterIdentifier),
+    Offset(MPImmediate, MPRegisterIdentifier),
 }
 
 #[derive(Debug, Clone)]
-pub enum RegisterIdentifier {
+pub enum MPRegisterIdentifier {
     Numbered(u8),
     Named(String),
 }
 
-impl Register {
-    fn get_identifier(&self) -> &RegisterIdentifier {
+impl MPRegister {
+    fn get_identifier(&self) -> &MPRegisterIdentifier {
         match self {
             Self::Normal(ident) => ident,
             Self::Offset(_, ident) => ident,
@@ -38,14 +38,14 @@ impl Register {
 }
 
 
-pub fn parse_register(i: &[u8]) -> IResult<&[u8], Register> {
+pub fn parse_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
     alt((
         parse_normal_register,
         parse_offset_register,
     ))(i)
 }
 
-pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], Register> {
+pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
     let (
         remaining_data,
         (
@@ -62,16 +62,16 @@ pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], Register> {
 
     let text = String::from_utf8(text.into()).unwrap();
 
-    Ok((remaining_data, Register::Normal(
+    Ok((remaining_data, MPRegister::Normal(
         if let Ok(num) = text.parse::<u8>() {
-            RegisterIdentifier::Numbered(num)
+            MPRegisterIdentifier::Numbered(num)
         } else {
-            RegisterIdentifier::Named(text)
+            MPRegisterIdentifier::Named(text)
         }
     )))
 }
 
-pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], Register> {
+pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
     let (
         remaining_data,
         (
@@ -92,5 +92,5 @@ pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], Register> {
         char(')'),
     ))(i)?;
 
-    Ok((remaining_data, Register::Offset(imm, reg.get_identifier().clone())))
+    Ok((remaining_data, MPRegister::Offset(imm, reg.get_identifier().clone())))
 }

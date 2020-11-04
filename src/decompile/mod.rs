@@ -1,11 +1,11 @@
-use crate::compile::context::Program;
-use crate::inst::instruction::{InstSet, InstFormat, RuntimeSignature};
+use crate::Binary;
+use crate::inst::instruction::{InstSet, ArgumentType, RuntimeSignature};
 use crate::inst::register::Register;
 
-pub fn decompile(program: &Program, iset: &InstSet) -> String {
+pub fn decompile(program: &Binary, iset: &InstSet) -> String {
     let mut text = String::new();
     
-    let mut text_addr = crate::compile::compiler::TEXT_BOT;
+    let mut text_addr = crate::TEXT_BOT;
 
     for &word in &program.text {
         for (label, &addr) in program.labels.iter() {
@@ -60,25 +60,19 @@ pub fn decompile(program: &Program, iset: &InstSet) -> String {
                 text.push_str(&format!("{:6} ", inst.name));
 
                 text.push_str(
-                    &match inst.compile.format {
-                        InstFormat::R0 =>     format!(""),
-                        InstFormat::Rd =>     format!(" ${}", Register::u32_to_str(rd)),
-                        InstFormat::Rs =>     format!(" ${}", Register::u32_to_str(rs)),
-                        InstFormat::RdRs =>   format!(" ${}, ${}", Register::u32_to_str(rd), Register::u32_to_str(rs)),
-                        InstFormat::RsRt =>   format!(" ${}, ${}", Register::u32_to_str(rs), Register::u32_to_str(rt)),
-                        InstFormat::RdRsRt => format!(" ${}, ${}, ${}", Register::u32_to_str(rd), Register::u32_to_str(rs), Register::u32_to_str(rt)),
-                        InstFormat::RdRtRs => format!(" ${}, ${}, ${}", Register::u32_to_str(rd), Register::u32_to_str(rt), Register::u32_to_str(rs)),
-                        InstFormat::RdRtSa => format!(" ${}, ${}, {}", Register::u32_to_str(rd), Register::u32_to_str(rt), shamt),
-                        InstFormat::J =>      format!(" 0x{:08x}", (text_addr + 4) & 0xF000_0000 | addr << 2),
-                        InstFormat::Im =>     format!(" {}", imm),
-                        InstFormat::RsIm =>   format!(" ${}, {}", Register::u32_to_str(rs), imm),
-                        InstFormat::RtIm =>   format!(" ${}, {}", Register::u32_to_str(rt), imm),
-                        InstFormat::RsRtIm => format!(" ${}, ${}, {}", Register::u32_to_str(rs), Register::u32_to_str(rt), imm),
-                        InstFormat::RtRsIm => format!(" ${}, ${}, {}", Register::u32_to_str(rt), Register::u32_to_str(rs), imm),
-                        InstFormat::RtImRs => format!(" ${}, {}(${})", Register::u32_to_str(rt), imm, Register::u32_to_str(rs)),
-                    
-                        _ => unreachable!(),
-                    }.to_ascii_lowercase()
+                    &inst.compile.format.iter()
+                            .map(|arg| match arg {
+                                ArgumentType::Rd => format!("${}", Register::u32_to_str(rd)),
+                                ArgumentType::Rt => format!("${}", Register::u32_to_str(rs)),
+                                ArgumentType::Rs => format!("${}", Register::u32_to_str(rt)),
+                                ArgumentType::Sa => format!("{}", shamt),
+                                ArgumentType::Im => format!("{}", imm),
+                                ArgumentType::J  => format!("{}", (text_addr + 4) & 0xF000_0000 | addr << 2),
+                                ArgumentType::Wd => unreachable!(),
+                            })
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                            .to_ascii_lowercase()
                 );
             }
         } else {

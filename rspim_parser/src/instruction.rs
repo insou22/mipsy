@@ -1,10 +1,10 @@
 use crate::{
     register::{
-        Register,
+        MPRegister,
         parse_register,
     },
     number::{
-        Number,
+        MPNumber,
         parse_number,
     },
     misc::{
@@ -25,18 +25,28 @@ use nom::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Instruction {
+pub struct MPInstruction {
     name: String,
-    arguments: Vec<Argument>,
+    arguments: Vec<MPArgument>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Argument {
-    Register(Register),
-    Number(Number),
+pub enum MPArgument {
+    Register(MPRegister),
+    Number(MPNumber),
 }
 
-pub fn parse_instruction(i: &[u8]) -> IResult<&[u8], Instruction> {
+impl MPInstruction {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn arguments(&self) -> Vec<&MPArgument> {
+        self.arguments.iter().collect()
+    }
+}
+
+pub fn parse_instruction(i: &[u8]) -> IResult<&[u8], MPInstruction> {
     let (
         remaining_data,
         (
@@ -59,26 +69,26 @@ pub fn parse_instruction(i: &[u8]) -> IResult<&[u8], Instruction> {
         comment_multispace0,
     ))(i)?;
 
-    Ok((remaining_data, Instruction { name, arguments }))
+    Ok((remaining_data, MPInstruction { name, arguments }))
 }
 
-fn parse_argument(i: &[u8]) -> IResult<&[u8], Argument> {
+fn parse_argument(i: &[u8]) -> IResult<&[u8], MPArgument> {
     alt((
         parse_argument_reg,
         parse_argument_num,
     ))(i)
 }
 
-fn parse_argument_reg(i: &[u8]) -> IResult<&[u8], Argument> {
+fn parse_argument_reg(i: &[u8]) -> IResult<&[u8], MPArgument> {
     map(
         parse_register,
-        |reg| Argument::Register(reg)
+        |reg| MPArgument::Register(reg)
     )(i)
 }
 
-fn parse_argument_num(i: &[u8]) -> IResult<&[u8], Argument> {
+fn parse_argument_num(i: &[u8]) -> IResult<&[u8], MPArgument> {
     map(
         parse_number,
-        |num| Argument::Number(num)
+        |num| MPArgument::Number(num)
     )(i)
 }

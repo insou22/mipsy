@@ -1,20 +1,20 @@
 extern crate nom;
 
 
-pub use parser::Program;
-pub use parser::Item;
+pub use parser::MPProgram;
+pub use parser::MPItem;
 pub use instruction::{
-    Instruction,
-    Argument,
+    MPInstruction,
+    MPArgument,
 };
-pub use directive::Directive;
+pub use directive::MPDirective;
 pub use number::{
-    Number,
-    Immediate,
+    MPNumber,
+    MPImmediate,
 };
 pub use register::{
-    Register,
-    RegisterIdentifier,
+    MPRegister,
+    MPRegisterIdentifier,
 };
 
 

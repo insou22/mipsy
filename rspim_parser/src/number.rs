@@ -27,34 +27,34 @@ use nom::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Number {
-    Immediate(Immediate),
+pub enum MPNumber {
+    Immediate(MPImmediate),
     Float32(f32),
     Float64(f64),
     Char(char),
 }
 
 #[derive(Debug, Clone)]
-pub enum Immediate {
+pub enum MPImmediate {
     I16(i16),
     I32(i32),
     LabelReference(String),
 }
 
-pub fn parse_number(i: &[u8]) -> IResult<&[u8], Number> {
+pub fn parse_number(i: &[u8]) -> IResult<&[u8], MPNumber> {
     alt((
-        map(parse_immediate, |i| Number::Immediate(i)),
-        map(parse_f32,       |f| Number::Float32(f)),
-        map(parse_f64,       |f| Number::Float64(f)),
-        map(parse_char,      |c| Number::Char(c)),
+        map(parse_immediate, |i| MPNumber::Immediate(i)),
+        map(parse_f32,       |f| MPNumber::Float32(f)),
+        map(parse_f64,       |f| MPNumber::Float64(f)),
+        map(parse_char,      |c| MPNumber::Char(c)),
     ))(i)
 }
 
-pub fn parse_immediate(i: &[u8]) -> IResult<&[u8], Immediate> {
+pub fn parse_immediate(i: &[u8]) -> IResult<&[u8], MPImmediate> {
     alt((
-        map(parse_i16,      |i| Immediate::I16(i)),
-        map(parse_i32,      |i| Immediate::I32(i)),
-        map(parse_labelref, |l| Immediate::LabelReference(l)),
+        map(parse_i16,      |i| MPImmediate::I16(i)),
+        map(parse_i32,      |i| MPImmediate::I32(i)),
+        map(parse_labelref, |l| MPImmediate::LabelReference(l)),
     ))(i)
 }
 

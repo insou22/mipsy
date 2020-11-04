@@ -1,10 +1,10 @@
 use crate::{
     directive::{
-        Directive,
+        MPDirective,
         parse_directive,
     },
     instruction::{
-        Instruction,
+        MPInstruction,
         parse_instruction,
     },
     label::parse_label,
@@ -20,25 +20,31 @@ use nom::{
 
 
 #[derive(Debug, Clone)]
-pub struct Program {
-    items: Vec<Item>,
+pub struct MPProgram {
+    items: Vec<MPItem>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Item {
-    Instruction(Instruction),
-    Directive(Directive),
+pub enum MPItem {
+    Instruction(MPInstruction),
+    Directive(MPDirective),
     Label(String),
 }
 
-pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], Item> {
+impl MPProgram {
+    pub fn items(&self) -> Vec<&MPItem> {
+        self.items.iter().collect()
+    }
+}
+
+pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], MPItem> {
     map(
         tuple((
             comment_multispace0,
             alt((
-                map(parse_label,       |l| Item::Label(l)),
-                map(parse_directive,   |d| Item::Directive(d)),
-                map(parse_instruction, |i| Item::Instruction(i)),
+                map(parse_label,       |l| MPItem::Label(l)),
+                map(parse_directive,   |d| MPItem::Directive(d)),
+                map(parse_instruction, |i| MPItem::Instruction(i)),
             )),
             comment_multispace0,
         )),
@@ -46,7 +52,7 @@ pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], Item> {
     )(i)
 }
 
-pub fn parse_mips_bytes(i: &[u8]) -> IResult<&[u8], Program> {
+pub fn parse_mips_bytes(i: &[u8]) -> IResult<&[u8], MPProgram> {
     let (
         remaining_input,
         items
@@ -54,13 +60,13 @@ pub fn parse_mips_bytes(i: &[u8]) -> IResult<&[u8], Program> {
 
     Ok((
         remaining_input,
-        Program {
+        MPProgram {
             items
         },
     ))
 }
 
-pub fn parse_mips<T>(input: T) -> Result<Program, &'static str>
+pub fn parse_mips<T>(input: T) -> Result<MPProgram, &'static str>
 where
     T: AsRef<str>,
 {

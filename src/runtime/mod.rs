@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use crate::compile::context::Program;
-use crate::compile::compiler::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
+use crate::Binary;
+use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
 use crate::error::RSpimResult;
 use crate::error::RuntimeError;
 use crate::rerr;
@@ -154,7 +154,7 @@ where T: Clone {
 }
 
 impl Runtime {
-    pub fn new(program: &Program) -> Self {
+    pub fn new(program: &Binary) -> Self {
         let mut initial_state = 
             State {
                 pages: HashMap::new(),

@@ -4,6 +4,7 @@ use crate::cerr;
 use serde::{Serialize, Deserialize};
 use super::pseudo::PseudoInst;
 use crate::yaml::parse::YamlFile;
+use crate::yaml::parse::InstructionType;
 
 #[derive(Debug)]
 pub struct InstSet {
@@ -21,7 +22,7 @@ pub struct InstSignature {
 
 #[derive(Clone, Debug)]
 pub struct CompileSignature {
-    pub format: Vec<ArgumentType>,
+    pub format: InstFormat,
     pub relative_label: bool,
 }
 
@@ -32,8 +33,35 @@ pub enum RuntimeSignature {
     J { opcode: u8 },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ArgumentType {
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub enum InstFormat {
+    R0,
+    Rd,
+    Rs,
+    RdRs,
+    RsRt,
+    RdRsRt,
+    RdRtRs,
+    RdRtSa,
+    J,
+    Im,
+    RsIm,
+    RtIm,
+    RsRtIm,
+    RtRsIm,
+    RtImRs,
+
+    // Pseudo-Only
+    RsIm1Im2,
+    RsWdIm,
+    RsWd,
+    RtWd,
+    RsRtWd,
+    RtWdRs,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ArgType {
     Rd,
     Rs,
     Rt,
@@ -41,8 +69,17 @@ pub enum ArgumentType {
     Im,
     J,
 
-    // pseudo
+    // Pseudo-only
+    Im1,
+    Im2,
     Wd,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SimpleArgType {
+    Register,
+    Immediate,
+    Word,
 }
 
 #[derive(Clone, Debug)]
@@ -78,14 +115,76 @@ pub struct PseudoExpand {
 
 impl InstSet {
     pub fn new(yaml: &YamlFile) -> RSpimResult<Self> {
-        super::yaml::from_yaml(yaml)
-    }
+        let mut native_set = vec![];
 
-    pub fn find_native(&self, name: &str, format: Vec<ArgumentType>) -> RSpimResult<&InstSignature> {
-        let name = name.to_ascii_lowercase();
+        for inst in &yaml.instructions {
+            let native_inst = InstSignature {
+                name: inst.name.to_ascii_lowercase(),
+                compile: CompileSignature {
+                    format: inst.compile.format,
+                    relative_label: inst.compile.relative_label,
+                },
+                runtime: match inst.runtime.inst_type {
+                    InstructionType::R => {
+                        if let Some(funct) = inst.runtime.funct {
+                            RuntimeSignature::R { funct }
+                        } else {
+                            return cerr!(CompileError::YamlMissingFunct(inst.name.to_ascii_lowercase()));
+                        }
+                    }
+                    InstructionType::I => {
+                        if let Some(opcode) = inst.runtime.opcode {
+                            RuntimeSignature::I { opcode, rt: inst.runtime.rt }
+                        } else {
+                            return cerr!(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        }
+                    }
+                    InstructionType::J => {
+                        if let Some(opcode) = inst.runtime.opcode {
+                            RuntimeSignature::J { opcode }
+                        } else {
+                            return cerr!(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        }
+                    }
+                },
+                meta: InstMetadata {
+                    desc_short: inst.desc_short.clone(),
+                    desc_long: inst.desc_long.clone(),
+                },
+            };
 
-        let matches = vec![];
-        // WIP
+            native_set.push(native_inst);
+        }
+
+        let mut pseudo_set = vec![];
+
+        for inst in &yaml.pseudoinstructions {
+            let pseudo_inst = PseudoSignature {
+                name: inst.name.to_ascii_lowercase(),
+                compile: CompileSignature {
+                    format: inst.compile.format,
+                    relative_label: inst.compile.relative_label,
+                },
+                expand: match &inst.expand {
+                    Some(v) => PseudoExpansion::Simple(v.iter().map(|expand|
+                        PseudoExpand {
+                            inst: expand.inst.clone(),
+                            data: expand.data.clone(),
+                        }
+                    ).collect()),
+                    None => PseudoExpansion::Complex(super::pseudo::get_complex_pseudo(&inst.name.to_ascii_lowercase())?),
+                }
+            };
+
+            pseudo_set.push(pseudo_inst);
+        }
+
+        Ok(
+            InstSet {
+                native_set,
+                pseudo_set,
+            }
+        )
     }
 
     pub fn find_instruction<'a>(&'a self, name: &str, format: Option<Vec<SimpleArgType>>) -> RSpimResult<&'a InstSignature> {

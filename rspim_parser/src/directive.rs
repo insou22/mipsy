@@ -35,7 +35,7 @@ use nom::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Directive {
+pub enum MPDirective {
     Text,
     Data,
     Ascii(String),
@@ -50,7 +50,7 @@ pub enum Directive {
     Globl(String),
 }
 
-pub fn parse_directive(i: &[u8]) -> IResult<&[u8], Directive> {
+pub fn parse_directive(i: &[u8]) -> IResult<&[u8], MPDirective> {
     alt((
         parse_text,
         parse_data,
@@ -67,22 +67,22 @@ pub fn parse_directive(i: &[u8]) -> IResult<&[u8], Directive> {
     ))(i)
 }
 
-fn parse_text(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_text(i: &[u8]) -> IResult<&[u8], MPDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".text")(i)?;
 
-    Ok((remaining_data, Directive::Text))
+    Ok((remaining_data, MPDirective::Text))
 }
 
-fn parse_data(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_data(i: &[u8]) -> IResult<&[u8], MPDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".data")(i)?;
 
-    Ok((remaining_data, Directive::Text))
+    Ok((remaining_data, MPDirective::Text))
 }
 
 fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], String> {
@@ -114,17 +114,17 @@ fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8]
     }
 }
 
-fn parse_ascii(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_ascii(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_ascii_type(".ascii"),
-        |text| Directive::Ascii(text)
+        |text| MPDirective::Ascii(text)
     )(i)
 }
 
-fn parse_asciiz(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_asciiz(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_ascii_type(".asciiz"),
-        |text| Directive::Asciiz(text)
+        |text| MPDirective::Asciiz(text)
     )(i)
 }
 
@@ -158,38 +158,38 @@ fn parse_num_type<T>(tag_str: &'static str, parser: fn(&[u8]) -> IResult<&[u8], 
     }
 }
 
-fn parse_byte(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_byte(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_num_type(".byte", parse_i8),
-        |data| Directive::Byte(data),
+        |data| MPDirective::Byte(data),
     )(i)
 }
 
-fn parse_half(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_half(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_num_type(".half", parse_i16),
-        |data| Directive::Half(data),
+        |data| MPDirective::Half(data),
     )(i)
 }
 
-fn parse_word(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_word(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_num_type(".word", parse_i32),
-        |data| Directive::Word(data),
+        |data| MPDirective::Word(data),
     )(i)
 }
 
-fn parse_float(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_float(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_num_type(".float", parse_f32),
-        |data| Directive::Float(data),
+        |data| MPDirective::Float(data),
     )(i)
 }
 
-fn parse_double(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_double(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_num_type(".double", parse_f64),
-        |data| Directive::Double(data),
+        |data| MPDirective::Double(data),
     )(i)
 }
 
@@ -213,21 +213,21 @@ fn parse_u32_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], 
     }
 }
 
-fn parse_space(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_space(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_u32_type(".space"),
-        |num| Directive::Space(num),
+        |num| MPDirective::Space(num),
     )(i)
 }
 
-fn parse_align(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_align(i: &[u8]) -> IResult<&[u8], MPDirective> {
     map(
         parse_u32_type(".align"),
-        |num| Directive::Space(num),
+        |num| MPDirective::Space(num),
     )(i)
 }
 
-fn parse_globl(i: &[u8]) -> IResult<&[u8], Directive> {
+fn parse_globl(i: &[u8]) -> IResult<&[u8], MPDirective> {
     let (
         remaining_data,
         (
@@ -241,5 +241,5 @@ fn parse_globl(i: &[u8]) -> IResult<&[u8], Directive> {
         parse_ident
     ))(i)?;
 
-    Ok((remaining_data, Directive::Globl(ident)))
+    Ok((remaining_data, MPDirective::Globl(ident)))
 }

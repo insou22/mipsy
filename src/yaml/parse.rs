@@ -1,4 +1,4 @@
-use crate::inst::instruction::InstFormat;
+use crate::inst::instruction::ArgumentType;
 use serde::{Deserialize, Serialize};
 
 static CONFIG_FILE: &'static str = include_str!("../../mips.yaml");
@@ -20,7 +20,7 @@ pub struct InstructionYaml {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompileYaml {
-    pub format: InstFormat,
+    pub format: Vec<ArgumentType>,
     #[serde(default)]
     pub relative_label: bool,
 }
