@@ -47,7 +47,7 @@ pub struct PsuedoInstructionYaml {
     pub desc_short: Option<String>,
     pub desc_long: Option<String>,
     pub compile: CompileYaml,
-    pub expand: Option<Vec<InstructionExpansionYaml>>,
+    pub expand: Vec<InstructionExpansionYaml>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

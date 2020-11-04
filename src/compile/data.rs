@@ -4,6 +4,7 @@ use crate::{
     MPProgram,
     error::CompileError,
     util::Safe,
+    inst::instruction::InstSet,
 };
 use super::{
     TEXT_BOT,
@@ -18,7 +19,7 @@ use rspim_parser::{
     MPDirective,
 };
 
-pub fn populate_labels_and_data(context: &mut Context, program: &MPProgram) -> RSpimResult<()> {
+pub fn populate_labels_and_data(context: &mut Context, iset: &InstSet, program: &MPProgram) -> RSpimResult<()> {
     let text_len = 0;
     let data_len = 0;
 
@@ -93,7 +94,7 @@ pub fn populate_labels_and_data(context: &mut Context, program: &MPProgram) -> R
             MPItem::Instruction(instruction) => {
                 // We can't compile instructions yet - so just keep track of
                 // how many bytes-worth we've seen so far
-                context.unmapped_text_len += instruction_length(instruction)? * 4;
+                context.unmapped_text_len += instruction_length(iset, instruction)? * 4;
             }
             MPItem::Label(label) => {
                 context.binary.labels.insert(

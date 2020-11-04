@@ -1,9 +1,15 @@
 use crate::error::RSpimResult;
-use crate::error::compile_error::CompileError;
-use crate::cerr;
 use serde::{Serialize, Deserialize};
-use super::pseudo::PseudoInst;
+use super::register::Register;
 use crate::yaml::parse::YamlFile;
+use rspim_parser::{
+    MPInstruction,
+    MPArgument,
+    MPRegister,
+    MPRegisterIdentifier,
+    MPNumber,
+    MPImmediate,
+};
 
 #[derive(Debug)]
 pub struct InstSet {
@@ -37,24 +43,24 @@ pub enum ArgumentType {
     Rd,
     Rs,
     Rt,
-    Sa,
-    Im,
+    Shamt,
+    Imm,
     J,
+    AddrRs,
+    AddrRt,
+    F32,
+    F64,
 
     // pseudo
-    Wd,
+    Imm32,
+    Addr32Rs,
+    Addr32Rt,
 }
 
 #[derive(Clone, Debug)]
 pub struct InstMetadata {
     pub desc_short: Option<String>,
     pub desc_long:  Option<String>,
-}
-
-#[derive(Clone)]
-pub enum PseudoExpansion {
-    Simple(Vec<PseudoExpand>),
-    Complex(Box<dyn PseudoInst>),
 }
 
 #[derive(Debug)]
@@ -67,7 +73,7 @@ pub enum GenericSignature {
 pub struct PseudoSignature {
     pub name: String,
     pub compile: CompileSignature,
-    pub expand: PseudoExpansion,
+    pub expand: Vec<PseudoExpand>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,89 +87,51 @@ impl InstSet {
         super::yaml::from_yaml(yaml)
     }
 
-    pub fn find_native(&self, name: &str, format: Vec<ArgumentType>) -> RSpimResult<&InstSignature> {
-        let name = name.to_ascii_lowercase();
+    pub fn find_native(&self, inst: &MPInstruction) -> Option<&InstSignature> {
+        let name = inst.name().to_ascii_lowercase();
 
         let matches = vec![];
-        // WIP
+        
+        for native_inst in &self.native_set {
+            if native_inst.name == name && native_inst.compile.matches(inst) {
+                return Some(native_inst);
+            }
+        }
+
+        None
     }
 
-    pub fn find_instruction<'a>(&'a self, name: &str, format: Option<Vec<SimpleArgType>>) -> RSpimResult<&'a InstSignature> {
-        let mut matches = vec![];
+    pub fn find_pseudo(&self, inst: &MPInstruction) -> Option<&PseudoSignature> {
+        let name = inst.name().to_ascii_lowercase();
 
-        let name = name.to_lowercase();
-
-        for inst in &self.native_set {
-            if inst.name == name {
-                if let Some(ref format) = format {
-                    if inst.compile.format.matches(format) {
-                        matches.push(inst)
-                    }
-                } else {
-                    matches.push(inst)
-                }
+        let matches = vec![];
+        
+        for pseudo_inst in &self.pseudo_set {
+            if pseudo_inst.name == name && pseudo_inst.compile.matches(inst) {
+                return Some(pseudo_inst);
             }
         }
 
-        if matches.is_empty() {
-            return match format {
-                Some(format) => cerr!(CompileError::UnknownInstructionSAT{ name: name.into(), format }),
-                None => cerr!(CompileError::UnknownInstruction(name.into())),
-            }
-        }
-
-        if matches.len() > 1 {
-            return cerr!(CompileError::MultipleMatchingInstructions(
-                matches.iter().map(|&i| GenericSignature::Native(i.clone())).collect())
-            );
-        }
-
-        Ok(matches[0])
-    }
-
-    pub fn find_instruction_exact<'a>(&'a self, name: &str, format: InstFormat) -> RSpimResult<&'a InstSignature> {
-        for inst in &self.native_set {
-            if inst.name == name && inst.compile.format == format {
-                return Ok(inst);
-            }
-        }
-
-        cerr!(CompileError::UnknownInstructionExact { name: name.into(), format })
+        None
     }
 }
 
 impl CompileSignature {
-    pub fn tokens_match(&self, tokens: &Vec<Token>) -> bool {
-        let types: Vec<SimpleArgType> = 
-            self.format.arg_formats().iter()
-                .map(ArgType::simple)
-                .collect();
-        
-        if tokens.len() != types.len() {
+    pub fn matches(&self, inst: &MPInstruction) -> bool {
+        if self.format.len() != inst.arguments().len() {
             return false;
         }
 
-        for (token, &simple_type) in tokens.iter().zip(types.iter()) {
-            let token_type = match token {
-                Token::Register(_) | Token::OffsetRegister(_) => SimpleArgType::Register,
+        if !self.matches_args(inst.arguments()) {
+            return false;
+        }
 
-                Token::Immediate(_) | Token::Float(_) | // TODO - float here?
-                  Token::ConstChar(_) => SimpleArgType::Immediate,
+        true
+    }
 
-                Token::Word(_) => SimpleArgType::Word,
-
-                Token::LabelReference(_) => {
-                    if self.relative_label {
-                        SimpleArgType::Immediate
-                    } else {
-                        SimpleArgType::Word
-                    }
-                }
-
-                other => panic!("tokens_match: {:?} - This should never happen", other),
-            };
-            
-            if token_type != simple_type {
+    pub fn matches_args(&self, args: Vec<&MPArgument>) -> bool {
+        for (my_arg, &their_arg) in self.format.iter().zip(args.iter()) {
+            if !my_arg.matches(their_arg) {
                 return false;
             }
         }
@@ -172,192 +140,130 @@ impl CompileSignature {
     }
 }
 
-impl InstFormat {
-    pub fn arg_formats(&self) -> Vec<ArgType> {
-        match *self {
-            InstFormat::R0     => vec![],
-            InstFormat::Rd     => vec![ArgType::Rd],
-            InstFormat::Rs     => vec![ArgType::Rs],
-            InstFormat::RdRs   => vec![ArgType::Rd, ArgType::Rs],
-            InstFormat::RsRt   => vec![ArgType::Rs, ArgType::Rt],
-            InstFormat::RdRsRt => vec![ArgType::Rd, ArgType::Rs, ArgType::Rt],
-            InstFormat::RdRtRs => vec![ArgType::Rd, ArgType::Rt, ArgType::Rs],
-            InstFormat::RdRtSa => vec![ArgType::Rd, ArgType::Rt, ArgType::Sa],
-            InstFormat::J      => vec![ArgType::J],
-            InstFormat::Im     => vec![ArgType::Im],
-            InstFormat::RsIm   => vec![ArgType::Rs, ArgType::Im],
-            InstFormat::RtIm   => vec![ArgType::Rt, ArgType::Im],
-            InstFormat::RsRtIm => vec![ArgType::Rs, ArgType::Rt, ArgType::Im],
-            InstFormat::RtRsIm => vec![ArgType::Rt, ArgType::Rs, ArgType::Im],
-            InstFormat::RtImRs => vec![ArgType::Rt, ArgType::Im, ArgType::Rs],
-
-            // Pseudo-only
-            InstFormat::RsIm1Im2 => vec![ArgType::Rs, ArgType::Im1, ArgType::Im2],
-            InstFormat::RsWdIm   => vec![ArgType::Rs, ArgType::Wd, ArgType::Im],
-            InstFormat::RsWd     => vec![ArgType::Rs, ArgType::Wd],
-            InstFormat::RtWd     => vec![ArgType::Rt, ArgType::Wd],
-            InstFormat::RsRtWd   => vec![ArgType::Rs, ArgType::Rt, ArgType::Wd],
-            InstFormat::RtWdRs   => vec![ArgType::Rt, ArgType::Wd, ArgType::Rs],
-        }
-    }
-
-    pub fn matches(&self, other: &Vec<SimpleArgType>) -> bool {
-        let format = self.arg_formats();
-
-        if format.len() != other.len() {
-            return false;
-        }
-
-        for (arg_type, simple_arg_type) in format.iter().zip(other.iter()) {
-            match simple_arg_type {
-                SimpleArgType::Register => {
-                    if !arg_type.is_register() {
-                        return false;
+impl ArgumentType {
+    fn matches(&self, arg: &MPArgument) -> bool {
+        match arg {
+            MPArgument::Register(register) => {
+                match register {
+                    MPRegister::Normal(_) => {
+                        match self {
+                            Self::Rd | Self::Rs | Self::Rt => true,
+                            _ => false,
+                        }
+                    },
+                    MPRegister::Offset(imm, _) => match imm {
+                        MPImmediate::I16(_) => {
+                            match self {
+                                Self::AddrRs | Self::AddrRt | Self::Addr32Rs | Self::Addr32Rt => true,
+                                _ => false,
+                            }
+                        },
+                        MPImmediate::I32(_) | MPImmediate::LabelReference(_) => {
+                            match self {
+                                Self::Addr32Rs | Self::Addr32Rt => true,
+                                _ => false,
+                            }
+                        },
                     }
                 }
-                SimpleArgType::Immediate => { 
-                    if !arg_type.is_immediate() {
-                        return false;
+            }
+            MPArgument::Number(number) => {
+                match number {
+                    MPNumber::Immediate(immediate) => {
+                        match immediate {
+                            MPImmediate::I16(num) => {
+                                match self {
+                                    Self::Imm | Self::Imm32 => true,
+                                    Self::Shamt => *num >= 0 && *num < 32,
+                                    _ => false,
+                                }
+                            }
+                            MPImmediate::I32(_) | MPImmediate::LabelReference(_) => {
+                                match self {
+                                    Self::Imm32 | Self::J => true,
+                                    _ => false,
+                                }
+                            }
+                        }
                     }
-                }
-                SimpleArgType::Word => {
-                    if !arg_type.is_word() {
-                        return false;
+                    MPNumber::Char(_) => {
+                        match self {
+                            Self::Imm | Self::Imm32 => true,
+                            _ => false,
+                        }
+                    }
+                    MPNumber::Float32(_) => {
+                        match self {
+                            Self::F32 | Self::F64 => true,
+                            _ => false,
+                        }
+                    }
+                    MPNumber::Float64(_) => {
+                        match self {
+                            Self::F64 => true,
+                            _ => false,
+                        }
                     }
                 }
             }
         }
-
-        true
     }
 }
 
-impl ArgType {
-    pub fn is_register(&self) -> bool {
-        match *self {
-            Self::Rd => true,
-            Self::Rs => true,
-            Self::Rt => true,
-            Self::Sa => false,
-            Self::Im => false,
-            Self::J  => false,
-
-            // Pseudo-only
-            Self::Im1 => false,
-            Self::Im2 => false,
-            Self::Wd  => false,
-        }
-    }
-
-    pub fn is_immediate(&self) -> bool {
-        match *self {
-            Self::Rd => false,
-            Self::Rs => false,
-            Self::Rt => false,
-            Self::Sa => true,
-            Self::Im => true,
-            Self::J  => false,
-
-            // Pseudo-only
-            Self::Im1 => true,
-            Self::Im2 => true,
-            Self::Wd  => false,
-        }
-    }
-
-    pub fn is_word(&self) -> bool {
-        match *self {
-            Self::Rd => false,
-            Self::Rs => false,
-            Self::Rt => false,
-            Self::Sa => false,
-            Self::Im => false,
-            Self::J  => false,
-
-            // Pseudo-only
-            Self::Im1 => false,
-            Self::Im2 => false,
-            Self::Wd  => true,
-        }
-    }
-
-    pub fn simple(&self) -> SimpleArgType {
-        match self {
-            Self::Rd | Self::Rs | Self::Rt => SimpleArgType::Register,
-            Self::Sa | Self::Im | Self::Im1 | Self::Im2 => SimpleArgType::Immediate,
-            Self::J  | Self::Wd => SimpleArgType::Word,
-        }
-    }
-
-    pub fn to_string(&self) -> &'static str {
-        match *self {
-            Self::Rd => "rd",
-            Self::Rs => "rs",
-            Self::Rt => "rt",
-            Self::Sa => "sa",
-            Self::Im => "im",
-            Self::J  => "j",
-
-            // Pseudo-only
-            Self::Im1 => "im1",
-            Self::Im2 => "im2",
-            Self::Wd  => "wd",
-        }
-    }
+trait ToRegister {
+    fn to_register(&self) -> RSpimResult<Register>;
 }
 
-impl InstSignature {
-    pub fn gen_op(&self, args: &[u32]) -> RSpimResult<u32> {
-        let format = self.compile.format.arg_formats();
-
-        if args.len() != format.len() {
-            println!("{} {:?}", self.name, args);
-            cerr!(CompileError::Str("SHOULDN'T HAPPEN - InstSignature::gen_op"))
-        } else {
-            let mut op: u32 = 0;
-
-            match self.runtime {
-                RuntimeSignature::R { funct } => {
-                    op |= funct as u32;
-                }
-                RuntimeSignature::I { opcode, rt } => {
-                    op |=  (opcode as u32) << 26;
-
-                    if let Some(rt) = rt {
-                        op |= (rt as u32) << 16;
-                    }
-                }
-                RuntimeSignature::J { opcode } => {
-                    op |=  (opcode as u32) << 26;
-                }
+impl ToRegister for MPRegisterIdentifier {
+    fn to_register(&self) -> RSpimResult<Register> {
+        Ok(
+            match *self {
+                MPRegisterIdentifier::Named(name) => Register::from_str(&name)?,
+                MPRegisterIdentifier::Numbered(num) => Register::from_number(num as i32)?,
             }
+        )
+    }
+}
+
+
+
+    // pub fn gen_op(&self, args: &[u32]) -> RSpimResult<u32> {
+    //     let format = self.compile.format.arg_formats();
+
+    //     if args.len() != format.len() {
+    //         println!("{} {:?}", self.name, args);
+    //         cerr!(CompileError::Str("SHOULDN'T HAPPEN - InstSignature::gen_op"))
+    //     } else {
+    //         let mut op: u32 = 0;
+
+    //         match self.runtime {
+    //             RuntimeSignature::R { funct } => {
+    //                 op |= funct as u32;
+    //             }
+    //             RuntimeSignature::I { opcode, rt } => {
+    //                 op |=  (opcode as u32) << 26;
+
+    //                 if let Some(rt) = rt {
+    //                     op |= (rt as u32) << 16;
+    //                 }
+    //             }
+    //             RuntimeSignature::J { opcode } => {
+    //                 op |=  (opcode as u32) << 26;
+    //             }
+    //         }
             
-            for (&arg, val) in format.iter().zip(args) {
-                match arg {
-                    ArgType::Rs => op |= (val & 0x0000001F) << 21,
-                    ArgType::Rt => op |= (val & 0x0000001F) << 16,
-                    ArgType::Rd => op |= (val & 0x0000001F) << 11,
-                    ArgType::Sa => op |= (val & 0x0000001F) << 6,
-                    ArgType::Im => op |= (val & 0x0000FFFF) << 0,
-                    ArgType::J  => op |=  val >> 2 & 0x03FFFFFF,
-                    _           => unreachable!(),
-                }
-            }
+    //         for (&arg, val) in format.iter().zip(args) {
+    //             match arg {
+    //                 ArgType::Rs => op |= (val & 0x0000001F) << 21,
+    //                 ArgType::Rt => op |= (val & 0x0000001F) << 16,
+    //                 ArgType::Rd => op |= (val & 0x0000001F) << 11,
+    //                 ArgType::Sa => op |= (val & 0x0000001F) << 6,
+    //                 ArgType::Im => op |= (val & 0x0000FFFF) << 0,
+    //                 ArgType::J  => op |=  val >> 2 & 0x03FFFFFF,
+    //                 _           => unreachable!(),
+    //             }
+    //         }
 
-            Ok(op)
-        }
-    }
-}
-
-impl std::fmt::Debug for PseudoExpansion {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            Self::Simple(v) => {
-                write!(formatter, "PseudoExpansion::Simple(")?;
-                v.fmt(formatter)?;
-                write!(formatter, ")")
-            }
-            Self::Complex(_) => write!(formatter, "PseudoExpansion::Complex(fn expand(&self, set: &InstSet, input: Vec<u32>) -> RSpimResult<Vec<u32>>)"),
-        }
-    }
-}
+    //         Ok(op)
+    //     }
+    // }

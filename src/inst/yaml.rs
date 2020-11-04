@@ -15,7 +15,6 @@ use super::instruction::{
     InstMetadata,
     PseudoSignature,
     PseudoExpand,
-    PseudoExpansion,
 };
 
 pub fn from_yaml(yaml: &YamlFile) -> RSpimResult<InstSet> {
@@ -69,15 +68,11 @@ pub fn from_yaml(yaml: &YamlFile) -> RSpimResult<InstSet> {
                 format: inst.compile.format,
                 relative_label: inst.compile.relative_label,
             },
-            expand: match &inst.expand {
-                Some(v) => PseudoExpansion::Simple(v.iter().map(|expand|
-                    PseudoExpand {
+            expand: inst.expand.iter()
+                    .map(|expand| PseudoExpand {
                         inst: expand.inst.clone(),
                         data: expand.data.clone(),
-                    }
-                ).collect()),
-                None => PseudoExpansion::Complex(super::pseudo::get_complex_pseudo(&inst.name.to_ascii_lowercase())?),
-            }
+                    }).collect(),
         };
 
         pseudo_set.push(pseudo_inst);

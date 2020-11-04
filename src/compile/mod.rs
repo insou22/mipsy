@@ -60,8 +60,8 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> RSpimResult<Binary> {
         unmapped_text_len: 0,
     };
 
-    populate_labels_and_data(&mut context, program)?;
-    populate_text           (&mut context, program)?;
+    populate_labels_and_data(&mut context, iset, program)?;
+    populate_text           (&mut context, iset, program)?;
 
     Ok(context.binary)
 }
