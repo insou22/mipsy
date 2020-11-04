@@ -109,6 +109,10 @@ pub fn parse_i32(i: &[u8]) -> IResult<&[u8], i32> {
     parse_num(i)
 }
 
+pub fn parse_u32(i: &[u8]) -> IResult<&[u8], u32> {
+    parse_num(i)
+}
+
 pub fn parse_labelref(i: &[u8]) -> IResult<&[u8], String> {
     parse_ident(i)
 }
@@ -194,6 +198,12 @@ impl RadixNum<Self> for i16 {
 }
 
 impl RadixNum<Self> for i32 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for u32 {
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
         Self::from_str_radix(src, radix)
     }

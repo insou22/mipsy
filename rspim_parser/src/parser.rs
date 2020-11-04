@@ -42,7 +42,7 @@ pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], Item> {
             )),
             comment_multispace0,
         )),
-        |(_, directive, _)| directive 
+        |(_, item, _)| item 
     )(i)
 }
 

@@ -13,7 +13,8 @@ pub fn parse_label(i: &[u8]) -> IResult<&[u8], String> {
         remaining_data,
         (
             label,
-            ..
+            _,
+            _
         )
     ) = tuple((
             parse_ident,

@@ -8,6 +8,7 @@ use crate::{
         parse_i8,
         parse_i16,
         parse_i32,
+        parse_u32,
         parse_f32,
         parse_f64,
     }
@@ -31,7 +32,6 @@ use nom::{
         tag,
         escaped,
     },
-    number::complete::le_u32,
 };
 
 #[derive(Debug, Clone)]
@@ -206,7 +206,7 @@ fn parse_u32_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], 
         ) = tuple((
             tag(tag_str),
             comment_multispace0,
-            le_u32,
+            parse_u32,
         ))(i)?;
 
         Ok((remaining_data, num))
