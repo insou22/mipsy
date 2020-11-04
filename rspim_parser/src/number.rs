@@ -12,13 +12,17 @@ use nom::{
     },
     sequence::tuple,
     character::complete::{
-        char, digit1, hex_digit1, oct_digit1,
+        char,
+        digit1,
+        hex_digit1,
+        oct_digit1,
     },
     bytes::complete::{
         tag,
     },
     number::complete::{
-        float, double,
+        float,
+        double,
     },
 };
 
