@@ -63,8 +63,8 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
                     &inst.compile.format.iter()
                             .map(|arg| match arg {
                                 ArgumentType::Rd => format!("${}", Register::u32_to_str(rd)),
-                                ArgumentType::Rt => format!("${}", Register::u32_to_str(rs)),
-                                ArgumentType::Rs => format!("${}", Register::u32_to_str(rt)),
+                                ArgumentType::Rt => format!("${}", Register::u32_to_str(rt)),
+                                ArgumentType::Rs => format!("${}", Register::u32_to_str(rs)),
                                 ArgumentType::Shamt  => format!("{}", shamt),
                                 ArgumentType::Imm    => format!("{}", imm),
                                 ArgumentType::OffRs => format!("{}(${})", imm, Register::u32_to_str(rs)),

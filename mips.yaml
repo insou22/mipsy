@@ -921,7 +921,7 @@ pseudoinstructions:
       - inst: LUI
         data: [$Rs, $Imm32Hi]
       - inst: ORI
-        data: [$Rs, $Rs, $Imm32Lo]
+        data: [$Rs, $0, $Imm32Lo]
 
   - name: LA
     desc_short: Load the immediate address into $Rs
@@ -1089,9 +1089,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: LB
         data: [$Rt, ($At)]
 
@@ -1101,9 +1101,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LB
@@ -1115,9 +1115,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: LH
         data: [$Rt, ($At)]
 
@@ -1127,9 +1127,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LH
@@ -1141,9 +1141,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: LW
         data: [$Rt, ($At)]
 
@@ -1153,9 +1153,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LW
@@ -1167,9 +1167,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: LBU
         data: [$Rt, ($At)]
 
@@ -1179,9 +1179,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LBU
@@ -1193,9 +1193,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: LHU
         data: [$Rt, ($At)]
 
@@ -1205,9 +1205,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LHU
@@ -1219,9 +1219,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: SB
         data: [$Rt, ($At)]
 
@@ -1231,9 +1231,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SB
@@ -1245,9 +1245,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: SH
         data: [$Rt, ($At)]
 
@@ -1257,9 +1257,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SH
@@ -1271,9 +1271,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: SW
         data: [$Rt, ($At)]
 
@@ -1283,9 +1283,9 @@ pseudoinstructions:
       format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Imm32Hi]
+        data: [$At, $Off32Hi]
       - inst: ORI
-        data: [$At, $At, $Imm32Lo]
+        data: [$At, $At, $Off32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SW

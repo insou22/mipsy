@@ -313,7 +313,7 @@ impl ArgumentType {
                             }
                             MPImmediate::LabelReference(_) => {
                                 match self {
-                                    Self::Imm32 | Self::J => true,
+                                    Self::Imm32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                                     Self::Imm => relative_label,
                                     _ => false,
                                 }
@@ -530,6 +530,17 @@ impl PseudoSignature {
 
                             (off32lower, off32upper, reg)
                         }
+                        MPArgument::Number(MPNumber::Immediate(MPImmediate::LabelReference(label))) => {
+                            let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
+
+                            if self.compile.relative_label && (i == args.len() - 1) {
+                                let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                            }
+
+                            ((addr & 0xFFFF) as i16, (addr >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
+
+                        }
                         _ => unreachable!(),
                     };
 
@@ -575,6 +586,7 @@ impl PseudoSignature {
 
                     if !leftover.is_empty() {
                         // TODO: warning
+                        println!("Dodgy parse? leftover={}", String::from_utf8_lossy(leftover).to_string());
                     }
 
                     processed_args.push(arg);

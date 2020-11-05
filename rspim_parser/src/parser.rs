@@ -71,7 +71,15 @@ where
     T: AsRef<str>,
 {
     match parse_mips_bytes(input.as_ref().trim().as_bytes()) {
-        Ok((_, program)) => Ok(program),
+        Ok((rest, program)) => {
+            if rest.len() == 0 {
+                Ok(program)
+            } else {
+                println!("WARNING: file had parse leftovers:\n{}", String::from_utf8_lossy(rest).to_string());
+
+                Ok(program)
+            }
+        },
         Err(_) => Err("Failed to parse"),
     }
 }

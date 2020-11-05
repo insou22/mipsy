@@ -90,7 +90,7 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                 &format!(
                     "{}{}",
                     sign,
-                    String::from_utf8((digits as &[u8]).into()).unwrap()
+                    String::from_utf8_lossy(digits as &[u8]).to_string()
                 ),
                 base,
             )

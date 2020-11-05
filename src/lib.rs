@@ -31,7 +31,6 @@ pub fn inst_set() -> RSpimResult<InstSet> {
 pub fn compile(iset: &InstSet, program: &str) -> RSpimResult<Binary> {
     let parsed = rspim_parser::parse_mips(program)
             .map_err(|string| RSpimError::Compile(error::CompileError::Str(string)))?;
-    
     let compiled = compile::compile(&parsed, &iset)?;
 
     Ok(compiled)

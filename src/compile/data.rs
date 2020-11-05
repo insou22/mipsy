@@ -34,9 +34,8 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text {
                     match directive {
-                        MPDirective::Text => {}
-                        MPDirective::Data => {}
-                        _ => return cerr!(CompileError::Str("Directive in Text segment")),
+                        MPDirective::Text | MPDirective::Data => {}
+                        other => return cerr!(CompileError::String(format!("Directive in Text segment [Directive={:?}]", other))),
                     }
                 }
 

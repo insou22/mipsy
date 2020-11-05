@@ -8,6 +8,7 @@ use nom::{
     IResult,
     sequence::tuple,
     branch::alt,
+    combinator::opt,
     character::complete::{
         char,
         digit1,
@@ -60,7 +61,7 @@ pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
         )),
     ))(i)?;
 
-    let text = String::from_utf8(text.into()).unwrap();
+    let text = String::from_utf8_lossy(text).to_string();
 
     Ok((remaining_data, MPRegister::Normal(
         if let Ok(num) = text.parse::<u8>() {
@@ -83,7 +84,7 @@ pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
             ..,
         )
     ) = tuple((
-        parse_immediate,
+        opt(parse_immediate),
         space0,
         char('('),
         space0,
@@ -92,5 +93,11 @@ pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
         char(')'),
     ))(i)?;
 
-    Ok((remaining_data, MPRegister::Offset(imm, reg.get_identifier().clone())))
+    Ok((
+        remaining_data, 
+        MPRegister::Offset(
+            imm.unwrap_or(MPImmediate::I16(0)), 
+            reg.get_identifier().clone()
+        )
+    ))
 }

@@ -70,7 +70,7 @@ pub fn parse_ident(i: &[u8]) -> IResult<&[u8], String> {
     let mut ident = String::new();
     ident.push(chr1);
     if let Some(rem) = rem {
-        ident.push_str(std::str::from_utf8(rem).unwrap());
+        ident.push_str(&String::from_utf8_lossy(rem).to_string());
     }
 
     Ok((remaining_data, ident))

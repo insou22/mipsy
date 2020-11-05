@@ -21,7 +21,7 @@ use nom::{
         opt,
     },
     branch::alt,
-    multi::separated_list0,
+    multi::separated_list1,
     character::complete::{
         char,
         none_of,
@@ -82,7 +82,7 @@ fn parse_data(i: &[u8]) -> IResult<&[u8], MPDirective> {
         ..
     ) = tag(".data")(i)?;
 
-    Ok((remaining_data, MPDirective::Text))
+    Ok((remaining_data, MPDirective::Data))
 }
 
 fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], String> {
@@ -108,7 +108,7 @@ fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8]
             char('"'),
         ))(i)?;
 
-        let text = String::from_utf8(text.into()).unwrap();
+        let text = String::from_utf8_lossy(text).to_string();
 
         Ok((remaining_data, text))
     }
@@ -135,20 +135,24 @@ fn parse_num_type<T>(tag_str: &'static str, parser: fn(&[u8]) -> IResult<&[u8], 
             remaining_data,
             (
                 _,
+                _,
                 list,
             )
-        ): (&[u8], (_, Vec<T>)) 
+        ): (&[u8], (_, _, Vec<T>)) 
         = tuple((
             tag(tag_str),
-            separated_list0(
-                tuple((
-                    comment_multispace0,
-                    opt(
+            comment_multispace0,
+            separated_list1(
+                alt((
+                    map(
                         tuple((
+                            comment_multispace0,
                             char(','),
                             comment_multispace0,
-                        ))
+                        )),
+                        |_| ()
                     ),
+                    comment_multispace1,
                 )),
                 parser,
             ),
