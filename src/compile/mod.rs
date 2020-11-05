@@ -31,37 +31,21 @@ pub struct Binary {
     pub globals: Vec<String>,
 }
 
-struct Context {
-    binary: Binary,
-    segment: Segment,
-    unmapped_text_len: usize,
-}
-
-#[derive(PartialEq)]
-enum Segment {
-    Text,
-    Data,
-}
-
 pub fn compile(program: &MPProgram, iset: &InstSet) -> RSpimResult<Binary> {
     let warnings = check_program(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
     }
 
-    let context = Context {
-        binary: Binary {
-            text: vec![],
-            data: vec![],
-            labels: HashMap::new(),
-            globals: vec![],
-        },
-        segment: Segment::Text,
-        unmapped_text_len: 0,
+    let mut binary = Binary {
+        text: vec![],
+        data: vec![],
+        labels: HashMap::new(),
+        globals: vec![],
     };
 
-    populate_labels_and_data(&mut context, iset, program)?;
-    populate_text           (&mut context, iset, program)?;
+    populate_labels_and_data(&mut binary, iset, program)?;
+    populate_text           (&mut binary, iset, program)?;
 
-    Ok(context.binary)
+    Ok(binary)
 }

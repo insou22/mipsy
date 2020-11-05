@@ -72,7 +72,7 @@ pub fn parse_instruction(i: &[u8]) -> IResult<&[u8], MPInstruction> {
     Ok((remaining_data, MPInstruction { name, arguments }))
 }
 
-fn parse_argument(i: &[u8]) -> IResult<&[u8], MPArgument> {
+pub fn parse_argument(i: &[u8]) -> IResult<&[u8], MPArgument> {
     alt((
         parse_argument_reg,
         parse_argument_num,

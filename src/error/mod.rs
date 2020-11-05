@@ -11,10 +11,6 @@ pub enum RSpimError {
     Runtime(RuntimeError),
 }
 
-pub fn ok<T>(t: T) -> RSpimResult<T> {
-    Ok(t)
-}
-
 #[macro_export]
 macro_rules! cerr {
     ($err:expr) => {

@@ -67,19 +67,19 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
                                 ArgumentType::Rs => format!("${}", Register::u32_to_str(rt)),
                                 ArgumentType::Shamt  => format!("{}", shamt),
                                 ArgumentType::Imm    => format!("{}", imm),
-                                ArgumentType::AddrRs => format!("{}(${})", imm, Register::u32_to_str(rs)),
-                                ArgumentType::AddrRt => format!("{}(${})", imm, Register::u32_to_str(rt)),
+                                ArgumentType::OffRs => format!("{}(${})", imm, Register::u32_to_str(rs)),
+                                ArgumentType::OffRt => format!("{}(${})", imm, Register::u32_to_str(rt)),
                                 ArgumentType::J      => {
                                     let j_addr = (text_addr + 4) & 0xF000_0000 | addr << 2;
                                     let mut j_label = None;
-                                    for (label, label_addr) in program.labels {
+                                    for (label, &label_addr) in program.labels.iter() {
                                         if label_addr == j_addr {
                                             j_label = Some(label);
                                             break;
                                         }
                                     }
 
-                                    format!("{}", j_label.unwrap_or(format!("{:08x}", j_addr)));
+                                    format!("{}", j_label.cloned().unwrap_or(format!("{:08x}", j_addr)))
                                 }
                                 _ => unreachable!(),
                             })

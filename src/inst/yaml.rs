@@ -3,7 +3,7 @@ use crate::{
     error::CompileError,
     cerr,
 };
-use crate::yaml::parse::{
+use crate::yaml::{
     YamlFile,
     InstructionType,
 };
@@ -24,7 +24,7 @@ pub fn from_yaml(yaml: &YamlFile) -> RSpimResult<InstSet> {
         let native_inst = InstSignature {
             name: inst.name.to_ascii_lowercase(),
             compile: CompileSignature {
-                format: inst.compile.format,
+                format: inst.compile.format.clone(),
                 relative_label: inst.compile.relative_label,
             },
             runtime: match inst.runtime.inst_type {
@@ -65,7 +65,7 @@ pub fn from_yaml(yaml: &YamlFile) -> RSpimResult<InstSet> {
         let pseudo_inst = PseudoSignature {
             name: inst.name.to_ascii_lowercase(),
             compile: CompileSignature {
-                format: inst.compile.format,
+                format: inst.compile.format.clone(),
                 relative_label: inst.compile.relative_label,
             },
             expand: inst.expand.iter()

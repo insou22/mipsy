@@ -360,7 +360,7 @@ instructions:
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x20
@@ -368,7 +368,7 @@ instructions:
   - name: LH
     desc_short: Load two bytes at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x21
@@ -376,7 +376,7 @@ instructions:
   - name: LW
     desc_short: Load four bytes at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x23
@@ -384,7 +384,7 @@ instructions:
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt, don't sign extend
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x24
@@ -392,7 +392,7 @@ instructions:
   - name: LHU
     desc_short: Load two bytes at the immediate address + $Rs into $Rt, don't sign extend
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x25
@@ -400,7 +400,7 @@ instructions:
   - name: SB
     desc_short: Store one byte from $Rt into the immediate address + $Rs
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x28
@@ -408,7 +408,7 @@ instructions:
   - name: SH
     desc_short: Store two bytes from $Rt into the immediate address + $Rs
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x29
@@ -416,7 +416,7 @@ instructions:
   - name: SW
     desc_short: Store four bytes from $Rt into the immediate address + $Rs
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x2B
@@ -424,7 +424,7 @@ instructions:
   - name: LWC1
     desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register) 
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x31
@@ -432,7 +432,7 @@ instructions:
   - name: SWC1
     desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs 
     compile:
-      format: [Rt, AddrRs]
+      format: [Rt, OffRs]
     runtime:
       type: I
       opcode: 0x39
@@ -462,7 +462,7 @@ pseudoinstructions:
       format: []
     expand:
       - inst: SLL
-        data: [0, 0, 0]
+        data: [$0, $0, $0]
 
   - name: MOVE
     desc_short: Copy the value from $Rs into $Rd
@@ -470,7 +470,7 @@ pseudoinstructions:
       format: [Rd, Rs]
     expand:
       - inst: ADDU
-        data: [$Rd, 0, $Rs]
+        data: [$Rd, $0, $Rs]
 
   - name: B
     desc_short: Branch unconditionally
@@ -479,7 +479,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: BGEZ
-        data: [0, $Im]
+        data: [$0, $Imm]
 
   - name: BEQ
     desc_short: Branch if $Rs == Im1
@@ -488,9 +488,9 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: BEQ
-        data: [$Rs, $At, $Im2]
+        data: [$Rs, $At, $Imm2]
 
   - name: BEQ
     desc_short: Branch if $Rs == Im1
@@ -499,11 +499,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: BEQ
-        data: [$Rs, $At, $Im]
+        data: [$Rs, $At, $Imm]
 
   - name: BNE
     desc_short: Branch if $Rs != Im1
@@ -512,9 +512,9 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: BNE
-        data: [$Rs, $At, $Im2]
+        data: [$Rs, $At, $Imm2]
 
   - name: BNE
     desc_short: Branch if $Rs != Im1
@@ -523,11 +523,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: BNE
-        data: [$Rs, $At, $Im]
+        data: [$Rs, $At, $Imm]
 
   - name: BEQZ
     desc_short: Branch if $Rs > 0
@@ -536,7 +536,7 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: BEQ
-        data: [$Rs, 0, $Im]
+        data: [$Rs, $0, $Imm]
 
   - name: BGE
     desc_short: Branch if $Rs >= $Rt
@@ -547,7 +547,7 @@ pseudoinstructions:
       - inst: SLT
         data: [$At, $Rs, $Rt]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGE
     desc_short: Branch if $Rs >= Im1
@@ -556,11 +556,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BEQ
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BGE
     desc_short: Branch if $Rs >= Im1
@@ -569,13 +569,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGEU
     desc_short: Branch if $Rs >= $Rt unsigned
@@ -586,7 +586,7 @@ pseudoinstructions:
       - inst: SLTU
         data: [$At, $Rs, $Rt]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGEU
     desc_short: Branch if $Rs >= Im1
@@ -595,13 +595,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLTU
         data: [$At, $Rs, $At]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLT
     desc_short: Branch if $Rs < $Rt
@@ -612,7 +612,7 @@ pseudoinstructions:
       - inst: SLT
         data: [$At, $Rs, $Rt]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLT
     desc_short: Branch if $Rs < Im1
@@ -621,11 +621,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BNE
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BLT
     desc_short: Branch if $Rs < Im1
@@ -634,13 +634,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLT
         data: [$At, $Rs, $At]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLTU
     desc_short: Branch if $Rs < $Rt unsigned
@@ -651,7 +651,7 @@ pseudoinstructions:
       - inst: SLTU
         data: [$At, $Rs, $Rt]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLTU
     desc_short: Branch if $Rs < Im1 unsigned
@@ -660,11 +660,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLTU
         data: [$At, $Rs, $At]
       - inst: BNE
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BLTU
     desc_short: Branch if $Rs < Im1 unsigned
@@ -673,13 +673,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLTU
         data: [$At, $Rs, $At]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLE
     desc_short: Branch if $Rs <= $Rt
@@ -690,7 +690,7 @@ pseudoinstructions:
       - inst: SLT
         data: [$At, $Rt, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLE
     desc_short: Branch if $Rs <= Im1
@@ -699,11 +699,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BLE
     desc_short: Branch if $Rs <= Im1
@@ -712,13 +712,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLEU
     desc_short: Branch if $Rs <= $Rt
@@ -729,7 +729,7 @@ pseudoinstructions:
       - inst: SLTU
         data: [$At, $Rt, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BLEU
     desc_short: Branch if $Rs <= Im1
@@ -738,11 +738,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BLEU
     desc_short: Branch if $Rs <= Im1
@@ -751,13 +751,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BEQ
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGT
     desc_short: Branch if $Rs > $Rt
@@ -768,7 +768,7 @@ pseudoinstructions:
       - inst: SLT
         data: [$At, $Rt, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGT
     desc_short: Branch if $Rs > Im1
@@ -777,11 +777,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BGT
     desc_short: Branch if $Rs > Im1
@@ -790,13 +790,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLT
         data: [$At, $At, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGTU
     desc_short: Branch if $Rs > $Rt unsigned
@@ -807,7 +807,7 @@ pseudoinstructions:
       - inst: SLTU
         data: [$At, $Rt, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: BGTU
     desc_short: Branch if $Rs > Im1 unsigned
@@ -816,11 +816,11 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: ORI
-        data: [$At, 0, $Im1]
+        data: [$At, $0, $Imm1]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im2]
+        data: [$At, $0, $Imm2]
 
   - name: BGTU
     desc_short: Branch if $Rs > Im1 unsigned
@@ -829,13 +829,13 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SLTU
         data: [$At, $At, $Rs]
       - inst: BNE
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
 
   - name: NEG
     desc_short: Flip all the bits in $Rs, store result in $Rd
@@ -843,7 +843,7 @@ pseudoinstructions:
       format: [Rd, Rs]
     expand:
       - inst: SUB
-        data: [$Rd, 0, $Rs]
+        data: [$Rd, $0, $Rs]
 
   - name: NOT
     desc_short: $Rd = ! $Rs
@@ -851,7 +851,7 @@ pseudoinstructions:
       format: [Rd, Rs]
     expand:
       - inst: NOR
-        data: [$Rd, 0, $Rs]
+        data: [$Rd, $0, $Rs]
 
   - name: MUL
     desc_short: todo!()
@@ -869,7 +869,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: MULT
         data: [$Rt, $At]
       - inst: MFLO
@@ -891,7 +891,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: DIV
         data: [$Rt, $At]
       - inst: MFLO
@@ -903,7 +903,7 @@ pseudoinstructions:
       format: [Rs, Imm]
     expand:
       - inst: ORI
-        data: [$Rs, 0, $Im]
+        data: [$Rs, $0, $Imm]
 
   - name: LA
     desc_short: Load the immediate address into $Rs
@@ -911,7 +911,7 @@ pseudoinstructions:
       format: [Rs, Imm]
     expand:
       - inst: ORI
-        data: [$Rs, 0, $Im]
+        data: [$Rs, $0, $Imm]
 
   - name: LI
     desc_short: Load the immediate value into $Rs
@@ -919,9 +919,9 @@ pseudoinstructions:
       format: [Rs, Imm32]
     expand:
       - inst: LUI
-        data: [$Rs, $Wdu]
+        data: [$Rs, $Imm32Hi]
       - inst: ORI
-        data: [$Rs, $Rs, $Wdl]
+        data: [$Rs, $Rs, $Imm32Lo]
 
   - name: LA
     desc_short: Load the immediate address into $Rs
@@ -929,9 +929,9 @@ pseudoinstructions:
       format: [Rs, Imm32]
     expand:
       - inst: LUI
-        data: [$Rs, $Wdu]
+        data: [$Rs, $Imm32Hi]
       - inst: ORI
-        data: [$Rs, $Rs, $Wdl]
+        data: [$Rs, $Rs, $Imm32Lo]
 
   - name: ADD
     desc_short: todo!()
@@ -939,7 +939,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ADDI
-        data: [$Rs, $Rt, $Im]
+        data: [$Rs, $Rt, $Imm]
 
   - name: ADDU
     desc_short: todo!()
@@ -947,7 +947,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ADDIU
-        data: [$Rs, $Rt, $Im]
+        data: [$Rs, $Rt, $Imm]
 
   - name: ADDIU
     desc_short: todo!()
@@ -955,7 +955,7 @@ pseudoinstructions:
       format: [Rs, Imm]
     expand:
       - inst: ADDIU
-        data: [$Rs, $Rs, $Im]
+        data: [$Rs, $Rs, $Imm]
 
   - name: SUB
     desc_short: todo!()
@@ -963,7 +963,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: SUB
         data: [$Rs, $Rt, $At]
 
@@ -973,7 +973,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: SUBU
         data: [$Rs, $Rt, $At]
 
@@ -983,7 +983,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: AND
         data: [$Rs, $Rt, $At]
 
@@ -993,11 +993,11 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: ORI
-        data: [$Rd, 0, 0]
+        data: [$Rd, $0, 0]
       - inst: BNE
         data: [$Rs, $Rt, 2]
       - inst: ORI
-        data: [$Rd, 0, 1]
+        data: [$Rd, $0, 1]
 
   - name: SEQ
     desc_short: todo!()
@@ -1005,13 +1005,13 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$Rs, 0, 0]
+        data: [$Rs, $0, 0]
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: BNE
         data: [$Rt, $At, 2]
       - inst: ORI
-        data: [$Rs, 0, 1]
+        data: [$Rs, $0, 1]
 
   - name: SNE
     desc_short: todo!()
@@ -1019,11 +1019,11 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: ORI
-        data: [$Rd, 0, 0]
+        data: [$Rd, $0, 0]
       - inst: BEQ
         data: [$Rs, $Rt, 2]
       - inst: ORI
-        data: [$Rd, 0, 1]
+        data: [$Rd, $0, 1]
 
   - name: SNE
     desc_short: todo!()
@@ -1031,13 +1031,13 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$Rs, 0, 0]
+        data: [$Rs, $0, 0]
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: BEQ
         data: [$Rt, $At, 2]
       - inst: ORI
-        data: [$Rs, 0, 1]
+        data: [$Rs, $0, 1]
 
   - name: SGE
     desc_short: todo!()
@@ -1057,7 +1057,7 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: SLTI
         data: [$Rs, $At, $Rt]
       - inst: SUBU
@@ -1079,214 +1079,214 @@ pseudoinstructions:
       format: [Rs, Rt, Imm]
     expand:
       - inst: ORI
-        data: [$At, 0, $Im]
+        data: [$At, $0, $Imm]
       - inst: SLT
         data: [$Rs, $At, $Rt]
 
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: LB
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LB
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LB
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LH
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: LH
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LH
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LH
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LW
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: LW
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LW
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LW
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: LBU
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LBU
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LHU
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: LHU
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: LHU
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: LHU
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SB
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SB
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SB
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SB
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SH
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SH
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SH
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SH
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SW
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: SW
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]
 
   - name: SW
     desc_short: todo!()
     compile:
-      format: [Rt, Addr32Rs]
+      format: [Rt, Off32Rs]
     expand:
       - inst: LUI
-        data: [$At, $Wdu]
+        data: [$At, $Imm32Hi]
       - inst: ORI
-        data: [$At, $At, $Wdl]
+        data: [$At, $At, $Imm32Lo]
       - inst: ADDU
         data: [$At, $At, $Rs]
       - inst: SW
-        data: [$Rt, 0, $At]
+        data: [$Rt, ($At)]

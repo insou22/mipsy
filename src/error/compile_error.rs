@@ -1,7 +1,5 @@
 use crate::inst::instruction::GenericSignature;
 
-pub type CompileResult<T> = Result<T, CompileError>;
-
 #[derive(Debug)]
 pub enum CompileError {
     Unknown,
