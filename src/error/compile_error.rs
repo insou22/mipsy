@@ -1,10 +1,4 @@
 use crate::inst::instruction::GenericSignature;
-use crate::inst::instruction::InstFormat;
-use crate::inst::instruction::SimpleArgType;
-use crate::compile::context::Token;
-use crate::compile::context::Segment;
-
-pub type CompileResult<T> = Result<T, CompileError>;
 
 #[derive(Debug)]
 pub enum CompileError {
@@ -20,13 +14,13 @@ pub enum CompileError {
 
     LexExpectedChar(char),
 
-    CompilerAsciiExpectedString { line: usize, got_instead: Token  },
-    CompilerAlignExpectedNum    { line: usize, got_instead: Token  },
-    CompilerAlignExpectedPos    { line: usize, got_instead: i32    },
-    CompilerSpaceExpectedNum    { line: usize, got_instead: Token  },
-    CompilerSpaceExpectedPos    { line: usize, got_instead: i32    },
-    CompilerUnknownDirective    { line: usize, got_instead: String },
-    CompilerIncorrectSegment    { line: usize, current_segment: Segment, needed_segment: Segment },
+    // CompilerAsciiExpectedString { line: usize, got_instead: Token  },
+    // CompilerAlignExpectedNum    { line: usize, got_instead: Token  },
+    // CompilerAlignExpectedPos    { line: usize, got_instead: i32    },
+    // CompilerSpaceExpectedNum    { line: usize, got_instead: Token  },
+    // CompilerSpaceExpectedPos    { line: usize, got_instead: i32    },
+    // CompilerUnknownDirective    { line: usize, got_instead: String },
+    // CompilerIncorrectSegment    { line: usize, current_segment: Segment, needed_segment: Segment },
     
 
     RegisterNameTooShort(String),
@@ -36,8 +30,8 @@ pub enum CompileError {
 
     UnknownInstruction(String),
     InstructionBadFormat(String),
-    UnknownInstructionExact { name: String, format: InstFormat },
-    UnknownInstructionSAT { name: String, format: Vec<SimpleArgType> },
+    // UnknownInstructionExact { name: String, format: InstFormat },
+    // UnknownInstructionSAT { name: String, format: Vec<SimpleArgType> },
     MultipleMatchingInstructions(Vec<GenericSignature>), // (name, format)
 
     MissingComma,

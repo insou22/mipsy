@@ -10,4 +10,11 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see mips.yaml
-strsim = "0.10.0"   # for error-reporting - string similarity
+strsim = "0.10"                                     # for error-reporting - string similarity
+rspim_parser = { version = "0.1", path = "./rspim_parser" }
+
+[workspace]
+members = [
+    "rspim",
+    "rspim_parser",
+]

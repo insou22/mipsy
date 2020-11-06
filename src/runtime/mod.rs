@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use crate::compile::context::Program;
-use crate::compile::compiler::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
+use crate::Binary;
+use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
 use crate::error::RSpimResult;
 use crate::error::RuntimeError;
 use crate::rerr;
@@ -154,7 +154,7 @@ where T: Clone {
 }
 
 impl Runtime {
-    pub fn new(program: &Program) -> Self {
+    pub fn new(program: &Binary) -> Self {
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
@@ -240,8 +240,6 @@ impl Runtime {
         let funct  =  inst & 0x3F;
         let imm    = (inst & 0xFFFF) as i16;
         let addr   =  inst & 0x3FFFFFF;
-
-        // println!("Executing inst: 0x{:08x}\n", inst);
 
         match opcode {
             0 => {
@@ -336,7 +334,7 @@ impl Runtime {
             0x07 => { state.write_reg(rd, state.get_reg(rt)? >> state.get_reg(rs)?); },
 
             // JR   $Rs
-            0x08 => { state.pc = state.get_reg(rs)? as u32 },
+            0x08 => { state.pc = state.get_reg(rs)? as u32; },
 
             // JALR $Rs
             0x09 => { 
@@ -657,7 +655,7 @@ impl Runtime {
         match opcode {
             // J    addr
             0x02 => { 
-                state.pc = (state.pc & 0xF000_0000) | (target << 2); 
+                state.pc = (state.pc & 0xF000_0000) | (target << 2);
             },
 
             // JAL  addr

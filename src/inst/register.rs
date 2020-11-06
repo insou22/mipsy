@@ -132,6 +132,10 @@ impl Register {
         Self::from_number(num as i32)
     }
 
+    pub fn to_u32(&self) -> u32 {
+        self.to_number() as u32
+    }
+
     pub fn u32_to_str(num: u32) -> &'static str {
         Self::from_u32(num).unwrap().to_str()
     }

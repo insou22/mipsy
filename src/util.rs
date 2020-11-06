@@ -4,6 +4,12 @@ pub enum Safe<T> {
     Uninitialised,
 }
 
+impl<T> Safe<T> {
+    pub fn valid(value: T) -> Self {
+        Safe::Valid(value)
+    }
+}
+
 impl<T> Default for Safe<T> {
     fn default() -> Self {
         Self::Uninitialised
