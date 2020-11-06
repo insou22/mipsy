@@ -7,8 +7,6 @@ use clap::Clap;
 struct Opts {
     #[clap(long, short, about("Verbose output"))]
     verbose: bool,
-    #[clap(long("spim-compare"), about("Print exceptions line for diff to SPIM"))]
-    spim_compare: bool,
     #[clap(long, about("Step-by-step execution"))]
     step: bool,
     file: Option<String>,
@@ -23,7 +21,6 @@ macro_rules! vprintln {
 }
 
 
-
 fn main() -> RSpimResult<()> {
     let opts: Opts = Opts::parse();
 
@@ -32,10 +29,6 @@ fn main() -> RSpimResult<()> {
     }
 
     let file_contents = std::fs::read_to_string(&opts.file.as_ref().unwrap()).expect("Could not read file {}");
-
-    if opts.spim_compare {
-        println!("Loaded: /home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s")
-    }
 
     let iset       = rspim_lib::inst_set()?;
     let binary     = rspim_lib::compile(&iset, &file_contents)?;
