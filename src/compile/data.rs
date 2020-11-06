@@ -133,6 +133,6 @@ fn insert_data<T: ToBytes>(binary: &mut Binary, values: &[T]) {
 
 fn insert_safe_data(binary: &mut Binary, values: &[Safe<u8>]) {
     binary.data.append(
-        &mut values.iter().cloned().collect()
+        &mut values.to_vec()
     );
 }

@@ -79,7 +79,7 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
                                         }
                                     }
 
-                                    format!("{}", j_label.cloned().unwrap_or(format!("{:08x}", j_addr)))
+                                    j_label.cloned().unwrap_or(format!("{:08x}", j_addr))
                                 }
                                 _ => unreachable!(),
                             })

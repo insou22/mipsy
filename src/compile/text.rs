@@ -11,7 +11,7 @@ use rspim_parser::{
 };
 
 pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> RSpimResult<usize> {
-    if let Some(_) = iset.find_native(inst) {
+    if iset.find_native(inst).is_some() {
         Ok(1)
     } else if let Some(pseudo) = iset.find_pseudo(inst) {
         Ok(pseudo.expand.len())

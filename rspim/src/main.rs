@@ -52,6 +52,4 @@ fn main() -> RSpimResult<()> {
             stdin().read(&mut [0]).unwrap();
         }
     }
-
-    Ok(())
 }

@@ -159,11 +159,11 @@ impl Register {
         }
 
         // better error reporting
-        if name.starts_with("v") || name.starts_with("a") || 
-           name.starts_with("t") || name.starts_with("s") || 
-           name.starts_with("k") {
+        if name.starts_with('v') || name.starts_with('a') || 
+           name.starts_with('t') || name.starts_with('s') || 
+           name.starts_with('k') {
             if let Ok(num) = name[1..].parse::<i32>() {
-                return cerr!(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().nth(0).unwrap(), reg_index: num });
+                return cerr!(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
             }
         }
 

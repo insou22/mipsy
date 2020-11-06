@@ -1,29 +1,40 @@
 use std::iter::FromIterator;
 
-use crate::{misc::{
+use crate::{
+    misc::{
         parse_ident,
+        parse_escaped_char,
         comment_multispace0,
         comment_multispace1,
-    }, number::{
+    },
+    number::{
         parse_i8,
         parse_i16,
         parse_i32,
         parse_u32,
         parse_f32,
         parse_f64,
-    }, misc::parse_escaped_char};
-use nom::{IResult, branch::alt, bytes::complete::{
+    },
+};
+use nom::{
+    IResult,
+    branch::alt,
+    sequence::tuple,
+    bytes::complete::{
         tag,
-        escaped,
-    }, character::complete::{
+    },
+    character::complete::{
         char,
-        none_of,
-        one_of,
         space0,
-    }, combinator::{
+    },
+    combinator::{
         map,
-        opt,
-    }, multi::{many0, many_till, separated_list1}, sequence::tuple};
+    },
+    multi::{
+        many_till,
+        separated_list1
+    },
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MPDirective {
@@ -237,6 +248,7 @@ fn parse_globl(i: &[u8]) -> IResult<&[u8], MPDirective> {
     Ok((remaining_data, MPDirective::Globl(ident)))
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
     #[test]

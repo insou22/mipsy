@@ -200,8 +200,8 @@ impl InstSignature {
                     },
                     ArgumentType::OffRs | ArgumentType::OffRt => match arg {
                         MPArgument::Register(reg) => match reg {
-                            MPRegister::Offset(imm, reg) => match imm {
-                                &MPImmediate::I16(imm) => {
+                            MPRegister::Offset(imm, reg) => match *imm {
+                                MPImmediate::I16(imm) => {
                                     let register = reg.to_register()?.to_u32();
                                     let imm = imm as u16 as u32;
 
@@ -250,15 +250,12 @@ impl CompileSignature {
             return false;
         }
 
-        let mut i = 0;
-        for (my_arg, &their_arg) in self.format.iter().zip(args.iter()) {
+        for (i, (my_arg, &their_arg)) in self.format.iter().zip(args.iter()).enumerate() {
             // labels are only relative as the final argument
             let relative_label = (i == args.len() - 1) && self.relative_label;
             if !my_arg.matches(their_arg, relative_label) {
                 return false;
             }
-
-            i += 1;
         }
 
         true
@@ -584,7 +581,7 @@ impl PseudoSignature {
             for data in data.iter() {
                 let data = &data.to_ascii_lowercase();
 
-                if data.starts_with("$") && Register::from_str(&data[1..]).is_err() {
+                if data.starts_with('$') && Register::from_str(&data[1..]).is_err() {
                     // assume pseudoinstructions are sane
                     let arg = variables.get(&data[1..]).unwrap();
 

@@ -142,16 +142,6 @@ impl fmt::LowerHex for Safe<i32> {
     }
 }
 
-impl<T> Safe<T> {
-    #[allow(dead_code)]
-    fn as_option(self) -> Option<T> {
-        match self {
-            Self::Valid(t) => Some(t),
-            Self::Uninitialised => None,
-        }
-    }
-}
-
 impl<T> Clone for Safe<T>
 where T: Clone {
     fn clone(&self) -> Self {
@@ -803,7 +793,7 @@ impl State {
     }
 
     fn get_word(&self, address: u32) -> RSpimResult<u32> {
-        let b1 = self.get_byte(address + 0)? as u32;
+        let b1 = self.get_byte(address)?     as u32;
         let b2 = self.get_byte(address + 1)? as u32;
         let b3 = self.get_byte(address + 2)? as u32;
         let b4 = self.get_byte(address + 3)? as u32;
@@ -814,7 +804,7 @@ impl State {
     }
 
     fn get_half(&self, address: u32) -> RSpimResult<u16> {
-        let b1 = self.get_byte(address + 0)? as u16;
+        let b1 = self.get_byte(address)?     as u16;
         let b2 = self.get_byte(address + 1)? as u16;
 
         Ok(b1 | (b2 << 8))
@@ -839,7 +829,7 @@ impl State {
         // println!("Writing word 0x{:08x} to address [0x{:08x}] (page={}, offset={})", word, address, Self::get_page_index(address), offset);
 
         // Little endian
-        page[offset as usize + 0] = Safe::Valid((word & 0x000000FF) as u8);
+        page[offset as usize]     = Safe::Valid((word & 0x000000FF) as u8);
         page[offset as usize + 1] = Safe::Valid(((word & 0x0000FF00) >> 8) as u8);
         page[offset as usize + 2] = Safe::Valid(((word & 0x00FF0000) >> 16) as u8);
         page[offset as usize + 3] = Safe::Valid(((word & 0xFF000000) >> 24) as u8);
@@ -850,7 +840,7 @@ impl State {
         let offset = Self::offset_in_page(address);
 
         // Little endian
-        page[offset as usize + 0] = Safe::Valid((half & 0x00FF) as u8);
+        page[offset as usize]     = Safe::Valid((half & 0x00FF) as u8);
         page[offset as usize + 1] = Safe::Valid(((half & 0xFF00) >> 8) as u8);
     }
 
@@ -865,7 +855,7 @@ impl State {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
-        page[offset as usize + 0] = Safe::Uninitialised;
+        page[offset as usize]     = Safe::Uninitialised;
         page[offset as usize + 1] = Safe::Uninitialised;
         page[offset as usize + 2] = Safe::Uninitialised;
         page[offset as usize + 3] = Safe::Uninitialised;
@@ -876,7 +866,7 @@ impl State {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
-        page[offset as usize + 0] = Safe::Uninitialised;
+        page[offset as usize]     = Safe::Uninitialised;
         page[offset as usize + 1] = Safe::Uninitialised;
     }
 
@@ -889,12 +879,11 @@ impl State {
 
     fn get_page_or_create(&'_ mut self, address: u32) -> &'_ mut Box<[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
-        let page = self.pages.entry(base_addr).or_insert(Box::new([Default::default(); PAGE_SIZE as usize]));
-
-        page
+        
+        self.pages.entry(base_addr).or_insert_with(|| Box::new([Default::default(); PAGE_SIZE as usize]))
     }
 
-    fn get_page(&'_ self, address: u32) -> RSpimResult<&'_ Box<[Safe<u8>]>> {
+    fn get_page(&'_ self, address: u32) -> RSpimResult<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get(&base_addr);
 

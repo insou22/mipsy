@@ -1,7 +1,7 @@
 use crate::inst::instruction::ArgumentType;
 use serde::{Deserialize, Serialize};
 
-static CONFIG_FILE: &'static str = include_str!("../../mips.yaml");
+static CONFIG_FILE: &str = include_str!("../../mips.yaml");
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct YamlFile {
