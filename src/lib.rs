@@ -3,7 +3,7 @@ pub(crate) mod inst;
 pub(crate) mod yaml;
 pub(crate) mod util;
 pub(crate) mod compile;
-pub(crate) mod decompile;
+pub        mod decompile;
 pub(crate) mod runtime;
 
 pub(crate) use compile::{

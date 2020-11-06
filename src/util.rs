@@ -10,6 +10,16 @@ impl<T> Safe<T> {
     }
 }
 
+impl<T> Clone for Safe<T>
+where T: Clone {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Valid(t) => Self::Valid(t.clone()),
+            Self::Uninitialised => Self::Uninitialised,
+        }
+    }
+}
+
 impl<T> Default for Safe<T> {
     fn default() -> Self {
         Self::Uninitialised

@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 rspim_lib = { version = "0.1.0", path = "../" }
 clap = "3.0.0-beta.2"
+rustyline = "6.3.0"
+rustyline-derive = "0.3.1"
+colored = "2"
+shlex = "0.1.0" # 0.1.1 is latest, but I don't want # comments

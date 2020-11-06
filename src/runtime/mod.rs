@@ -1,3 +1,7 @@
+mod display;
+mod kern;
+
+use kern::get_kern_instns;
 use std::collections::HashMap;
 use crate::Binary;
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
@@ -6,26 +10,8 @@ use crate::error::RuntimeError;
 use crate::rerr;
 use crate::inst::register::Register;
 use crate::util::Safe;
-use std::fmt::{self, Display};
 
 const PAGE_SIZE: u32 = 4096;
-
-const fn get_kern_instns(entry_point: u32) -> [u32; 7] {
-    let ep_upper = entry_point >> 16;
-    let ep_lower = entry_point & 0xFFFF;
-    
-    let lui = 0x3c1a0000 | ep_upper;
-    let ori = 0x375a0000 | ep_lower;
-    [
-        lui,        // la      $k0, main
-        ori,        // .................
-        0x34020000, // li      $v0, 0
-        0x03400009, // jalr    $k0
-        0x00022021, // move    $a0, $v0
-        0x34020011, // li      $v0, 17
-        0x0000000c, // syscall
-    ]
-}
 
 #[allow(dead_code)]
 pub struct Runtime {
@@ -42,114 +28,6 @@ pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
     registers: [Safe<i32>; 32],
     hi: Safe<i32>,
     lo: Safe<i32>,
-}
-
-impl Display for State {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
-        fmt.write_str("State {\n")?;
-        fmt.write_str("    pages: {\n")?; // WIP
-        
-        let mut sorted: Vec<(&u32, &Box<[Safe<u8>]>)> = self.pages.iter().collect();
-        sorted.sort_by(|a, b| a.0.cmp(b.0));
-
-        let mut first = true;
-        for (base_addr, page) in sorted {
-            if first {
-                first = false;
-            } else {
-                fmt.write_str("\n")?;
-            }
-
-            for x in 0..(4096/16) {
-                let mut any_init = false;
-                for y in 0..16 {
-                    if matches!(page[x * 16 + y], Safe::Valid(_)) {
-                        any_init = true;
-                        break;
-                    }
-                }
-
-                if any_init {
-                    fmt.write_str(&format!("        0x{:08x}: [", base_addr + x as u32 * 16))?;
-                    for y in 0..16 {
-                        if y != 0 && y % 4 == 0 {
-                            fmt.write_str("  ")?;
-                        }
-
-                        match page[x * 16 + y] {
-                            Safe::Valid(b) => fmt.write_str(&format!("{:02x}", b))?,
-                            Safe::Uninitialised => fmt.write_str("__")?,
-                        }
-
-                        if y != 15 {
-                            fmt.write_str(", ")?;
-                        }
-                    }
-                    fmt.write_str("]\n")?;
-                }
-            }
-        }
-
-        fmt.write_str("    },\n")?;
-        fmt.write_str("    pc: ")?;
-        fmt.write_str(&format!("0x{:08x}", self.pc))?;
-        fmt.write_str(",\n")?;
-        fmt.write_str("    registers: {\n")?;
-        
-        for (reg, &value) in self.registers.iter().enumerate() {
-            match value {
-                Safe::Valid(value) => {
-                    fmt.write_str(&format!("        ${}: 0x{:08x}\n", Register::from_number(reg as i32).unwrap().to_str().to_ascii_lowercase(), value))?;
-                },
-                Safe::Uninitialised => {}
-            }
-        }
-        
-        fmt.write_str("    },\n")?;
-        fmt.write_str("    hi: ")?;
-        Display::fmt(&self.hi, fmt)?;
-        fmt.write_str(",\n")?;
-        fmt.write_str("    lo: ")?;
-        Display::fmt(&self.lo, fmt)?;
-        fmt.write_str(",\n")?;
-
-        fmt.write_str("}\n")?;
-
-        Ok(())
-    }
-}
-
-impl<T> Display for Safe<T>
-where T: Display {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
-        match self {
-            Self::Valid(t) => t.fmt(fmt)?,
-            Self::Uninitialised => fmt.write_str("Uninitialised")?,
-        }
-
-        Ok(())
-    }
-}
-
-impl fmt::LowerHex for Safe<i32> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> { 
-        match self {
-            Self::Valid(t) => fmt.write_str(&format!("0x{:08x}", t))?,
-            Self::Uninitialised => fmt.write_str("Uninitialised")?,
-        }
-
-        Ok(())
-    }
-}
-
-impl<T> Clone for Safe<T>
-where T: Clone {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Valid(t) => Self::Valid(t.clone()),
-            Self::Uninitialised => Self::Uninitialised,
-        }
-    }
 }
 
 impl Runtime {
@@ -202,6 +80,12 @@ impl Runtime {
         Ok(runtime)
     }
 
+    pub fn next_inst(&self) -> RSpimResult<u32> {
+        let state = self.state();
+
+        self.state().get_word(state.pc)
+    }
+
     pub fn step(&mut self) -> RSpimResult<()> {
         self.timeline.push(self.timeline.last().unwrap().clone());
         self.current_state += 1;
@@ -214,6 +98,15 @@ impl Runtime {
         self.execute(inst)?;
 
         Ok(())
+    }
+
+    pub fn back(&mut self) -> bool {
+        if self.timeline_len() < 2 {
+            return false;
+        }
+
+        self.timeline.remove(self.timeline_len() - 1);
+        true
     }
 
     pub fn timeline_len(&self) -> usize {
@@ -265,8 +158,6 @@ impl Runtime {
     fn syscall(&mut self) -> RSpimResult<()> {
         let state = self.state_mut();
 
-        // println!("SYSCALL {}", state.get_reg(Register::V0.to_number() as u32)?);
-
         match state.get_reg(Register::V0.to_number() as u32)? {
             1 => { print!("{}", state.get_reg(Register::A0.to_number() as u32)?); },
             2 => {},
@@ -301,7 +192,7 @@ impl Runtime {
             _ => {},
         }
 
-        std::io::Write::flush(&mut std::io::stdout()).expect("Couldnt flush stdout??");
+        std::io::Write::flush(&mut std::io::stdout()).expect("Error: Couldn't flush stdout?");
         
         Ok(())
     }
@@ -672,6 +563,10 @@ impl Runtime {
 }
 
 impl State {
+    pub fn get_pc(&self) -> u32 {
+        self.pc
+    }
+
     fn branch(&mut self, imm: i16) {
         // println!("Branching with imm = {} --  pc 0x{:08x} ==> 0x{:08x}", imm, self.pc, self.pc.wrapping_add(((imm as i32 - 1) * 4) as u32));
         self.pc = self.pc.wrapping_add(((imm as i32 - 1) * 4) as u32);
@@ -825,8 +720,6 @@ impl State {
     fn write_word(&mut self, address: u32, word: u32) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
-
-        // println!("Writing word 0x{:08x} to address [0x{:08x}] (page={}, offset={})", word, address, Self::get_page_index(address), offset);
 
         // Little endian
         page[offset as usize]     = Safe::Valid((word & 0x000000FF) as u8);
