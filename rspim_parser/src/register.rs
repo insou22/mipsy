@@ -17,13 +17,13 @@ use nom::{
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPRegister {
     Normal(MPRegisterIdentifier),
     Offset(MPImmediate, MPRegisterIdentifier),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPRegisterIdentifier {
     Numbered(u8),
     Named(String),

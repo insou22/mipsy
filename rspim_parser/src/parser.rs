@@ -19,12 +19,12 @@ use nom::{
 };
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MPProgram {
-    items: Vec<MPItem>,
+    pub(crate) items: Vec<MPItem>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPItem {
     Instruction(MPInstruction),
     Directive(MPDirective),
@@ -87,34 +87,136 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::MPItem::*;
+    use crate::MPArgument::*;
+    use crate::MPRegister::*;
+    use crate::MPRegisterIdentifier::*;
+    use crate::MPNumber::*;
+    use crate::MPImmediate::*;
 
     #[test]
     fn add_s() {
-        println!("{:#?}", parse_mips("
+        assert_eq!(
+            parse_mips("
+                # add 17 and 25  and print result
 
-        # add 17 and 25  and print result
+                main:                    #  x, y, z in $t0, $t1, $t2,
+                    li   $t0, 17         # x = 17;
 
-        main:                    #  x, y, z in $t0, $t1, $t2,
-            li   $t0, 17         # x = 17;
+                    li   $t1, 25         # y = 25;
 
-            li   $t1, 25         # y = 25;
+                    add  $t2, $t1, $t0   # z = x + y
 
-            add  $t2, $t1, $t0   # z = x + y
+                    move $a0, $t2        # printf(\"%d\", a0);
+                    li   $v0, 1
+                    syscall
 
-            move $a0, $t2        # printf(\"%d\", a0);
-            li   $v0, 1
-            syscall
+                    li   $a0, '\\n'       # printf(\"%c\", '\\n');
+                    li   $v0, 11
+                    syscall
 
-            li   $a0, '\\n'       # printf(\"%c\", '\\n');
-            li   $v0, 11
-            syscall
+                    li   $v0, 0          # return 0
+                    jr   $ra
 
-            li   $v0, 0          # return 0
-            jr   $ra
-
-
-        "));
-
-        assert!(false);
+            ").unwrap(),
+            MPProgram {
+                items: vec![
+                    Label("main".to_string()),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("t0".to_string()))),
+                                Number(Immediate(I16(17))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("t1".to_string()))),
+                                Number(Immediate(I16(25))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "add".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("t2".to_string()))),
+                                Register(Normal(Named("t1".to_string()))),
+                                Register(Normal(Named("t0".to_string()))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "move".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("a0".to_string()))),
+                                Register(Normal(Named("t2".to_string()))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("v0".to_string()))),
+                                Number(Immediate(I16(1))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "syscall".to_string(),
+                            arguments: vec![],
+                        },
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("a0".to_string()))),
+                                Number(Char('\n')),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("v0".to_string()))),
+                                Number(Immediate(I16(11))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "syscall".to_string(),
+                            arguments: vec![],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "li".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("v0".to_string()))),
+                                Number(Immediate(I16(0))),
+                            ],
+                        }
+                    ),
+                    Instruction(
+                        MPInstruction {
+                            name: "jr".to_string(),
+                            arguments: vec![
+                                Register(Normal(Named("ra".to_string()))),
+                            ],
+                        }
+                    ),
+                ],
+            }
+        );
     }
 }

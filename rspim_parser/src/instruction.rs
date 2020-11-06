@@ -24,13 +24,13 @@ use nom::{
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MPInstruction {
-    name: String,
-    arguments: Vec<MPArgument>,
+    pub(crate) name: String,
+    pub(crate) arguments: Vec<MPArgument>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPArgument {
     Register(MPRegister),
     Number(MPNumber),

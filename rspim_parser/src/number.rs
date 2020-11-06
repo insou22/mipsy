@@ -26,7 +26,7 @@ use nom::{
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPNumber {
     Immediate(MPImmediate),
     Float32(f32),
@@ -34,7 +34,7 @@ pub enum MPNumber {
     Char(char),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPImmediate {
     I16(i16),
     I32(i32),
