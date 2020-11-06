@@ -877,13 +877,13 @@ impl State {
         page[offset as usize] = Safe::Uninitialised;
     }
 
-    fn get_page_or_create(&'_ mut self, address: u32) -> &'_ mut Box<[Safe<u8>]> {
+    fn get_page_or_create(&mut self, address: u32) -> &mut [Safe<u8>] {
         let base_addr = Self::addr_to_page_base_addr(address);
         
         self.pages.entry(base_addr).or_insert_with(|| Box::new([Default::default(); PAGE_SIZE as usize]))
     }
 
-    fn get_page(&'_ self, address: u32) -> RSpimResult<&[Safe<u8>]> {
+    fn get_page(&self, address: u32) -> RSpimResult<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get(&base_addr);
 
@@ -894,7 +894,7 @@ impl State {
     }
 
     #[allow(dead_code)]
-    fn get_page_mut(&'_ mut self, address: u32) -> RSpimResult<&'_ mut Box<[Safe<u8>]>> {
+    fn get_page_mut(&mut self, address: u32) -> RSpimResult<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get_mut(&base_addr);
 
