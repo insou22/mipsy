@@ -7,7 +7,7 @@ main:
     li  $t1, 0          # i = 0
 
 loop:
-    bgt $t1, 100 end    # if (i > 100) goto end;
+    bgt $t1, 100, end    # if (i > 100) goto end;
     mul $t3, $t1, $t1   # t3 = i * i;
     add $t0, $t0, $t3   # sum = sum + t3;
 

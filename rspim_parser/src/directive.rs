@@ -1,40 +1,31 @@
-use crate::{
-    misc::{
+use std::iter::FromIterator;
+
+use crate::{misc::{
         parse_ident,
         comment_multispace0,
         comment_multispace1,
-    },
-    number::{
+    }, number::{
         parse_i8,
         parse_i16,
         parse_i32,
         parse_u32,
         parse_f32,
         parse_f64,
-    }
-};
-use nom::{
-    IResult,
-    sequence::tuple,
-    combinator::{
-        map,
-        opt,
-    },
-    branch::alt,
-    multi::separated_list1,
-    character::complete::{
+    }, misc::parse_escaped_char};
+use nom::{IResult, branch::alt, bytes::complete::{
+        tag,
+        escaped,
+    }, character::complete::{
         char,
         none_of,
         one_of,
         space0,
-    },
-    bytes::complete::{
-        tag,
-        escaped,
-    },
-};
+    }, combinator::{
+        map,
+        opt,
+    }, multi::{many0, many_till, separated_list1}, sequence::tuple};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MPDirective {
     Text,
     Data,
@@ -93,22 +84,20 @@ fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8]
                 _,
                 _,
                 _,
-                text,
+                (
+                    text,
+                    _
+                ),
                 ..
             )
         ) = tuple((
             tag(tag_str),
             space0,
             char('"'),
-            escaped(
-                none_of("\\\""),
-                '\\',
-                one_of(r#"0rnt\"'"#),
-            ),
-            char('"'),
+            many_till(parse_escaped_char, char('"')),
         ))(i)?;
 
-        let text = String::from_utf8_lossy(text).to_string();
+        let text = String::from_iter(text.iter()).to_string();
 
         Ok((remaining_data, text))
     }
@@ -246,4 +235,26 @@ fn parse_globl(i: &[u8]) -> IResult<&[u8], MPDirective> {
     ))(i)?;
 
     Ok((remaining_data, MPDirective::Globl(ident)))
+}
+
+mod test {
+    use super::*;
+    #[test]
+    fn test_ascii() {
+        assert_eq!(
+            parse_ascii(".ascii \"hello\\n\"".as_bytes()).unwrap(), 
+            (
+                "".as_bytes(), 
+                MPDirective::Ascii("hello\n".to_string())
+            )
+        );
+
+        assert_eq!(
+            parse_ascii(".ascii \"hello \\\"jeff\\\"\"".as_bytes()).unwrap(), 
+            (
+                "".as_bytes(), 
+                MPDirective::Ascii("hello \"jeff\"".to_string())
+            )
+        );
+    }
 }

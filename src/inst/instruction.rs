@@ -300,14 +300,14 @@ impl ArgumentType {
                         match immediate {
                             &MPImmediate::I16(num) => {
                                 match self {
-                                    Self::Imm | Self::Imm32 => true,
+                                    Self::Imm | Self::Imm32 | Self::Off32Rs | Self::Off32Rt => true,
                                     Self::Shamt => num >= 0 && num < 32,
                                     _ => false,
                                 }
                             }
                             MPImmediate::I32(_) => {
                                 match self {
-                                    Self::Imm32 | Self::J => true,
+                                    Self::Imm32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                                     _ => false,
                                 }
                             }
@@ -441,7 +441,7 @@ impl PseudoSignature {
                         MPArgument::Number(MPNumber::Immediate(MPImmediate::LabelReference(label))) => {
                             let addr = *program.labels.get(label).unwrap(); // TODO - error label
 
-                            let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                            let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
                             let imm = ((addr.wrapping_sub(current_inst_addr)) / 4) as i16;
 
                             MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(imm)))
@@ -488,14 +488,14 @@ impl PseudoSignature {
                                 &MPImmediate::I16(imm) => {
                                     (imm as u16, 0 as u16)
                                 }
-                                MPImmediate::I32(imm) => {
+                                &MPImmediate::I32(imm) => {
                                     ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
                                 }
                                 MPImmediate::LabelReference(ref label) => {
                                     let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
 
                                     if self.compile.relative_label && (i == args.len() - 1) {
-                                        let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                        let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
                                         addr = (addr.wrapping_sub(current_inst_addr)) / 4;
                                     }
 
@@ -530,16 +530,24 @@ impl PseudoSignature {
 
                             (off32lower, off32upper, reg)
                         }
-                        MPArgument::Number(MPNumber::Immediate(MPImmediate::LabelReference(label))) => {
-                            let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
-
-                            if self.compile.relative_label && (i == args.len() - 1) {
-                                let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
-                                addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                        MPArgument::Number(MPNumber::Immediate(imm)) => match imm {
+                            &MPImmediate::I16(imm) => {
+                                (imm, 0 as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
                             }
+                            &MPImmediate::I32(imm) => {
+                                ((imm & 0xFFFF) as i16, (imm >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
+                            }
+                            MPImmediate::LabelReference(label) => {
+                                let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
 
-                            ((addr & 0xFFFF) as i16, (addr >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
+                                if self.compile.relative_label && (i == args.len() - 1) {
+                                    let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
+                                    addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                                }
 
+                                ((addr & 0xFFFF) as i16, (addr >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
+
+                            }
                         }
                         _ => unreachable!(),
                     };

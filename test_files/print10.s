@@ -6,7 +6,7 @@ main:                 # int main(void) {
     li    $t0, 1      # i = 1;
 
 loop:                 # loop:
-    bgt  $t0, 10 end  # if (i > 10) goto end;
+    bgt  $t0, 10, end  # if (i > 10) goto end;
 
     move $a0, $t0     #   printf("%d" i);
     li   $v0, 1
@@ -16,7 +16,7 @@ loop:                 # loop:
     li   $v0, 11
     syscall
 
-    add  $t0, $t0 1   #   i++;
+    add  $t0, $t0, 1   #   i++;
 
     b    loop         # goto loop;
 

@@ -241,8 +241,6 @@ impl Runtime {
         let imm    = (inst & 0xFFFF) as i16;
         let addr   =  inst & 0x3FFFFFF;
 
-        // println!("Executing inst: 0x{:08x}\n", inst);
-
         match opcode {
             0 => {
                 // R-Type
@@ -336,7 +334,7 @@ impl Runtime {
             0x07 => { state.write_reg(rd, state.get_reg(rt)? >> state.get_reg(rs)?); },
 
             // JR   $Rs
-            0x08 => { state.pc = state.get_reg(rs)? as u32 },
+            0x08 => { state.pc = state.get_reg(rs)? as u32; },
 
             // JALR $Rs
             0x09 => { 
@@ -657,7 +655,7 @@ impl Runtime {
         match opcode {
             // J    addr
             0x02 => { 
-                state.pc = (state.pc & 0xF000_0000) | (target << 2); 
+                state.pc = (state.pc & 0xF000_0000) | (target << 2);
             },
 
             // JAL  addr
