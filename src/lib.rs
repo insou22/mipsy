@@ -40,6 +40,6 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }
 
-pub fn run(binary: &Binary) -> Runtime {
+pub fn run(binary: &Binary) -> RSpimResult<Runtime> {
     runtime::Runtime::new(binary)
 }

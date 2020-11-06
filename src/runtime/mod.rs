@@ -8,15 +8,24 @@ use crate::inst::register::Register;
 use crate::util::Safe;
 use std::fmt::{self, Display};
 
-pub const PAGE_SIZE: u32 = 4096;
-pub const KERN_INSTNS: [u32; 6] = [
-    0x3c1a0040, // li      $k0, 0x00400000
-    0x34020000, // li      $v0, 0
-    0x03400009, // jalr    $k0
-    0x00022021, // move    $a0, $v0
-    0x34020011, // li      $v0, 17
-    0x0000000c, // syscall
-];
+const PAGE_SIZE: u32 = 4096;
+
+const fn get_kern_instns(entry_point: u32) -> [u32; 7] {
+    let ep_upper = entry_point >> 16;
+    let ep_lower = entry_point & 0xFFFF;
+    
+    let lui = 0x3c1a0000 | ep_upper;
+    let ori = 0x375a0000 | ep_lower;
+    [
+        lui,        // la      $k0, main
+        ori,        // .................
+        0x34020000, // li      $v0, 0
+        0x03400009, // jalr    $k0
+        0x00022021, // move    $a0, $v0
+        0x34020011, // li      $v0, 17
+        0x0000000c, // syscall
+    ]
+}
 
 #[allow(dead_code)]
 pub struct Runtime {
@@ -154,7 +163,9 @@ where T: Clone {
 }
 
 impl Runtime {
-    pub fn new(program: &Binary) -> Self {
+    pub fn new(program: &Binary) -> RSpimResult<Self> {
+        let entry_point = program.get_label("main")?;
+
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
@@ -181,7 +192,7 @@ impl Runtime {
         }
 
         let mut ktext_addr = KTEXT_BOT;
-        for &word in &KERN_INSTNS {
+        for &word in &get_kern_instns(entry_point) {
             initial_state.write_word(ktext_addr, word);
             ktext_addr += 4;
         }
@@ -198,7 +209,7 @@ impl Runtime {
             labels: program.labels.clone(),
         };
 
-        runtime
+        Ok(runtime)
     }
 
     pub fn step(&mut self) -> RSpimResult<()> {

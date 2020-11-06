@@ -171,7 +171,7 @@ impl InstSignature {
                                 }
                                 MPImmediate::LabelReference(label) => {
                                     // must be relative
-                                    let addr = program.labels.get(label).unwrap(); // TODO - error label
+                                    let addr = program.get_label(label)?;
 
                                     let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
 
@@ -190,7 +190,7 @@ impl InstSignature {
                         MPArgument::Number(num) => match num {
                             MPNumber::Immediate(imm) => match imm {
                                 MPImmediate::LabelReference(label) => {
-                                    *program.labels.get(label).unwrap() // TODO - error label
+                                    program.get_label(label)?
                                 }
                                 _ => unreachable!(),
                             }
@@ -439,7 +439,7 @@ impl PseudoSignature {
                     let arg = match arg {
                         // Relative label
                         MPArgument::Number(MPNumber::Immediate(MPImmediate::LabelReference(label))) => {
-                            let addr = *program.labels.get(label).unwrap(); // TODO - error label
+                            let addr = program.get_label(label)?;
 
                             let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
                             let imm = ((addr.wrapping_sub(current_inst_addr)) / 4) as i16;
@@ -492,7 +492,7 @@ impl PseudoSignature {
                                     ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
                                 }
                                 MPImmediate::LabelReference(ref label) => {
-                                    let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
+                                    let mut addr = program.get_label(label)?;
 
                                     if self.compile.relative_label && (i == args.len() - 1) {
                                         let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
@@ -520,7 +520,7 @@ impl PseudoSignature {
                                 &MPImmediate::I16(imm) => (imm, 0),
                                 &MPImmediate::I32(imm) => (imm as i16, (imm >> 16) as i16),
                                 MPImmediate::LabelReference(label) => {
-                                    let addr = *program.labels.get(label).unwrap(); // TODO - Error label doesnt exist
+                                    let addr = program.get_label(label)?;
 
                                     (addr as i16, (addr >> 16) as i16)
                                 },
@@ -538,7 +538,7 @@ impl PseudoSignature {
                                 ((imm & 0xFFFF) as i16, (imm >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
                             }
                             MPImmediate::LabelReference(label) => {
-                                let mut addr = *program.labels.get(label).unwrap(); // TODO - error label
+                                let mut addr = program.get_label(label)?;
 
                                 if self.compile.relative_label && (i == args.len() - 1) {
                                     let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;

@@ -921,7 +921,7 @@ pseudoinstructions:
       - inst: LUI
         data: [$Rs, $Imm32Hi]
       - inst: ORI
-        data: [$Rs, $0, $Imm32Lo]
+        data: [$Rs, $Rs, $Imm32Lo]
 
   - name: LA
     desc_short: Load the immediate address into $Rs

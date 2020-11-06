@@ -43,7 +43,7 @@ fn main() -> RSpimResult<()> {
 
     vprintln!(opts, "Decompiled program:\n{}\n", decompiled);
 
-    let mut runtime = rspim_lib::run(&binary);
+    let mut runtime = rspim_lib::run(&binary)?;
     vprintln!(opts, "Running program:\n");
     loop {
         runtime.step()?;

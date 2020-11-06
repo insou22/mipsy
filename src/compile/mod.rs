@@ -31,6 +31,16 @@ pub struct Binary {
     pub globals: Vec<String>,
 }
 
+impl Binary {
+    pub fn get_label(&self, label: &str) -> RSpimResult<u32> {
+        if let Some(&addr) = self.labels.get(label) {
+            Ok(addr)
+        } else {
+            todo!()
+        }
+    }
+}
+
 pub fn compile(program: &MPProgram, iset: &InstSet) -> RSpimResult<Binary> {
     let warnings = check_program(program)?;
     if !warnings.is_empty() {
