@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use mipsy_lib::*;
 use clap::Clap;
 
@@ -37,9 +39,10 @@ impl RuntimeHandler for Handler {
             std::io::stdin().read_line(&mut input).unwrap();
 
             match input.trim().parse::<i32>() {
-                Ok(n) => n,
+                Ok(n) => return n,
                 Err(_) => {
                     print!("[mipsy] bad input, try again: ");
+                    std::io::stdout().flush().unwrap();
                     continue;
                 },
             };
