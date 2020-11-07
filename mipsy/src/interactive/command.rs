@@ -239,7 +239,7 @@ pub(crate) fn help_command() -> Command {
 pub(crate) fn exit_command() -> Command {
     command(
         "exit",
-        vec![],
+        vec!["ex", "quit", "q"],
         vec![],
         vec![],
         "exit mipsy",
