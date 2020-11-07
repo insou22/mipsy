@@ -10,6 +10,10 @@ mod interactive;
 struct Opts {
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
+    #[clap(long, about("Just compile program and output hexcodes"))]
+    hex: bool,
+    #[clap(long, about("With --hex: pad to 8 hex digits with zeroes"))]
+    hex_pad_zero: bool,
     file: Option<String>,
 }
 
@@ -112,6 +116,18 @@ fn main() -> MipsyResult<()> {
         let decompiled = mipsy_lib::decompile(&iset, &binary);
         println!("Compiled program:\n{}\n", decompiled);
         return Ok(())
+    }
+
+    if opts.hex {
+        for &opcode in binary.text.iter() {
+            if opts.hex_pad_zero {
+                println!("{:08x}", opcode);
+            } else {
+                println!("{:x}", opcode);
+            }
+        }
+
+        return Ok(());
     }
 
     let mut runtime = mipsy_lib::run(&binary)?;
