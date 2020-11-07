@@ -8,8 +8,6 @@ mod interactive;
 #[derive(Clap, Debug)]
 #[clap(version = "1.0", author = "Zac K. <zac.kologlu@gmail.com>")]
 struct Opts {
-    #[clap(long, about("Step-by-step execution"))]
-    step: bool,
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
     file: Option<String>,
