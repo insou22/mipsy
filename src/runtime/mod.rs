@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types)]
 mod display;
 mod kern;
 

@@ -61,7 +61,7 @@ impl RuntimeHandler for Handler {
         todo!()
     }
 
-    fn sys9_sbrk(&mut self, val: i32) {
+    fn sys9_sbrk(&mut self, _val: i32) {
         todo!()
     }
 
@@ -77,19 +77,19 @@ impl RuntimeHandler for Handler {
         todo!()
     }
 
-    fn sys13_open(&mut self, path: String, flags: flags, mode: mode) -> fd {
+    fn sys13_open(&mut self, _path: String, _flags: flags, _mode: mode) -> fd {
         todo!()
     }
 
-    fn sys14_read(&mut self, fd: fd, buffer: void_ptr, len: len) -> n_bytes {
+    fn sys14_read(&mut self, _fd: fd, _buffer: void_ptr, _len: len) -> n_bytes {
         todo!()
     }
 
-    fn sys15_write(&mut self, fd: fd, buffer: void_ptr, len: len) -> n_bytes {
+    fn sys15_write(&mut self, _fd: fd, _buffer: void_ptr, _len: len) -> n_bytes {
         todo!()
     }
 
-    fn sys16_close(&mut self, fd: fd) {
+    fn sys16_close(&mut self, _fd: fd) {
         todo!()
     }
 

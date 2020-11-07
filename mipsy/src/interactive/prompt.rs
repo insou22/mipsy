@@ -19,11 +19,6 @@ pub(crate) fn ebanner<D: Display>(text: D) {
     eprint!("{}{}", text, ": ".bold());
 }
 
-pub(crate) fn ebanner_nl<D: Display>(text: D) {
-    ebanner(text);
-    println!();
-}
-
 pub(crate) fn tip<D: Display>(text: D) {
     banner("tip".yellow().bold());
     println!("{}", text);
@@ -52,11 +47,6 @@ pub(crate) fn error_nonl<D: Display>(text: D) {
 pub(crate) fn error<D: Display>(text: D) {
     ebanner("error".red());
     eprintln!("{}", text);
-}
-
-pub(crate) fn error_nl<D: Display>(text: D) {
-    error(text);
-    println!();
 }
 
 pub(crate) fn syscall<D: Display>(code: i32, text: D) {

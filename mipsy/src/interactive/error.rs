@@ -3,6 +3,7 @@ use mipsy_lib::MipsyError;
 pub type CommandResult<T> = Result<T, CommandError>;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum CommandError {
     ArgExpectedI32 { arg: String, instead: String, },
     ArgExpectedU32 { arg: String, instead: String, },
