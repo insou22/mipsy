@@ -1,6 +1,7 @@
-use rspim_lib::*;
+use super::{prompt, State};
 use colored::*;
-use super::{State, prompt};
+use rspim_lib::*;
+use std::io::Write;
 
 pub(crate) struct Handler {
     pub(crate) verbose: bool,
@@ -43,7 +44,13 @@ impl<'a> RuntimeHandler for Handler {
 
     fn sys4_print_string(&mut self, val: String) {
         if self.verbose {
-            prompt::syscall_nl(4, format!("print_string: \"{}\"", val.escape_default().to_string().green()));
+            prompt::syscall_nl(
+                4,
+                format!(
+                    "print_string: \"{}\"",
+                    val.escape_default().to_string().green()
+                ),
+            );
         } else {
             print!("{}", val);
         }
@@ -53,15 +60,17 @@ impl<'a> RuntimeHandler for Handler {
         if self.verbose {
             prompt::syscall(5, "read_int: ");
             loop {
+                std::io::stdout().flush().unwrap();
+
                 let mut input = String::new();
                 std::io::stdin().read_line(&mut input).unwrap();
 
                 match input.trim().parse::<i32>() {
-                    Ok(n) => n,
+                    Ok(n) => return n,
                     Err(_) => {
-                        prompt::error("bad input, try again: ");
+                        prompt::error_nonl("bad input, try again: ");
                         continue;
-                    },
+                    }
                 };
             }
         } else {
@@ -70,11 +79,13 @@ impl<'a> RuntimeHandler for Handler {
                 std::io::stdin().read_line(&mut input).unwrap();
 
                 match input.trim().parse::<i32>() {
-                    Ok(n) => n,
+                    Ok(n) => return n,
                     Err(_) => {
                         print!("[rspim] bad input, try again: ");
+                        std::io::stdout().flush().unwrap();
+
                         continue;
-                    },
+                    }
                 };
             }
         }
@@ -106,7 +117,10 @@ impl<'a> RuntimeHandler for Handler {
 
     fn sys11_print_char(&mut self, val: char) {
         if self.verbose {
-            prompt::syscall_nl(11, format!("print_char: '{}'", val.escape_default().to_string().green()));
+            prompt::syscall_nl(
+                11,
+                format!("print_char: '{}'", val.escape_default().to_string().green()),
+            );
         } else {
             print!("{}", val);
         }
@@ -134,7 +148,17 @@ impl<'a> RuntimeHandler for Handler {
 
     fn sys17_exit_status(&mut self, val: i32) {
         if self.verbose {
-            prompt::syscall_nl(17, format!("exit_status: {}", if val == 0 { val.to_string().green() } else { val.to_string().red() }));
+            prompt::syscall_nl(
+                17,
+                format!(
+                    "exit_status: {}",
+                    if val == 0 {
+                        val.to_string().green()
+                    } else {
+                        val.to_string().red()
+                    }
+                ),
+            );
         }
 
         self.exit_status = Some(val);

@@ -44,6 +44,11 @@ pub(crate) fn success_nl<D: Display>(text: D) {
     println!();
 }
 
+pub(crate) fn error_nonl<D: Display>(text: D) {
+    ebanner("error".red());
+    eprint!("{}", text);
+}
+
 pub(crate) fn error<D: Display>(text: D) {
     ebanner("error".red());
     eprintln!("{}", text);
