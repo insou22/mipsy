@@ -11,6 +11,7 @@ pub(crate) struct Command {
     pub(crate) required_args: Vec<String>,
     pub(crate) optional_args: Vec<String>,
     pub(crate) description: String,
+    pub(crate) long_description: String,
     pub(crate) exec: fn(&mut State, &str, &[String]) -> CommandResult<()>,
 }
 
@@ -21,6 +22,12 @@ pub(crate) fn load_command() -> Command {
         vec!["file"],
         vec![],
         "load a MIPS file to run",
+        &format!(
+            "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
+             This command must be run prior to many others, such as `{}`, `{}`, etc.",
+            "run".bold(),
+            "step".bold(),
+        ),
         |state, _label, args| {
             let path = &args[0];
 
@@ -50,6 +57,14 @@ pub(crate) fn step_command() -> Command {
         vec![],
         vec!["times"],
         &format!("step forwards one (or {}) instruction", "[times]".magenta()),
+        &format!(
+            "Steps forwards one instruction, or {} instructions if specified.\n\
+             This will run in \"verbose\" mode, printing out the instruction that was\n\
+             executed, and verbosely printing any system calls that are executed.\n\
+             To step backwards (i.e. back in time), use `{}`.",
+            "[times]".magenta(),
+            "back".bold(),
+        ),
         |state, _label, args| {
             let times = match args.first() {
                 Some(arg) => expect_u32(
@@ -93,6 +108,14 @@ pub(crate) fn back_command() -> Command {
         vec![],
         vec!["times"],
         &format!("step backwards one (or {}) instruction", "[times]".magenta()),
+        &format!(
+            "Steps backwards one instruction, or {0} instructions if specified.\n\
+             It will then print out which instruction will be executed next --\n\
+             i.e. using `{1}` will immediately execute said printed instruction.\n\
+             To step fowards (i.e. normal stepping), use `{1}`.",
+            "[times]".magenta(),
+            "step".bold(),
+        ),
         |state, _label, args| {
             let times = match args.first() {
                 Some(arg) => expect_u32(
@@ -149,6 +172,15 @@ pub(crate) fn run_command() -> Command {
         vec![],
         vec![],
         "run the currently loaded program until it finishes",
+        &format!(
+            "Runs the currently loaded program. It will run from wherever execution\n\
+             is currently (i.e. if you have used `{0}`, it will start from where you\n\
+             have currently stepped to).\n\
+             This will run in \"execution\" mode, {1} printing out instruction information,\n\
+             or other debug information that you would see while using `{0}`.",
+            "step".bold(),
+            "not".red().bold(),
+        ),
         |state, _label, _args| {
             state.run()
         }
@@ -162,6 +194,15 @@ pub(crate) fn reset_command() -> Command {
         vec![],
         vec![],
         "reset the currently loaded program to its initial state",
+        &format!(
+            "Resets the currently loaded program to its inital state. This is\n\
+             effectively the same as using `{} {}` using the same file again.\n\
+             It is often used after `{}` or `{}` have reached the end of the program.",
+            "load".bold(),
+            "<file>".magenta(),
+            "run".bold(),
+            "step".bold(),
+        ),
         |state, _label, _args| {
             state.reset()?;
             prompt::success_nl("program reset");
@@ -178,7 +219,28 @@ pub(crate) fn help_command() -> Command {
         vec![],
         vec!["command"],
         "print this help text, or specific help for a command",
-        |state, _label, _args| {
+        &format!(
+            "Prints the general help text for all mipsy commands, or more in-depth\n\
+             help for a specific {} if specified, including available aliases.",
+             "[command]".magenta()
+        ),
+        |state, _label, args| {
+            if let Some(command) = args.first() {
+                let command = state.commands.iter()
+                        .find(|cmd| &cmd.name == command)
+                        .ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
+
+                println!("\n{}\n", get_command_formatted(command));
+                println!("{}", command.long_description);
+                if !command.aliases.is_empty() {
+                    prompt::banner("\naliases".green().bold());
+                    println!("{}", command.aliases.iter().map(|s| s.yellow().bold().to_string()).collect::<Vec<String>>().join(", "));
+                }
+                println!();
+
+                return Ok(())
+            }
+
             let mut max_len = 0;
 
             for command in state.commands.iter() {
@@ -206,23 +268,8 @@ pub(crate) fn help_command() -> Command {
                     "".magenta()       .to_string().len() * command.required_args.len() +
                     "".bright_magenta().to_string().len() * command.optional_args.len();
 
-                let mut parts = vec![
-                    command.name.yellow().bold().to_string(),
-                ];
+                let name_args = get_command_formatted(command);
 
-                parts.append(
-                    &mut command.required_args.iter()
-                            .map(|arg| format!("<{}>", arg).magenta().to_string())
-                            .collect::<Vec<String>>()
-                );
-
-                parts.append(
-                    &mut command.optional_args.iter()
-                        .map(|arg| format!("[{}]", arg).bright_magenta().to_string())
-                        .collect::<Vec<String>>()
-                );
-
-                let name_args = parts.join(" ");
                 let char_len = name_args.len() - extra_color_len;
                 let extra_padding = max_len - char_len;
 
@@ -243,16 +290,18 @@ pub(crate) fn exit_command() -> Command {
         vec![],
         vec![],
         "exit mipsy",
+        "Immediately exits mipsy",
         |_state, _label, _args| {
             std::process::exit(0);
         }
     )
 }
 
-fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, optional_args: Vec<S>, desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<()>) -> Command {
+fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, optional_args: Vec<S>, desc: S, long_desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<()>) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
+        long_description: long_desc.into(),
         aliases: aliases.into_iter().map(S::into).collect(),
         required_args: required_args.into_iter().map(S::into).collect(),
         optional_args: optional_args.into_iter().map(S::into).collect(),
@@ -283,4 +332,24 @@ where
             }
         }),
     }
+}
+
+fn get_command_formatted(cmd: &Command) -> String {
+    let mut parts = vec![
+        cmd.name.yellow().bold().to_string(),
+    ];
+
+    parts.append(
+        &mut cmd.required_args.iter()
+                .map(|arg| format!("<{}>", arg).magenta().to_string())
+                .collect::<Vec<String>>()
+    );
+
+    parts.append(
+        &mut cmd.optional_args.iter()
+            .map(|arg| format!("[{}]", arg).bright_magenta().to_string())
+            .collect::<Vec<String>>()
+    );
+
+    parts.join(" ")
 }
