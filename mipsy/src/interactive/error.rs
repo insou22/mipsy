@@ -1,4 +1,4 @@
-use rspim_lib::RSpimError;
+use mipsy_lib::MipsyError;
 
 pub type CommandResult<T> = Result<T, CommandError>;
 
@@ -8,13 +8,13 @@ pub enum CommandError {
     ArgExpectedU32 { arg: String, instead: String, },
     HelpUnknownCommand { command: String },
     CannotReadFile { path: String, os_error: String, },
-    CannotCompile  { path: String, program: String, rspim_error: RSpimError },
+    CannotCompile  { path: String, program: String, mipsy_error: MipsyError },
 
     MustLoadFile,
     ProgramExited,
 
     CannotStepFurtherBack,
-    RuntimeError { rspim_error: RSpimError },
+    RuntimeError { mipsy_error: MipsyError },
 
     WithTip { error: Box<CommandError>, tip: String },
 }

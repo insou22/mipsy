@@ -1,5 +1,5 @@
 use crate::{
-    RSpimResult,
+    MipsyResult,
     MPProgram,
     InstSet,
     util::Safe,
@@ -32,7 +32,7 @@ pub struct Binary {
 }
 
 impl Binary {
-    pub fn get_label(&self, label: &str) -> RSpimResult<u32> {
+    pub fn get_label(&self, label: &str) -> MipsyResult<u32> {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
@@ -41,7 +41,7 @@ impl Binary {
     }
 }
 
-pub fn compile(program: &MPProgram, iset: &InstSet) -> RSpimResult<Binary> {
+pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_program(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here

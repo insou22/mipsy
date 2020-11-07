@@ -1,6 +1,6 @@
 use super::{prompt, State};
 use colored::*;
-use rspim_lib::*;
+use mipsy_lib::*;
 use std::io::Write;
 
 pub(crate) struct Handler {
@@ -81,7 +81,7 @@ impl<'a> RuntimeHandler for Handler {
                 match input.trim().parse::<i32>() {
                     Ok(n) => return n,
                     Err(_) => {
-                        print!("[rspim] bad input, try again: ");
+                        print!("[mipsy] bad input, try again: ");
                         std::io::stdout().flush().unwrap();
 
                         continue;

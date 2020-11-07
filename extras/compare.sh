@@ -11,16 +11,16 @@ for test_file in test_files/*; do
         continue;
     fi
 
-    rspim_out=`echo "Loaded: $EXCEPTIONS_FILE" && 
-              yes 3 | ./target/debug/rspim "$test_file" 2>&1`;
+    mipsy_out=`echo "Loaded: $EXCEPTIONS_FILE" && 
+              yes 3 | ./target/debug/mipsy "$test_file" 2>&1`;
     spim_out=`yes 3 | spim -f "$test_file" 2>&1`;
 
-    if diff <(echo "$rspim_out") <(echo "$spim_out") >/dev/null;
+    if diff <(echo "$mipsy_out") <(echo "$spim_out") >/dev/null;
     then
         echo "passed!"
     else
         echo "FAILED";
-        echo "    rspim_output: `echo $rspim_out   | sed -E "s/Loaded: .+//"`";
+        echo "    mipsy_output: `echo $mipsy_out   | sed -E "s/Loaded: .+//"`";
         echo "\n    spim_output:  `echo $spim_out  | sed -E "s/Loaded: .+//"`";
         echo '';
     fi

@@ -5,7 +5,7 @@ use kern::get_kern_instns;
 use std::collections::HashMap;
 use crate::Binary;
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
-use crate::error::RSpimResult;
+use crate::error::MipsyResult;
 use crate::error::RuntimeError;
 use crate::rerr;
 use crate::inst::register::Register;
@@ -58,7 +58,7 @@ pub trait RuntimeHandler {
 }
 
 impl Runtime {
-    pub fn new(program: &Binary) -> RSpimResult<Self> {
+    pub fn new(program: &Binary) -> MipsyResult<Self> {
         let entry_point = program.get_label("main")?;
 
         let mut initial_state = 
@@ -107,13 +107,13 @@ impl Runtime {
         Ok(runtime)
     }
 
-    pub fn next_inst(&self) -> RSpimResult<u32> {
+    pub fn next_inst(&self) -> MipsyResult<u32> {
         let state = self.state();
 
         self.state().get_word(state.pc)
     }
 
-    pub fn step<RH>(&mut self, rh: &mut RH) -> RSpimResult<()>
+    pub fn step<RH>(&mut self, rh: &mut RH) -> MipsyResult<()>
     where
         RH: RuntimeHandler
     {
@@ -159,7 +159,7 @@ impl Runtime {
         self.timeline.last_mut().unwrap()
     }
 
-    fn execute<RH>(&mut self, rh: &mut RH, inst: u32) -> RSpimResult<()>
+    fn execute<RH>(&mut self, rh: &mut RH, inst: u32) -> MipsyResult<()>
     where
         RH: RuntimeHandler
     {
@@ -192,7 +192,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn syscall<RH>(&mut self, rh: &mut RH) -> RSpimResult<()>
+    fn syscall<RH>(&mut self, rh: &mut RH) -> MipsyResult<()>
     where
         RH: RuntimeHandler
     {
@@ -246,7 +246,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn execute_r<RH>(&mut self, rh: &mut RH, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> RSpimResult<()>
+    fn execute_r<RH>(&mut self, rh: &mut RH, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()>
     where
         RH: RuntimeHandler
     {
@@ -424,7 +424,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn execute_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> RSpimResult<()> {
+    fn execute_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> MipsyResult<()> {
         let state = self.state_mut();
 
         let imm_zero_extend = imm as u16 as u32 as i32;
@@ -593,7 +593,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn execute_j(&mut self, opcode: u32, target: u32) -> RSpimResult<()> {
+    fn execute_j(&mut self, opcode: u32, target: u32) -> MipsyResult<()> {
         let state = self.state_mut();
 
         match opcode {
@@ -684,14 +684,14 @@ impl State {
         self.registers[reg as usize] = Safe::Uninitialised;
     }
 
-    fn get_reg(&self, reg: u32) -> RSpimResult<i32> {
+    fn get_reg(&self, reg: u32) -> MipsyResult<i32> {
         match self.registers[reg as usize] {
             Safe::Valid(reg) => Ok(reg),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedRegister(reg)),
         }
     }
 
-    fn get_ureg(&self, reg: u32) -> RSpimResult<u32> {
+    fn get_ureg(&self, reg: u32) -> MipsyResult<u32> {
         self.get_reg(reg).map(|x| x as u32)
     }
 
@@ -709,14 +709,14 @@ impl State {
         self.registers[reg as usize] = Safe::Valid(value as i32);
     }
 
-    fn get_hi(&self) -> RSpimResult<i32> {
+    fn get_hi(&self) -> MipsyResult<i32> {
         match self.hi {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedHi),
         }
     }
 
-    fn get_lo(&self) -> RSpimResult<i32> {
+    fn get_lo(&self) -> MipsyResult<i32> {
         match self.lo {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedLo),
@@ -739,7 +739,7 @@ impl State {
         self.lo = Safe::Valid(value as i32);
     }
 
-    fn get_word(&self, address: u32) -> RSpimResult<u32> {
+    fn get_word(&self, address: u32) -> MipsyResult<u32> {
         let b1 = self.get_byte(address)?     as u32;
         let b2 = self.get_byte(address + 1)? as u32;
         let b3 = self.get_byte(address + 2)? as u32;
@@ -750,14 +750,14 @@ impl State {
         Ok(b1 | (b2 << 8) | (b3 << 16) | (b4 << 24))
     }
 
-    fn get_half(&self, address: u32) -> RSpimResult<u16> {
+    fn get_half(&self, address: u32) -> MipsyResult<u16> {
         let b1 = self.get_byte(address)?     as u16;
         let b2 = self.get_byte(address + 1)? as u16;
 
         Ok(b1 | (b2 << 8))
     }
 
-    fn get_byte(&self, address: u32) -> RSpimResult<u8> {
+    fn get_byte(&self, address: u32) -> MipsyResult<u8> {
         let page = self.get_page(address)?;
         let offset = Self::offset_in_page(address);
 
@@ -828,7 +828,7 @@ impl State {
         self.pages.entry(base_addr).or_insert_with(|| Box::new([Default::default(); PAGE_SIZE as usize]))
     }
 
-    fn get_page(&self, address: u32) -> RSpimResult<&[Safe<u8>]> {
+    fn get_page(&self, address: u32) -> MipsyResult<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get(&base_addr);
 
@@ -839,7 +839,7 @@ impl State {
     }
 
     #[allow(dead_code)]
-    fn get_page_mut(&mut self, address: u32) -> RSpimResult<&[Safe<u8>]> {
+    fn get_page_mut(&mut self, address: u32) -> MipsyResult<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
         let page = self.pages.get_mut(&base_addr);
 
@@ -866,21 +866,21 @@ impl State {
     }
 }
 
-fn checked_add(x: i32, y: i32) -> RSpimResult<i32> {
+fn checked_add(x: i32, y: i32) -> MipsyResult<i32> {
     match x.checked_add(y) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),
     }
 }
 
-fn checked_add_imm(x: i32, y: i16) -> RSpimResult<i32> {
+fn checked_add_imm(x: i32, y: i16) -> MipsyResult<i32> {
     match x.checked_add(y as i32) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),
     }
 }
 
-fn checked_sub(x: i32, y: i32) -> RSpimResult<i32> {
+fn checked_sub(x: i32, y: i32) -> MipsyResult<i32> {
     match x.checked_sub(y) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),
@@ -888,7 +888,7 @@ fn checked_sub(x: i32, y: i32) -> RSpimResult<i32> {
 }
 
 #[allow(dead_code)]
-fn checked_sub_imm(x: i32, y: i16) -> RSpimResult<i32> {
+fn checked_sub_imm(x: i32, y: i16) -> MipsyResult<i32> {
     match x.checked_sub(y as i32) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),

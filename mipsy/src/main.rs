@@ -1,4 +1,4 @@
-use rspim_lib::*;
+use mipsy_lib::*;
 use clap::Clap;
 
 mod interactive;
@@ -39,7 +39,7 @@ impl RuntimeHandler for Handler {
             match input.trim().parse::<i32>() {
                 Ok(n) => n,
                 Err(_) => {
-                    print!("[rspim] bad input, try again: ");
+                    print!("[mipsy] bad input, try again: ");
                     continue;
                 },
             };
@@ -95,7 +95,7 @@ impl RuntimeHandler for Handler {
     }
 }
 
-fn main() -> RSpimResult<()> {
+fn main() -> MipsyResult<()> {
     let opts: Opts = Opts::parse();
 
     if let None = opts.file {
@@ -104,16 +104,16 @@ fn main() -> RSpimResult<()> {
 
     let file_contents = std::fs::read_to_string(&opts.file.as_ref().unwrap()).expect("Could not read file {}");
 
-    let iset       = rspim_lib::inst_set()?;
-    let binary     = rspim_lib::compile(&iset, &file_contents)?;
+    let iset       = mipsy_lib::inst_set()?;
+    let binary     = mipsy_lib::compile(&iset, &file_contents)?;
 
     if opts.compile {
-        let decompiled = rspim_lib::decompile(&iset, &binary);
+        let decompiled = mipsy_lib::decompile(&iset, &binary);
         println!("Compiled program:\n{}\n", decompiled);
         return Ok(())
     }
 
-    let mut runtime = rspim_lib::run(&binary)?;
+    let mut runtime = mipsy_lib::run(&binary)?;
     loop {
         runtime.step(&mut Handler)?;
     }

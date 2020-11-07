@@ -1,2 +1,2 @@
 #!/bin/zsh
-cd rspim_parser && cargo "$@" && cd .. && cargo "$@" && cd rspim && cargo "$@" && cd ..;
+cd mipsy_parser && cargo "$@" && cd .. && cargo "$@" && cd mipsy && cargo "$@" && cd ..;

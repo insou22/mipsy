@@ -1,5 +1,5 @@
 use crate::{
-    RSpimResult,
+    MipsyResult,
     error::CompileError,
     cerr,
 };
@@ -17,7 +17,7 @@ use super::instruction::{
     PseudoExpand,
 };
 
-pub fn from_yaml(yaml: &YamlFile) -> RSpimResult<InstSet> {
+pub fn from_yaml(yaml: &YamlFile) -> MipsyResult<InstSet> {
     let mut native_set = vec![];
 
     for inst in &yaml.instructions {

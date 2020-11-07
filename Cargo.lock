@@ -201,6 +201,35 @@ version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "mipsy"
+version = "0.1.0"
+dependencies = [
+ "clap 3.0.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "colored 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mipsy_lib 0.1.0",
+ "rustyline 6.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustyline-derive 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mipsy_lib"
+version = "0.1.0"
+dependencies = [
+ "mipsy_parser 0.1.0",
+ "serde 1.0.116 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_yaml 0.8.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strsim 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mipsy_parser"
+version = "0.1.0"
+dependencies = [
+ "nom 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "nix"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -282,35 +311,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "getrandom 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.57 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rspim"
-version = "0.1.0"
-dependencies = [
- "clap 3.0.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "colored 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rspim_lib 0.1.0",
- "rustyline 6.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustyline-derive 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rspim_lib"
-version = "0.1.0"
-dependencies = [
- "rspim_parser 0.1.0",
- "serde 1.0.116 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_yaml 0.8.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "strsim 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rspim_parser"
-version = "0.1.0"
-dependencies = [
- "nom 6.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "rspim_lib"
+name = "mipsy_lib"
 version = "0.1.0"
 authors = ["insou22 <zac.kologlu@gmail.com>"]
 edition = "2018"
@@ -11,10 +11,10 @@ path = "src/lib.rs"
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see mips.yaml
 strsim = "0.10"                                     # for error-reporting - string similarity
-rspim_parser = { version = "0.1", path = "./rspim_parser" }
+mipsy_parser = { version = "0.1", path = "./mipsy_parser" }
 
 [workspace]
 members = [
-    "rspim",
-    "rspim_parser",
+    "mipsy",
+    "mipsy_parser",
 ]

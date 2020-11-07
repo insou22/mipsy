@@ -1,6 +1,6 @@
 use crate::{
     cerr,
-    RSpimResult,
+    MipsyResult,
     MPProgram,
     error::CompileError,
     util::Safe,
@@ -13,7 +13,7 @@ use super::{
     text::instruction_length,
     bytes::ToBytes
 };
-use rspim_parser::{
+use mipsy_parser::{
     MPItem,
     MPDirective,
 };
@@ -24,7 +24,7 @@ enum Segment {
     Data,
 }
 
-pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> RSpimResult<()> {
+pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
     let mut text_len = 0;
     let mut segment = Segment::Text;
 

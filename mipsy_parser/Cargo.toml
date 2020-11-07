@@ -1,5 +1,5 @@
 [package]
-name = "rspim_parser"
+name = "mipsy_parser"
 version = "0.1.0"
 authors = ["insou22 <zac.kologlu@gmail.com>"]
 edition = "2018"

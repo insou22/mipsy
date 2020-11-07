@@ -16,7 +16,7 @@ use rustyline::{
     error::ReadlineError,
 };
 use colored::*;
-use rspim_lib::{
+use mipsy_lib::{
     Binary, 
     InstSet, 
     Runtime,
@@ -40,7 +40,7 @@ pub(crate) struct State {
 impl State {
     fn new() -> Self {
         Self {
-            iset: rspim_lib::inst_set().unwrap(),
+            iset: mipsy_lib::inst_set().unwrap(),
             commands: vec![],
             binary:  None,
             runtime: None,
@@ -58,7 +58,7 @@ impl State {
         if self.confirm_exit {
             ""
         } else {
-            "[rspim] "
+            "[mipsy] "
         }
     }
 
@@ -149,8 +149,8 @@ impl State {
             CommandError::CannotReadFile { path, os_error, } => {
                 prompt::error(format!("failed to read file `{}`: {}", path, os_error));
             }
-            CommandError::CannotCompile  { path, program: _, rspim_error, } => {
-                prompt::error(format!("failed to compile `{}` -- {:?}", path, rspim_error));
+            CommandError::CannotCompile  { path, program: _, mipsy_error, } => {
+                prompt::error(format!("failed to compile `{}` -- {:?}", path, mipsy_error));
             }
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
@@ -162,8 +162,8 @@ impl State {
             CommandError::CannotStepFurtherBack => {
                 prompt::error("can't step any further back")
             }
-            CommandError::RuntimeError { rspim_error, } => {
-                prompt::error(format!("runtime error -- {:?}", rspim_error));
+            CommandError::RuntimeError { mipsy_error, } => {
+                prompt::error(format!("runtime error -- {:?}", mipsy_error));
             }
             CommandError::WithTip { error, tip, } => {
                 self.handle_error(*error, false);
@@ -239,7 +239,7 @@ impl State {
         let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
 
         let mut handler = Handler::make(verbose);
-        runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { rspim_error: err })?;
+        runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
 
         if handler.exit_status.is_some() {
             self.exited = true;

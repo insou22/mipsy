@@ -27,11 +27,11 @@ pub(crate) fn load_command() -> Command {
             let program = std::fs::read_to_string(path)
                 .map_err(|err| CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })?;
             
-            let binary = rspim_lib::compile(&state.iset, &program)
-                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), rspim_error: err })?;
+            let binary = mipsy_lib::compile(&state.iset, &program)
+                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), mipsy_error: err })?;
 
-            let runtime = rspim_lib::run(&binary)
-                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), rspim_error: err })?;
+            let runtime = mipsy_lib::run(&binary)
+                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), mipsy_error: err })?;
 
             state.binary  = Some(binary);
             state.runtime = Some(runtime);
@@ -242,7 +242,7 @@ pub(crate) fn exit_command() -> Command {
         vec![],
         vec![],
         vec![],
-        "exit rspim",
+        "exit mipsy",
         |_state, _label, _args| {
             std::process::exit(0);
         }

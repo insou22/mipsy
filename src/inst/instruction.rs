@@ -1,9 +1,9 @@
 use std::collections::HashMap;
-use crate::{Binary, error::RSpimResult, TEXT_BOT};
+use crate::{Binary, error::MipsyResult, TEXT_BOT};
 use serde::{Serialize, Deserialize};
 use super::register::Register;
 use crate::yaml::YamlFile;
-use rspim_parser::{
+use mipsy_parser::{
     MPInstruction,
     MPArgument,
     MPRegister,
@@ -85,7 +85,7 @@ pub struct PseudoExpand {
 }
 
 impl InstSet {
-    pub fn new(yaml: &YamlFile) -> RSpimResult<Self> {
+    pub fn new(yaml: &YamlFile) -> MipsyResult<Self> {
         super::yaml::from_yaml(yaml)
     }
 
@@ -127,7 +127,7 @@ impl InstSet {
 }
 
 impl InstSignature {
-    pub fn compile(&self, program: &Binary, args: Vec<&MPArgument>) -> RSpimResult<u32> {
+    pub fn compile(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<u32> {
         let mut inst: u32 = 0;
 
         match self.runtime {
@@ -422,7 +422,7 @@ impl PseudoSignature {
         }
     }
 
-    fn get_variables(&self, program: &Binary, args: Vec<&MPArgument>) -> RSpimResult<HashMap<String, MPArgument>> {
+    fn get_variables(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<HashMap<String, MPArgument>> {
         let mut variables: HashMap<String, MPArgument> = HashMap::new();
         let mut used: HashMap<PseudoVariable, usize> = HashMap::new();
 
@@ -568,7 +568,7 @@ impl PseudoSignature {
         Ok(variables)
     }
 
-    fn pre_process(&self, program: &Binary, args: Vec<&MPArgument>) -> RSpimResult<Vec<(String, Vec<MPArgument>)>> {
+    fn pre_process(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<Vec<(String, Vec<MPArgument>)>> {
         let variables = self.get_variables(program, args)?;
 
         let mut new_instns: Vec<(String, Vec<MPArgument>)> = vec![];
@@ -604,7 +604,7 @@ impl PseudoSignature {
         Ok(new_instns)
     }
 
-    pub fn compile(&self, iset: &InstSet, program: &Binary, args: Vec<&MPArgument>) -> RSpimResult<Vec<u32>> {
+    pub fn compile(&self, iset: &InstSet, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<Vec<u32>> {
         let instns = self.pre_process(program, args)?;
 
         let mut ops = vec![];
@@ -618,11 +618,11 @@ impl PseudoSignature {
 }
 
 trait ToRegister {
-    fn to_register(&self) -> RSpimResult<Register>;
+    fn to_register(&self) -> MipsyResult<Register>;
 }
 
 impl ToRegister for MPRegisterIdentifier {
-    fn to_register(&self) -> RSpimResult<Register> {
+    fn to_register(&self) -> MipsyResult<Register> {
         Ok(
             match self {
                 MPRegisterIdentifier::Named(name) => Register::from_str(name)?,

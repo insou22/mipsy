@@ -162,15 +162,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "rspim"
+name = "mipsy"
 version = "0.1.0"
 dependencies = [
  "clap",
- "rspim_lib",
+ "mipsy_lib",
 ]
 
 [[package]]
-name = "rspim_lib"
+name = "mipsy_lib"
 version = "0.1.0"
 dependencies = [
  "serde",

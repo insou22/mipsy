@@ -1,6 +1,6 @@
 ---
 name: SPIM Improvement Proposal
-about: Something that can be improved in SPIM for RSpim
+about: Something that can be improved in SPIM for Mipsy
 title: "[SIP] Division by zero"
 labels: SPIM Improvement
 assignees: insou22
@@ -33,7 +33,7 @@ Exception occurred at PC=0x00400028
   Exception 9  [Breakpoint]  occurred and ignored
 ```
 
-<!--  What should RSpim aim to do to improve this behaviour for students?  -->
+<!--  What should Mipsy aim to do to improve this behaviour for students?  -->
 # Suggested improvements
 
 - Explain that the error was a division by zero

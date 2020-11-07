@@ -1,16 +1,16 @@
 use crate::{
-    RSpimResult,
+    MipsyResult,
     MPProgram,
 };
 use crate::inst::instruction::InstSet;
 use super::Binary;
-use rspim_parser::{
+use mipsy_parser::{
     MPInstruction,
     MPItem,
     MPDirective,
 };
 
-pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> RSpimResult<usize> {
+pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyResult<usize> {
     if iset.find_native(inst).is_some() {
         Ok(1)
     } else if let Some(pseudo) = iset.find_pseudo(inst) {
@@ -21,7 +21,7 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> RSpimResult<u
     }
 }
 
-pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> RSpimResult<()> {
+pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
     let mut text = true;
 
     for &item in program.items().iter() {

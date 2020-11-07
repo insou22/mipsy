@@ -13,11 +13,11 @@ pub(crate) use compile::{
     STACK_TOP,
     KTEXT_BOT
 };
-pub(crate) use rspim_parser::MPProgram;
+pub(crate) use mipsy_parser::MPProgram;
 
 pub use error::{
-    RSpimResult,
-    RSpimError,
+    MipsyResult,
+    MipsyError,
 };
 pub use inst::instruction::InstSet;
 pub use compile::Binary;
@@ -32,14 +32,14 @@ pub use runtime::{
     void_ptr,
 };
 
-pub fn inst_set() -> RSpimResult<InstSet> {
+pub fn inst_set() -> MipsyResult<InstSet> {
     let yaml = yaml::get_instructions();
     InstSet::new(&yaml)
 }
 
-pub fn compile(iset: &InstSet, program: &str) -> RSpimResult<Binary> {
-    let parsed = rspim_parser::parse_mips(program)
-            .map_err(|string| RSpimError::Compile(error::CompileError::Str(string)))?;
+pub fn compile(iset: &InstSet, program: &str) -> MipsyResult<Binary> {
+    let parsed = mipsy_parser::parse_mips(program)
+            .map_err(|string| MipsyError::Compile(error::CompileError::Str(string)))?;
     let compiled = compile::compile(&parsed, &iset)?;
 
     Ok(compiled)
@@ -49,6 +49,6 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }
 
-pub fn run(binary: &Binary) -> RSpimResult<Runtime> {
+pub fn run(binary: &Binary) -> MipsyResult<Runtime> {
     runtime::Runtime::new(binary)
 }

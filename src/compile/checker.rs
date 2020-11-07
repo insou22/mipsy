@@ -1,5 +1,5 @@
 use crate::{
-    RSpimResult,
+    MipsyResult,
     MPProgram,
 };
 
@@ -7,7 +7,7 @@ pub enum Warning {
 
 }
 
-pub fn check_program(_program: &MPProgram) -> RSpimResult<Vec<Warning>> {
+pub fn check_program(_program: &MPProgram) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
     // TODO

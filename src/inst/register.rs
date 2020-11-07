@@ -1,4 +1,4 @@
-use crate::error::RSpimResult;
+use crate::error::MipsyResult;
 use crate::error::CompileError;
 use crate::cerr;
 
@@ -90,7 +90,7 @@ impl Register {
         }
     }
 
-    pub fn from_number(num: i32) -> RSpimResult<Self> {
+    pub fn from_number(num: i32) -> MipsyResult<Self> {
         match num {
             0  => Ok(Self::ZERO),
             1  => Ok(Self::AT),
@@ -128,7 +128,7 @@ impl Register {
         }
     }
 
-    pub fn from_u32(num: u32) -> RSpimResult<Self> {
+    pub fn from_u32(num: u32) -> MipsyResult<Self> {
         Self::from_number(num as i32)
     }
 
@@ -140,7 +140,7 @@ impl Register {
         Self::from_u32(num).unwrap().to_str()
     }
 
-    pub fn from_str(name: &str) -> RSpimResult<Self> {
+    pub fn from_str(name: &str) -> MipsyResult<Self> {
         // $num
         if let Ok(number) = name.parse::<i32>() {
             return Self::from_number(number);
