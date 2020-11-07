@@ -30,6 +30,33 @@ pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
     lo: Safe<i32>,
 }
 
+pub type flags = u32;
+pub type mode = u32;
+pub type len = u32;
+pub type fd  = u32;
+pub type n_bytes = i32;
+pub type void_ptr = Vec<u8>;
+
+pub trait RuntimeHandler {
+    fn sys1_print_int   (&mut self, val: i32);
+    fn sys2_print_float (&mut self, val: f32);
+    fn sys3_print_double(&mut self, val: f64);
+    fn sys4_print_string(&mut self, val: String);
+    fn sys5_read_int    (&mut self) -> i32;
+    fn sys6_read_float  (&mut self) -> f32;
+    fn sys7_read_double (&mut self) -> f64;
+    fn sys8_read_string (&mut self) -> String;
+    fn sys9_sbrk        (&mut self, val: i32);
+    fn sys10_exit       (&mut self);
+    fn sys11_print_char (&mut self, val: char);
+    fn sys12_read_char  (&mut self) -> char;
+    fn sys13_open       (&mut self, path: String, flags: flags, mode: mode) -> fd;
+    fn sys14_read       (&mut self, fd: fd, buffer: void_ptr, len: len) -> n_bytes;
+    fn sys15_write      (&mut self, fd: fd, buffer: void_ptr, len: len) -> n_bytes;
+    fn sys16_close      (&mut self, fd: fd);
+    fn sys17_exit_status(&mut self, val: i32);
+}
+
 impl Runtime {
     pub fn new(program: &Binary) -> RSpimResult<Self> {
         let entry_point = program.get_label("main")?;
@@ -86,7 +113,10 @@ impl Runtime {
         self.state().get_word(state.pc)
     }
 
-    pub fn step(&mut self) -> RSpimResult<()> {
+    pub fn step<RH>(&mut self, rh: &mut RH) -> RSpimResult<()>
+    where
+        RH: RuntimeHandler
+    {
         self.timeline.push(self.timeline.last().unwrap().clone());
         self.current_state += 1;
 
@@ -95,7 +125,7 @@ impl Runtime {
         let inst = state.get_word(state.pc)?;
         state.pc += 4;
 
-        self.execute(inst)?;
+        self.execute(rh, inst)?;
 
         Ok(())
     }
@@ -107,6 +137,10 @@ impl Runtime {
 
         self.timeline.remove(self.timeline_len() - 1);
         true
+    }
+
+    pub fn reset(&mut self) {
+        self.timeline.drain(1..);
     }
 
     pub fn timeline_len(&self) -> usize {
@@ -125,7 +159,10 @@ impl Runtime {
         self.timeline.last_mut().unwrap()
     }
 
-    fn execute(&mut self, inst: u32) -> RSpimResult<()> {
+    fn execute<RH>(&mut self, rh: &mut RH, inst: u32) -> RSpimResult<()>
+    where
+        RH: RuntimeHandler
+    {
         let opcode =  inst >> 26;
         let rs     = (inst >> 21) & 0x1F;
         let rt     = (inst >> 16) & 0x1F;
@@ -138,7 +175,7 @@ impl Runtime {
         match opcode {
             0 => {
                 // R-Type
-                self.execute_r(funct, rd, rs, rt, shamt)?;
+                self.execute_r(rh, funct, rd, rs, rt, shamt)?;
             }
             0b000010 | 0b000011 => {
                 // J-Type
@@ -155,16 +192,22 @@ impl Runtime {
         Ok(())
     }
 
-    fn syscall(&mut self) -> RSpimResult<()> {
+    fn syscall<RH>(&mut self, rh: &mut RH) -> RSpimResult<()>
+    where
+        RH: RuntimeHandler
+    {
         let state = self.state_mut();
 
         match state.get_reg(Register::V0.to_number() as u32)? {
-            1 => { print!("{}", state.get_reg(Register::A0.to_number() as u32)?); },
-            2 => {},
-            3 => {},
-            4 => { 
-                let mut pointer = state.get_ureg(Register::A0.to_number() as u32)?;
+            1 => { 
+                rh.sys1_print_int(state.get_reg(Register::A0.to_number() as u32)?);
+            }
+            2 => {}
+            3 => {}
+            4 => {
+                let mut text = String::new();
 
+                let mut pointer = state.get_ureg(Register::A0.to_number() as u32)?;
                 loop {
                     let value = state.get_byte(pointer)?;
 
@@ -172,23 +215,29 @@ impl Runtime {
                         break;
                     }
 
-                    print!("{}", value as char);
+                    text.push(value as char);
                     pointer += 1;
                 }
-            },
-            5 => {
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input).unwrap();
-                let n: i32 = input.trim().parse().unwrap();
 
-                state.write_reg(Register::V0.to_number() as u32, n);
-            },
+                rh.sys4_print_string(text);
+            }
+            5 => {
+                
+                let input = rh.sys5_read_int();
+                state.write_reg(Register::V0.to_number() as u32, input);
+            }
             6 => {},
             7 => {},
             8 => {},
-            10 => { std::process::exit(0) }
-            11 => { print!("{}", state.get_ureg(Register::A0.to_number() as u32)? as u8 as char); },
-            17 => { std::process::exit(state.get_reg(Register::A0.to_number() as u32).unwrap_or(0)); }
+            10 => {
+                rh.sys10_exit();
+            }
+            11 => {
+                rh.sys11_print_char(state.get_ureg(Register::A0.to_number() as u32)? as u8 as char);
+            }
+            17 => {
+                rh.sys17_exit_status(state.get_reg(Register::A0.to_number() as u32).unwrap_or(0));
+            }
             _ => {},
         }
 
@@ -197,7 +246,10 @@ impl Runtime {
         Ok(())
     }
 
-    fn execute_r(&mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> RSpimResult<()> {
+    fn execute_r<RH>(&mut self, rh: &mut RH, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> RSpimResult<()>
+    where
+        RH: RuntimeHandler
+    {
         let state = self.state_mut();
 
         match funct {
@@ -241,7 +293,7 @@ impl Runtime {
             0x0B => {},
 
             // SYSCALL
-            0x0C => { self.syscall()?; },
+            0x0C => { self.syscall(rh)?; },
 
             // BREAK
             0x0D => { todo!(); },

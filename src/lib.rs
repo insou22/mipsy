@@ -21,7 +21,16 @@ pub use error::{
 };
 pub use inst::instruction::InstSet;
 pub use compile::Binary;
-pub use runtime::Runtime;
+pub use runtime::{
+    Runtime,
+    RuntimeHandler,
+    flags,
+    mode,
+    len,
+    fd,
+    n_bytes,
+    void_ptr,
+};
 
 pub fn inst_set() -> RSpimResult<InstSet> {
     let yaml = yaml::get_instructions();

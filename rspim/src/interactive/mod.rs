@@ -1,5 +1,8 @@
 mod helper;
-use std::fmt::Display;
+mod command;
+mod prompt;
+mod error;
+mod runtime_handler;
 
 use helper::MyHelper;
 
@@ -19,24 +22,36 @@ use rspim_lib::{
     Runtime,
     decompile::decompile_inst_into_parts,
 };
+use command::Command;
+use runtime_handler::Handler;
 
-struct State {
-    iset: InstSet,
-    binary:  Option<Binary>,
-    runtime: Option<Runtime>,
-    prev_command: Option<String>,
-    confirm_exit: bool,
+use self::error::{CommandError, CommandResult};
+
+pub(crate) struct State {
+    pub(crate) iset: InstSet,
+    pub(crate) commands: Vec<Command>,
+    pub(crate) binary:  Option<Binary>,
+    pub(crate) runtime: Option<Runtime>,
+    pub(crate) exited: bool,
+    pub(crate) prev_command: Option<String>,
+    pub(crate) confirm_exit: bool,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             iset: rspim_lib::inst_set().unwrap(),
+            commands: vec![],
             binary:  None,
             runtime: None,
+            exited: false,
             prev_command: None,
             confirm_exit: false,
         }
+    }
+
+    fn add_command(&mut self, command: Command) {
+        self.commands.push(command);
     }
 
     fn prompt(&self) -> &str {
@@ -61,151 +76,107 @@ impl State {
         self.prev_command = Some(cmd);
     }
 
+    fn find_command(&self, cmd: &str) -> Option<&Command> {
+        self.commands.iter()
+                .find(|command| {
+                    command.name == cmd || command.aliases.iter().find(|&alias| alias == cmd).is_some()
+                })
+    }
+
     fn do_exec(&mut self, line: &String) {
         let parts = match shlex::split(line) {
             Some(parts) => parts,
             None => return,
         };
 
-        let command = match parts.first() {
-            Some(command) => command,
+        let command_name = match parts.first() {
+            Some(command_name) => command_name,
             None => return,
         };
 
-        let command_lower = command.to_ascii_lowercase();
+        let command = self.find_command(&command_name.to_ascii_lowercase());
 
-        match &*command_lower {
-            "load" => {
-                let path = match parts.get(1) {
-                    Some(path) => path,
-                    None => {
-                        Self::error(format!("missing parameter {}", "<file>".magenta()));
-                        Self::tip_nl(format!("try `{}`", "help load".bold()));
-                        return;
-                    }
-                };
+        if command.is_none() {
+            prompt::unknown_command(command_name);
+            return;
+        }
 
-                let program = match std::fs::read_to_string(path) {
-                    Ok(program) => program,
-                    Err(err) => {
-                        Self::error_nl(err);
-                        return;
-                    }
-                };
-                
-                let binary = match rspim_lib::compile(&self.iset, &program) {
-                    Ok(binary) => binary,
-                    Err(_err) => {
-                        Self::error_nl("Error: Failed to compile");
-                        return;
-                    }
-                };
+        let command = command.unwrap();
+        if (parts.len() - 1) < command.required_args.len() {
+            let mut err_msg = String::from("missing required parameter");
 
-                let runtime = match rspim_lib::run(&binary) {
-                    Ok(runtime) => runtime,
-                    Err(_err) => {
-                        Self::error_nl("Error: Failed to compile");
-                        return;
-                    }
-                };
-
-                self.binary  = Some(binary);
-                self.runtime = Some(runtime);
-                Self::success_nl("file loaded");
+            if command.required_args.len() - (parts.len() - 1) > 1 {
+                err_msg.push('s');
             }
-            "step" | "back" | "run" => {
-                if self.binary.is_none() || self.runtime.is_none() {
-                    Self::error_nl("you have to load a file first");
-                    return;
-                }
 
-                let binary  = self.binary.as_ref().unwrap();
-                let runtime = self.runtime.as_ref().unwrap();
+            err_msg.push(' ');
 
-                let result = match &*command_lower {
-                    "step" => {
-                        if let Ok(inst) = runtime.next_inst() {
-                            self.print_inst(binary, inst, runtime.state().get_pc());
-                        }
+            err_msg.push_str(
+                &command.required_args[(parts.len() - 1)..(command.required_args.len())]
+                    .iter()
+                    .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            );
 
-                        self.runtime.as_mut().unwrap().step()
-                    },
-                    "back" => {
-                        if !self.runtime.as_mut().unwrap().back() {
-                            Self::error_nl("can't step any further back");
-                            return;
-                        }
+            prompt::error(err_msg);
+            prompt::tip_nl(format!("try `{} {}`", "help".bold(), command_name.bold()));
+            return;
+        }
 
-                        Ok(())
-                    },
-                    "run" => {
-                        let runtime = self.runtime.as_mut().unwrap();
+        let result = (command.exec)(self, command_name, &parts[1..]);
+        match result {
+            Ok(_)    => {}
+            Err(err) => self.handle_error(err, true),
+        };
+    }
 
-                        loop {
-                            match runtime.step() {
-                                Ok(_) => {}
-                                Err(err) => break Err(err),
-                            }
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-
-                match result {
-                    Ok(_) => {},
-                    Err(_err) => {
-                        Self::error_nl("runtime error");
-                    }
-                }
+    fn handle_error(&self, err: CommandError, nl: bool) {
+        match err {
+            CommandError::ArgExpectedI32 { arg, instead, } => {
+                prompt::error(
+                    format!("parameter {} expected integer, got `{}` instead", arg, instead)
+                );
             }
-            "exit" => {
-                std::process::exit(0);
+            CommandError::ArgExpectedU32 { arg, instead, } => {
+                prompt::error(
+                    format!("parameter {} expected positive integer, got `{}` instead", arg, instead)
+                );
             }
-            "help" => {
-                match parts.get(1) {
-                    Some(arg) => {
-                        match &**arg {
-                            "load" => {
-
-                            }
-                            "step" => {
-
-                            }
-                            "back" => {
-
-                            }
-                            "run" => {
-
-                            }
-                            "help" => {
-                                println!("...is that even legal?\n");
-                            }
-                            _ => {
-                                Self::unknown_command(arg);
-                            }
-                        }
-                    }
-                    None => {
-                        println!(
-                            "\n{}\n{}\n{}\n{}\n{}\n{}\n",
-                            "COMMANDS:".green().bold(),
-                            format!("  {} {:<10}{}", "load".yellow().bold(), "<file>".magenta(), "- load a MIPS file to run".white()),
-                            format!("  {:<15}{}",    "step".yellow().bold(), "- step forwards one instruction".white()),
-                            format!("  {:<15}{}",    "back".yellow().bold(), "- step backwards one instruction".white()),
-                            format!("  {:<15}{}",    "exit".yellow().bold(), "- exit rspim".white()),
-                            format!("  {} {:<10}{}", "help".yellow().bold(), "[command]".magenta(), "- print this help text, or specific help for a command".white()),
-                        );
-                    }
-                }
+            CommandError::HelpUnknownCommand { command, } => {
+                prompt::error(format!("unknown command `{}`", command));
             }
-            _  => {
-                Self::unknown_command(command);
+            CommandError::CannotReadFile { path, os_error, } => {
+                prompt::error(format!("failed to read file `{}`: {}", path, os_error));
+            }
+            CommandError::CannotCompile  { path, program: _, rspim_error, } => {
+                prompt::error(format!("failed to compile `{}` -- {:?}", path, rspim_error));
+            }
+            CommandError::MustLoadFile => {
+                prompt::error("you have to load a file first");
+            }
+            CommandError::ProgramExited => {
+                prompt::error("program has exited");
+                prompt::tip(format!("try using `{}` or `{}`", "back".bold(), "reset".bold()));
+            }
+            CommandError::CannotStepFurtherBack => {
+                prompt::error("can't step any further back")
+            }
+            CommandError::RuntimeError { rspim_error, } => {
+                prompt::error(format!("runtime error -- {:?}", rspim_error));
+            }
+            CommandError::WithTip { error, tip, } => {
+                self.handle_error(*error, false);
+                prompt::tip(tip);
             }
         }
 
+        if nl {
+            println!();
+        }
     }
 
-    fn print_inst(&self, binary: &Binary, inst: u32, addr: u32) {
+    pub(crate) fn print_inst(&self, binary: &Binary, inst: u32, addr: u32) {
         let parts = decompile_inst_into_parts(binary, &self.iset, inst, addr);
 
         if parts.inst_name.is_none() {
@@ -219,14 +190,33 @@ impl State {
         }
 
         for label in parts.labels.iter() {
-            Self::banner_nl(label.yellow().bold());
+            prompt::banner_nl(label.yellow().bold());
         }
 
         let args = parts.arguments
             .iter()
             .map(|arg| {
-                if arg.starts_with('$') {
-                    format!("{}{}", "$".yellow(), arg[1..].bold())
+                if let Some(index) = arg.chars().position(|chr| chr == '$') {
+                    let before = arg.chars().take(index).collect::<String>();
+
+                    let mut reg_name   = String::new();
+                    let mut post_chars = String::new();
+
+                    let mut reg_chars = arg.chars().skip(index + 1);
+                    while let Some(chr) = reg_chars.next() {
+                        if chr.is_alphanumeric() {
+                            reg_name.push(chr);
+                        } else {
+                            post_chars.push(chr);
+                            break;
+                        }
+                    }
+
+                    while let Some(chr) = reg_chars.next() {
+                        post_chars.push(chr);
+                    }
+
+                    format!("{}{}{}{}", before, "$".yellow(), reg_name.bold(), post_chars)
                 } else if arg.chars().next().unwrap().is_alphabetic() {
                     arg.yellow().bold().to_string()
                 } else {
@@ -245,57 +235,40 @@ impl State {
         );
     }
 
-    fn unknown_command<D: Display>(command: D) {
-        Self::error(format!("{} `{}`", "unknown command", command));
-        Self::tip_nl(format!("{}{}{}", "use `", "help".bold(), "` for a list of commands"));
+    pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
+        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+        let mut handler = Handler::make(verbose);
+        runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { rspim_error: err })?;
+
+        if handler.exit_status.is_some() {
+            self.exited = true;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
-    fn banner<D: Display>(text: D) {
-        print!("{}{}", text, ": ".bold());
+    pub(crate) fn run(&mut self) -> CommandResult<()> {
+        if self.exited {
+            return Err(CommandError::ProgramExited);
+        }
+
+        loop {
+            if self.step(false)? {
+                break;
+            }
+        }
+
+        Ok(())
     }
 
-    fn banner_nl<D: Display>(text: D) {
-        Self::banner(text);
-        println!();
-    }
+    pub(crate) fn reset(&mut self) -> CommandResult<()> {
+        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+        runtime.reset();
+        self.exited = false;
 
-    fn ebanner<D: Display>(text: D) {
-        eprint!("{}{}", text, ": ".bold());
-    }
-
-    fn ebanner_nl<D: Display>(text: D) {
-        Self::ebanner(text);
-        println!();
-    }
-
-    fn tip<D: Display>(text: D) {
-        Self::banner("tip".yellow().bold());
-        println!("{}", text);
-    }
-
-    fn tip_nl<D: Display>(text: D) {
-        Self::tip(text);
-        println!();
-    }
-
-    fn success<D: Display>(text: D) {
-        Self::banner("success".green().bold());
-        println!("{}", text);
-    }
-
-    fn success_nl<D: Display>(text: D) {
-        Self::success(text);
-        println!();
-    }
-
-    fn error<D: Display>(text: D) {
-        Self::ebanner("error".red());
-        eprintln!("{}", text);
-    }
-
-    fn error_nl<D: Display>(text: D) {
-        Self::error(text);
-        println!();
+        Ok(())
     }
 
     fn exec_command(&mut self, line: String) {
@@ -322,9 +295,23 @@ fn editor() -> Editor<MyHelper> {
     rl
 }
 
+fn state() -> State {
+    let mut state = State::new();
+
+    state.add_command(command::load_command());
+    state.add_command(command::step_command());
+    state.add_command(command::back_command());
+    state.add_command(command::run_command());
+    state.add_command(command::reset_command());
+    state.add_command(command::help_command());
+    state.add_command(command::exit_command());
+
+    state
+}
+
 pub(crate) fn launch() -> ! {
     let mut rl = editor();
-    let mut state = State::new();
+    let mut state = state();
 
     loop {
         let readline = rl.readline(state.prompt());
