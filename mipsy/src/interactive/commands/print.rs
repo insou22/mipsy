@@ -17,35 +17,35 @@ pub(crate) fn print_command() -> Command {
         &format!(
             "Prints the current value of an {0} in the loaded program.\n\
              {0} can be one of:\n\
-        \x20- a {13}: named (`{1}{2}`) or numbered (`{1}{3}`),\n\
-        \x20- a {21} {13}: `{1}{18}`, `{1}{19}`, `{1}{20}`,\n\
-        \x20- an {14}: decimal (`4194304`), hex (`{4}400000`), labelled (`{5}`),\n\
-        \x20- {15}: `{1}{6}`.\n\
-             {7} can optionally be specified (default: `{8}`) to specify how the value\n\
-        \x20 should be printed. Options: `{9}`, `{10}`, `{8}`, `{16}{9}`, `{16}{10}`,\n\
-        \x20                             `{16}{8}` or `{17}`, `{11}`, `{12}`.",
+        \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
+        \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
+        \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
+        \x20- {12}: `{2}{13}`.\n\
+             {14} can optionally be specified (default: `{15}`) to specify how the value\n\
+        \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
+        \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
             "<item>".magenta(),
+            "register".yellow().bold(),
             "$".yellow(),
             "t3".bold(),
             "12".bold(),
-            "0x".yellow(),
-            "my_label".yellow().bold(),
-            "all".bold(),
-            "[type]".magenta(),
-            "word".bold(),
-            "byte".bold(),
-            "half".bold(),
-            "char".bold(),
-            "string".bold(),
-            "register".yellow().bold(),
-            "address".yellow().bold(),
-            "all registers".yellow().bold(),
-            "x".bold(),
-            "hex".bold(),
+            "special".yellow().bold(),
             "pc".bold(),
             "hi".bold(),
             "lo".bold(),
-            "special".yellow().bold(),
+            "address".yellow().bold(),
+            "0x".yellow(),
+            "my_label".yellow().bold(),
+            "all registers".yellow().bold(),
+            "all".bold(),
+            "[type]".magenta(),
+            format!("{}{}", "w".yellow().bold(), "ord".bold()),
+            format!("{}{}", "b".yellow().bold(), "yte".bold()),
+            format!("{}{}", "h".yellow().bold(), "alf".bold()),
+            "x".yellow().bold(),
+            "he".bold(),
+            format!("{}{}", "c".yellow().bold(), "har".bold()),
+            format!("{}{}", "s".yellow().bold(), "tring".bold()),
         ),
         |state, _label, args| {
             let get_error = || CommandError::WithTip { 
@@ -62,7 +62,8 @@ pub(crate) fn print_command() -> Command {
 
             let print_type = &*args.get(1).cloned().unwrap_or("word".to_string());
             match print_type {
-                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" | "string" => {}
+                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" | "string" |
+                "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    | "s" => {}
                 other => {
                     return Err(
                         CommandError::BadArgument { arg: "<type>".magenta().to_string(), instead: other.to_string() }
@@ -80,8 +81,9 @@ pub(crate) fn print_command() -> Command {
                             match runtime.state().get_reg(register.to_u32()) {
                                 Ok(val) => {
                                     let out = match print_type {
-                                        "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" => format_simple_print(val, print_type),
-                                        "string" => {
+                                        "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" |
+                                        "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    => format_simple_print(val, print_type),
+                                        "string" | "s" => {
                                             prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
                                             prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
                                             return Ok(());
@@ -133,8 +135,9 @@ pub(crate) fn print_command() -> Command {
                         };
 
                         let value = match print_type {
-                            "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" => format_simple_print(val, print_type),
-                            "string" => {
+                            "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" |
+                            "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    => format_simple_print(val, print_type),
+                            "string" | "s" => {
                                 prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
                                 prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
                                 return Ok(());
@@ -162,14 +165,14 @@ pub(crate) fn print_command() -> Command {
                     let map_err = |_err| CommandError::UninitialisedPrint { addr: imm };
 
                     let value = match print_type {
-                        "byte" => format!("{}", runtime.state().get_byte(imm).map_err(map_err)?),
-                        "half" => format!("{}", runtime.state().get_half(imm).map_err(map_err)?),
-                        "word" => format!("{}", runtime.state().get_word(imm).map_err(map_err)?),
-                        "xbyte" => format!("0x{:02x}", runtime.state().get_byte(imm).map_err(map_err)? as u8),
-                        "xhalf" => format!("0x{:04x}", runtime.state().get_half(imm).map_err(map_err)? as u16),
-                        "xword" | "hex" => format!("0x{:08x}", runtime.state().get_word(imm).map_err(map_err)? as u32),
-                        "char" => format!("\'{}\'", ascii::escape_default((runtime.state().get_byte(imm).map_err(map_err)? & 0xFF) as u8)),
-                        "string" => {
+                        "byte"  | "b"  => format!("{}", runtime.state().get_byte(imm).map_err(map_err)?),
+                        "half"  | "h"  => format!("{}", runtime.state().get_half(imm).map_err(map_err)?),
+                        "word"  | "w"  => format!("{}", runtime.state().get_word(imm).map_err(map_err)?),
+                        "xbyte" | "xb" => format!("0x{:02x}", runtime.state().get_byte(imm).map_err(map_err)? as u8),
+                        "xhalf" | "xh" => format!("0x{:04x}", runtime.state().get_half(imm).map_err(map_err)? as u16),
+                        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", runtime.state().get_word(imm).map_err(map_err)? as u32),
+                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default((runtime.state().get_byte(imm).map_err(map_err)? & 0xFF) as u8)),
+                        "string"| "s"  => {
                             let mut text = String::new();
 
                             let mut addr = imm;
@@ -207,13 +210,13 @@ pub(crate) fn print_command() -> Command {
 
 fn format_simple_print(val: i32, print_type: &str) -> String {
     match print_type {
-        "byte" => format!("{}", val & 0xFF),
-        "half" => format!("{}", val & 0xFFFF),
-        "word" => format!("{}", val),
-        "xbyte" => format!("0x{:02x}", (val as u32) & 0xFF),
-        "xhalf" => format!("0x{:04x}", (val as u32) & 0xFFFF),
-        "xword" | "hex" => format!("0x{:08x}", val as u32),
-        "char"  => format!("\'{}\'", ascii::escape_default((val & 0xFF) as u8)),
+        "byte"  | "b"  => format!("{}", val & 0xFF),
+        "half"  | "h"  => format!("{}", val & 0xFFFF),
+        "word"  | "w"  => format!("{}", val),
+        "xbyte" | "xb" => format!("0x{:02x}", (val as u32) & 0xFF),
+        "xhalf" | "xh" => format!("0x{:04x}", (val as u32) & 0xFFFF),
+        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", val as u32),
+        "char"  | "c"  => format!("\'{}\'", ascii::escape_default((val & 0xFF) as u8)),
         _ => unreachable!(),
     }
 }
