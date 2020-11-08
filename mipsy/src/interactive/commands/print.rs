@@ -76,21 +76,20 @@ pub(crate) fn print_command() -> Command {
 
             match arg {
                 MPArgument::Register(MPRegister::Normal(ident)) => {
+                    match print_type {
+                        "string" | "s" => {
+                            prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
+                            prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
+                            return Ok(());
+                        }
+                        _ => {}
+                    }
+
                     if matches!(ident, MPRegisterIdentifier::Named(ref name) if name == "all") {
                         for register in &Register::all() {
                             match runtime.state().get_reg(register.to_u32()) {
                                 Ok(val) => {
-                                    let out = match print_type {
-                                        "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" |
-                                        "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    => format_simple_print(val, print_type),
-                                        "string" | "s" => {
-                                            prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
-                                            prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
-                                            return Ok(());
-                                        },
-                                        _ => unreachable!(),
-                                    };
-
+                                    let out = format_simple_print(val, print_type);
                                     println!("{}{:4} = {}", "$".yellow(), register.to_lower_str().bold(), out);
                                 }
                                 Err(_) => {}
@@ -98,14 +97,14 @@ pub(crate) fn print_command() -> Command {
                         }
 
                         if let Ok(val) = runtime.state().get_lo() {
-                            println!(" {:4} = {}", "lo", val);
+                            println!(" {:4} = {}", "lo".bold(), format_simple_print(val, print_type));
                         }
 
                         if let Ok(val) = runtime.state().get_hi() {
-                            println!(" {:4} = {}", "hi", val);
+                            println!(" {:4} = {}", "hi".bold(), format_simple_print(val, print_type));
                         }
 
-                        println!(" {:4} = {}", "pc\n", runtime.state().get_pc());
+                        println!(" {:4} = {}", "pc".bold(), format_simple_print(runtime.state().get_pc() as i32, print_type));
                     } else {
                         let (val, reg_name) = 
                         {
@@ -143,17 +142,7 @@ pub(crate) fn print_command() -> Command {
                             (val, reg_name)
                         };
 
-                        let value = match print_type {
-                            "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" |
-                            "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    => format_simple_print(val, print_type),
-                            "string" | "s" => {
-                                prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
-                                prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
-                                return Ok(());
-                            },
-                            _ => unreachable!(),
-                        };
-
+                        let value = format_simple_print(val, print_type);
                         prompt::success_nl(format!("{}{} = {}", "$".yellow(), reg_name.bold(), value));
                     }
                 }
