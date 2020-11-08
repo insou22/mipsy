@@ -49,6 +49,11 @@ pub(crate) fn error<D: Display>(text: D) {
     eprintln!("{}", text);
 }
 
+pub(crate) fn error_nl<D: Display>(text: D) {
+    error(text);
+    println!();
+}
+
 pub(crate) fn syscall<D: Display>(code: i32, text: D) {
     print!("{}{}{}{}", "\n[SYSCALL ".yellow().bold(), code.to_string().bold(), "] ".yellow().bold(), text);
 }

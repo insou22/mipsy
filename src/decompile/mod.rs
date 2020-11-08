@@ -6,6 +6,7 @@ use crate::inst::register::Register;
 
 pub struct Decompiled {
     pub opcode: u32,
+    pub addr: u32,
     pub inst_name: Option<String>,
     pub arguments: Vec<String>,
     pub labels: Vec<String>,
@@ -61,6 +62,7 @@ pub fn decompile_into_parts(program: &Binary, iset: &InstSet) -> HashMap<u32, De
 pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, text_addr: u32) -> Decompiled {
     let mut parts = Decompiled {
         opcode: inst,
+        addr: text_addr,
         inst_name: None,
         arguments: vec![],
         labels: vec![],
@@ -152,7 +154,7 @@ pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, te
                             }
                         }
 
-                        j_label.cloned().unwrap_or(format!("{:08x}", j_addr))
+                        j_label.map(|label| label.to_string()).unwrap_or(format!("{:08x}", j_addr))
                     }
                     _ => unreachable!(),
                 }.to_ascii_lowercase())

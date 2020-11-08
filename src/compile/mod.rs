@@ -1,10 +1,5 @@
-use crate::{
-    MipsyResult,
-    MPProgram,
-    InstSet,
-    util::Safe,
-};
-use std::collections::HashMap;
+use crate::{error::CompileError, InstSet, MPProgram, MipsyResult, cerr, util::Safe};
+use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
 
@@ -27,7 +22,7 @@ pub const KTEXT_BOT: u32 = 0x80000000;
 pub struct Binary {
     pub text:    Vec<u32>,
     pub data:    Vec<Safe<u8>>,
-    pub labels:  HashMap<String, u32>,
+    pub labels:  CaseInsensitiveHashMap<u32>,
     pub globals: Vec<String>,
 }
 
@@ -36,8 +31,12 @@ impl Binary {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
-            todo!()
+            cerr!(CompileError::UnresolvedLabel(label.to_string()))
         }
+    }
+
+    pub fn insert_label(&mut self, label: &str, addr: u32) {
+        self.labels.insert(label, addr);
     }
 }
 
@@ -50,7 +49,7 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let mut binary = Binary {
         text: vec![],
         data: vec![],
-        labels: HashMap::new(),
+        labels: CaseInsensitiveHashMap::new(),
         globals: vec![],
     };
 

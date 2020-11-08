@@ -1,5 +1,5 @@
 mod helper;
-mod command;
+mod commands;
 mod prompt;
 mod error;
 mod runtime_handler;
@@ -20,9 +20,8 @@ use mipsy_lib::{
     Binary, 
     InstSet, 
     Runtime,
-    decompile::decompile_inst_into_parts,
 };
-use command::Command;
+use commands::Command;
 use runtime_handler::Handler;
 
 use self::error::{CommandError, CommandResult};
@@ -133,6 +132,11 @@ impl State {
 
     fn handle_error(&self, err: CommandError, nl: bool) {
         match err {
+            CommandError::BadArgument { arg, instead, } => {
+                prompt::error(
+                    format!("bad argument `{}` for {}", instead, arg)
+                )
+            }
             CommandError::ArgExpectedI32 { arg, instead, } => {
                 prompt::error(
                     format!("parameter {} expected integer, got `{}` instead", arg, instead)
@@ -152,6 +156,9 @@ impl State {
             CommandError::CannotCompile  { path, program: _, mipsy_error, } => {
                 prompt::error(format!("failed to compile `{}` -- {:?}", path, mipsy_error));
             }
+            CommandError::UnknownRegister { register } => {
+                prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
+            }
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
             }
@@ -169,70 +176,21 @@ impl State {
                 self.handle_error(*error, false);
                 prompt::tip(tip);
             }
+            CommandError::UnknownLabel { label } => {
+                prompt::error(format!("unknown label: \"{}\"", label));
+            }
+            CommandError::UninitialisedPrint { addr } => {
+                prompt::error(format!("memory at address 0x{:08x} is uninitialized", addr));
+            }
+            CommandError::UnterminatedString { good_parts } => {
+                prompt::error(format!("unterminated string: \"{}\"", good_parts.red()));
+                prompt::tip(format!("make sure your strings are null terminated - use {} instead of {}", ".asciiz".green(), ".ascii".red()));
+            }
         }
 
         if nl {
             println!();
         }
-    }
-
-    pub(crate) fn print_inst(&self, binary: &Binary, inst: u32, addr: u32) {
-        let parts = decompile_inst_into_parts(binary, &self.iset, inst, addr);
-
-        if parts.inst_name.is_none() {
-            return;
-        }
-
-        let name = parts.inst_name.unwrap();
-
-        if !parts.labels.is_empty() {
-            println!();
-        }
-
-        for label in parts.labels.iter() {
-            prompt::banner_nl(label.yellow().bold());
-        }
-
-        let args = parts.arguments
-            .iter()
-            .map(|arg| {
-                if let Some(index) = arg.chars().position(|chr| chr == '$') {
-                    let before = arg.chars().take(index).collect::<String>();
-
-                    let mut reg_name   = String::new();
-                    let mut post_chars = String::new();
-
-                    let mut reg_chars = arg.chars().skip(index + 1);
-                    while let Some(chr) = reg_chars.next() {
-                        if chr.is_alphanumeric() {
-                            reg_name.push(chr);
-                        } else {
-                            post_chars.push(chr);
-                            break;
-                        }
-                    }
-
-                    while let Some(chr) = reg_chars.next() {
-                        post_chars.push(chr);
-                    }
-
-                    format!("{}{}{}{}", before, "$".yellow(), reg_name.bold(), post_chars)
-                } else if arg.chars().next().unwrap().is_alphabetic() {
-                    arg.yellow().bold().to_string()
-                } else {
-                    arg.to_string()
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        println!(
-            "{} [{}]    {:6} {}",
-            format!("0x{:08x}", addr).bright_black(),
-            format!("0x{:08x}", parts.opcode).green(),
-            name.yellow().bold(),
-            args,
-        );
     }
 
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
@@ -298,13 +256,17 @@ fn editor() -> Editor<MyHelper> {
 fn state() -> State {
     let mut state = State::new();
 
-    state.add_command(command::load_command());
-    state.add_command(command::step_command());
-    state.add_command(command::back_command());
-    state.add_command(command::run_command());
-    state.add_command(command::reset_command());
-    state.add_command(command::help_command());
-    state.add_command(command::exit_command());
+    state.add_command(commands::load_command());
+    state.add_command(commands::step_command());
+    state.add_command(commands::back_command());
+    state.add_command(commands::run_command());
+    state.add_command(commands::reset_command());
+    state.add_command(commands::decompile_command());
+    state.add_command(commands::label_command());
+    state.add_command(commands::labels_command());
+    state.add_command(commands::print_command());
+    state.add_command(commands::help_command());
+    state.add_command(commands::exit_command());
 
     state
 }

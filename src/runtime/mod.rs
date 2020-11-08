@@ -19,7 +19,6 @@ pub struct Runtime {
     timeline: Vec<State>,
     current_state: usize,
     program_len: usize,           // intrinsic
-    labels: HashMap<String, u32>, // intrinsic
 }
 
 #[derive(Clone)]
@@ -102,7 +101,6 @@ impl Runtime {
             timeline: vec![initial_state],
             current_state: 0,
             program_len: program.text.len(),
-            labels: program.labels.clone(),
         };
 
         Ok(runtime)
@@ -685,7 +683,7 @@ impl State {
         self.registers[reg as usize] = Safe::Uninitialised;
     }
 
-    fn get_reg(&self, reg: u32) -> MipsyResult<i32> {
+    pub fn get_reg(&self, reg: u32) -> MipsyResult<i32> {
         match self.registers[reg as usize] {
             Safe::Valid(reg) => Ok(reg),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedRegister(reg)),
@@ -697,7 +695,7 @@ impl State {
     }
 
     #[allow(unreachable_code)]
-    fn write_reg(&mut self, reg: u32, value: i32) {
+    pub fn write_reg(&mut self, reg: u32, value: i32) {
         if reg == 0 && value != 0 {
             todo!("warning: cannot write to $ZERO");
             return;
@@ -710,25 +708,25 @@ impl State {
         self.registers[reg as usize] = Safe::Valid(value as i32);
     }
 
-    fn get_hi(&self) -> MipsyResult<i32> {
+    pub fn get_hi(&self) -> MipsyResult<i32> {
         match self.hi {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedHi),
         }
     }
 
-    fn get_lo(&self) -> MipsyResult<i32> {
+    pub fn get_lo(&self) -> MipsyResult<i32> {
         match self.lo {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::UninitializedLo),
         }
     }
 
-    fn write_hi(&mut self, value: i32) {
+    pub fn write_hi(&mut self, value: i32) {
         self.hi = Safe::Valid(value);
     }
 
-    fn write_lo(&mut self, value: i32) {
+    pub fn write_lo(&mut self, value: i32) {
         self.lo = Safe::Valid(value);
     }
 
@@ -740,7 +738,7 @@ impl State {
         self.lo = Safe::Valid(value as i32);
     }
 
-    fn get_word(&self, address: u32) -> MipsyResult<u32> {
+    pub fn get_word(&self, address: u32) -> MipsyResult<u32> {
         let b1 = self.get_byte(address)?     as u32;
         let b2 = self.get_byte(address + 1)? as u32;
         let b3 = self.get_byte(address + 2)? as u32;
@@ -751,14 +749,14 @@ impl State {
         Ok(b1 | (b2 << 8) | (b3 << 16) | (b4 << 24))
     }
 
-    fn get_half(&self, address: u32) -> MipsyResult<u16> {
+    pub fn get_half(&self, address: u32) -> MipsyResult<u16> {
         let b1 = self.get_byte(address)?     as u16;
         let b2 = self.get_byte(address + 1)? as u16;
 
         Ok(b1 | (b2 << 8))
     }
 
-    fn get_byte(&self, address: u32) -> MipsyResult<u8> {
+    pub fn get_byte(&self, address: u32) -> MipsyResult<u8> {
         let page = self.get_page(address)?;
         let offset = Self::offset_in_page(address);
 
@@ -770,7 +768,7 @@ impl State {
         Ok(value)
     }
 
-    fn write_word(&mut self, address: u32, word: u32) {
+    pub fn write_word(&mut self, address: u32, word: u32) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
@@ -781,7 +779,7 @@ impl State {
         page[offset as usize + 3] = Safe::Valid(((word & 0xFF000000) >> 24) as u8);
     }
 
-    fn write_half(&mut self, address: u32, half: u16) {
+    pub fn write_half(&mut self, address: u32, half: u16) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
@@ -790,14 +788,14 @@ impl State {
         page[offset as usize + 1] = Safe::Valid(((half & 0xFF00) >> 8) as u8);
     }
 
-    fn write_byte(&mut self, address: u32, byte: u8) {
+    pub fn write_byte(&mut self, address: u32, byte: u8) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
         page[offset as usize] = Safe::Valid(byte);
     }
 
-    fn reset_word(&mut self, address: u32) {
+    pub fn reset_word(&mut self, address: u32) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
@@ -808,7 +806,7 @@ impl State {
 
     }
 
-    fn reset_half(&mut self, address: u32) {
+    pub fn reset_half(&mut self, address: u32) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
@@ -816,7 +814,7 @@ impl State {
         page[offset as usize + 1] = Safe::Uninitialised;
     }
 
-    fn reset_byte(&mut self, address: u32) {
+    pub fn reset_byte(&mut self, address: u32) {
         let page = self.get_page_or_create(address);
         let offset = Self::offset_in_page(address);
 
