@@ -40,6 +40,8 @@ use nom::{
 pub enum MPDirective {
     Text,
     Data,
+    KText,
+    KData,
     Ascii(String),
     Asciiz(String),
     Byte(Vec<i8>),
@@ -56,6 +58,8 @@ pub fn parse_directive(i: &[u8]) -> IResult<&[u8], MPDirective> {
     alt((
         parse_text,
         parse_data,
+        parse_ktext,
+        parse_kdata,
         parse_ascii,
         parse_asciiz,
         parse_byte,
@@ -85,6 +89,24 @@ fn parse_data(i: &[u8]) -> IResult<&[u8], MPDirective> {
     ) = tag(".data")(i)?;
 
     Ok((remaining_data, MPDirective::Data))
+}
+
+fn parse_ktext(i: &[u8]) -> IResult<&[u8], MPDirective> {
+    let (
+        remaining_data,
+        ..
+    ) = tag(".ktext")(i)?;
+
+    Ok((remaining_data, MPDirective::KText))
+}
+
+fn parse_kdata(i: &[u8]) -> IResult<&[u8], MPDirective> {
+    let (
+        remaining_data,
+        ..
+    ) = tag(".kdata")(i)?;
+
+    Ok((remaining_data, MPDirective::KData))
 }
 
 fn parse_ascii_type(tag_str: &'static str) -> impl FnMut(&[u8]) -> IResult<&[u8], String> {

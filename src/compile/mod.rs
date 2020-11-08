@@ -1,10 +1,5 @@
-use crate::{
-    MipsyResult,
-    MPProgram,
-    InstSet,
-    util::Safe,
-};
-use std::collections::HashMap;
+use crate::{error::CompileError, InstSet, MPProgram, MipsyResult, cerr, util::Safe};
+use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
 
@@ -17,17 +12,21 @@ use data::populate_labels_and_data;
 mod text;
 use text::populate_text;
 
+static KERN_FILE: &str = include_str!("../../kern.s");
 
 pub const TEXT_BOT:  u32 = 0x00400000;
 pub const DATA_BOT:  u32 = 0x10000000;
 pub const HEAP_BOT:  u32 = 0x10008000;
 pub const STACK_TOP: u32 = 0x7FFFFF00;
 pub const KTEXT_BOT: u32 = 0x80000000;
+pub const KDATA_BOT: u32 = 0x90000000;
 
 pub struct Binary {
     pub text:    Vec<u32>,
     pub data:    Vec<Safe<u8>>,
-    pub labels:  HashMap<String, u32>,
+    pub ktext:    Vec<u32>,
+    pub kdata:    Vec<Safe<u8>>,
+    pub labels:  CaseInsensitiveHashMap<u32>,
     pub globals: Vec<String>,
 }
 
@@ -36,8 +35,12 @@ impl Binary {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
-            todo!()
+            cerr!(CompileError::UnresolvedLabel(label.to_string()))
         }
+    }
+
+    pub fn insert_label(&mut self, label: &str, addr: u32) {
+        self.labels.insert(label, addr);
     }
 }
 
@@ -50,12 +53,23 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let mut binary = Binary {
         text: vec![],
         data: vec![],
-        labels: HashMap::new(),
+        ktext: vec![],
+        kdata: vec![],
+        labels: CaseInsensitiveHashMap::new(),
         globals: vec![],
     };
 
-    populate_labels_and_data(&mut binary, iset, program)?;
-    populate_text           (&mut binary, iset, program)?;
+    populate_labels_and_data(&mut binary, iset, &program)?;
+    populate_text           (&mut binary, iset, &program)?;
+    
+    let kernel = get_kernel();
+    
+    populate_labels_and_data(&mut binary, iset, &kernel)?;
+    populate_text           (&mut binary, iset, &kernel)?;
 
     Ok(binary)
+}
+
+fn get_kernel() -> MPProgram {
+    mipsy_parser::parse_mips(KERN_FILE).unwrap()
 }

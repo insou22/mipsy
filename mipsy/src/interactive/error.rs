@@ -5,11 +5,16 @@ pub type CommandResult<T> = Result<T, CommandError>;
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum CommandError {
+    BadArgument    { arg: String, instead: String, },
     ArgExpectedI32 { arg: String, instead: String, },
     ArgExpectedU32 { arg: String, instead: String, },
     HelpUnknownCommand { command: String },
     CannotReadFile { path: String, os_error: String, },
     CannotCompile  { path: String, program: String, mipsy_error: MipsyError },
+    UnknownRegister { register: String },
+    UnknownLabel    { label: String },
+    UninitialisedPrint { addr: u32 },
+    UnterminatedString { good_parts: String },
 
     MustLoadFile,
     ProgramExited,

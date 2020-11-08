@@ -5,14 +5,6 @@ pub(crate) mod util;
 pub(crate) mod compile;
 pub        mod decompile;
 pub(crate) mod runtime;
-
-pub(crate) use compile::{
-    TEXT_BOT,
-    DATA_BOT,
-    HEAP_BOT,
-    STACK_TOP,
-    KTEXT_BOT
-};
 pub(crate) use mipsy_parser::MPProgram;
 
 pub use error::{
@@ -20,6 +12,7 @@ pub use error::{
     MipsyError,
 };
 pub use inst::instruction::InstSet;
+pub use inst::register::Register;
 pub use compile::Binary;
 pub use runtime::{
     Runtime,
@@ -30,6 +23,14 @@ pub use runtime::{
     fd,
     n_bytes,
     void_ptr,
+};
+pub use compile::{
+    TEXT_BOT,
+    DATA_BOT,
+    HEAP_BOT,
+    STACK_TOP,
+    KTEXT_BOT,
+    KDATA_BOT,
 };
 
 pub fn inst_set() -> MipsyResult<InstSet> {

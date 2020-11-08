@@ -32,8 +32,12 @@ pub enum MPItem {
 }
 
 impl MPProgram {
-    pub fn items(&self) -> Vec<&MPItem> {
-        self.items.iter().collect()
+    pub fn items(&self) -> &[MPItem] {
+        &self.items
+    }
+
+    pub fn items_mut(&mut self) -> &mut Vec<MPItem> {
+        &mut self.items
     }
 }
 

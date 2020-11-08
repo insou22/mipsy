@@ -53,6 +53,10 @@ pub const REGISTERS: [Register; 32] = [
 ];
 
 impl Register {
+    pub fn all() -> [Register; 32] {
+        REGISTERS
+    }
+
     pub fn to_number(&self) -> u8 {
         match self {
             Self::ZERO => 0,
@@ -205,6 +209,43 @@ impl Register {
             Self::SP   => "SP",
             Self::FP   => "FP",
             Self::RA   => "RA",
+        }
+    }
+
+    pub fn to_lower_str(&self) -> &'static str {
+        match self {
+            Self::ZERO => "zero",
+            Self::AT   => "at",
+            Self::V0   => "v0",
+            Self::V1   => "v1",
+            Self::A0   => "a0",
+            Self::A1   => "a1",
+            Self::A2   => "a2",
+            Self::A3   => "a3",
+            Self::T0   => "t0",
+            Self::T1   => "t1",
+            Self::T2   => "t2",
+            Self::T3   => "t3",
+            Self::T4   => "t4",
+            Self::T5   => "t5",
+            Self::T6   => "t6",
+            Self::T7   => "t7",
+            Self::S0   => "s0",
+            Self::S1   => "s1",
+            Self::S2   => "s2",
+            Self::S3   => "s3",
+            Self::S4   => "s4",
+            Self::S5   => "s5",
+            Self::S6   => "s6",
+            Self::S7   => "s7",
+            Self::T8   => "t8",
+            Self::T9   => "t9",
+            Self::K0   => "k0",
+            Self::K1   => "k1",
+            Self::GP   => "gp",
+            Self::SP   => "sp",
+            Self::FP   => "fp",
+            Self::RA   => "ra",
         }
     }
 }
