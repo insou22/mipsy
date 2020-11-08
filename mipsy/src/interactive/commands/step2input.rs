@@ -46,8 +46,9 @@ pub(crate) fn step2input_command() -> Command {
                     false
                 };
 
-                state.step(true)?;
-                if state.exited || input {
+                let step = state.step(true)?;
+                
+                if step || input {
                     break;
                 }
                 

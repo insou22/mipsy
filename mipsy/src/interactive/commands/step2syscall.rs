@@ -35,8 +35,9 @@ pub(crate) fn step2syscall_command() -> Command {
                     false
                 };
 
-                state.step(true)?;
-                if state.exited || syscall {
+                let step = state.step(true)?;
+
+                if step || syscall {
                     break;
                 }
                 
