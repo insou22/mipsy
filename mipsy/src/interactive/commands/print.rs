@@ -96,7 +96,16 @@ pub(crate) fn print_command() -> Command {
                                 Err(_) => {}
                             }
                         }
-                        println!();
+
+                        if let Ok(val) = runtime.state().get_lo() {
+                            println!(" {:4} = {}", "lo", val);
+                        }
+
+                        if let Ok(val) = runtime.state().get_hi() {
+                            println!(" {:4} = {}", "hi", val);
+                        }
+
+                        println!(" {:4} = {}", "pc\n", runtime.state().get_pc());
                     } else {
                         let (val, reg_name) = 
                         {

@@ -6,6 +6,7 @@ use std::io::Write;
 pub(crate) struct Handler {
     pub(crate) verbose: bool,
     pub(crate) exit_status: Option<i32>,
+    pub(crate) breakpoint:  bool,
 }
 
 impl Handler {
@@ -13,6 +14,7 @@ impl Handler {
         Self {
             verbose,
             exit_status: None,
+            breakpoint: false,
         }
     }
 }
@@ -162,5 +164,9 @@ impl<'a> RuntimeHandler for Handler {
         }
 
         self.exit_status = Some(val);
+    }
+
+    fn breakpoint(&mut self) {
+        self.breakpoint = true;
     }
 }

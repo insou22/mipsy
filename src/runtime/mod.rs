@@ -53,6 +53,7 @@ pub trait RuntimeHandler {
     fn sys15_write      (&mut self, fd: fd, buffer: void_ptr, len: len) -> n_bytes;
     fn sys16_close      (&mut self, fd: fd);
     fn sys17_exit_status(&mut self, val: i32);
+    fn breakpoint       (&mut self);
 }
 
 impl Runtime {
@@ -301,7 +302,7 @@ impl Runtime {
             0x0C => { self.syscall(rh)?; },
 
             // BREAK
-            0x0D => { todo!(); },
+            0x0D => { rh.breakpoint(); },
 
             // Unused
             0x0E => {},

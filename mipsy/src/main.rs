@@ -98,6 +98,10 @@ impl RuntimeHandler for Handler {
     fn sys17_exit_status(&mut self, val: i32) {
         std::process::exit(val);
     }
+
+    fn breakpoint(&mut self) {
+        
+    }
 }
 
 fn main() -> MipsyResult<()> {
