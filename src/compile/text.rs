@@ -1,7 +1,4 @@
-use crate::{
-    MipsyResult,
-    MPProgram,
-};
+use crate::{MPProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
 use super::{Binary, data::Segment};
 use mipsy_parser::{

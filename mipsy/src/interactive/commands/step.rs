@@ -45,6 +45,7 @@ pub(crate) fn step_command() -> Command {
                 }
 
                 let step = state.step(true)?;
+                
                 if step {
                     break;
                 }

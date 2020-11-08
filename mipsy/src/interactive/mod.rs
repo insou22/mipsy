@@ -199,12 +199,32 @@ impl State {
         let mut handler = Handler::make(verbose);
         runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
 
-        if handler.exit_status.is_some() {
-            self.exited = true;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(
+            if handler.exit_status.is_some() {
+                self.exited = true;
+                true
+            } else {
+                let pc = runtime.state().get_pc();
+
+                let binary = self.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+
+                if handler.breakpoint || binary.breakpoints.contains(&pc) {
+                    let label = binary.labels.iter()
+                            .find(|(_, &addr)| addr == pc)
+                            .map(|(name, _)| name.yellow().bold().to_string());
+
+                    println!(
+                        "{}{}{}\n", 
+                        "\n[BREAKPOINT ".cyan().bold(), 
+                        label.unwrap_or(format!("{}{:08x}", "0x".yellow(), pc)), 
+                        "]".cyan().bold()
+                    );
+                    true
+                } else {
+                    false
+                }
+            }
+        )
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<()> {
@@ -263,6 +283,7 @@ fn state() -> State {
     state.add_command(commands::step2syscall_command());
     state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
+    state.add_command(commands::breakpoint_command());
     state.add_command(commands::decompile_command());
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());

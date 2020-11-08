@@ -24,9 +24,10 @@ pub const KDATA_BOT: u32 = 0x90000000;
 pub struct Binary {
     pub text:    Vec<u32>,
     pub data:    Vec<Safe<u8>>,
-    pub ktext:    Vec<u32>,
-    pub kdata:    Vec<Safe<u8>>,
+    pub ktext:   Vec<u32>,
+    pub kdata:   Vec<Safe<u8>>,
     pub labels:  CaseInsensitiveHashMap<u32>,
+    pub breakpoints: Vec<u32>,
     pub globals: Vec<String>,
 }
 
@@ -56,6 +57,7 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
         ktext: vec![],
         kdata: vec![],
         labels: CaseInsensitiveHashMap::new(),
+        breakpoints: vec![],
         globals: vec![],
     };
 
@@ -63,7 +65,7 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     populate_text           (&mut binary, iset, &program)?;
     
     let kernel = get_kernel();
-    
+
     populate_labels_and_data(&mut binary, iset, &kernel)?;
     populate_text           (&mut binary, iset, &kernel)?;
 

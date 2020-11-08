@@ -16,6 +16,7 @@ pub use inst::register::Register;
 pub use compile::Binary;
 pub use runtime::{
     Runtime,
+    State,
     RuntimeHandler,
     flags,
     mode,
