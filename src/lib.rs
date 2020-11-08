@@ -29,7 +29,8 @@ pub use compile::{
     DATA_BOT,
     HEAP_BOT,
     STACK_TOP,
-    KTEXT_BOT
+    KTEXT_BOT,
+    KDATA_BOT,
 };
 
 pub fn inst_set() -> MipsyResult<InstSet> {

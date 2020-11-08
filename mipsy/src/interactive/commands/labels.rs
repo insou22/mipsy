@@ -20,7 +20,11 @@ pub(crate) fn labels_command() -> Command {
                 .max()
                 .unwrap_or(0);
             
-            let mut entries: Vec<(String, u32)> = binary.labels.iter().map(|(key, &val)| (key.to_string(), val)).collect();
+            let mut entries: Vec<(String, u32)> = binary.labels.iter()
+                    .map(|(key, &val)| (key.to_string(), val))
+                    .filter(|(key, _)| !key.starts_with("kernel__"))
+                    .collect();
+
             entries.sort_by_key(|(_, val)| *val);
 
             println!("\n{}", "[text]".green().bold());

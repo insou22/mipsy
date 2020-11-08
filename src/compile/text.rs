@@ -3,7 +3,7 @@ use crate::{
     MPProgram,
 };
 use crate::inst::instruction::InstSet;
-use super::Binary;
+use super::{Binary, data::Segment};
 use mipsy_parser::{
     MPInstruction,
     MPItem,
@@ -22,25 +22,33 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyResult<u
 }
 
 pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
-    let mut text = true;
+    let mut segment = Segment::Text;
 
-    for &item in program.items().iter() {
+    for item in program.items().iter() {
         match item {
             MPItem::Directive(directive) => match directive {
-                MPDirective::Text => text = true,
-                MPDirective::Data => text = false,
+                MPDirective::Text  => segment = Segment::Text,
+                MPDirective::Data  => segment = Segment::Data,
+                MPDirective::KText => segment = Segment::KText,
+                MPDirective::KData => segment = Segment::KData,
                 _ => {}
             }
-            MPItem::Instruction(instruction) => {
-                if !text {
-                    continue;
-                }
-
-                if let Some(native) = iset.find_native(instruction) {
-                    binary.text.push(native.compile(binary, instruction.arguments())?);
+            MPItem::Instruction(ref instruction) => {
+                let mut compiled = if let Some(native) = iset.find_native(instruction) {
+                    vec![native.compile(binary, instruction.arguments())?]
                 } else if let Some(pseudo) = iset.find_pseudo(instruction) {
-                    binary.text.append(&mut pseudo.compile(iset, binary, instruction.arguments())?);
-                }
+                    pseudo.compile(iset, binary, instruction.arguments())?
+                } else {
+                    todo!()
+                };
+
+                let text = match segment {
+                    Segment::Text  => &mut binary.text,
+                    Segment::KText => &mut binary.ktext,
+                    _              => continue,
+                };
+            
+                text.append(&mut compiled);
             }
             MPItem::Label(_) => {}
         }

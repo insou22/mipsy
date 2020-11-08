@@ -1,10 +1,8 @@
 #![allow(non_camel_case_types)]
 mod display;
-mod kern;
 
-use kern::get_kern_instns;
 use std::collections::HashMap;
-use crate::Binary;
+use crate::{Binary, KDATA_BOT};
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
 use crate::error::MipsyResult;
 use crate::error::RuntimeError;
@@ -59,8 +57,6 @@ pub trait RuntimeHandler {
 
 impl Runtime {
     pub fn new(program: &Binary) -> MipsyResult<Self> {
-        let entry_point = program.get_label("main")?;
-
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
@@ -87,9 +83,19 @@ impl Runtime {
         }
 
         let mut ktext_addr = KTEXT_BOT;
-        for &word in &get_kern_instns(entry_point) {
+        for &word in &program.ktext {
             initial_state.write_word(ktext_addr, word);
             ktext_addr += 4;
+        }
+
+        let mut kdata_addr = KDATA_BOT;
+        for &byte in &program.kdata {
+            match byte {
+                Safe::Valid(byte) => initial_state.write_byte(kdata_addr, byte),
+                Safe::Uninitialised => {}
+            }
+
+            kdata_addr += 1;
         }
 
         initial_state.write_ureg(Register::ZERO.to_number() as u32, 0);
