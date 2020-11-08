@@ -44,8 +44,8 @@ pub(crate) fn step_command() -> Command {
                     util::print_inst(&state.iset, binary, inst, runtime.state().get_pc());
                 }
 
-                state.step(true)?;
-                if state.exited {
+                let step = state.step(true)?;
+                if step {
                     break;
                 }
             }
