@@ -9,6 +9,8 @@ mod print;
 mod reset;
 mod run;
 mod step;
+mod step2input;
+mod step2syscall;
 mod util;
 
 pub(crate) use back::back_command;
@@ -22,6 +24,8 @@ pub(crate) use print::print_command;
 pub(crate) use reset::reset_command;
 pub(crate) use run::run_command;
 pub(crate) use step::step_command;
+pub(crate) use step2input::step2input_command;
+pub(crate) use step2syscall::step2syscall_command;
 
 use super::{error::CommandResult, State};
 
