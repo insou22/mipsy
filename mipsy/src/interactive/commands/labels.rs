@@ -16,6 +16,7 @@ pub(crate) fn labels_command() -> Command {
             let binary = state.binary.as_ref().ok_or_else(|| CommandError::MustLoadFile)?;
 
             let max_len = binary.labels.keys()
+                .filter(|label| !label.starts_with("kernel__"))
                 .map(|label| label.len())
                 .max()
                 .unwrap_or(0);
