@@ -1,5 +1,6 @@
 mod back;
 mod breakpoint;
+mod breakpoints;
 mod decompile;
 mod exit;
 mod help;
@@ -16,6 +17,7 @@ mod util;
 
 pub(crate) use back::back_command;
 pub(crate) use breakpoint::breakpoint_command;
+pub(crate) use breakpoints::breakpoints_command;
 pub(crate) use decompile::decompile_command;
 pub(crate) use exit::exit_command;
 pub(crate) use help::help_command;
