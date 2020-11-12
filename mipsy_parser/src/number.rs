@@ -1,6 +1,9 @@
-use crate::misc::{
-    parse_escaped_char,
-    parse_ident,
+use crate::{
+    Span,
+    misc::{
+        parse_escaped_char,
+        parse_ident,
+    },
 };
 use nom::{
     IResult,
@@ -41,7 +44,7 @@ pub enum MPImmediate {
     LabelReference(String),
 }
 
-pub fn parse_number(i: &[u8]) -> IResult<&[u8], MPNumber> {
+pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
     alt((
         map(parse_immediate, |i| MPNumber::Immediate(i)),
         map(parse_f32,       |f| MPNumber::Float32(f)),
@@ -50,7 +53,7 @@ pub fn parse_number(i: &[u8]) -> IResult<&[u8], MPNumber> {
     ))(i)
 }
 
-pub fn parse_immediate(i: &[u8]) -> IResult<&[u8], MPImmediate> {
+pub fn parse_immediate<'a>(i: Span<'a>) -> IResult<Span<'a>, MPImmediate> {
     alt((
         map(parse_i16,      |i| MPImmediate::I16(i)),
         map(parse_i32,      |i| MPImmediate::I32(i)),
@@ -58,7 +61,7 @@ pub fn parse_immediate(i: &[u8]) -> IResult<&[u8], MPImmediate> {
     ))(i)
 }
 
-pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
+pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
     map_res(
         alt((
             map(
@@ -67,7 +70,7 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                     tag("0x"),
                     hex_digit1,
                 )),
-                |(neg, _, digits)| (get_sign(neg), 16, digits)
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 16, digits)
             ),
             map(
                 tuple((
@@ -75,14 +78,14 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                     tag("0"),
                     oct_digit1,
                 )),
-                |(neg, _, digits)| (get_sign(neg), 8, digits)
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, digits)
             ),
             map(
                 tuple((
                     opt(char('-')),
                     digit1,
                 )),
-                |(neg, digits)| (get_sign(neg), 10, digits)
+                |(neg, digits): (Option<char>, Span<'a>)| (get_sign(neg), 10, digits)
             )
         )),
         |(sign, base, digits)| 
@@ -90,42 +93,42 @@ pub fn parse_num<O: RadixNum<O>>(i: &[u8]) -> IResult<&[u8], O> {
                 &format!(
                     "{}{}",
                     sign,
-                    String::from_utf8_lossy(digits as &[u8]).to_string()
+                    String::from_utf8_lossy(digits.fragment()).to_string()
                 ),
                 base,
             )
     )(i)
 }
 
-pub fn parse_i8(i: &[u8]) -> IResult<&[u8], i8> {
+pub fn parse_i8<'a>(i: Span<'a>) -> IResult<Span<'a>, i8> {
     parse_num(i)
 }
 
-pub fn parse_i16(i: &[u8]) -> IResult<&[u8], i16> {
+pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
     parse_num(i)
 }
 
-pub fn parse_i32(i: &[u8]) -> IResult<&[u8], i32> {
+pub fn parse_i32<'a>(i: Span<'a>) -> IResult<Span<'a>, i32> {
     parse_num(i)
 }
 
-pub fn parse_u32(i: &[u8]) -> IResult<&[u8], u32> {
+pub fn parse_u32<'a>(i: Span<'a>) -> IResult<Span<'a>, u32> {
     parse_num(i)
 }
 
-pub fn parse_labelref(i: &[u8]) -> IResult<&[u8], String> {
+pub fn parse_labelref<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
     parse_ident(i)
 }
 
-pub fn parse_f32(i: &[u8]) -> IResult<&[u8], f32> {
+pub fn parse_f32<'a>(i: Span<'a>) -> IResult<Span<'a>, f32> {
     float(i)
 }
 
-pub fn parse_f64(i: &[u8]) -> IResult<&[u8], f64> {
+pub fn parse_f64<'a>(i: Span<'a>) -> IResult<Span<'a>, f64> {
     double(i)
 }
 
-fn parse_char(i: &[u8]) -> IResult<&[u8], char> {
+fn parse_char<'a>(i: Span<'a>) -> IResult<Span<'a>, char> {
     let (
         remaining_data,
         (
@@ -153,6 +156,7 @@ fn get_sign(neg: Option<char>) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::misc::{span, unspan};
 
     #[test]
     fn char() {
@@ -163,7 +167,10 @@ mod tests {
         chars.push_str(&"`~!@#$%^&*()-_=+[{]}|;:,<.>/?");
 
         for chr in chars.chars() {
-            assert_eq!(parse_char(format!("'{}'", chr).as_bytes()), Ok(("".as_bytes(), chr)));
+            assert_eq!(
+                unspan(parse_char(span(&format!("'{}'", chr))).unwrap()), 
+                ("".to_string(), chr)
+            );
         }
 
         let mut escaped = std::collections::HashMap::<char, char>::new();
@@ -176,7 +183,10 @@ mod tests {
         escaped.insert('\'', '\'');
 
         for (chr, escaped) in escaped {
-            assert_eq!(parse_char(format!("'\\{}'", chr).as_bytes()), Ok(("".as_bytes(), escaped)));
+            assert_eq!(
+                unspan(parse_char(span(&format!("'\\{}'", chr))).unwrap()),
+                ("".to_string(), escaped)
+            );
         }
     }
 }

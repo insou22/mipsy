@@ -1,0 +1,3 @@
+[submodule "nom_locate"]
+	path = nom_locate
+	url = https://github.com/fflorent/nom_locate

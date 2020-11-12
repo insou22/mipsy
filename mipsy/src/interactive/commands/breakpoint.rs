@@ -56,12 +56,8 @@ pub(crate) fn breakpoint_command() -> Command {
                 tip: format!("try `{}`", "help breakpoint".bold()),
             };
 
-            let (leftover, arg) = mipsy_parser::parse_argument(args[1].as_bytes())
+            let arg = mipsy_parser::parse_argument(&args[1])
                     .map_err(|_| get_error())?;
-
-            if !leftover.is_empty() {
-                return Err(get_error());
-            }
 
             let binary = state.binary.as_mut().ok_or_else(|| CommandError::MustLoadFile)?;
 

@@ -1,4 +1,5 @@
 use crate::{
+    Span,
     directive::{
         MPDirective,
         parse_directive,
@@ -17,11 +18,12 @@ use nom::{
     multi::many0,
     branch::alt,
 };
+use nom_locate::position;
 
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MPProgram {
-    pub(crate) items: Vec<MPItem>,
+    pub(crate) items: Vec<(MPItem, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,19 +34,20 @@ pub enum MPItem {
 }
 
 impl MPProgram {
-    pub fn items(&self) -> &[MPItem] {
+    pub fn items(&self) -> &[(MPItem, u32)] {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut Vec<MPItem> {
+    pub fn items_mut(&mut self) -> &mut Vec<(MPItem, u32)> {
         &mut self.items
     }
 }
 
-pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], MPItem> {
+pub fn parse_mips_item<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPItem, u32)> {
     map(
         tuple((
             comment_multispace0,
+            position,
             alt((
                 map(parse_label,       |l| MPItem::Label(l)),
                 map(parse_directive,   |d| MPItem::Directive(d)),
@@ -52,11 +55,11 @@ pub fn parse_mips_item(i: &[u8]) -> IResult<&[u8], MPItem> {
             )),
             comment_multispace0,
         )),
-        |(_, item, _)| item 
+        |(_, pos, item, _)| (item, pos.location_line())
     )(i)
 }
 
-pub fn parse_mips_bytes(i: &[u8]) -> IResult<&[u8], MPProgram> {
+pub fn parse_mips_bytes<'a>(i: Span<'a>) -> IResult<Span<'a>, MPProgram> {
     let (
         remaining_input,
         items
@@ -74,12 +77,12 @@ pub fn parse_mips<T>(input: T) -> Result<MPProgram, &'static str>
 where
     T: AsRef<str>,
 {
-    match parse_mips_bytes(input.as_ref().trim().as_bytes()) {
+    match parse_mips_bytes(Span::new(input.as_ref().trim().as_bytes())) {
         Ok((rest, program)) => {
             if rest.len() == 0 {
                 Ok(program)
             } else {
-                println!("WARNING: file had parse leftovers:\n{}", String::from_utf8_lossy(rest).to_string());
+                println!("WARNING: file had parse leftovers:\n{}", String::from_utf8_lossy(rest.fragment()).to_string());
 
                 Ok(program)
             }
@@ -101,8 +104,7 @@ mod tests {
     #[test]
     fn add_s() {
         assert_eq!(
-            parse_mips("
-                # add 17 and 25  and print result
+            parse_mips(" # add 17 and 25  and print result
 
                 main:                    #  x, y, z in $t0, $t1, $t2,
                     li   $t0, 17         # x = 17;
@@ -125,8 +127,8 @@ mod tests {
             ").unwrap(),
             MPProgram {
                 items: vec![
-                    Label("main".to_string()),
-                    Instruction(
+                    (Label("main".to_string()), 3),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -134,8 +136,8 @@ mod tests {
                                 Number(Immediate(I16(17))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 4),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -143,8 +145,8 @@ mod tests {
                                 Number(Immediate(I16(25))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 6),
+                    (Instruction(
                         MPInstruction {
                             name: "add".to_string(),
                             arguments: vec![
@@ -153,8 +155,8 @@ mod tests {
                                 Register(Normal(Named("t0".to_string()))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 8),
+                    (Instruction(
                         MPInstruction {
                             name: "move".to_string(),
                             arguments: vec![
@@ -162,8 +164,8 @@ mod tests {
                                 Register(Normal(Named("t2".to_string()))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 10),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -171,14 +173,14 @@ mod tests {
                                 Number(Immediate(I16(1))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 11),
+                    (Instruction(
                         MPInstruction {
                             name: "syscall".to_string(),
                             arguments: vec![],
                         },
-                    ),
-                    Instruction(
+                    ), 12),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -186,8 +188,8 @@ mod tests {
                                 Number(Char('\n')),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 14),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -195,14 +197,14 @@ mod tests {
                                 Number(Immediate(I16(11))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 15),
+                    (Instruction(
                         MPInstruction {
                             name: "syscall".to_string(),
                             arguments: vec![],
                         }
-                    ),
-                    Instruction(
+                    ), 16),
+                    (Instruction(
                         MPInstruction {
                             name: "li".to_string(),
                             arguments: vec![
@@ -210,15 +212,15 @@ mod tests {
                                 Number(Immediate(I16(0))),
                             ],
                         }
-                    ),
-                    Instruction(
+                    ), 18),
+                    (Instruction(
                         MPInstruction {
                             name: "jr".to_string(),
                             arguments: vec![
                                 Register(Normal(Named("ra".to_string()))),
                             ],
                         }
-                    ),
+                    ), 19),
                 ],
             }
         );
