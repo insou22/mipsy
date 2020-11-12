@@ -37,14 +37,26 @@ pub(crate) fn help_command() -> Command {
             for command in state.commands.iter() {
                 let mut len = command.name.len();
 
-                len += command.required_args.len();
-                for arg in command.required_args.iter() {
-                    len += arg.len() + 2;
-                }
+                match &command.args {
+                    Arguments::Exactly { required, optional } => {
+                        len += required.len();
+                        for arg in required.iter() {
+                            len += arg.len() + 2;
+                        }
+        
+                        len += optional.len();
+                        for arg in optional.iter() {
+                            len += arg.len() + 2;
+                        }
+                    }
+                    Arguments::VarArgs { required } => {
+                        len += required.len();
+                        for arg in required.iter() {
+                            len += arg.len() + 2;
+                        }
 
-                len += command.optional_args.len();
-                for arg in command.optional_args.iter() {
-                    len += arg.len() + 2;
+                        len += " {args}".len();
+                    }
                 }
 
                 if len > max_len {
@@ -55,9 +67,17 @@ pub(crate) fn help_command() -> Command {
             println!("{}", "\nCOMMANDS:".green().bold());
             for command in state.commands.iter() {
                 let extra_color_len = 
-                    "".yellow().bold() .to_string().len() +
-                    "".magenta()       .to_string().len() * command.required_args.len() +
-                    "".bright_magenta().to_string().len() * command.optional_args.len();
+                    "".yellow().bold() .to_string().len() + 
+                    match &command.args {
+                        Arguments::Exactly { required, optional } => {
+                            "".magenta()       .to_string().len() * required.len() +
+                            "".bright_magenta().to_string().len() * optional.len()
+                        }
+                        Arguments::VarArgs { required } => {
+                            "".magenta()       .to_string().len() * required.len() +
+                            "".bright_magenta().to_string().len()
+                        }
+                    };
 
                 let name_args = get_command_formatted(command);
 
@@ -79,17 +99,30 @@ fn get_command_formatted(cmd: &Command) -> String {
         cmd.name.yellow().bold().to_string(),
     ];
 
-    parts.append(
-        &mut cmd.required_args.iter()
-                .map(|arg| format!("<{}>", arg).magenta().to_string())
-                .collect::<Vec<String>>()
-    );
+    match &cmd.args {
+        Arguments::Exactly { required, optional } => {
+            parts.append(
+                &mut required.iter()
+                        .map(|arg| format!("<{}>", arg).magenta().to_string())
+                        .collect::<Vec<String>>()
+            );
 
-    parts.append(
-        &mut cmd.optional_args.iter()
-            .map(|arg| format!("[{}]", arg).bright_magenta().to_string())
-            .collect::<Vec<String>>()
-    );
+            parts.append(
+                &mut optional.iter()
+                    .map(|arg| format!("[{}]", arg).bright_magenta().to_string())
+                    .collect::<Vec<String>>()
+            );
+        }
+        Arguments::VarArgs { required } => {
+            parts.append(
+                &mut required.iter()
+                        .map(|arg| format!("<{}>", arg).magenta().to_string())
+                        .collect::<Vec<String>>()
+            );
+
+            parts.push("{args}".magenta().to_string());
+        }
+    }
 
     parts.join(" ")
 }

@@ -47,6 +47,8 @@ pub fn compile(iset: &InstSet, program: &str) -> MipsyResult<Binary> {
     Ok(compiled)
 }
 
+pub use compile::compile1;
+
 pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }

@@ -1,5 +1,6 @@
 use super::*;
 
+#[allow(unreachable_code)]
 pub(crate) fn exit_command() -> Command {
     command(
         "exit",
@@ -9,7 +10,7 @@ pub(crate) fn exit_command() -> Command {
         "exit mipsy",
         "Immediately exits mipsy",
         |_state, _label, _args| {
-            std::process::exit(0);
+            std::process::exit(0)
         }
     )
 }
