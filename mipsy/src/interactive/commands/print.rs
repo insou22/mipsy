@@ -20,7 +20,7 @@ pub(crate) fn print_command() -> Command {
         \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
         \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
         \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
-        \x20- {12}: `{2}{13}`.\n\
+        \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
              {14} can optionally be specified (default: `{15}`) to specify how the value\n\
         \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
         \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",

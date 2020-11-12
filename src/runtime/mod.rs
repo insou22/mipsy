@@ -136,6 +136,18 @@ impl Runtime {
         Ok(())
     }
 
+    pub fn exec_inst<RH>(&mut self, rh: &mut RH, inst: u32) -> MipsyResult<()>
+    where
+        RH: RuntimeHandler
+    {
+        self.timeline.push(self.timeline.last().unwrap().clone());
+        self.current_state += 1;
+
+        self.execute(rh, inst)?;
+
+        Ok(())
+    }
+
     pub fn back(&mut self) -> bool {
         if self.timeline_len() < 2 {
             return false;

@@ -18,6 +18,18 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyResult<u
     }
 }
 
+pub fn compile1(binary: &Binary, iset: &InstSet, instruction: &MPInstruction) -> MipsyResult<Vec<u32>> {
+    Ok(
+        if let Some(native) = iset.find_native(instruction) {
+            vec![native.compile(binary, instruction.arguments())?]
+        } else if let Some(pseudo) = iset.find_pseudo(instruction) {
+            pseudo.compile(iset, binary, instruction.arguments())?
+        } else {
+            todo!()
+        }
+    )
+}
+
 pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
     let mut segment = Segment::Text;
 
@@ -31,13 +43,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
                 _ => {}
             }
             MPItem::Instruction(ref instruction) => {
-                let mut compiled = if let Some(native) = iset.find_native(instruction) {
-                    vec![native.compile(binary, instruction.arguments())?]
-                } else if let Some(pseudo) = iset.find_pseudo(instruction) {
-                    pseudo.compile(iset, binary, instruction.arguments())?
-                } else {
-                    todo!()
-                };
+                let mut compiled = compile1(binary, iset, instruction)?;
 
                 let text = match segment {
                     Segment::Text  => &mut binary.text,

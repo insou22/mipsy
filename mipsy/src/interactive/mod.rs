@@ -21,7 +21,10 @@ use mipsy_lib::{
     InstSet, 
     Runtime,
 };
-use commands::Command;
+use commands::{
+    Command,
+    Arguments,
+};
 use runtime_handler::Handler;
 
 use self::error::{CommandError, CommandResult};
@@ -101,17 +104,22 @@ impl State {
         }
 
         let command = command.unwrap();
-        if (parts.len() - 1) < command.required_args.len() {
+        let required = match &command.args {
+            Arguments::Exactly { required, optional: _ } => required,
+            Arguments::VarArgs { required } => required
+        };
+
+        if (parts.len() - 1) < required.len() {
             let mut err_msg = String::from("missing required parameter");
 
-            if command.required_args.len() - (parts.len() - 1) > 1 {
+            if required.len() - (parts.len() - 1) > 1 {
                 err_msg.push('s');
             }
 
             err_msg.push(' ');
 
             err_msg.push_str(
-                &command.required_args[(parts.len() - 1)..(command.required_args.len())]
+                &required[(parts.len() - 1)..(required.len())]
                     .iter()
                     .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
                     .collect::<Vec<String>>()
@@ -156,6 +164,12 @@ impl State {
             CommandError::CannotCompile  { path, program: _, mipsy_error, } => {
                 prompt::error(format!("failed to compile `{}` -- {:?}", path, mipsy_error));
             }
+            CommandError::CannotParseLine { line } => {
+                prompt::error(format!("failed to parse `{}`", line));
+            }
+            CommandError::CannotCompileLine { line, mipsy_error } => {
+                prompt::error(format!("failed to compile `{}` -- {:?}", line, mipsy_error));
+            }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
             }
@@ -199,32 +213,44 @@ impl State {
         let mut handler = Handler::make(verbose);
         runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
 
-        Ok(
-            if handler.exit_status.is_some() {
-                self.exited = true;
+        Ok(self.exec_status(&handler))
+    }
+
+    pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
+        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+        let mut handler = Handler::make(verbose);
+        runtime.exec_inst(&mut handler, opcode)
+                .map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
+
+        Ok(self.exec_status(&handler))
+    }
+
+    pub(crate) fn exec_status(&mut self, handler: &Handler) -> bool {
+        if handler.exit_status.is_some() {
+            self.exited = true;
+            true
+        } else {
+            let pc = self.runtime.as_ref().unwrap().state().get_pc();
+
+            let binary = self.binary.as_ref().unwrap();
+
+            if handler.breakpoint || binary.breakpoints.contains(&pc) {
+                let label = binary.labels.iter()
+                        .find(|(_, &addr)| addr == pc)
+                        .map(|(name, _)| name.yellow().bold().to_string());
+
+                println!(
+                    "{}{}{}\n", 
+                    "\n[BREAKPOINT ".cyan().bold(), 
+                    label.unwrap_or(format!("{}{:08x}", "0x".yellow(), pc)), 
+                    "]".cyan().bold()
+                );
                 true
             } else {
-                let pc = runtime.state().get_pc();
-
-                let binary = self.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-
-                if handler.breakpoint || binary.breakpoints.contains(&pc) {
-                    let label = binary.labels.iter()
-                            .find(|(_, &addr)| addr == pc)
-                            .map(|(name, _)| name.yellow().bold().to_string());
-
-                    println!(
-                        "{}{}{}\n", 
-                        "\n[BREAKPOINT ".cyan().bold(), 
-                        label.unwrap_or(format!("{}{:08x}", "0x".yellow(), pc)), 
-                        "]".cyan().bold()
-                    );
-                    true
-                } else {
-                    false
-                }
+                false
             }
-        )
+        }
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<()> {
@@ -289,6 +315,7 @@ fn state() -> State {
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());
     state.add_command(commands::print_command());
+    state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
     state.add_command(commands::exit_command());
 

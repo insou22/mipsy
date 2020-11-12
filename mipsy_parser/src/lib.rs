@@ -19,6 +19,7 @@ pub use register::{
 
 
 pub use parser::parse_mips;
+pub use instruction::parse_instruction;
 pub use instruction::parse_argument;
 
 

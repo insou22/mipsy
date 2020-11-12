@@ -11,6 +11,7 @@ use data::populate_labels_and_data;
 
 mod text;
 use text::populate_text;
+pub use text::compile1;
 
 static KERN_FILE: &str = include_str!("../../kern.s");
 
