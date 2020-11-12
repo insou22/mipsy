@@ -6,7 +6,7 @@ use clap::Clap;
 mod interactive;
 
 #[derive(Clap, Debug)]
-#[clap(version = "1.0", author = "Zac K. <zac.kologlu@gmail.com>")]
+#[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
 struct Opts {
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
@@ -14,6 +14,8 @@ struct Opts {
     hex: bool,
     #[clap(long, about("With --hex: pad to 8 hex digits with zeroes"))]
     hex_pad_zero: bool,
+    #[clap(long, short('v'))]
+    version: bool,
     file: Option<String>,
 }
 
@@ -139,3 +141,5 @@ fn main() -> MipsyResult<()> {
         runtime.step(&mut Handler)?;
     }
 }
+
+pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

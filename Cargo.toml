@@ -14,6 +14,9 @@ strsim = "0.10"                                     # for error-reporting - stri
 case_insensitive_hashmap = "1.0.0"
 mipsy_parser = { version = "0.1", path = "./mipsy_parser" }
 
+[build-dependencies]
+vergen = "3"
+
 [workspace]
 members = [
     "mipsy",
