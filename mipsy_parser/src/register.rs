@@ -1,8 +1,9 @@
 use crate::{
+    Span,
     number::{
         MPImmediate,
         parse_immediate,
-    }
+    },
 };
 use nom::{
     IResult,
@@ -39,14 +40,14 @@ impl MPRegister {
 }
 
 
-pub fn parse_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
+pub fn parse_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
     alt((
         parse_normal_register,
         parse_offset_register,
     ))(i)
 }
 
-pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
+pub fn parse_normal_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
     let (
         remaining_data,
         (
@@ -61,7 +62,7 @@ pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
         )),
     ))(i)?;
 
-    let text = String::from_utf8_lossy(text).to_string();
+    let text = String::from_utf8_lossy(text.fragment()).to_string();
 
     Ok((remaining_data, MPRegister::Normal(
         if let Ok(num) = text.parse::<u8>() {
@@ -72,7 +73,7 @@ pub fn parse_normal_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
     )))
 }
 
-pub fn parse_offset_register(i: &[u8]) -> IResult<&[u8], MPRegister> {
+pub fn parse_offset_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
     let (
         remaining_data,
         (

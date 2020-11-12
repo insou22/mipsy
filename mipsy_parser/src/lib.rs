@@ -1,5 +1,7 @@
 extern crate nom;
 
+use nom_locate::LocatedSpan;
+pub type Span<'a> = LocatedSpan<&'a [u8]>;
 
 pub use parser::MPProgram;
 pub use parser::MPItem;
@@ -19,8 +21,23 @@ pub use register::{
 
 
 pub use parser::parse_mips;
-pub use instruction::parse_instruction;
-pub use instruction::parse_argument;
+pub fn parse_instruction<T>(input: T) -> Result<MPInstruction, &'static str>
+where
+    T: AsRef<str>,
+{
+    instruction::parse_instruction(Span::new(input.as_ref().as_bytes()))
+        .map(|(_leftover, inst)| inst)
+        .map_err(|_| "")
+}
+
+pub fn parse_argument<T>(input: T) -> Result<MPArgument, &'static str>
+where
+    T: AsRef<str>,
+{
+    instruction::parse_argument(Span::new(input.as_ref().as_bytes()))
+        .map(|(_leftover, inst)| inst)
+        .map_err(|_| "")
+}
 
 
 pub mod parser;

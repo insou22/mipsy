@@ -25,7 +25,7 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
     let mut segment = Segment::Text;
 
     for item in program.items() {
-        match item {
+        match &item.0 {
             MPItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text || segment == Segment::KText {

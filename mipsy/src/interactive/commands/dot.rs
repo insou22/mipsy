@@ -14,8 +14,7 @@ pub(crate) fn dot_command() -> Command {
         |state, _label, args| {
             let line = args.join(" ");
 
-            let inst = mipsy_parser::parse_instruction(line.as_bytes())
-                    .map(|(_, inst)| inst)
+            let inst = mipsy_parser::parse_instruction(&line)
                     .map_err(|_err| CommandError::CannotParseLine { line: line.to_string() })?;
 
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;

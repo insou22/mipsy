@@ -53,12 +53,8 @@ pub(crate) fn print_command() -> Command {
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let (leftover, arg) = mipsy_parser::parse_argument(args[0].as_bytes())
+            let arg = mipsy_parser::parse_argument(&args[0])
                     .map_err(|_| get_error())?;
-
-            if !leftover.is_empty() {
-                return Err(get_error());
-            }
 
             let print_type = &*args.get(1).cloned().unwrap_or("word".to_string());
             match print_type {

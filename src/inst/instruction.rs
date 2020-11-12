@@ -587,12 +587,7 @@ impl PseudoSignature {
 
                     processed_args.push(arg.clone());
                 } else {
-                    let (leftover, arg) = parse_argument(data.as_bytes()).unwrap();
-
-                    if !leftover.is_empty() {
-                        // TODO: warning
-                        println!("Dodgy parse? leftover={}", String::from_utf8_lossy(leftover).to_string());
-                    }
+                    let arg = parse_argument(data).unwrap();
 
                     processed_args.push(arg);
                 }

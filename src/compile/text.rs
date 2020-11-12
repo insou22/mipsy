@@ -34,7 +34,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
     let mut segment = Segment::Text;
 
     for item in program.items().iter() {
-        match item {
+        match &item.0 {
             MPItem::Directive(directive) => match directive {
                 MPDirective::Text  => segment = Segment::Text,
                 MPDirective::Data  => segment = Segment::Data,

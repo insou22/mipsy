@@ -1,4 +1,7 @@
-use crate::misc::parse_ident;
+use crate::{
+    Span,
+    misc::parse_ident,
+};
 use nom::{
     IResult,
     character::complete::{
@@ -8,7 +11,7 @@ use nom::{
     sequence::tuple,
 };
 
-pub fn parse_label(i: &[u8]) -> IResult<&[u8], String> {
+pub fn parse_label<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
     let (
         remaining_data,
         (
