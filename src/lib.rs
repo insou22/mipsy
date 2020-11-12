@@ -56,3 +56,5 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
 pub fn run(binary: &Binary) -> MipsyResult<Runtime> {
     runtime::Runtime::new(binary)
 }
+
+pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));
