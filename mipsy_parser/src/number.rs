@@ -22,6 +22,7 @@ use nom::{
     },
     bytes::complete::{
         tag,
+        is_a,
     },
     number::complete::{
         float,
@@ -71,6 +72,14 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                     hex_digit1,
                 )),
                 |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 16, digits)
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
+                    tag("0b"),
+                    is_a("01"),
+                )),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 2, digits)
             ),
             map(
                 tuple((
