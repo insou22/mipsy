@@ -1,4 +1,4 @@
-use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, cerr, error::CompileError, inst::instruction::InstSet, util::Safe};
+use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, inst::instruction::InstSet, util::{Safe, WithLine}};
 use super::{
     TEXT_BOT,
     DATA_BOT,
@@ -25,13 +25,16 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
     let mut segment = Segment::Text;
 
     for item in program.items() {
+        let line = item.1;
         match &item.0 {
             MPItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text || segment == Segment::KText {
                     match directive {
                         MPDirective::Text | MPDirective::Data | MPDirective::KText | MPDirective::KData => {}
-                        other => return cerr!(CompileError::String(format!("Directive in Text segment [Directive={:?}]", other))),
+                        _other => {
+                            // TODO: WARNING
+                        }
                     }
                 }
 
@@ -104,10 +107,10 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 // how many bytes-worth we've seen so far
                 match segment {
                     Segment::Text => {
-                        text_len += instruction_length(iset, instruction)? * 4;
+                        text_len += instruction_length(iset, instruction).with_line(line)? * 4;
                     }
                     Segment::KText => {
-                        ktext_len += instruction_length(iset, instruction)? * 4;
+                        ktext_len += instruction_length(iset, instruction).with_line(line)? * 4;
                     }
                     _ => {
                         todo!()

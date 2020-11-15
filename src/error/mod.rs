@@ -8,6 +8,7 @@ pub type RuntimeError   = runtime_error::RuntimeError;
 #[derive(Debug)]
 pub enum MipsyError {
     Compile(CompileError),
+    CompileLine { line: u32, error: CompileError },
     Runtime(RuntimeError),
 }
 
@@ -15,6 +16,13 @@ pub enum MipsyError {
 macro_rules! cerr {
     ($err:expr) => {
         Err(crate::error::MipsyError::Compile($err))
+    };
+}
+
+#[macro_export]
+macro_rules! clerr {
+    ($line:expr, $err:expr) => {
+        Err(crate::error::MipsyError::CompileLine { line: $line, error: $err })
     };
 }
 

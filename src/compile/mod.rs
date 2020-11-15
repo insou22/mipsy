@@ -1,4 +1,4 @@
-use crate::{error::CompileError, InstSet, MPProgram, MipsyResult, cerr, util::Safe};
+use crate::{error::CompileError, InstSet, MPProgram, MipsyResult, util::{Safe, cerr}};
 use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
@@ -37,7 +37,7 @@ impl Binary {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
-            cerr!(CompileError::UnresolvedLabel(label.to_string()))
+            cerr(CompileError::UnresolvedLabel(label.to_string()))
         }
     }
 

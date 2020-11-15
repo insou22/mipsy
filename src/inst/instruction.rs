@@ -65,7 +65,7 @@ pub struct InstMetadata {
     pub desc_long:  Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GenericSignature {
     Native(InstSignature),
     Pseudo(PseudoSignature),

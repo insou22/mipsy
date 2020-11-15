@@ -1,3 +1,32 @@
+use crate::error::{
+    MipsyResult,
+    MipsyError,
+    CompileError,
+};
+
+pub(crate) fn cerr<T>(error: CompileError) -> MipsyResult<T> {
+    Err(MipsyError::Compile(error))
+}
+
+pub(crate) trait WithLine<T>
+where
+    Self: Sized
+{
+    fn with_line(self, line: u32) -> MipsyResult<T>;
+}
+
+impl<T> WithLine<T> for MipsyResult<T> {
+    fn with_line(self, line: u32) -> MipsyResult<T> {
+        self.map_err(|err| {
+            match err {
+                MipsyError::Compile(error) |
+                MipsyError::CompileLine { line: _, error } => MipsyError::CompileLine { line, error },
+                _ => err
+            }
+        })
+    }
+}
+
 #[derive(Copy, Debug)]
 pub enum Safe<T> {
     Valid(T),

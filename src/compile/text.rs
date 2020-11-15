@@ -1,4 +1,4 @@
-use crate::{MPProgram, MipsyResult};
+use crate::{MPProgram, MipsyResult, util::WithLine};
 use crate::inst::instruction::InstSet;
 use super::{Binary, data::Segment};
 use mipsy_parser::{
@@ -34,6 +34,8 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
     let mut segment = Segment::Text;
 
     for item in program.items().iter() {
+        let line = item.1;
+
         match &item.0 {
             MPItem::Directive(directive) => match directive {
                 MPDirective::Text  => segment = Segment::Text,
@@ -43,7 +45,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
                 _ => {}
             }
             MPItem::Instruction(ref instruction) => {
-                let mut compiled = compile1(binary, iset, instruction)?;
+                let mut compiled = compile1(binary, iset, instruction).with_line(line)?;
 
                 let text = match segment {
                     Segment::Text  => &mut binary.text,

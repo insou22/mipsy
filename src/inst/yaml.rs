@@ -1,7 +1,7 @@
 use crate::{
     MipsyResult,
     error::CompileError,
-    cerr,
+    util::cerr,
 };
 use crate::yaml::{
     YamlFile,
@@ -32,21 +32,21 @@ pub fn from_yaml(yaml: &YamlFile) -> MipsyResult<InstSet> {
                     if let Some(funct) = inst.runtime.funct {
                         RuntimeSignature::R { funct }
                     } else {
-                        return cerr!(CompileError::YamlMissingFunct(inst.name.to_ascii_lowercase()));
+                        return cerr(CompileError::YamlMissingFunct(inst.name.to_ascii_lowercase()));
                     }
                 }
                 InstructionType::I => {
                     if let Some(opcode) = inst.runtime.opcode {
                         RuntimeSignature::I { opcode, rt: inst.runtime.rt }
                     } else {
-                        return cerr!(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        return cerr(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
                     }
                 }
                 InstructionType::J => {
                     if let Some(opcode) = inst.runtime.opcode {
                         RuntimeSignature::J { opcode }
                     } else {
-                        return cerr!(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        return cerr(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
                     }
                 }
             },
