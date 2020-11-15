@@ -28,6 +28,39 @@ use nom::{
     bytes::complete::is_a,
 };
 
+#[derive(Debug)]
+pub struct ErrorLocation {
+    pub line: u32,
+    pub col:  usize,
+}
+
+pub(crate) fn parse_result<'a, T>(i: Span<'a>, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> Result<T, ErrorLocation> {
+    match (parser)(i) {
+        Ok((leftover, t)) => {
+            if leftover.is_empty() {
+                Ok(t)
+            } else {
+                match comment_multispace0(leftover) {
+                    Ok((leftover, _)) => {
+                        Err(ErrorLocation {
+                            line: leftover.location_line(),
+                            col:  leftover.get_column(),
+                        })
+                    }
+                    Err(err) => {
+                        eprintln!("ERROR: {}", err);
+                        panic!("this should never happen - please report an issue at https://github.com/insou22/mipsy")            
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("ERROR: {}", err);
+            panic!("this should never happen - please report an issue at https://github.com/insou22/mipsy")
+        }
+    }
+}
+
 const IDENT_FIRST_CHAR:  &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
 const IDENT_CONTD_CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
 

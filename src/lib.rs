@@ -41,7 +41,7 @@ pub fn inst_set() -> MipsyResult<InstSet> {
 
 pub fn compile(iset: &InstSet, program: &str) -> MipsyResult<Binary> {
     let parsed = mipsy_parser::parse_mips(program)
-            .map_err(|string| MipsyError::Compile(error::CompileError::Str(string)))?;
+            .map_err(|err| MipsyError::Compile(error::CompileError::String(format!("line = {}, col = {}", err.line, err.col))))?;
     let compiled = compile::compile(&parsed, &iset)?;
 
     Ok(compiled)

@@ -1,5 +1,6 @@
 use crate::{
     Span,
+    ErrorLocation,
     directive::{
         MPDirective,
         parse_directive,
@@ -9,7 +10,10 @@ use crate::{
         parse_instruction,
     },
     label::parse_label,
-    misc::comment_multispace0,
+    misc::{
+        comment_multispace0,
+        parse_result,
+    },
 };
 use nom::{
     IResult,
@@ -73,22 +77,11 @@ pub fn parse_mips_bytes<'a>(i: Span<'a>) -> IResult<Span<'a>, MPProgram> {
     ))
 }
 
-pub fn parse_mips<T>(input: T) -> Result<MPProgram, &'static str>
+pub fn parse_mips<T>(input: T) -> Result<MPProgram, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    match parse_mips_bytes(Span::new(input.as_ref().trim().as_bytes())) {
-        Ok((rest, program)) => {
-            if rest.len() == 0 {
-                Ok(program)
-            } else {
-                println!("WARNING: file had parse leftovers:\n{}", String::from_utf8_lossy(rest.fragment()).to_string());
-
-                Ok(program)
-            }
-        },
-        Err(_) => Err("Failed to parse"),
-    }
+    parse_result(Span::new(input.as_ref().trim().as_bytes()), parse_mips_bytes)
 }
 
 #[cfg(test)]
