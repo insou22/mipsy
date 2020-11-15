@@ -1,3 +1,5 @@
+# infinite loop
+
 # simple example of returning from a function
 # loops because main does not save return address
 

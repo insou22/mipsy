@@ -1,7 +1,9 @@
+# uninitialised register: $ra on line 24
+
 # example stack growing during function execution
 # breaking the function return
 
-f:
+main:
     sub  $sp, $sp, 8     # move stack pointer down to make room
     sw   $ra, 4($sp)     # save $ra on $stack
     sw   $a0, 0($sp)     # save $a0 on $stack
