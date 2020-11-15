@@ -149,11 +149,6 @@ impl Register {
         if let Ok(number) = name.parse::<i32>() {
             return Self::from_number(number);
         }
-        
-        // too short
-        if name.len() < 2 {
-            return cerr!(CompileError::RegisterNameTooShort(name.into()));
-        }
 
         // $name
         for reg in REGISTERS.iter() {
