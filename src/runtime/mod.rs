@@ -4,8 +4,11 @@ mod display;
 use std::collections::HashMap;
 use crate::{Binary, KDATA_BOT};
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
-use crate::error::MipsyResult;
-use crate::error::RuntimeError;
+use crate::error::{
+    MipsyResult,
+    RuntimeError,
+    runtime_error::Uninitialised,
+};
 use crate::rerr;
 use crate::inst::register::Register;
 use crate::util::Safe;
@@ -762,7 +765,7 @@ impl State {
     pub fn get_reg(&self, reg: u32) -> MipsyResult<i32> {
         match self.registers[reg as usize] {
             Safe::Valid(reg) => Ok(reg),
-            Safe::Uninitialised => rerr!(RuntimeError::UninitializedRegister(reg)),
+            Safe::Uninitialised => rerr!(RuntimeError::Uninitialised(Uninitialised::Register(reg))),
         }
     }
 
@@ -787,14 +790,14 @@ impl State {
     pub fn get_hi(&self) -> MipsyResult<i32> {
         match self.hi {
             Safe::Valid(val) => Ok(val),
-            Safe::Uninitialised => rerr!(RuntimeError::UninitializedHi),
+            Safe::Uninitialised => rerr!(RuntimeError::Uninitialised(Uninitialised::Hi)),
         }
     }
 
     pub fn get_lo(&self) -> MipsyResult<i32> {
         match self.lo {
             Safe::Valid(val) => Ok(val),
-            Safe::Uninitialised => rerr!(RuntimeError::UninitializedLo),
+            Safe::Uninitialised => rerr!(RuntimeError::Uninitialised(Uninitialised::Lo)),
         }
     }
 
@@ -815,10 +818,19 @@ impl State {
     }
 
     pub fn get_word(&self, address: u32) -> MipsyResult<u32> {
-        let b1 = self.get_byte(address)?     as u32;
-        let b2 = self.get_byte(address + 1)? as u32;
-        let b3 = self.get_byte(address + 2)? as u32;
-        let b4 = self.get_byte(address + 3)? as u32;
+        let res: MipsyResult<(u32, u32, u32, u32)> = {
+            let b1 = self.get_byte(address)?     as u32;
+            let b2 = self.get_byte(address + 1)? as u32;
+            let b3 = self.get_byte(address + 2)? as u32;
+            let b4 = self.get_byte(address + 3)? as u32;
+        
+            Ok((b1, b2, b3, b4))
+        };
+
+        let (b1, b2, b3, b4) = match res {
+            Ok((b1, b2, b3, b4)) => (b1, b2, b3, b4),
+            Err(_) => return rerr!(RuntimeError::Uninitialised(Uninitialised::Word(address))),
+        };
 
         // println!("Loaded word @ [{:08x}]: {:02x} {:02x} {:02x} {:02x}", address, b4, b3, b2, b1);
 
@@ -826,8 +838,17 @@ impl State {
     }
 
     pub fn get_half(&self, address: u32) -> MipsyResult<u16> {
-        let b1 = self.get_byte(address)?     as u16;
-        let b2 = self.get_byte(address + 1)? as u16;
+        let res: MipsyResult<(u16, u16)> = {
+            let b1 = self.get_byte(address)?     as u16;
+            let b2 = self.get_byte(address + 1)? as u16;
+
+            Ok((b1, b2))
+        };
+
+        let (b1, b2) = match res {
+            Ok((b1, b2)) => (b1, b2),
+            Err(_) => return rerr!(RuntimeError::Uninitialised(Uninitialised::Half(address))),
+        };
 
         Ok(b1 | (b2 << 8))
     }
@@ -838,7 +859,7 @@ impl State {
 
         let value = match page[offset as usize] {
             Safe::Valid(value) => value,
-            Safe::Uninitialised => return rerr!(RuntimeError::UninitializedMemory(address)),
+            Safe::Uninitialised => return rerr!(RuntimeError::Uninitialised(Uninitialised::Byte(address))),
         };
 
         Ok(value)

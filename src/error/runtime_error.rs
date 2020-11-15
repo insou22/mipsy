@@ -1,14 +1,18 @@
 #[derive(Debug)]
 pub enum RuntimeError {
-    Str(&'static str),
-    String(String),
-
     PageNotExist(u32),
-    UninitializedMemory(u32),
-    UninitializedRegister(u32),
-    UninitializedHi,
-    UninitializedLo,
+    Uninitialised(Uninitialised),
 
     IntegerOverflow,
     SbrkNegative,
+}
+
+#[derive(Debug)]
+pub enum Uninitialised {
+    Byte(u32),
+    Half(u32),
+    Word(u32),
+    Register(u32),
+    Lo,
+    Hi,
 }
