@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use super::{prompt};
 use colored::*;
 use mipsy_lib::*;
@@ -16,6 +17,29 @@ impl Handler {
             exit_status: None,
             breakpoint: false,
         }
+    }
+}
+
+fn get_input<T: FromStr>(name: &str, verbose: bool) -> T {
+    let prompt: Box<dyn Fn()> = 
+        if verbose {
+            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+        } else {
+            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+        };
+
+    loop {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim().parse::<T>() {
+            Ok(n) => return n,
+            Err(_) => {
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+        };
     }
 }
 
@@ -61,36 +85,10 @@ impl<'a> RuntimeHandler for Handler {
     fn sys5_read_int(&mut self) -> i32 {
         if self.verbose {
             prompt::syscall(5, "read_int: ");
-            loop {
-                std::io::stdout().flush().unwrap();
-
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input).unwrap();
-
-                match input.trim().parse::<i32>() {
-                    Ok(n) => return n,
-                    Err(_) => {
-                        prompt::error_nonl("bad input, try again: ");
-                        continue;
-                    }
-                };
-            }
-        } else {
-            loop {
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input).unwrap();
-
-                match input.trim().parse::<i32>() {
-                    Ok(n) => return n,
-                    Err(_) => {
-                        print!("[mipsy] bad input, try again: ");
-                        std::io::stdout().flush().unwrap();
-
-                        continue;
-                    }
-                };
-            }
+            std::io::stdout().flush().unwrap();
         }
+
+        get_input("int", self.verbose)
     }
 
     fn sys6_read_float(&mut self) -> f32 {
@@ -101,8 +99,24 @@ impl<'a> RuntimeHandler for Handler {
         todo!()
     }
 
-    fn sys8_read_string(&mut self) -> String {
-        todo!()
+    fn sys8_read_string(&mut self, max_len: u32) -> String {
+        if self.verbose {
+            prompt::syscall(5, format!("read_string [size={}]: ", max_len));
+            std::io::stdout().flush().unwrap();
+        }
+
+        loop {
+            let input: String = get_input("string", self.verbose);
+
+            if input.len() > max_len as usize {
+                prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
+                prompt::error_nonl("please try again: ");
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+
+            return input;
+        }
     }
 
     fn sys9_sbrk(&mut self, _val: i32) {
@@ -129,7 +143,12 @@ impl<'a> RuntimeHandler for Handler {
     }
 
     fn sys12_read_char(&mut self) -> char {
-        todo!()
+        if self.verbose {
+            prompt::syscall(5, "read_character: ");
+            std::io::stdout().flush().unwrap();
+        }
+
+        get_input("character", self.verbose)
     }
 
     fn sys13_open(&mut self, _path: String, _flags: flags, _mode: mode) -> fd {

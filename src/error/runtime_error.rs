@@ -10,4 +10,5 @@ pub enum RuntimeError {
     UninitializedLo,
 
     IntegerOverflow,
+    SbrkNegative,
 }

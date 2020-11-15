@@ -26,6 +26,7 @@ pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
     registers: [Safe<i32>; 32],
     hi: Safe<i32>,
     lo: Safe<i32>,
+    heap_size: u32,
 }
 
 pub type flags = u32;
@@ -43,7 +44,7 @@ pub trait RuntimeHandler {
     fn sys5_read_int    (&mut self) -> i32;
     fn sys6_read_float  (&mut self) -> f32;
     fn sys7_read_double (&mut self) -> f64;
-    fn sys8_read_string (&mut self) -> String;
+    fn sys8_read_string (&mut self, max_len: u32) -> String;
     fn sys9_sbrk        (&mut self, val: i32);
     fn sys10_exit       (&mut self);
     fn sys11_print_char (&mut self, val: char);
@@ -65,6 +66,7 @@ impl Runtime {
                 registers: Default::default(),
                 hi: Default::default(),
                 lo: Default::default(),
+                heap_size: 0,
             };
 
         let mut text_addr = TEXT_BOT;
@@ -220,8 +222,14 @@ impl Runtime {
             1 => { 
                 rh.sys1_print_int(state.get_reg(Register::A0.to_number() as u32)?);
             }
-            2 => {}
-            3 => {}
+            2 => {
+                // print_float
+                todo!()
+            }
+            3 => {
+                // print_double
+                todo!()
+            }
             4 => {
                 let mut text = String::new();
 
@@ -240,18 +248,67 @@ impl Runtime {
                 rh.sys4_print_string(text);
             }
             5 => {
-                
                 let input = rh.sys5_read_int();
                 state.write_reg(Register::V0.to_number() as u32, input);
             }
-            6 => {},
-            7 => {},
-            8 => {},
+            6 => {
+                // read_float
+                todo!()
+            },
+            7 => {
+                // read_double
+                todo!()
+            },
+            8 => {
+                let buffer = state.get_ureg(Register::A0.to_number() as u32)?;
+                let size   = state.get_ureg(Register::A1.to_number() as u32)?;
+                
+                let string = rh.sys8_read_string(size);
+                for (i, &byte) in (0..size).zip(string.as_bytes()) {
+                    state.write_byte(buffer + i, byte);
+                }
+            },
+            9 => {
+                let size = state.get_reg(Register::A0.to_number() as u32)?;
+                rh.sys9_sbrk(size);
+
+                let state = self.state_mut();
+                if size < 0 {
+                    let magnitude = ((-1) * size) as u32;
+                    if magnitude > state.heap_size {
+                        return rerr!(RuntimeError::SbrkNegative);
+                    }
+
+                    state.heap_size -= magnitude;
+                } else {
+                    state.heap_size += size as u32;
+                }
+            }
             10 => {
                 rh.sys10_exit();
             }
             11 => {
                 rh.sys11_print_char(state.get_ureg(Register::A0.to_number() as u32)? as u8 as char);
+            }
+            12 => {
+                let char = rh.sys12_read_char();
+                state.write_reg(Register::V0.to_number() as u32, char as u8 as u32 as i32);
+            }
+            13 => {
+                // open
+                todo!()
+            }
+            14 => {
+                // read
+                todo!()
+            }
+            15 => {
+                // write
+                todo!()
+            }
+            16 => {
+                // close
+                todo!()
             }
             17 => {
                 rh.sys17_exit_status(state.get_reg(Register::A0.to_number() as u32).unwrap_or(0));
