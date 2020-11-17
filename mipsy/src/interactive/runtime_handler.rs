@@ -92,11 +92,21 @@ impl<'a> RuntimeHandler for Handler {
     }
 
     fn sys6_read_float(&mut self) -> f32 {
-        todo!()
+        if self.verbose {
+            prompt::syscall(6, "read_float: ");
+            std::io::stdout().flush().unwrap();
+        }
+
+        get_input("float", self.verbose)
     }
 
     fn sys7_read_double(&mut self) -> f64 {
-        todo!()
+        if self.verbose {
+            prompt::syscall(7, "read_double: ");
+            std::io::stdout().flush().unwrap();
+        }
+
+        get_input("double", self.verbose)
     }
 
     fn sys8_read_string(&mut self, max_len: u32) -> String {
@@ -119,8 +129,10 @@ impl<'a> RuntimeHandler for Handler {
         }
     }
 
-    fn sys9_sbrk(&mut self, _val: i32) {
-        todo!()
+    fn sys9_sbrk(&mut self, val: i32) {
+        if self.verbose {
+            prompt::syscall_nl(1, format!("sbrk: {}", val.to_string().green()));
+        }
     }
 
     fn sys10_exit(&mut self) {

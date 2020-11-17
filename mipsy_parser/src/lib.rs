@@ -1,5 +1,6 @@
 extern crate nom;
 
+use nom::combinator::map;
 use nom_locate::LocatedSpan;
 use misc::parse_result;
 
@@ -36,7 +37,13 @@ pub fn parse_argument<T>(input: T) -> Result<MPArgument, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    parse_result(Span::new(input.as_ref().as_bytes()), instruction::parse_argument)
+    parse_result(
+        Span::new(input.as_ref().as_bytes()),
+        map(
+            instruction::parse_argument,
+            |(arg, _, _)| arg
+        )
+    )
 }
 
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

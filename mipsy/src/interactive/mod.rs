@@ -1,9 +1,10 @@
+pub(crate) mod prompt;
 mod helper;
 mod commands;
-mod prompt;
 mod error;
 mod runtime_handler;
 
+use mipsy_lib::{CompileError, MipsyError};
 use helper::MyHelper;
 
 use rustyline::{
@@ -32,6 +33,7 @@ use self::error::{CommandError, CommandResult};
 pub(crate) struct State {
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
+    pub(crate) program: Option<String>,
     pub(crate) binary:  Option<Binary>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
@@ -44,6 +46,7 @@ impl State {
         Self {
             iset: mipsy_lib::inst_set().unwrap(),
             commands: vec![],
+            program: None,
             binary:  None,
             runtime: None,
             exited: false,
@@ -161,14 +164,17 @@ impl State {
             CommandError::CannotReadFile { path, os_error, } => {
                 prompt::error(format!("failed to read file `{}`: {}", path, os_error));
             }
-            CommandError::CannotCompile  { path, program: _, mipsy_error, } => {
-                prompt::error(format!("failed to compile `{}` -- {:?}", path, mipsy_error));
+            CommandError::CannotCompile  { path, program, mipsy_error, } => {
+                prompt::error(format!("failed to compile `{}`", path));
+                self.mipsy_error(mipsy_error, Some(&program));
             }
-            CommandError::CannotParseLine { line } => {
-                prompt::error(format!("failed to parse `{}`", line));
+            CommandError::CannotParseLine { line, col } => {
+                prompt::error("failed to parse");
+                self.mipsy_error(MipsyError::Compile(CompileError::ParseFailure { line: 1, col }), Some(&line));
             }
             CommandError::CannotCompileLine { line, mipsy_error } => {
-                prompt::error(format!("failed to compile `{}` -- {:?}", line, mipsy_error));
+                prompt::error(format!("failed to compile instruction"));
+                self.mipsy_error(mipsy_error, Some(&line));
             }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
@@ -184,7 +190,8 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RuntimeError { mipsy_error, } => {
-                prompt::error(format!("runtime error -- {:?}", mipsy_error));
+                prompt::error(format!("runtime error"));
+                self.mipsy_error(mipsy_error, None);
             }
             CommandError::WithTip { error, tip, } => {
                 self.handle_error(*error, false);
@@ -204,6 +211,20 @@ impl State {
 
         if nl {
             println!();
+        }
+    }
+
+    pub(crate) fn mipsy_error(&self, error: MipsyError, program: Option<&str>) {
+        match error {
+            MipsyError::Compile(error) => {
+                crate::error::compile_error::handle(error, program.unwrap(), None, None, None);
+            }
+            MipsyError::CompileLoc { line, col, col_end, error } => {
+                crate::error::compile_error::handle(error, program.unwrap(), line, col, col_end);
+            }
+            MipsyError::Runtime(error) => {
+                println!("runtime error: {:?}", error);
+            }
         }
     }
 

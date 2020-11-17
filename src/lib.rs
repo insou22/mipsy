@@ -10,6 +10,8 @@ pub(crate) use mipsy_parser::MPProgram;
 pub use error::{
     MipsyResult,
     MipsyError,
+    CompileError,
+    RuntimeError,
 };
 pub use inst::instruction::InstSet;
 pub use inst::register::Register;

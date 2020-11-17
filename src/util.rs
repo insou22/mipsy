@@ -8,19 +8,44 @@ pub(crate) fn cerr<T>(error: CompileError) -> MipsyResult<T> {
     Err(MipsyError::Compile(error))
 }
 
-pub(crate) trait WithLine<T>
+pub(crate) trait WithLoc<T>
 where
     Self: Sized
 {
     fn with_line(self, line: u32) -> MipsyResult<T>;
+    fn with_col(self, col: u32) -> MipsyResult<T>;
+    fn with_col_end(self, col_end: u32) -> MipsyResult<T>;
 }
 
-impl<T> WithLine<T> for MipsyResult<T> {
+impl<T> WithLoc<T> for MipsyResult<T> {
     fn with_line(self, line: u32) -> MipsyResult<T> {
         self.map_err(|err| {
             match err {
-                MipsyError::Compile(error) |
-                MipsyError::CompileLine { line: _, error } => MipsyError::CompileLine { line, error },
+                MipsyError::Compile(error) => MipsyError::CompileLoc { line: Some(line), col: None, col_end: None, error },
+                MipsyError::CompileLoc { line: None, col, col_end, error } => MipsyError::CompileLoc { line: Some(line), col, col_end, error },
+                MipsyError::CompileLoc { line: Some(x), col, col_end, error } => MipsyError::CompileLoc { line: Some(x), col, col_end, error },
+                _ => err
+            }
+        })
+    }
+
+    fn with_col(self, col: u32) -> MipsyResult<T> {
+        self.map_err(|err| {
+            match err {
+                MipsyError::Compile(error) => MipsyError::CompileLoc { line: None, col: Some(col), col_end: None, error },
+                MipsyError::CompileLoc { line, col: None, col_end, error } => MipsyError::CompileLoc { line, col: Some(col), col_end, error },
+                MipsyError::CompileLoc { line, col: Some(x), col_end, error } => MipsyError::CompileLoc { line, col: Some(x), col_end, error },
+                _ => err
+            }
+        })
+    }
+
+    fn with_col_end(self, col_end: u32) -> MipsyResult<T> {
+        self.map_err(|err| {
+            match err {
+                MipsyError::Compile(error) => MipsyError::CompileLoc { line: None, col: None, col_end: Some(col_end), error },
+                MipsyError::CompileLoc { line, col, col_end: None, error } => MipsyError::CompileLoc { line, col, col_end: Some(col_end), error },
+                MipsyError::CompileLoc { line, col, col_end: Some(x), error } => MipsyError::CompileLoc { line, col, col_end: Some(x), error },
                 _ => err
             }
         })

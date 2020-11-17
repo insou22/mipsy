@@ -147,8 +147,14 @@ pub(crate) fn print_command() -> Command {
                         MPImmediate::I16(imm) => {
                             imm as u32
                         }
+                        MPImmediate::U16(imm) => {
+                            imm as u32
+                        }
                         MPImmediate::I32(imm) => {
                             imm as u32
+                        }
+                        MPImmediate::U32(imm) => {
+                            imm
                         }
                         MPImmediate::LabelReference(label) => {
                             binary.get_label(&label)

@@ -1,3 +1,5 @@
+use crate::inst::instruction::Signature;
+use mipsy_parser::MPInstruction;
 use crate::inst::instruction::GenericSignature;
 
 #[derive(Debug, Clone)]
@@ -12,8 +14,9 @@ pub enum CompileError {
     NamedRegisterOutOfRange { reg_name: char, reg_index: i32 },
     UnknownRegister(String),
 
-    UnknownInstruction(String),
-    InstructionBadFormat(String),
+    UnknownInstruction(MPInstruction),
+    InstructionBadFormat(MPInstruction, Vec<Signature>),
+    InstructionSimName(MPInstruction, Vec<Signature>),
 
-    UnresolvedLabel(String),
+    UnresolvedLabel(String, Vec<String>),
 }

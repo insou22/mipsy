@@ -124,7 +124,7 @@ pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, te
                     ArgumentType::Shamt  => format!("{}", shamt),
                     ArgumentType::OffRs  => format!("{}(${})", imm, Register::u32_to_str(rs)),
                     ArgumentType::OffRt  => format!("{}(${})", imm, Register::u32_to_str(rt)),
-                    ArgumentType::Imm    => {
+                    ArgumentType::I16    => {
                         let mut res = None;
 
                         if inst.compile.relative_label {

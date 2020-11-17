@@ -1,9 +1,10 @@
 use crate::{
     Span,
     misc::{
+        escape_char,
         parse_escaped_char,
-        parse_ident,
-    },
+        parse_ident
+    }
 };
 use nom::{
     IResult,
@@ -41,8 +42,33 @@ pub enum MPNumber {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MPImmediate {
     I16(i16),
+    U16(u16),
     I32(i32),
+    U32(u32),
     LabelReference(String),
+}
+
+impl MPNumber {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Immediate(imm) => imm.to_string(),
+            Self::Float32(float) => float.to_string(),
+            Self::Float64(float) => float.to_string(),
+            Self::Char(char)     => format!("\'{}\'", escape_char(*char)),
+        }
+    }
+}
+
+impl MPImmediate {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::I16(i) => i.to_string(),
+            Self::U16(i) => i.to_string(),
+            Self::I32(i) => i.to_string(),
+            Self::U32(i) => i.to_string(),
+            Self::LabelReference(label) => label.clone(),
+        }
+    }
 }
 
 pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
@@ -57,7 +83,9 @@ pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
 pub fn parse_immediate<'a>(i: Span<'a>) -> IResult<Span<'a>, MPImmediate> {
     alt((
         map(parse_i16,      |i| MPImmediate::I16(i)),
+        map(parse_u16,      |i| MPImmediate::U16(i)),
         map(parse_i32,      |i| MPImmediate::I32(i)),
+        map(parse_u32,      |i| MPImmediate::U32(i)),
         map(parse_labelref, |l| MPImmediate::LabelReference(l)),
     ))(i)
 }
@@ -114,6 +142,10 @@ pub fn parse_i8<'a>(i: Span<'a>) -> IResult<Span<'a>, i8> {
 }
 
 pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
+    parse_num(i)
+}
+
+pub fn parse_u16<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
     parse_num(i)
 }
 
@@ -211,6 +243,12 @@ impl RadixNum<Self> for i8 {
 }
 
 impl RadixNum<Self> for i16 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for u16 {
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
         Self::from_str_radix(src, radix)
     }

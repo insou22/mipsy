@@ -4,7 +4,10 @@ use case_insensitive_hashmap::CaseInsensitiveHashMap;
 mod bytes;
 
 mod checker;
-use checker::check_program;
+use checker::{
+    check_pre,
+    check_post_data_label,
+};
 
 mod data;
 use data::populate_labels_and_data;
@@ -37,7 +40,14 @@ impl Binary {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
-            cerr(CompileError::UnresolvedLabel(label.to_string()))
+            let label_lower = label.to_ascii_lowercase();
+
+            let similar = self.labels.keys()
+                    .map(|label| label.to_ascii_lowercase())
+                    .filter(|label| strsim::levenshtein(label, &label_lower) <= 3)
+                    .collect();
+            
+            cerr(CompileError::UnresolvedLabel(label.to_string(), similar))
         }
     }
 
@@ -47,7 +57,7 @@ impl Binary {
 }
 
 pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
-    let warnings = check_program(program)?;
+    let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
     }
@@ -63,6 +73,12 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     };
 
     populate_labels_and_data(&mut binary, iset, &program)?;
+
+    let warnings = check_post_data_label(program, &binary)?;
+    if !warnings.is_empty() {
+        // TODO: Deal with warnings here
+    }
+
     populate_text           (&mut binary, iset, &program)?;
     
     let kernel = get_kernel();

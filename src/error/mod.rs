@@ -8,7 +8,7 @@ pub type RuntimeError   = runtime_error::RuntimeError;
 #[derive(Debug)]
 pub enum MipsyError {
     Compile(CompileError),
-    CompileLine { line: u32, error: CompileError },
+    CompileLoc { line: Option<u32>, col: Option<u32>, col_end: Option<u32>, error: CompileError },
     Runtime(RuntimeError),
 }
 

@@ -776,7 +776,7 @@ impl State {
     #[allow(unreachable_code)]
     pub fn write_reg(&mut self, reg: u32, value: i32) {
         if reg == 0 && value != 0 {
-            todo!("warning: cannot write to $ZERO");
+            // TODO: Warning - cannot write to $zero
             return;
         }
 

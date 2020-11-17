@@ -37,6 +37,22 @@ impl MPRegister {
             Self::Offset(_, ident) => ident,
         }
     }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Normal(id)      => format!("${}", id.to_string()),
+            Self::Offset(imm, id) => format!("{}(${})", imm.to_string(), id.to_string()),
+        }
+    }
+}
+
+impl MPRegisterIdentifier {
+    pub fn to_string(&self) -> String {
+        match self {
+            Self::Numbered(num) => num.to_string(),
+            Self::Named(name)   => name.clone(),
+        }
+    }
 }
 
 

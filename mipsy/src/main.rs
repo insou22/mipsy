@@ -2,9 +2,11 @@ use std::str::FromStr;
 use std::io::Write;
 
 use mipsy_lib::*;
+use interactive::prompt;
 use clap::Clap;
 
 mod interactive;
+mod error;
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
@@ -124,17 +126,36 @@ impl RuntimeHandler for Handler {
     }
 }
 
-fn main() -> MipsyResult<()> {
+fn main() {
     let opts: Opts = Opts::parse();
 
     if let None = opts.file {
         interactive::launch();
     }
 
-    let file_contents = std::fs::read_to_string(&opts.file.as_ref().unwrap()).expect("Could not read file {}");
+    let file = opts.file.as_ref().unwrap();
 
+    let file_contents = std::fs::read_to_string(file).expect("Could not read file {}");
+
+    match run(&opts, &file_contents) {
+        Ok(_) => {}
+        Err(MipsyError::Compile(error)) => {
+            prompt::error(format!("failed to compile `{}`", file));
+            error::compile_error::handle(error, &file_contents, None, None, None);
+        }
+        Err(MipsyError::CompileLoc { line, col, col_end, error }) => {
+            prompt::error(format!("failed to compile `{}`", file));
+            error::compile_error::handle(error, &file_contents, line, col, col_end);
+        }
+        Err(MipsyError::Runtime(error)) => {
+            println!("runtime error: {:?}", error);
+        }
+    }
+}
+
+fn run(opts: &Opts, file: &str) -> MipsyResult<()> {
     let iset       = mipsy_lib::inst_set()?;
-    let binary     = mipsy_lib::compile(&iset, &file_contents)?;
+    let binary     = mipsy_lib::compile(&iset, file)?;
 
     if opts.compile {
         let decompiled = mipsy_lib::decompile(&iset, &binary);

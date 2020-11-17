@@ -1,4 +1,4 @@
-use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, inst::instruction::InstSet, util::{Safe, WithLine}};
+use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, inst::instruction::InstSet, util::{Safe, WithLoc}};
 use super::{
     TEXT_BOT,
     DATA_BOT,
@@ -107,10 +107,10 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 // how many bytes-worth we've seen so far
                 match segment {
                     Segment::Text => {
-                        text_len += instruction_length(iset, instruction).with_line(line)? * 4;
+                        text_len += instruction_length(iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())? * 4;
                     }
                     Segment::KText => {
-                        ktext_len += instruction_length(iset, instruction).with_line(line)? * 4;
+                        ktext_len += instruction_length(iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())? * 4;
                     }
                     _ => {
                         todo!()

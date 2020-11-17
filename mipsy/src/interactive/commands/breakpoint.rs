@@ -67,8 +67,14 @@ pub(crate) fn breakpoint_command() -> Command {
                         MPImmediate::I16(imm) => {
                             (*imm as u32, false)
                         }
+                        MPImmediate::U16(imm) => {
+                            (*imm as u32, false)
+                        }
                         MPImmediate::I32(imm) => {
                             (*imm as u32, false)
+                        }
+                        MPImmediate::U32(imm) => {
+                            (*imm, false)
                         }
                         MPImmediate::LabelReference(label) => {
                             (
