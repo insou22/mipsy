@@ -213,6 +213,15 @@ pub fn handle(
         }
 
         CompileError::UnresolvedLabel(label, similar) => {
+            if label == "main" {
+                eprintln!(
+                    "\ncan't find label `{}` in program",
+                    label.bright_red().bold()
+                );
+                prompt::tip(format!("you are required to add a `{}` label to your program", "main".bold()));
+                return;
+            }
+
             highlight_line(file, line, col, col_end);
             eprintln!(
                 "{}`{}`",
