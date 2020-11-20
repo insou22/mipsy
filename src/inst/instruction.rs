@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 use crate::{Binary, error::MipsyResult, TEXT_BOT};
 use serde::{Serialize, Deserialize};
 use super::register::Register;
@@ -304,8 +304,28 @@ impl CompileSignature {
 
         true
     }
+}
 
-
+impl fmt::Display for ArgumentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ArgumentType::Rd      => write!(f, "$Rd"),
+            ArgumentType::Rs      => write!(f, "$Rs"),
+            ArgumentType::Rt      => write!(f, "$Rt"),
+            ArgumentType::Shamt   => write!(f, "shift"),
+            ArgumentType::I16     => write!(f, "i16"),
+            ArgumentType::U16     => write!(f, "u16"),
+            ArgumentType::J       => write!(f, "label"),
+            ArgumentType::OffRs   => write!(f, "i16($Rs)"),
+            ArgumentType::OffRt   => write!(f, "i16($Rt)"),
+            ArgumentType::F32     => write!(f, "f32"),
+            ArgumentType::F64     => write!(f, "f64"),
+            ArgumentType::I32     => write!(f, "i32"),
+            ArgumentType::U32     => write!(f, "u32"),
+            ArgumentType::Off32Rs => write!(f, "i32($Rs)"),
+            ArgumentType::Off32Rt => write!(f, "i32($Rt)"),
+        }
+    }
 }
 
 impl ArgumentType {

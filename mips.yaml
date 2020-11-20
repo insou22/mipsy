@@ -908,6 +908,14 @@ pseudoinstructions:
   - name: LI
     desc_short: Load the immediate value into $Rs
     compile:
+      format: [Rs, I16]
+    expand:
+      - inst: ADDI
+        data: [$Rs, $0, $I16]
+
+  - name: LI
+    desc_short: Load the immediate value into $Rs
+    compile:
       format: [Rs, I32]
     expand:
       - inst: LUI

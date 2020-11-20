@@ -1,3 +1,4 @@
+use crate::TEXT_BOT;
 use crate::compile::CompileError;
 use crate::compile::cerr;
 use crate::inst::instruction::SignatureRef;
@@ -93,11 +94,14 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
                 let mut compiled = compile1(binary, iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())?;
 
                 let text = match segment {
-                    Segment::Text  => &mut binary.text,
+                    Segment::Text  => {
+                        binary.line_numbers.insert(TEXT_BOT + (binary.text.len() as u32) * 4, line);
+                        &mut binary.text
+                    }
                     Segment::KText => &mut binary.ktext,
                     _              => continue,
                 };
-            
+
                 text.append(&mut compiled);
             }
             MPItem::Label(_) => {}

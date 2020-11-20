@@ -19,10 +19,10 @@ pub(crate) fn step_command() -> Command {
             "[times]".magenta(),
             "back".bold(),
         ),
-        |state, _label, args| {
+        |state, label, args| {
             let times = match args.first() {
                 Some(arg) => expect_u32(
-                    "step",
+                    label,
                     &"[times]".bright_magenta().to_string(),
                     arg, 
                     Some(|neg| 
@@ -41,11 +41,11 @@ pub(crate) fn step_command() -> Command {
                 let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
                 if let Ok(inst) = runtime.next_inst() {
-                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc());
+                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_deref());
                 }
 
                 let step = state.step(true)?;
-                
+
                 if step {
                     break;
                 }

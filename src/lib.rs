@@ -12,8 +12,12 @@ pub use error::{
     MipsyError,
     CompileError,
     RuntimeError,
+    runtime_error::Uninitialised,
 };
-pub use inst::instruction::InstSet;
+pub use inst::instruction::{
+    InstSet,
+    ArgumentType,
+};
 pub use inst::register::Register;
 pub use compile::Binary;
 pub use runtime::{
@@ -35,6 +39,7 @@ pub use compile::{
     KTEXT_BOT,
     KDATA_BOT,
 };
+pub use util::Safe;
 
 pub fn inst_set() -> MipsyResult<InstSet> {
     let yaml = yaml::get_instructions();
@@ -55,7 +60,7 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }
 
-pub fn run(binary: &Binary) -> MipsyResult<Runtime> {
+pub fn runtime(binary: &Binary) -> Runtime {
     runtime::Runtime::new(binary)
 }
 

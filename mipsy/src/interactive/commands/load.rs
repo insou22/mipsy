@@ -29,8 +29,7 @@ pub(crate) fn load_command() -> Command {
             let binary = mipsy_lib::compile(&state.iset, program)
                 .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), mipsy_error: err })?;
 
-            let runtime = mipsy_lib::run(&binary)
-                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), mipsy_error: err })?;
+            let runtime = mipsy_lib::runtime(&binary);
 
             state.binary  = Some(binary);
             state.runtime = Some(runtime);

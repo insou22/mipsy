@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use crate::Binary;
-use crate::inst::instruction::{InstSet, ArgumentType, RuntimeSignature};
+use crate::inst::instruction::{InstSet, CompileSignature, ArgumentType, RuntimeSignature};
 use crate::inst::register::Register;
 
-pub struct Decompiled {
+pub struct Decompiled<'a> {
     pub opcode: u32,
     pub addr: u32,
+    pub inst_sig: Option<&'a CompileSignature>,
     pub inst_name: Option<String>,
     pub arguments: Vec<String>,
     pub labels: Vec<String>,
+    pub line_num: Option<u32>,
 }
 
 pub fn decompile(program: &Binary, iset: &InstSet) -> String {
@@ -44,7 +46,7 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
     text
 }
 
-pub fn decompile_into_parts(program: &Binary, iset: &InstSet) -> HashMap<u32, Decompiled> {
+pub fn decompile_into_parts<'a>(program: &Binary, iset: &'a InstSet) -> HashMap<u32, Decompiled<'a>> {
     let mut decompiled = HashMap::new();
     
     let mut text_addr = crate::TEXT_BOT;
@@ -59,13 +61,15 @@ pub fn decompile_into_parts(program: &Binary, iset: &InstSet) -> HashMap<u32, De
     decompiled
 }
 
-pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, text_addr: u32) -> Decompiled {
+pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: u32, text_addr: u32) -> Decompiled<'a> {
     let mut parts = Decompiled {
         opcode: inst,
         addr: text_addr,
+        inst_sig: None,
         inst_name: None,
         arguments: vec![],
         labels: vec![],
+        line_num: program.line_numbers.get(&text_addr).copied(),
     };
 
     for (label, &addr) in program.labels.iter() {
@@ -107,6 +111,7 @@ pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, te
         }
 
         inst = Some(native_inst);
+        parts.inst_sig = Some(&native_inst.compile);
         break;
     }
 
@@ -122,8 +127,8 @@ pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, te
                     ArgumentType::Rt     => format!("${}", Register::u32_to_str(rt)),
                     ArgumentType::Rs     => format!("${}", Register::u32_to_str(rs)),
                     ArgumentType::Shamt  => format!("{}", shamt),
-                    ArgumentType::OffRs  => format!("{}(${})", imm, Register::u32_to_str(rs)),
-                    ArgumentType::OffRt  => format!("{}(${})", imm, Register::u32_to_str(rt)),
+                    ArgumentType::OffRs  => format!("{}(${})", if imm != 0 { imm.to_string() } else { String::new() }, Register::u32_to_str(rs)),
+                    ArgumentType::OffRt  => format!("{}(${})", if imm != 0 { imm.to_string() } else { String::new() }, Register::u32_to_str(rt)),
                     ArgumentType::I16    => {
                         let mut res = None;
 
@@ -141,8 +146,11 @@ pub fn decompile_inst_into_parts(program: &Binary, iset: &InstSet, inst: u32, te
                         if let Some(label) = res {
                             label.to_string()
                         } else {
-                            format!("{}", imm)
+                            imm.to_string()
                         }
+                    }
+                    ArgumentType::U16    => {
+                        (imm as u16).to_string()
                     }
                     ArgumentType::J      => {
                         let j_addr = (text_addr + 4) & 0xF000_0000 | addr << 2;

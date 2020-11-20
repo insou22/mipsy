@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 mod display;
 
+use crate::MipsyError;
 use std::collections::HashMap;
 use crate::{Binary, KDATA_BOT};
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
@@ -14,6 +15,9 @@ use crate::inst::register::Register;
 use crate::util::Safe;
 
 const PAGE_SIZE: u32 = 4096;
+pub(super) const HI: usize = 32;
+pub(super) const LO: usize = 33;
+
 
 #[allow(dead_code)]
 pub struct Runtime {
@@ -26,9 +30,8 @@ pub struct Runtime {
 pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
     pages: HashMap<u32, Box<[Safe<u8>]>>,
     pc: u32,
-    registers: [Safe<i32>; 32],
-    hi: Safe<i32>,
-    lo: Safe<i32>,
+    registers: Vec<Safe<i32>>, // size=34 - 32 registers, $hi, $lo
+    register_written: Vec<bool>,
     heap_size: u32,
 }
 
@@ -61,16 +64,20 @@ pub trait RuntimeHandler {
 }
 
 impl Runtime {
-    pub fn new(program: &Binary) -> MipsyResult<Self> {
+    pub fn new(program: &Binary) -> Self {
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
                 pc: KTEXT_BOT,
                 registers: Default::default(),
-                hi: Default::default(),
-                lo: Default::default(),
+                register_written: Default::default(),
                 heap_size: 0,
             };
+        
+        for _ in 0..34 {
+            initial_state.registers.push(Safe::Uninitialised);
+            initial_state.register_written.push(false);
+        }
 
         let mut text_addr = TEXT_BOT;
         for &word in &program.text {
@@ -115,7 +122,7 @@ impl Runtime {
             program_len: program.text.len(),
         };
 
-        Ok(runtime)
+        runtime
     }
 
     pub fn next_inst(&self) -> MipsyResult<u32> {
@@ -128,17 +135,24 @@ impl Runtime {
     where
         RH: RuntimeHandler
     {
-        self.timeline.push(self.timeline.last().unwrap().clone());
-        self.current_state += 1;
+        let mut state = self.timeline.last().unwrap().clone();
 
-        let state = self.state_mut();
-
-        let inst = state.get_word(state.pc)?;
+        let inst = state.get_word(state.pc)
+                .map_err(|_| MipsyError::Runtime(RuntimeError::NoInstruction(state.pc)))?;
         state.pc += 4;
 
-        self.execute(rh, inst)?;
+        self.timeline.push(state);
+        self.current_state += 1;
 
-        Ok(())
+        match self.execute(rh, inst) {
+            Err(err) => {
+                self.timeline.remove(self.timeline.len() - 1);
+                self.current_state -= 1;
+                
+                Err(err)
+            }
+            ok => ok,
+        }
     }
 
     pub fn exec_inst<RH>(&mut self, rh: &mut RH, inst: u32) -> MipsyResult<()>
@@ -180,6 +194,27 @@ impl Runtime {
 
     fn state_mut(&mut self) -> &mut State {
         self.timeline.last_mut().unwrap()
+    }
+
+    pub fn prev_state(&self) -> Option<&State> {
+        let len = self.timeline.len();
+
+        if len <= 1 {
+            None
+        } else {
+            self.timeline.get(len - 2)
+        }
+    }
+
+    #[allow(dead_code)]
+    fn prev_state_mut(&mut self) -> Option<&mut State> {
+        let len = self.timeline.len();
+
+        if len <= 1 {
+            None
+        } else {
+            self.timeline.get_mut(len - 2)
+        }
     }
 
     fn execute<RH>(&mut self, rh: &mut RH, inst: u32) -> MipsyResult<()>
@@ -431,6 +466,10 @@ impl Runtime {
                 let rs_val = state.get_reg(rs)?;
                 let rt_val = state.get_reg(rt)?;
 
+                if rt_val == 0 {
+                    return rerr!(RuntimeError::DivisionByZero);
+                }
+
                 state.write_lo(rs_val / rt_val);
                 state.write_hi(rs_val % rt_val);
             },
@@ -439,6 +478,10 @@ impl Runtime {
             0x1B => {
                 let rs_val = state.get_ureg(rs)?;
                 let rt_val = state.get_ureg(rt)?;
+
+                if rt_val == 0 {
+                    return rerr!(RuntimeError::DivisionByZero);
+                }
 
                 state.write_ulo(rs_val / rt_val);
                 state.write_uhi(rs_val % rt_val);
@@ -759,6 +802,7 @@ impl State {
     }
 
     fn reset_reg(&mut self, reg: u32) {
+        self.register_written[reg as usize] = true;
         self.registers[reg as usize] = Safe::Uninitialised;
     }
 
@@ -781,88 +825,79 @@ impl State {
         }
 
         self.registers[reg as usize] = Safe::Valid(value);
+        self.register_written[reg as usize] = true;
     }
 
     fn write_ureg(&mut self, reg: u32, value: u32) {
         self.registers[reg as usize] = Safe::Valid(value as i32);
+        self.register_written[reg as usize] = true;
     }
 
     pub fn get_hi(&self) -> MipsyResult<i32> {
-        match self.hi {
+        match self.registers[HI] {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::Uninitialised(Uninitialised::Hi)),
         }
     }
 
     pub fn get_lo(&self) -> MipsyResult<i32> {
-        match self.lo {
+        match self.registers[LO] {
             Safe::Valid(val) => Ok(val),
             Safe::Uninitialised => rerr!(RuntimeError::Uninitialised(Uninitialised::Lo)),
         }
     }
 
     pub fn write_hi(&mut self, value: i32) {
-        self.hi = Safe::Valid(value);
+        self.registers[HI] = Safe::Valid(value);
+        self.register_written[HI] = true;
     }
 
     pub fn write_lo(&mut self, value: i32) {
-        self.lo = Safe::Valid(value);
+        self.registers[LO] = Safe::Valid(value);
+        self.register_written[LO] = true;
     }
 
     fn write_uhi(&mut self, value: u32) {
-        self.hi = Safe::Valid(value as i32);
+        self.registers[HI] = Safe::Valid(value as i32);
+        self.register_written[HI] = true;
     }
 
     fn write_ulo(&mut self, value: u32) {
-        self.lo = Safe::Valid(value as i32);
+        self.registers[LO] = Safe::Valid(value as i32);
+        self.register_written[LO] = true;
     }
 
     pub fn get_word(&self, address: u32) -> MipsyResult<u32> {
-        let res: MipsyResult<(u32, u32, u32, u32)> = {
+        let (b1, b2, b3, b4) = (|| {
             let b1 = self.get_byte(address)?     as u32;
             let b2 = self.get_byte(address + 1)? as u32;
             let b3 = self.get_byte(address + 2)? as u32;
             let b4 = self.get_byte(address + 3)? as u32;
         
             Ok((b1, b2, b3, b4))
-        };
-
-        let (b1, b2, b3, b4) = match res {
-            Ok((b1, b2, b3, b4)) => (b1, b2, b3, b4),
-            Err(_) => return rerr!(RuntimeError::Uninitialised(Uninitialised::Word(address))),
-        };
-
-        // println!("Loaded word @ [{:08x}]: {:02x} {:02x} {:02x} {:02x}", address, b4, b3, b2, b1);
+        })().map_err(|_: MipsyError| MipsyError::Runtime(RuntimeError::Uninitialised(Uninitialised::Word(address))))?;
 
         Ok(b1 | (b2 << 8) | (b3 << 16) | (b4 << 24))
     }
 
     pub fn get_half(&self, address: u32) -> MipsyResult<u16> {
-        let res: MipsyResult<(u16, u16)> = {
+        let (b1, b2) = (|| {
             let b1 = self.get_byte(address)?     as u16;
             let b2 = self.get_byte(address + 1)? as u16;
 
             Ok((b1, b2))
-        };
-
-        let (b1, b2) = match res {
-            Ok((b1, b2)) => (b1, b2),
-            Err(_) => return rerr!(RuntimeError::Uninitialised(Uninitialised::Half(address))),
-        };
+        })().map_err(|_: MipsyError| MipsyError::Runtime(RuntimeError::Uninitialised(Uninitialised::Half(address))))?;
 
         Ok(b1 | (b2 << 8))
     }
 
     pub fn get_byte(&self, address: u32) -> MipsyResult<u8> {
-        let page = self.get_page(address)?;
-        let offset = Self::offset_in_page(address);
-
-        let value = match page[offset as usize] {
-            Safe::Valid(value) => value,
-            Safe::Uninitialised => return rerr!(RuntimeError::Uninitialised(Uninitialised::Byte(address))),
-        };
-
-        Ok(value)
+        (|| {
+            let page = self.get_page(address)?;
+            let offset = Self::offset_in_page(address);
+    
+            page[offset as usize].as_option().copied()
+        })().ok_or(MipsyError::Runtime(RuntimeError::Uninitialised(Uninitialised::Byte(address))))
     }
 
     pub fn write_word(&mut self, address: u32, word: u32) {
@@ -918,31 +953,27 @@ impl State {
         page[offset as usize] = Safe::Uninitialised;
     }
 
+    pub fn is_register_written(&self, reg: u32) -> bool {
+        self.register_written[reg as usize]
+    }
+
+    pub fn is_hi_written(&self) -> bool {
+        self.register_written[HI]
+    }
+
+    pub fn is_lo_written(&self) -> bool {
+        self.register_written[LO]
+    }
+
     fn get_page_or_create(&mut self, address: u32) -> &mut [Safe<u8>] {
         let base_addr = Self::addr_to_page_base_addr(address);
         
         self.pages.entry(base_addr).or_insert_with(|| Box::new([Default::default(); PAGE_SIZE as usize]))
     }
 
-    fn get_page(&self, address: u32) -> MipsyResult<&[Safe<u8>]> {
+    fn get_page(&self, address: u32) -> Option<&[Safe<u8>]> {
         let base_addr = Self::addr_to_page_base_addr(address);
-        let page = self.pages.get(&base_addr);
-
-        match page {
-            Some(page) => Ok(page),
-            None => rerr!(RuntimeError::PageNotExist(address))
-        }
-    }
-
-    #[allow(dead_code)]
-    fn get_page_mut(&mut self, address: u32) -> MipsyResult<&[Safe<u8>]> {
-        let base_addr = Self::addr_to_page_base_addr(address);
-        let page = self.pages.get_mut(&base_addr);
-
-        match page {
-            Some(page) => Ok(page),
-            None => rerr!(RuntimeError::PageNotExist(address))
-        }
+        self.pages.get(&base_addr).map(|page| &**page)
     }
 
     fn get_page_index(address: u32) -> u32 {
@@ -978,14 +1009,6 @@ fn checked_add_imm(x: i32, y: i16) -> MipsyResult<i32> {
 
 fn checked_sub(x: i32, y: i32) -> MipsyResult<i32> {
     match x.checked_sub(y) {
-        Some(z) => Ok(z),
-        None => rerr!(RuntimeError::IntegerOverflow),
-    }
-}
-
-#[allow(dead_code)]
-fn checked_sub_imm(x: i32, y: i16) -> MipsyResult<i32> {
-    match x.checked_sub(y as i32) {
         Some(z) => Ok(z),
         None => rerr!(RuntimeError::IntegerOverflow),
     }

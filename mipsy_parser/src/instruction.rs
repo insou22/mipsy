@@ -1,3 +1,5 @@
+use std::fmt;
+
 use nom_locate::position;
 use crate::{
     Span,
@@ -58,11 +60,11 @@ impl MPInstruction {
     }
 }
 
-impl MPArgument {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for MPArgument {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Register(reg) => reg.to_string(),
-            Self::Number(num)   => num.to_string(),
+            Self::Register(reg) => write!(f, "{}", reg),
+            Self::Number(num)   => write!(f, "{}", num),
         }
     }
 }

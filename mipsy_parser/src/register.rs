@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     Span,
     number::{
@@ -46,11 +48,20 @@ impl MPRegister {
     }
 }
 
-impl MPRegisterIdentifier {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for MPRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Numbered(num) => num.to_string(),
-            Self::Named(name)   => name.clone(),
+            Self::Normal(id)      => write!(f, "${}", id),
+            Self::Offset(imm, id) => write!(f, "{}(${})", imm, id),
+        }
+    }
+}
+
+impl fmt::Display for MPRegisterIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Numbered(num) => write!(f, "{}", num),
+            Self::Named(name)   => write!(f, "{}", name),
         }
     }
 }

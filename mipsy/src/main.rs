@@ -134,33 +134,29 @@ fn main() {
     }
 
     let file = opts.file.as_ref().unwrap();
-
     let file_contents = std::fs::read_to_string(file).expect("Could not read file {}");
 
-    match run(&opts, &file_contents) {
-        Ok(_) => {}
+    let (iset, binary, mut runtime) = match compile(&file_contents) {
+        Ok((iset, binary, runtime)) => (iset, binary, runtime),
+
         Err(MipsyError::Compile(error)) => {
             prompt::error(format!("failed to compile `{}`", file));
             error::compile_error::handle(error, &file_contents, None, None, None);
+            return;
         }
+
         Err(MipsyError::CompileLoc { line, col, col_end, error }) => {
             prompt::error(format!("failed to compile `{}`", file));
             error::compile_error::handle(error, &file_contents, line, col, col_end);
+            return;
         }
-        Err(MipsyError::Runtime(error)) => {
-            println!("runtime error: {:?}", error);
-        }
-    }
-}
-
-fn run(opts: &Opts, file: &str) -> MipsyResult<()> {
-    let iset       = mipsy_lib::inst_set()?;
-    let binary     = mipsy_lib::compile(&iset, file)?;
+        _ => unreachable!(),
+    };
 
     if opts.compile {
         let decompiled = mipsy_lib::decompile(&iset, &binary);
         println!("Compiled program:\n{}\n", decompiled);
-        return Ok(())
+        return;
     }
 
     if opts.hex {
@@ -172,15 +168,28 @@ fn run(opts: &Opts, file: &str) -> MipsyResult<()> {
             }
         }
 
-        return Ok(());
+        return;
     }
 
-    let mut runtime = mipsy_lib::run(&binary)?;
     loop {
         let mut handler = Handler;
 
-        runtime.step(&mut handler)?;
+        match runtime.step(&mut handler) {
+            Ok(_) => {}
+            Err(MipsyError::Runtime(error)) => {
+                error::runtime_error::handle(error, &file_contents, &iset, &binary, &runtime);
+            }
+            _ => unreachable!(),
+        }
     }
+}
+
+fn compile(file: &str) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    let iset       = mipsy_lib::inst_set()?;
+    let binary     = mipsy_lib::compile(&iset, file)?;
+    let runtime    = mipsy_lib::runtime(&binary);
+
+    Ok((iset, binary, runtime))
 }
 
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

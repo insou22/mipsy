@@ -62,10 +62,41 @@ impl<T> Safe<T> {
     pub fn valid(value: T) -> Self {
         Safe::Valid(value)
     }
+
+    pub fn into_option(self) -> Option<T> {
+        match self {
+            Self::Valid(t) => Some(t),
+            Self::Uninitialised => None,
+        }
+    }
+
+    pub fn as_option(&self) -> Option<&T> {
+        match self {
+            Self::Valid(t) => Some(t),
+            Self::Uninitialised => None,
+        }
+    }
+}
+
+impl<T> PartialEq for Safe<T>
+where
+    T: PartialEq
+{
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Valid(a), Self::Valid(b)) => {
+                a.eq(b)
+            }
+            (Self::Uninitialised, Self::Uninitialised) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<T> Clone for Safe<T>
-where T: Clone {
+where 
+    T: Clone
+{
     fn clone(&self) -> Self {
         match self {
             Self::Valid(t) => Self::Valid(t.clone()),

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     Span,
     misc::{
@@ -48,25 +50,25 @@ pub enum MPImmediate {
     LabelReference(String),
 }
 
-impl MPNumber {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for MPNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Immediate(imm) => imm.to_string(),
-            Self::Float32(float) => float.to_string(),
-            Self::Float64(float) => float.to_string(),
-            Self::Char(char)     => format!("\'{}\'", escape_char(*char)),
+            Self::Immediate(imm) => write!(f, "{}", imm),
+            Self::Float32(float) => write!(f, "{}", float),
+            Self::Float64(float) => write!(f, "{}", float),
+            Self::Char(char)     => write!(f, "'{}'", escape_char(*char)),
         }
     }
 }
 
-impl MPImmediate {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for MPImmediate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::I16(i) => i.to_string(),
-            Self::U16(i) => i.to_string(),
-            Self::I32(i) => i.to_string(),
-            Self::U32(i) => i.to_string(),
-            Self::LabelReference(label) => label.clone(),
+            Self::I16(i) => write!(f, "{}", i),
+            Self::U16(i) => write!(f, "{}", i),
+            Self::I32(i) => write!(f, "{}", i),
+            Self::U32(i) => write!(f, "{}", i),
+            Self::LabelReference(label) => write!(f, "{}", label),
         }
     }
 }

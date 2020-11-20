@@ -1,9 +1,10 @@
 #[derive(Debug)]
 pub enum RuntimeError {
-    PageNotExist(u32),
+    NoInstruction(u32),
     Uninitialised(Uninitialised),
 
     IntegerOverflow,
+    DivisionByZero,
     SbrkNegative,
 }
 

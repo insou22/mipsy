@@ -1,4 +1,4 @@
-# jal my_function misspelled on line 21
+# missing jr $ra
 
 # add 17 and 25  and print result
 
@@ -17,13 +17,4 @@ main:                    #  x, y, z in $t0, $t1, $t2,
     li   $v0, 11
     syscall
 
-    move    $s0, $ra
-    jal     my_funtcion
-    move    $ra, $s0
-
     li   $v0, 0          # return 0
-    jr   $ra
-
-my_function:
-    jr  $ra
-

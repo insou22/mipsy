@@ -1,5 +1,3 @@
-# infinite loop
-
 # simple example of returning a value from a function
 # note storing of return  address $ra and $a0 on stack
 # for simplicity we are not using a frame pointer

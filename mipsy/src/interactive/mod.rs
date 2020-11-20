@@ -1,6 +1,6 @@
 pub(crate) mod prompt;
+pub(crate) mod commands;
 mod helper;
-mod commands;
 mod error;
 mod runtime_handler;
 
@@ -190,7 +190,6 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RuntimeError { mipsy_error, } => {
-                prompt::error(format!("runtime error"));
                 self.mipsy_error(mipsy_error, None);
             }
             CommandError::WithTip { error, tip, } => {
@@ -223,7 +222,13 @@ impl State {
                 crate::error::compile_error::handle(error, program.unwrap(), line, col, col_end);
             }
             MipsyError::Runtime(error) => {
-                println!("runtime error: {:?}", error);
+                crate::error::runtime_error::handle(
+                    error,
+                    self.program.as_ref().unwrap(),
+                    &self.iset,
+                    self.binary.as_ref().unwrap(),
+                    self.runtime.as_ref().unwrap()
+                );
             }
         }
     }
@@ -335,6 +340,7 @@ fn state() -> State {
     state.add_command(commands::decompile_command());
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());
+    state.add_command(commands::context_command());
     state.add_command(commands::print_command());
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
