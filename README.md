@@ -17,7 +17,7 @@ Features you (hopefully) will be pleased to find in Mipsy:
 - Runtime checks - uninitialized memory, registers, etc.
 - A powerful and intuitive debugger
 - Time travel debugging
-- Wasm in-browser backend
+- Wasm in-browser backend (todo)
 - ... more to be included here ...
 
 This project is a work-in-progress, and is not currently intended to be used for anything other than testing / experimentation.
