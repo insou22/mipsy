@@ -1,9 +1,12 @@
+use std::fmt;
+
 use crate::{
     Span,
     misc::{
+        escape_char,
         parse_escaped_char,
-        parse_ident,
-    },
+        parse_ident
+    }
 };
 use nom::{
     IResult,
@@ -22,6 +25,7 @@ use nom::{
     },
     bytes::complete::{
         tag,
+        is_a,
     },
     number::complete::{
         float,
@@ -40,8 +44,33 @@ pub enum MPNumber {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MPImmediate {
     I16(i16),
+    U16(u16),
     I32(i32),
+    U32(u32),
     LabelReference(String),
+}
+
+impl fmt::Display for MPNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Immediate(imm) => write!(f, "{}", imm),
+            Self::Float32(float) => write!(f, "{}", float),
+            Self::Float64(float) => write!(f, "{}", float),
+            Self::Char(char)     => write!(f, "'{}'", escape_char(*char)),
+        }
+    }
+}
+
+impl fmt::Display for MPImmediate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::I16(i) => write!(f, "{}", i),
+            Self::U16(i) => write!(f, "{}", i),
+            Self::I32(i) => write!(f, "{}", i),
+            Self::U32(i) => write!(f, "{}", i),
+            Self::LabelReference(label) => write!(f, "{}", label),
+        }
+    }
 }
 
 pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
@@ -56,7 +85,9 @@ pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
 pub fn parse_immediate<'a>(i: Span<'a>) -> IResult<Span<'a>, MPImmediate> {
     alt((
         map(parse_i16,      |i| MPImmediate::I16(i)),
+        map(parse_u16,      |i| MPImmediate::U16(i)),
         map(parse_i32,      |i| MPImmediate::I32(i)),
+        map(parse_u32,      |i| MPImmediate::U32(i)),
         map(parse_labelref, |l| MPImmediate::LabelReference(l)),
     ))(i)
 }
@@ -71,6 +102,14 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                     hex_digit1,
                 )),
                 |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 16, digits)
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
+                    tag("0b"),
+                    is_a("01"),
+                )),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 2, digits)
             ),
             map(
                 tuple((
@@ -105,6 +144,10 @@ pub fn parse_i8<'a>(i: Span<'a>) -> IResult<Span<'a>, i8> {
 }
 
 pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
+    parse_num(i)
+}
+
+pub fn parse_u16<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
     parse_num(i)
 }
 
@@ -202,6 +245,12 @@ impl RadixNum<Self> for i8 {
 }
 
 impl RadixNum<Self> for i16 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for u16 {
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
         Self::from_str_radix(src, radix)
     }

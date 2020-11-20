@@ -1,3 +1,5 @@
+# poor alignment
+
 main:
     li $t0, 1
 

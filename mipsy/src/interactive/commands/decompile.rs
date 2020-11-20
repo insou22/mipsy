@@ -23,7 +23,7 @@ pub(crate) fn decompile_command() -> Command {
                     .into_iter()
                     .collect::<Vec<(u32, Decompiled)>>();
             
-            decompiled.sort_by_key(|(addr, _)| *addr);
+            decompiled.sort_by_key(|&(addr, _)| addr);
 
             if let Some((_, inst)) = decompiled.get(0) {
                 if inst.labels.is_empty() {
@@ -32,7 +32,7 @@ pub(crate) fn decompile_command() -> Command {
             }
 
             for (_, inst) in decompiled {
-                util::print_inst_parts(&inst);
+                util::print_inst_parts(binary, &inst, state.program.as_deref(), false);
             }
 
             println!();

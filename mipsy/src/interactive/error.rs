@@ -11,7 +11,7 @@ pub enum CommandError {
     HelpUnknownCommand { command: String },
     CannotReadFile     { path: String, os_error: String, },
     CannotCompile      { path: String, program: String, mipsy_error: MipsyError },
-    CannotParseLine    { line: String },
+    CannotParseLine    { line: String, col: usize },
     CannotCompileLine  { line: String, mipsy_error: MipsyError },
     UnknownRegister    { register: String },
     UnknownLabel       { label: String },

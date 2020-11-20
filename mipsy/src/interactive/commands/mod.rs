@@ -1,6 +1,7 @@
 mod back;
 mod breakpoint;
 mod breakpoints;
+mod context;
 mod decompile;
 mod dot;
 mod exit;
@@ -14,11 +15,12 @@ mod run;
 mod step;
 mod step2input;
 mod step2syscall;
-mod util;
+pub(crate) mod util;
 
 pub(crate) use back::back_command;
 pub(crate) use breakpoint::breakpoint_command;
 pub(crate) use breakpoints::breakpoints_command;
+pub(crate) use context::context_command;
 pub(crate) use decompile::decompile_command;
 pub(crate) use dot::dot_command;
 pub(crate) use exit::exit_command;

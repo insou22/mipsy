@@ -10,8 +10,14 @@ pub(crate) use mipsy_parser::MPProgram;
 pub use error::{
     MipsyResult,
     MipsyError,
+    CompileError,
+    RuntimeError,
+    runtime_error::Uninitialised,
 };
-pub use inst::instruction::InstSet;
+pub use inst::instruction::{
+    InstSet,
+    ArgumentType,
+};
 pub use inst::register::Register;
 pub use compile::Binary;
 pub use runtime::{
@@ -33,6 +39,7 @@ pub use compile::{
     KTEXT_BOT,
     KDATA_BOT,
 };
+pub use util::Safe;
 
 pub fn inst_set() -> MipsyResult<InstSet> {
     let yaml = yaml::get_instructions();
@@ -41,7 +48,7 @@ pub fn inst_set() -> MipsyResult<InstSet> {
 
 pub fn compile(iset: &InstSet, program: &str) -> MipsyResult<Binary> {
     let parsed = mipsy_parser::parse_mips(program)
-            .map_err(|string| MipsyError::Compile(error::CompileError::Str(string)))?;
+            .map_err(|err| error::MipsyError::Compile(error::CompileError::ParseFailure { line: err.line, col: err.col }))?;
     let compiled = compile::compile(&parsed, &iset)?;
 
     Ok(compiled)
@@ -53,7 +60,7 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }
 
-pub fn run(binary: &Binary) -> MipsyResult<Runtime> {
+pub fn runtime(binary: &Binary) -> Runtime {
     runtime::Runtime::new(binary)
 }
 

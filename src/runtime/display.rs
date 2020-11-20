@@ -1,3 +1,5 @@
+use crate::runtime::LO;
+use crate::runtime::HI;
 use std::fmt::{
     Display,
     Formatter,
@@ -60,8 +62,8 @@ impl Display for State {
         fmt.write_str(",\n")?;
         fmt.write_str("    registers: {\n")?;
         
-        for (reg, &value) in self.registers.iter().enumerate() {
-            match value {
+        for reg in 0..32 {
+            match self.registers[reg] {
                 Safe::Valid(value) => {
                     fmt.write_str(&format!("        ${}: 0x{:08x}\n", Register::from_number(reg as i32).unwrap().to_str().to_ascii_lowercase(), value))?;
                 },
@@ -71,10 +73,10 @@ impl Display for State {
         
         fmt.write_str("    },\n")?;
         fmt.write_str("    hi: ")?;
-        Display::fmt(&self.hi, fmt)?;
+        Display::fmt(&self.registers[HI], fmt)?;
         fmt.write_str(",\n")?;
         fmt.write_str("    lo: ")?;
-        Display::fmt(&self.lo, fmt)?;
+        Display::fmt(&self.registers[LO], fmt)?;
         fmt.write_str(",\n")?;
 
         fmt.write_str("}\n")?;

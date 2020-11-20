@@ -1,3 +1,5 @@
+# error: no main label
+
 # using a frame pointer to handle stack growing during function execution
 
 f:

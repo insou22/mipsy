@@ -1,6 +1,9 @@
 extern crate nom;
 
+use nom::combinator::map;
 use nom_locate::LocatedSpan;
+use misc::parse_result;
+
 pub type Span<'a> = LocatedSpan<&'a [u8]>;
 
 pub use parser::MPProgram;
@@ -10,6 +13,7 @@ pub use instruction::{
     MPArgument,
 };
 pub use directive::MPDirective;
+pub use misc::ErrorLocation;
 pub use number::{
     MPNumber,
     MPImmediate,
@@ -21,22 +25,25 @@ pub use register::{
 
 
 pub use parser::parse_mips;
-pub fn parse_instruction<T>(input: T) -> Result<MPInstruction, &'static str>
+
+pub fn parse_instruction<T>(input: T) -> Result<MPInstruction, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    instruction::parse_instruction(Span::new(input.as_ref().as_bytes()))
-        .map(|(_leftover, inst)| inst)
-        .map_err(|_| "")
+    parse_result(Span::new(input.as_ref().as_bytes()), instruction::parse_instruction)
 }
 
-pub fn parse_argument<T>(input: T) -> Result<MPArgument, &'static str>
+pub fn parse_argument<T>(input: T) -> Result<MPArgument, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    instruction::parse_argument(Span::new(input.as_ref().as_bytes()))
-        .map(|(_leftover, inst)| inst)
-        .map_err(|_| "")
+    parse_result(
+        Span::new(input.as_ref().as_bytes()),
+        map(
+            instruction::parse_argument,
+            |(arg, _, _)| arg
+        )
+    )
 }
 
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

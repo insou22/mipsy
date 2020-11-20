@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 use crate::{Binary, error::MipsyResult, TEXT_BOT};
 use serde::{Serialize, Deserialize};
 use super::register::Register;
@@ -40,13 +40,14 @@ pub enum RuntimeSignature {
     J { opcode: u8 },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArgumentType {
     Rd,
     Rs,
     Rt,
     Shamt,
-    Imm,
+    I16,
+    U16,
     J,
     OffRs,
     OffRt,
@@ -54,7 +55,8 @@ pub enum ArgumentType {
     F64,
 
     // pseudo
-    Imm32,
+    I32,
+    U32,
     Off32Rs,
     Off32Rt,
 }
@@ -65,7 +67,7 @@ pub struct InstMetadata {
     pub desc_long:  Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GenericSignature {
     Native(InstSignature),
     Pseudo(PseudoSignature),
@@ -82,6 +84,18 @@ pub struct PseudoSignature {
 pub struct PseudoExpand {
     pub inst: String,
     pub data: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Signature {
+    Native(InstSignature),
+    Pseudo(PseudoSignature),
+}
+
+#[derive(Debug, Clone)]
+pub enum SignatureRef<'a> {
+    Native(&'a InstSignature),
+    Pseudo(&'a PseudoSignature),
 }
 
 impl InstSet {
@@ -163,11 +177,40 @@ impl InstSignature {
                         }
                         _ => unreachable!()
                     },
-                    ArgumentType::Imm => match arg {
+                    ArgumentType::I16 => match arg {
                         MPArgument::Number(num) => match num {
                             MPNumber::Immediate(imm) => match imm {
                                 &MPImmediate::I16(imm) => {
                                     imm as u16 as u32
+                                }
+                                &MPImmediate::U16(imm) => {
+                                    imm as u32
+                                }
+                                MPImmediate::LabelReference(label) => {
+                                    // must be relative
+                                    let addr = program.get_label(label)?;
+
+                                    let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+
+                                    ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
+                                }
+                                _ => unreachable!()
+                            }
+                            &MPNumber::Char(chr) => {
+                                chr as u8 as u32
+                            }
+                            _ => unreachable!()
+                        }
+                        _ => unreachable!()
+                    },
+                    ArgumentType::U16 => match arg {
+                        MPArgument::Number(num) => match num {
+                            MPNumber::Immediate(imm) => match imm {
+                                &MPImmediate::I16(imm) => {
+                                    imm as u16 as u32
+                                }
+                                &MPImmediate::U16(imm) => {
+                                    imm as u32
                                 }
                                 MPImmediate::LabelReference(label) => {
                                     // must be relative
@@ -226,7 +269,8 @@ impl InstSignature {
                 ArgumentType::Rt     => inst |= (val & 0x1F) << 16,
                 ArgumentType::Rd     => inst |= (val & 0x1F) << 11,
                 ArgumentType::Shamt  => inst |= (val & 0x1F) << 6,
-                ArgumentType::Imm    => inst |=  val & 0xFFFF,
+                ArgumentType::I16    => inst |=  val & 0xFFFF,
+                ArgumentType::U16    => inst |=  val & 0xFFFF,
                 ArgumentType::J      => inst |= (val >> 2) & 0x03FFFFFF,
                 ArgumentType::OffRs  => inst |= (val & 0x1F0000) << 5 | val & 0xFFFF,
                 ArgumentType::OffRt  => inst |=  val & 0x1FFFFF,
@@ -242,7 +286,7 @@ impl InstSignature {
 
 impl CompileSignature {
     pub fn matches(&self, inst: &MPInstruction) -> bool {
-        self.matches_args(inst.arguments())
+        self.matches_args(inst.arguments().iter().map(|(arg, _, _)| arg).collect())
     }
 
     pub fn matches_args(&self, args: Vec<&MPArgument>) -> bool {
@@ -260,8 +304,28 @@ impl CompileSignature {
 
         true
     }
+}
 
-
+impl fmt::Display for ArgumentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ArgumentType::Rd      => write!(f, "$Rd"),
+            ArgumentType::Rs      => write!(f, "$Rs"),
+            ArgumentType::Rt      => write!(f, "$Rt"),
+            ArgumentType::Shamt   => write!(f, "shift"),
+            ArgumentType::I16     => write!(f, "i16"),
+            ArgumentType::U16     => write!(f, "u16"),
+            ArgumentType::J       => write!(f, "label"),
+            ArgumentType::OffRs   => write!(f, "i16($Rs)"),
+            ArgumentType::OffRt   => write!(f, "i16($Rt)"),
+            ArgumentType::F32     => write!(f, "f32"),
+            ArgumentType::F64     => write!(f, "f64"),
+            ArgumentType::I32     => write!(f, "i32"),
+            ArgumentType::U32     => write!(f, "u32"),
+            ArgumentType::Off32Rs => write!(f, "i32($Rs)"),
+            ArgumentType::Off32Rt => write!(f, "i32($Rt)"),
+        }
+    }
 }
 
 impl ArgumentType {
@@ -274,20 +338,20 @@ impl ArgumentType {
                             Self::Rd | Self::Rs | Self::Rt => true,
                             _ => false,
                         }
-                    },
+                    }
                     MPRegister::Offset(imm, _) => match imm {
                         MPImmediate::I16(_) => {
                             match self {
                                 Self::OffRs | Self::OffRt | Self::Off32Rs | Self::Off32Rt => true,
                                 _ => false,
                             }
-                        },
-                        MPImmediate::I32(_) | MPImmediate::LabelReference(_) => {
+                        }
+                        MPImmediate::U16(_) | MPImmediate::U32(_) | MPImmediate::I32(_) | MPImmediate::LabelReference(_) => {
                             match self {
                                 Self::Off32Rs | Self::Off32Rt => true,
                                 _ => false,
                             }
-                        },
+                        }
                     }
                 }
             }
@@ -297,21 +361,35 @@ impl ArgumentType {
                         match immediate {
                             &MPImmediate::I16(num) => {
                                 match self {
-                                    Self::Imm | Self::Imm32 | Self::Off32Rs | Self::Off32Rt => true,
+                                    Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
+                                    Self::U16 | Self::U32 => num >= 0,
                                     Self::Shamt => num >= 0 && num < 32,
                                     _ => false,
                                 }
                             }
-                            MPImmediate::I32(_) => {
+                            &MPImmediate::U16(_) => {
                                 match self {
-                                    Self::Imm32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
+                                    Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
+                                    _ => false,
+                                }
+                            }
+                            &MPImmediate::I32(num) => {
+                                match self {
+                                    Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
+                                    Self::U32 => num >= 0,
+                                    _ => false,
+                                }
+                            }
+                            MPImmediate::U32(_) => {
+                                match self {
+                                    Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
                                     _ => false,
                                 }
                             }
                             MPImmediate::LabelReference(_) => {
                                 match self {
-                                    Self::Imm32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
-                                    Self::Imm => relative_label,
+                                    Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
+                                    Self::I16 => relative_label,
                                     _ => false,
                                 }
                             }
@@ -319,7 +397,7 @@ impl ArgumentType {
                     }
                     MPNumber::Char(_) => {
                         match self {
-                            Self::Imm | Self::Imm32 => true,
+                            Self::I16 | Self::I32 | Self::U16 | Self::U32 => true,
                             _ => false,
                         }
                     }
@@ -347,7 +425,8 @@ enum PseudoVariable {
     Rs,
     Rt,
     Shamt,
-    Imm,
+    I16,
+    U16,
     J,
     OffRs,
     OffRt,
@@ -356,10 +435,9 @@ enum PseudoVariable {
     Off,
 
     // pseudo
-    Imm32Lo,
-    Imm32Hi,
-    Off32Lo,
-    Off32Hi,
+    I32,
+    U32,
+    Off32,
 }
 
 impl PseudoVariable {
@@ -369,7 +447,8 @@ impl PseudoVariable {
             Self::Rs    => "rs",
             Self::Rt    => "rt",
             Self::Shamt => "shamt",
-            Self::Imm   => "imm",
+            Self::I16   => "i16",
+            Self::U16   => "u16",
             Self::J     => "j",
             Self::OffRs => "offrs",
             Self::OffRt => "offrt",
@@ -378,10 +457,9 @@ impl PseudoVariable {
             Self::Off   => "off",
         
             // pseudo
-            Self::Imm32Lo   => "imm32lo",
-            Self::Imm32Hi   => "imm32hi",
-            Self::Off32Lo   => "off32lo",
-            Self::Off32Hi   => "off32hi",
+            Self::I32   => "i32",
+            Self::U32   => "u32",
+            Self::Off32   => "off32",
         }.to_string()
     }
 
@@ -391,7 +469,8 @@ impl PseudoVariable {
             ArgumentType::Rs    => Self::Rs,
             ArgumentType::Rt    => Self::Rt,
             ArgumentType::Shamt => Self::Shamt,
-            ArgumentType::Imm   => Self::Imm,
+            ArgumentType::I16   => Self::I16,
+            ArgumentType::U16   => Self::U16,
             ArgumentType::J     => Self::J,
             ArgumentType::OffRs => Self::OffRs,
             ArgumentType::OffRt => Self::OffRt,
@@ -399,40 +478,117 @@ impl PseudoVariable {
             ArgumentType::F64   => Self::F64,
         
             // pseudo
-            ArgumentType::Imm32 | ArgumentType::Off32Rs | ArgumentType::Off32Rt => panic!("Bad arg type from mips.yaml"),        
+            ArgumentType::I32 | ArgumentType::U32 | ArgumentType::Off32Rs | ArgumentType::Off32Rt => panic!("Bad arg type from mips.yaml"),
         }
     }
 }
 
 impl PseudoSignature {
-    fn new_variable(var_type: PseudoVariable, value: MPArgument, variables: &mut HashMap<String, MPArgument>, used: &mut HashMap<PseudoVariable, usize>) {
-        if let Some(&amt) = used.get(&var_type) {
-            used.insert(var_type, amt + 1);
-
-            if amt == 1 {
-                let old = variables.remove(&var_type.name()).unwrap();
-                variables.insert(format!("{}{}", var_type.name(), 1), old);
-                variables.insert(format!("{}{}", var_type.name(), 2), value);
-            } else {
-                variables.insert(format!("{}{}", var_type.name(), amt + 1), value);
+    fn lower_upper(&self, program: &Binary, arg: &MPArgument, last: bool) -> MipsyResult<(u16, u16)> {
+        let (lower, upper) = match arg {
+            MPArgument::Register(reg) => match reg {
+                MPRegister::Offset(imm, _) => self.lower_upper(program, &MPArgument::Number(MPNumber::Immediate(imm.clone())), last)?,
+                _                          => unreachable!(),
             }
-        } else {
-            used.insert(var_type, 1);
-            variables.insert(var_type.name(), value);
+            MPArgument::Number(num) => match num {
+                MPNumber::Immediate(imm) => match imm {
+                    &MPImmediate::I16(imm) => {
+                        (imm as u16, (imm as i32 >> 16) as u16)
+                    }
+                    &MPImmediate::U16(imm) => {
+                        (imm, 0)
+                    }
+                    &MPImmediate::I32(imm) => {
+                        ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
+                    }
+                    &MPImmediate::U32(imm) => {
+                        ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
+                    }
+                    MPImmediate::LabelReference(ref label) => {
+                        let mut addr = program.get_label(label)?;
+
+                        if self.compile.relative_label && last {
+                            let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
+                            addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                        }
+
+                        ((addr & 0xFFFF) as u16, (addr >> 16) as u16)
+                    }
+                }
+                &MPNumber::Char(chr) => {
+                    (chr as u16, 0 as u16)
+                }
+                _ => unreachable!(),
+            }
+        };
+
+        Ok((lower, upper))
+    }
+
+    fn expand_32_var(var: &PseudoVariable, lower: u16, upper: u16) -> Vec<(String, MPArgument)> {
+        vec![
+            (format!("{}{}", var.name(), "ihi"), MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(upper as i16)))),
+            (format!("{}{}", var.name(), "ilo"), MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(lower as i16)))),
+            (format!("{}{}", var.name(), "uhi"), MPArgument::Number(MPNumber::Immediate(MPImmediate::U16(upper)))),
+            (format!("{}{}", var.name(), "ulo"), MPArgument::Number(MPNumber::Immediate(MPImmediate::U16(lower)))),
+        ]
+    }
+
+    fn new_variable(
+        &self, 
+        program: &Binary, 
+        var_type: PseudoVariable, 
+        value: MPArgument, 
+        variables: &mut HashMap<String, MPArgument>, 
+        used: &mut HashMap<String, usize>, last: bool
+    ) -> MipsyResult<()> {
+
+        let mappings: Vec<(String, MPArgument)> = match var_type {
+            PseudoVariable::I32 | PseudoVariable::U32 | PseudoVariable::Off32 => {
+                let (lower, upper) = self.lower_upper(program, &value, last)?;
+                
+                Self::expand_32_var(&var_type, lower, upper)
+            }
+            _ => {
+                vec![(var_type.name(), value)]
+            }
+        };
+
+        for (name, value) in mappings {
+            if let Some(&amt) = used.get(&name) {
+                used.insert(name.clone(), amt + 1);
+    
+                if amt == 1 {
+                    let old = variables.remove(&name).unwrap();
+                    variables.insert(format!("{}#{}", name, 1), old);
+                    variables.insert(format!("{}#{}", name, 2), value);
+                } else {
+                    variables.insert(format!("{}#{}", name, amt + 1), value);
+                }
+            } else {
+                used.insert(name.clone(), 1);
+                variables.insert(name, value);
+            }
+    
         }
+
+
+        Ok(())
     }
 
     fn get_variables(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<HashMap<String, MPArgument>> {
         let mut variables: HashMap<String, MPArgument> = HashMap::new();
-        let mut used: HashMap<PseudoVariable, usize> = HashMap::new();
+        let mut used: HashMap<String, usize> = HashMap::new();
 
         let mut i = 0;
         for (arg_type, &arg) in self.compile.format.iter().zip(&args) {
+            let last = i == args.len() - 1;
+
             match arg_type {
                 ArgumentType::Rd | ArgumentType::Rs | ArgumentType::Rt | ArgumentType::Shamt | ArgumentType::J => {
-                    Self::new_variable(PseudoVariable::from_arg_type(*arg_type), arg.clone(), &mut variables, &mut used);
-                },
-                ArgumentType::Imm => {
+                    self.new_variable(program, PseudoVariable::from_arg_type(*arg_type), arg.clone(), &mut variables, &mut used, last)?;
+                }
+                ArgumentType::I16 => {
                     let arg = match arg {
                         // Relative label
                         MPArgument::Number(MPNumber::Immediate(MPImmediate::LabelReference(label))) => {
@@ -446,10 +602,13 @@ impl PseudoSignature {
                         _ => arg.clone(),
                     };
 
-                    Self::new_variable(PseudoVariable::Imm, arg, &mut variables, &mut used);
+                    self.new_variable(program, PseudoVariable::I16, arg, &mut variables, &mut used, last)?;
+                }
+                ArgumentType::U16 => {
+                    self.new_variable(program, PseudoVariable::U16, arg.clone(), &mut variables, &mut used, last)?;
                 }
                 ArgumentType::OffRs => {
-                    Self::new_variable(PseudoVariable::OffRs, arg.clone(), &mut variables, &mut used);
+                    self.new_variable(program, PseudoVariable::OffRs, arg.clone(), &mut variables, &mut used, last)?;
 
                     let (imm, reg) = match arg {
                         MPArgument::Register(reg) => match reg {
@@ -459,11 +618,11 @@ impl PseudoSignature {
                         _ => unreachable!(),
                     };
 
-                    Self::new_variable(PseudoVariable::Off, MPArgument::Number(MPNumber::Immediate(imm.clone())), &mut variables, &mut used);
-                    Self::new_variable(PseudoVariable::Rs,  MPArgument::Register(MPRegister::Normal(reg.clone())), &mut variables, &mut used);
+                    self.new_variable(program, PseudoVariable::Off, MPArgument::Number(MPNumber::Immediate(imm.clone())), &mut variables, &mut used, last)?;
+                    self.new_variable(program, PseudoVariable::Rs,  MPArgument::Register(MPRegister::Normal(reg.clone())), &mut variables, &mut used, last)?;
                 }
                 ArgumentType::OffRt => {
-                    Self::new_variable(PseudoVariable::OffRt, arg.clone(), &mut variables, &mut used);
+                    self.new_variable(program, PseudoVariable::OffRt, arg.clone(), &mut variables, &mut used, last)?;
 
                     let (imm, reg) = match arg {
                         MPArgument::Register(reg) => match reg {
@@ -473,80 +632,23 @@ impl PseudoSignature {
                         _ => unreachable!(),
                     };
 
-                    Self::new_variable(PseudoVariable::Off, MPArgument::Number(MPNumber::Immediate(imm.clone())), &mut variables, &mut used);
-                    Self::new_variable(PseudoVariable::Rt,  MPArgument::Register(MPRegister::Normal(reg.clone())), &mut variables, &mut used);
+                    self.new_variable(program, PseudoVariable::Off, MPArgument::Number(MPNumber::Immediate(imm.clone())), &mut variables, &mut used, last)?;
+                    self.new_variable(program, PseudoVariable::Rt,  MPArgument::Register(MPRegister::Normal(reg.clone())), &mut variables, &mut used, last)?;
                 }
                 ArgumentType::F32 => unimplemented!(),
                 ArgumentType::F64 => unimplemented!(),
-                ArgumentType::Imm32 => {
-                    let (lower, upper) = match arg {
-                        MPArgument::Number(num) => match num {
-                            MPNumber::Immediate(imm) => match imm {
-                                &MPImmediate::I16(imm) => {
-                                    (imm as u16, 0 as u16)
-                                }
-                                &MPImmediate::I32(imm) => {
-                                    ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
-                                }
-                                MPImmediate::LabelReference(ref label) => {
-                                    let mut addr = program.get_label(label)?;
-
-                                    if self.compile.relative_label && (i == args.len() - 1) {
-                                        let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
-                                        addr = (addr.wrapping_sub(current_inst_addr)) / 4;
-                                    }
-
-                                    ((addr & 0xFFFF) as u16, (addr >> 16) as u16)
-                                }
-                            }
-                            &MPNumber::Char(chr) => {
-                                (chr as u16, 0 as u16)
-                            }
-                            _ => unreachable!(),
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    Self::new_variable(PseudoVariable::Imm32Lo, MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(lower as i16))), &mut variables, &mut used);
-                    Self::new_variable(PseudoVariable::Imm32Hi, MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(upper as i16))), &mut variables, &mut used);
+                ArgumentType::I32 => {
+                    self.new_variable(program, PseudoVariable::I32, arg.clone(), &mut variables, &mut used, last)?;
+                }
+                ArgumentType::U32 => {
+                    self.new_variable(program, PseudoVariable::U32, arg.clone(), &mut variables, &mut used, last)?;
                 }
                 ArgumentType::Off32Rs | ArgumentType::Off32Rt => {
-                    let (off32lower, off32upper, reg) = match arg {
-                        MPArgument::Register(MPRegister::Offset(imm, reg)) => {
-                            let (off32lower, off32upper) = match imm {
-                                &MPImmediate::I16(imm) => (imm, 0),
-                                &MPImmediate::I32(imm) => (imm as i16, (imm >> 16) as i16),
-                                MPImmediate::LabelReference(label) => {
-                                    let addr = program.get_label(label)?;
-
-                                    (addr as i16, (addr >> 16) as i16)
-                                },
-                            };
-
-                            let reg = MPArgument::Register(MPRegister::Normal(reg.clone()));
-
-                            (off32lower, off32upper, reg)
+                    let reg = match arg {
+                        MPArgument::Register(MPRegister::Normal(id)) | MPArgument::Register(MPRegister::Offset(_, id)) => {
+                            MPArgument::Register(MPRegister::Normal(id.clone()))
                         }
-                        MPArgument::Number(MPNumber::Immediate(imm)) => match imm {
-                            &MPImmediate::I16(imm) => {
-                                (imm, 0 as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
-                            }
-                            &MPImmediate::I32(imm) => {
-                                ((imm & 0xFFFF) as i16, (imm >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
-                            }
-                            MPImmediate::LabelReference(label) => {
-                                let mut addr = program.get_label(label)?;
-
-                                if self.compile.relative_label && (i == args.len() - 1) {
-                                    let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
-                                    addr = (addr.wrapping_sub(current_inst_addr)) / 4;
-                                }
-
-                                ((addr & 0xFFFF) as i16, (addr >> 16) as i16, MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))))
-
-                            }
-                        }
-                        _ => unreachable!(),
+                        _ => MPArgument::Register(MPRegister::Normal(MPRegisterIdentifier::Numbered(0))),
                     };
 
                     let reg_type = match arg_type {
@@ -555,10 +657,8 @@ impl PseudoSignature {
                         _ => unreachable!()
                     };
 
-                    Self::new_variable(reg_type, reg, &mut variables, &mut used);
-
-                    Self::new_variable(PseudoVariable::Off32Lo, MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(off32lower))), &mut variables, &mut used);
-                    Self::new_variable(PseudoVariable::Off32Hi, MPArgument::Number(MPNumber::Immediate(MPImmediate::I16(off32upper))), &mut variables, &mut used);
+                    self.new_variable(program, reg_type, reg, &mut variables, &mut used, last)?;
+                    self.new_variable(program, PseudoVariable::Off32, arg.clone(), &mut variables, &mut used, last)?;
                 }
             }
 
@@ -579,18 +679,47 @@ impl PseudoSignature {
             let mut processed_args = vec![];
 
             for data in data.iter() {
-                let data = &data.to_ascii_lowercase();
+                let mut data = data.clone();
 
-                if data.starts_with('$') && Register::from_str(&data[1..]).is_err() {
-                    // assume pseudoinstructions are sane
-                    let arg = variables.get(&data[1..]).unwrap();
+                let mut index = 0;
+                while index < data.len() {
+                    let find = data[index..]
+                        .find('$');
 
-                    processed_args.push(arg.clone());
-                } else {
-                    let arg = parse_argument(data).unwrap();
+                    if find.is_none() { break }
+                    let find = find.unwrap() + 1;
 
-                    processed_args.push(arg);
+                    let end = {
+                        let mut end = find;
+                        
+                        loop {
+                            let char = data.chars().nth(end);
+                            match char {
+                                Some(char) => {
+                                    if !char.is_ascii_alphanumeric() && char != '#' {
+                                        break;
+                                    }
+                                }
+                                None => break,
+                            }
+
+                            end += 1;
+                        }
+
+                        end
+                    };
+
+                    if Register::from_str(&data[find..end]).is_err() {
+                        let arg = variables.get(&data[find..end].to_ascii_lowercase()).unwrap();
+                        data.replace_range((find - 1)..end, &arg.to_string());
+                    }
+
+                    index = end;
                 }
+
+                let arg = parse_argument(data).unwrap();
+
+                processed_args.push(arg);
             }
 
             new_instns.push((name.to_string(), processed_args));
@@ -612,7 +741,48 @@ impl PseudoSignature {
     }
 }
 
-trait ToRegister {
+impl<'a> SignatureRef<'a> {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Native(sig) => &sig.name,
+            Self::Pseudo(sig) => &sig.name,
+        }
+    }
+
+    pub fn compile_sig(&self) -> &CompileSignature {
+        match self {
+            Self::Native(sig) => &sig.compile,
+            Self::Pseudo(sig) => &sig.compile,
+        }
+    }
+
+    pub fn compile_ops(&self, binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyResult<Vec<u32>> {
+        Ok(
+            match self {
+                Self::Native(sig) => vec![sig.compile(binary, inst.arguments().iter().map(|(arg, _, _)| arg).collect())?],
+                Self::Pseudo(sig) => sig.compile(iset, binary, inst.arguments().iter().map(|(arg, _, _)| arg).collect())?,
+            }
+        )
+    }
+
+    pub fn cloned(&self) -> Signature {
+        match self {
+            Self::Native(sig) => Signature::Native((*sig).clone()),
+            Self::Pseudo(sig) => Signature::Pseudo((*sig).clone())
+        }
+    }
+}
+
+impl Signature {
+    pub fn sigref<'a>(&'a self) -> SignatureRef<'a> {
+        match self {
+            Self::Native(native) => SignatureRef::Native(&native),
+            Self::Pseudo(pseudo) => SignatureRef::Pseudo(&pseudo),
+        }
+    }
+}
+
+pub(crate) trait ToRegister {
     fn to_register(&self) -> MipsyResult<Register>;
 }
 

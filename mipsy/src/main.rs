@@ -1,9 +1,12 @@
+use std::str::FromStr;
 use std::io::Write;
 
 use mipsy_lib::*;
+use interactive::prompt;
 use clap::Clap;
 
 mod interactive;
+mod error;
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
@@ -19,8 +22,26 @@ struct Opts {
     file: Option<String>,
 }
 
+fn get_input<T: FromStr>(name: &str) -> T {
+    loop {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim().parse::<T>() {
+            Ok(n) => return n,
+            Err(_) => {
+                print!("[mipsy] bad input (expected {}), try again: ", name);
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
+}
+
 struct Handler;
+
 impl RuntimeHandler for Handler {
+
     fn sys1_print_int(&mut self, val: i32) {
         print!("{}", val);
     }
@@ -38,35 +59,34 @@ impl RuntimeHandler for Handler {
     }
 
     fn sys5_read_int(&mut self) -> i32 {
-        loop {
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input).unwrap();
-
-            match input.trim().parse::<i32>() {
-                Ok(n) => return n,
-                Err(_) => {
-                    print!("[mipsy] bad input, try again: ");
-                    std::io::stdout().flush().unwrap();
-                    continue;
-                },
-            };
-        }
+        get_input("int")
     }
 
     fn sys6_read_float(&mut self) -> f32 {
-        todo!()
+        get_input("float")
     }
 
     fn sys7_read_double(&mut self) -> f64 {
-        todo!()
+        get_input("double")
     }
 
-    fn sys8_read_string(&mut self) -> String {
-        todo!()
+    fn sys8_read_string(&mut self, max_len: u32) -> String {
+        loop {
+            let input: String = get_input("string");
+
+            if input.len() > max_len as usize {
+                println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes)", max_len, input.len());
+                print!  ("[mipsy] please try again: ");
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+
+            return input;
+        }
     }
 
     fn sys9_sbrk(&mut self, _val: i32) {
-        todo!()
+        // no-op
     }
 
     fn sys10_exit(&mut self) {
@@ -78,7 +98,7 @@ impl RuntimeHandler for Handler {
     }
 
     fn sys12_read_char(&mut self) -> char {
-        todo!()
+        get_input("character")
     }
 
     fn sys13_open(&mut self, _path: String, _flags: flags, _mode: mode) -> fd {
@@ -102,26 +122,41 @@ impl RuntimeHandler for Handler {
     }
 
     fn breakpoint(&mut self) {
-        
+        // no-op
     }
 }
 
-fn main() -> MipsyResult<()> {
+fn main() {
     let opts: Opts = Opts::parse();
 
     if let None = opts.file {
         interactive::launch();
     }
 
-    let file_contents = std::fs::read_to_string(&opts.file.as_ref().unwrap()).expect("Could not read file {}");
+    let file = opts.file.as_ref().unwrap();
+    let file_contents = std::fs::read_to_string(file).expect("Could not read file {}");
 
-    let iset       = mipsy_lib::inst_set()?;
-    let binary     = mipsy_lib::compile(&iset, &file_contents)?;
+    let (iset, binary, mut runtime) = match compile(&file_contents) {
+        Ok((iset, binary, runtime)) => (iset, binary, runtime),
+
+        Err(MipsyError::Compile(error)) => {
+            prompt::error(format!("failed to compile `{}`", file));
+            error::compile_error::handle(error, &file_contents, None, None, None);
+            return;
+        }
+
+        Err(MipsyError::CompileLoc { line, col, col_end, error }) => {
+            prompt::error(format!("failed to compile `{}`", file));
+            error::compile_error::handle(error, &file_contents, line, col, col_end);
+            return;
+        }
+        _ => unreachable!(),
+    };
 
     if opts.compile {
         let decompiled = mipsy_lib::decompile(&iset, &binary);
         println!("Compiled program:\n{}\n", decompiled);
-        return Ok(())
+        return;
     }
 
     if opts.hex {
@@ -133,13 +168,28 @@ fn main() -> MipsyResult<()> {
             }
         }
 
-        return Ok(());
+        return;
     }
 
-    let mut runtime = mipsy_lib::run(&binary)?;
     loop {
-        runtime.step(&mut Handler)?;
+        let mut handler = Handler;
+
+        match runtime.step(&mut handler) {
+            Ok(_) => {}
+            Err(MipsyError::Runtime(error)) => {
+                error::runtime_error::handle(error, &file_contents, &iset, &binary, &runtime);
+            }
+            _ => unreachable!(),
+        }
     }
+}
+
+fn compile(file: &str) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    let iset       = mipsy_lib::inst_set()?;
+    let binary     = mipsy_lib::compile(&iset, file)?;
+    let runtime    = mipsy_lib::runtime(&binary);
+
+    Ok((iset, binary, runtime))
 }
 
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

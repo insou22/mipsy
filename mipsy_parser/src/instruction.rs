@@ -1,3 +1,6 @@
+use std::fmt;
+
+use nom_locate::position;
 use crate::{
     Span,
     register::{
@@ -28,7 +31,9 @@ use nom::{
 #[derive(Debug, Clone, PartialEq)]
 pub struct MPInstruction {
     pub(crate) name: String,
-    pub(crate) arguments: Vec<MPArgument>,
+    pub(crate) arguments: Vec<(MPArgument, u32, u32)>,
+    pub(crate) col: u32,
+    pub(crate) col_end: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -42,8 +47,25 @@ impl MPInstruction {
         &self.name
     }
 
-    pub fn arguments(&self) -> Vec<&MPArgument> {
+    pub fn arguments(&self) -> Vec<&(MPArgument, u32, u32)> {
         self.arguments.iter().collect()
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
+
+    pub fn col_end(&self) -> u32 {
+        self.col_end
+    }
+}
+
+impl fmt::Display for MPArgument {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Register(reg) => write!(f, "{}", reg),
+            Self::Number(num)   => write!(f, "{}", num),
+        }
     }
 }
 
@@ -51,12 +73,15 @@ pub fn parse_instruction<'a>(i: Span<'a>) -> IResult<Span<'a>, MPInstruction> {
     let (
         remaining_data,
         (
+            position,
             name,
             _,
             arguments,
+            position_end,
             ..
         )
     ) = tuple((
+        position,
         parse_ident,
         space0,
         separated_list0(
@@ -67,17 +92,25 @@ pub fn parse_instruction<'a>(i: Span<'a>) -> IResult<Span<'a>, MPInstruction> {
             )),
             parse_argument,
         ),
+        position,
         comment_multispace0,
     ))(i)?;
 
-    Ok((remaining_data, MPInstruction { name, arguments }))
+    Ok((remaining_data, MPInstruction { name, arguments, col: position.get_column() as u32, col_end: position_end.get_column() as u32 }))
 }
 
-pub fn parse_argument<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {
-    alt((
-        parse_argument_reg,
-        parse_argument_num,
-    ))(i)
+pub fn parse_argument<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPArgument, u32, u32)> {
+    map(
+        tuple((
+            position,
+            alt((
+                parse_argument_reg,
+                parse_argument_num,
+            )),
+            position,
+        )),
+        |(pos, arg, pos_end)| (arg, pos.get_column() as u32, pos_end.get_column() as u32)
+    )(i)
 }
 
 fn parse_argument_reg<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {

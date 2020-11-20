@@ -19,10 +19,10 @@ pub(crate) fn back_command() -> Command {
             "[times]".magenta(),
             "step".bold(),
         ),
-        |state, _label, args| {
+        |state, label, args| {
             let times = match args.first() {
                 Some(arg) => expect_u32(
-                    "back",
+                    label,
                     &"[times]".bright_magenta().to_string(),
                     arg, 
                     Some(|neg| 
@@ -59,7 +59,7 @@ pub(crate) fn back_command() -> Command {
 
             prompt::success(text);
             if let Ok(inst) = runtime.next_inst() {
-                util::print_inst(&state.iset, binary, inst, runtime.state().get_pc());
+                util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_deref());
             }
             println!();
 

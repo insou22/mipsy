@@ -40,12 +40,12 @@ pub(crate) fn success_nl<D: Display>(text: D) {
 }
 
 pub(crate) fn error_nonl<D: Display>(text: D) {
-    ebanner("error".red());
+    ebanner("error".bright_red().bold());
     eprint!("{}", text);
 }
 
 pub(crate) fn error<D: Display>(text: D) {
-    ebanner("error".red());
+    ebanner("error".bright_red().bold());
     eprintln!("{}", text);
 }
 

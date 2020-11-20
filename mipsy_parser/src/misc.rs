@@ -28,8 +28,57 @@ use nom::{
     bytes::complete::is_a,
 };
 
+#[derive(Debug)]
+pub struct ErrorLocation {
+    pub line: u32,
+    pub col:  usize,
+}
+
+pub(crate) fn parse_result<'a, T, P>(i: Span<'a>, mut parser: P) -> Result<T, ErrorLocation> 
+where
+    P: FnMut(Span<'a>) -> IResult<Span<'a>, T>
+{
+    match (parser)(i) {
+        Ok((leftover, t)) => {
+            if leftover.is_empty() {
+                Ok(t)
+            } else {
+                match comment_multispace0(leftover) {
+                    Ok((leftover, _)) => {
+                        Err(ErrorLocation {
+                            line: leftover.location_line(),
+                            col:  leftover.get_column(),
+                        })
+                    }
+                    Err(err) => {
+                        eprintln!("ERROR: {}", err);
+                        panic!("this should never happen - please report an issue at https://github.com/insou22/mipsy")            
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("ERROR: {}", err);
+            panic!("this should never happen - please report an issue at https://github.com/insou22/mipsy")
+        }
+    }
+}
+
 const IDENT_FIRST_CHAR:  &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
 const IDENT_CONTD_CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
+
+pub fn escape_char(char: char) -> String {
+    match char {
+        '\0' => "\\0".into(),
+        '\r' => "\\r".into(),
+        '\n' => "\\n".into(),
+        '\t' => "\\t".into(),
+        '\\' => "\\\'".into(),
+        '\"' => "\\\"".into(),
+        '\'' => "\\\'".into(),
+        other => other.to_string(),
+    }
+}
 
 pub fn parse_escaped_char<'a>(i: Span<'a>) -> IResult<Span<'a>, char> {
     alt((

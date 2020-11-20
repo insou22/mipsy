@@ -1,6 +1,6 @@
 use crate::error::MipsyResult;
 use crate::error::CompileError;
-use crate::cerr;
+use crate::util::cerr;
 
 #[derive(Copy, Clone)]
 pub enum Register {
@@ -128,7 +128,7 @@ impl Register {
             29 => Ok(Self::SP),
             30 => Ok(Self::FP),
             31 => Ok(Self::RA),
-            _  => cerr!(CompileError::NumRegisterOutOfRange(num))
+            _  => cerr(CompileError::NumRegisterOutOfRange(num))
         }
     }
 
@@ -149,11 +149,6 @@ impl Register {
         if let Ok(number) = name.parse::<i32>() {
             return Self::from_number(number);
         }
-        
-        // too short
-        if name.len() < 2 {
-            return cerr!(CompileError::RegisterNameTooShort(name.into()));
-        }
 
         // $name
         for reg in REGISTERS.iter() {
@@ -167,12 +162,12 @@ impl Register {
            name.starts_with('t') || name.starts_with('s') || 
            name.starts_with('k') {
             if let Ok(num) = name[1..].parse::<i32>() {
-                return cerr!(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
+                return cerr(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
             }
         }
 
         // who knows
-        cerr!(CompileError::UnknownRegister(name.into()))
+        cerr(CompileError::UnknownRegister(name.into()))
     }
 
     pub fn to_str(&self) -> &'static str {

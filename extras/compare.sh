@@ -2,7 +2,7 @@
 
 EXCEPTIONS_FILE="/home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s";
 
-for test_file in test_files/*; do
+for test_file in test_files/success/*; do
     printf "Checking $test_file... ";
 
     if `echo $test_file | grep -q 'broken'`;
