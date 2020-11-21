@@ -300,10 +300,15 @@ impl Runtime {
             8 => {
                 let buffer = state.get_ureg(Register::A0.to_number() as u32)?;
                 let size   = state.get_ureg(Register::A1.to_number() as u32)?;
-                
-                let string = rh.sys8_read_string(size);
-                for (i, &byte) in (0..size).zip(string.as_bytes()) {
-                    state.write_byte(buffer + i, byte);
+
+                let string = rh.sys8_read_string(size - 1);
+
+                if size > 0 {
+                    for (i, &byte) in (0..(size - 1)).zip(string.as_bytes()) {
+                        state.write_byte(buffer + i, byte);
+                    }
+
+                    state.write_byte(buffer + (size - 1), 0);
                 }
             },
             9 => {
