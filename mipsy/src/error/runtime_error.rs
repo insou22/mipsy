@@ -103,16 +103,16 @@ pub fn handle(
 
             eprintln!("this happened because {}{} was uninitialised", "$".yellow(), name.bold());
             if let Some((last_index, last_mod)) = last_mod {
-                eprintln!("| the instruction that caused {}{} to become uninitialised was: ", "$".yellow(), name.bold());
-                eprint!("| ");
+                eprintln!("{} the instruction that caused {}{} to become uninitialised was: ", "|".red(),  "$".yellow(), name.bold());
+                eprint!("{} ", "|".red());
 
                 let last_inst = last_mod.get_word(last_mod.get_pc()).unwrap();
                 crate::interactive::commands::util::print_inst(iset, binary, last_inst, last_mod.get_pc() - 4, Some(program));
             
                 let distance = runtime.timeline_len() - last_index - 1;
-                eprintln!("| to get back there, use `{} {}`", "back".bold(), distance.to_string().bold())
+                eprintln!("{}\n{0} to get back there, use `{} {}`", "|".red(), "back".bold(), distance.to_string().bold())
             } else {
-                eprintln!("| note: {}{} was {} initialised", "$".yellow(), name.bold(), "never".bold());
+                eprintln!("{} note: {}{} was {} initialised", "|".red(), "$".yellow(), name.bold(), "never".bold());
             }
 
             println!();
