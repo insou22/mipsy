@@ -12,7 +12,7 @@ pub(crate) fn print_command() -> Command {
         "print",
         vec!["p"],
         vec!["item"],
-        vec!["type"],
+        vec!["format"],
         "print an item - a register, value in memory, etc.",
         &format!(
             "Prints the current value of an {0} in the loaded program.\n\
@@ -38,7 +38,7 @@ pub(crate) fn print_command() -> Command {
             "my_label".yellow().bold(),
             "all registers".yellow().bold(),
             "all".bold(),
-            "[type]".magenta(),
+            "[format]".magenta(),
             format!("{}{}", "w".yellow().bold(), "ord".bold()),
             format!("{}{}", "b".yellow().bold(), "yte".bold()),
             format!("{}{}", "h".yellow().bold(), "alf".bold()),
@@ -62,7 +62,7 @@ pub(crate) fn print_command() -> Command {
                 "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    | "s" => {}
                 other => {
                     return Err(
-                        CommandError::BadArgument { arg: "<type>".magenta().to_string(), instead: other.to_string() }
+                        CommandError::BadArgument { arg: "[format]".magenta().to_string(), instead: other.to_string() }
                     );
                 }
             }
@@ -74,7 +74,7 @@ pub(crate) fn print_command() -> Command {
                 MPArgument::Register(MPRegister::Normal(ident)) => {
                     match print_type {
                         "string" | "s" => {
-                            prompt::error(format!("{} `string` unsupported for {} `register`", "[type]".magenta(), "<item>".magenta()));
+                            prompt::error(format!("{} `string` unsupported for {} `register`", "[format]".magenta(), "<item>".magenta()));
                             prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
                             return Ok(());
                         }
