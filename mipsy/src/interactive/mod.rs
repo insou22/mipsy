@@ -343,9 +343,9 @@ fn state() -> State {
     state.add_command(commands::breakpoint_command());
     state.add_command(commands::breakpoints_command());
     state.add_command(commands::decompile_command());
+    state.add_command(commands::context_command());
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());
-    state.add_command(commands::context_command());
     state.add_command(commands::print_command());
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
