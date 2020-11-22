@@ -19,5 +19,5 @@ main:                    #  x, y, z in $t0, $t1, $t2,
     li   $v0, 11
     syscall
 
-    li   0          # return 0
+    li   $v0, 0          # return 0
     jr   $ra

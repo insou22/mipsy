@@ -170,6 +170,30 @@ pub fn comment_multispace1<'a>(i: Span<'a>) -> IResult<Span<'a>, ()> {
     )(i)
 }
 
+pub fn tabs_to_spaces<T>(input: T) -> String
+where
+    T: AsRef<str>
+{
+    let mut string = String::new();
+    
+    let mut line_len = 0;
+    for char in input.as_ref().chars() {
+        if char == '\t' {
+            let tab_size = 4 - (line_len % 4);
+            line_len += tab_size;
+            string.push_str(&" ".repeat(tab_size));
+        } else if char == '\n' {
+            line_len = 0;
+            string.push(char);
+        } else {
+            line_len += 1;
+            string.push(char);
+        }
+    }
+
+    string
+}
+
 #[cfg(test)]
 pub(crate) fn span<'a>(string: &'a str) -> Span<'a> {
     Span::new(string.as_bytes())

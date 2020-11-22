@@ -86,6 +86,7 @@ pub(crate) fn help_command() -> Command {
 
                 println!("{}{} - {}", name_args, " ".repeat(extra_padding), command.description);
             }
+            println!("{}{} - repeat the previous command", "<enter>".yellow().bold(), " ".repeat(max_len - 7));
 
             println!();
 

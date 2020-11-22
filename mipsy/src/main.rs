@@ -177,7 +177,8 @@ fn main() {
         match runtime.step(&mut handler) {
             Ok(_) => {}
             Err(MipsyError::Runtime(error)) => {
-                error::runtime_error::handle(error, &file_contents, &iset, &binary, &runtime);
+                error::runtime_error::handle(error, &file_contents, &iset, &binary, &runtime, None, false);
+                break;
             }
             _ => unreachable!(),
         }

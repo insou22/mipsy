@@ -166,15 +166,15 @@ impl State {
             }
             CommandError::CannotCompile  { path, program, mipsy_error, } => {
                 prompt::error(format!("failed to compile `{}`", path));
-                self.mipsy_error(mipsy_error, Some(&program));
+                self.mipsy_error(mipsy_error, Some(&program), None);
             }
             CommandError::CannotParseLine { line, col } => {
                 prompt::error("failed to parse");
-                self.mipsy_error(MipsyError::Compile(CompileError::ParseFailure { line: 1, col }), Some(&line));
+                self.mipsy_error(MipsyError::Compile(CompileError::ParseFailure { line: 1, col }), Some(&line), None);
             }
             CommandError::CannotCompileLine { line, mipsy_error } => {
                 prompt::error(format!("failed to compile instruction"));
-                self.mipsy_error(mipsy_error, Some(&line));
+                self.mipsy_error(mipsy_error, Some(&line), None);
             }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
@@ -190,7 +190,10 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RuntimeError { mipsy_error, } => {
-                self.mipsy_error(mipsy_error, None);
+                self.mipsy_error(mipsy_error, None, None);
+            }
+            CommandError::REPLRuntimeError { mipsy_error, line, } => {
+                self.mipsy_error(mipsy_error, None, Some(line));
             }
             CommandError::WithTip { error, tip, } => {
                 self.handle_error(*error, false);
@@ -213,7 +216,7 @@ impl State {
         }
     }
 
-    pub(crate) fn mipsy_error(&self, error: MipsyError, program: Option<&str>) {
+    pub(crate) fn mipsy_error(&self, error: MipsyError, program: Option<&str>, repl_line: Option<String>) {
         match error {
             MipsyError::Compile(error) => {
                 crate::error::compile_error::handle(error, program.unwrap(), None, None, None);
@@ -227,7 +230,9 @@ impl State {
                     self.program.as_ref().unwrap(),
                     &self.iset,
                     self.binary.as_ref().unwrap(),
-                    self.runtime.as_ref().unwrap()
+                    self.runtime.as_ref().unwrap(),
+                    repl_line,
+                    true,
                 );
             }
         }

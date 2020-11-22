@@ -293,7 +293,7 @@ instructions:
   - name: ADDI
     desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt
     compile:
-      format: [Rt, Rs, U16]
+      format: [Rt, Rs, I16]
     runtime:
       type: I
       opcode: 0x08
@@ -301,7 +301,7 @@ instructions:
   - name: ADDIU
     desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt, unsigned
     compile:
-      format: [Rt, Rs, U16]
+      format: [Rt, Rs, I16]
     runtime:
       type: I
       opcode: 0x09
@@ -462,7 +462,7 @@ pseudoinstructions:
       format: []
     expand:
       - inst: SLL
-        data: [$0, $0, $0]
+        data: [$0, $0, 0]
 
   - name: MOVE
     desc_short: Copy the value from $Rs into $Rd

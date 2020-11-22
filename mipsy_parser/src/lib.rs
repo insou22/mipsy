@@ -13,7 +13,10 @@ pub use instruction::{
     MPArgument,
 };
 pub use directive::MPDirective;
-pub use misc::ErrorLocation;
+pub use misc::{
+    ErrorLocation,
+    tabs_to_spaces,
+};
 pub use number::{
     MPNumber,
     MPImmediate,
@@ -30,15 +33,19 @@ pub fn parse_instruction<T>(input: T) -> Result<MPInstruction, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    parse_result(Span::new(input.as_ref().as_bytes()), instruction::parse_instruction)
+    let string = misc::tabs_to_spaces(input);
+
+    parse_result(Span::new(string.as_bytes()), instruction::parse_instruction)
 }
 
 pub fn parse_argument<T>(input: T) -> Result<MPArgument, ErrorLocation>
 where
     T: AsRef<str>,
 {
+    let string = misc::tabs_to_spaces(input);
+
     parse_result(
-        Span::new(input.as_ref().as_bytes()),
+        Span::new(string.as_bytes()),
         map(
             instruction::parse_argument,
             |(arg, _, _)| arg

@@ -81,7 +81,9 @@ pub fn parse_mips<T>(input: T) -> Result<MPProgram, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    parse_result(Span::new(input.as_ref().trim().as_bytes()), parse_mips_bytes)
+    let string = crate::misc::tabs_to_spaces(input);
+    
+    parse_result(Span::new(string.as_bytes()), parse_mips_bytes)
 }
 
 // #[cfg(test)]

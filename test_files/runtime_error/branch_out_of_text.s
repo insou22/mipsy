@@ -13,7 +13,7 @@ main:                    #  x, y, z in $t0, $t1, $t2,
     li   $v0, 1
     syscall
 
-    b    50              # whoops
+    b    outside              # whoops
 
     li   $a0, '\n'       # printf("%c", '\n');
     li   $v0, 11
@@ -21,3 +21,5 @@ main:                    #  x, y, z in $t0, $t1, $t2,
 
     li   $v0, 0          # return 0
     jr   $ra
+
+outside:

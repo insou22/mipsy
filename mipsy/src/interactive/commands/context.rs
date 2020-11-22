@@ -68,6 +68,7 @@ pub(crate) fn context_command() -> Command {
                 util::print_inst_parts(binary, &parts, Some(program), i == 0);
             }
 
+            println!();
             Ok(())
         }
     )

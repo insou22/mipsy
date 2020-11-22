@@ -38,6 +38,8 @@ pub fn handle(
     iset: &InstSet,
     binary: &Binary,
     runtime: &Runtime,
+    repl_line: Option<String>,
+    interactive: bool,
 ) {
     println!();
 
@@ -97,9 +99,11 @@ pub fn handle(
             let inst  = state.get_word(state.get_pc()).unwrap();
             let decompiled = decompile::decompile_inst_into_parts(binary, iset, inst, state.get_pc());
 
-            eprintln!("\nthe instruction that failed was: ");
-            crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
-            eprintln!();
+            if repl_line.is_none() {
+                eprintln!("\nthe instruction that failed was: ");
+                crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
+                eprintln!();
+            }
 
             eprintln!("this happened because {}{} was uninitialised", "$".yellow(), name.bold());
             if let Some((last_index, last_mod)) = last_mod {
@@ -109,8 +113,10 @@ pub fn handle(
                 let last_inst = last_mod.get_word(last_mod.get_pc()).unwrap();
                 crate::interactive::commands::util::print_inst(iset, binary, last_inst, last_mod.get_pc() - 4, Some(program));
             
-                let distance = runtime.timeline_len() - last_index - 1;
-                eprintln!("{}\n{0} to get back there, use `{} {}`", "|".red(), "back".bold(), distance.to_string().bold())
+                if interactive {
+                    let distance = runtime.timeline_len() - last_index - 1;
+                    eprintln!("{}\n{0} to get back there, use `{} {}`", "|".red(), "back".bold(), distance.to_string().bold())
+                }
             } else {
                 eprintln!("{} note: {}{} was {} initialised", "|".red(), "$".yellow(), name.bold(), "never".bold());
             }
@@ -125,9 +131,11 @@ pub fn handle(
             let inst  = state.get_word(state.get_pc()).unwrap();
             let decompiled = decompile::decompile_inst_into_parts(binary, iset, inst, state.get_pc());
 
-            eprintln!("\nthe instruction that failed was: ");
-            crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
-            eprintln!();
+            if repl_line.is_none() {
+                eprintln!("\nthe instruction that failed was: ");
+                crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
+                eprintln!();
+            }
 
             let rs = (inst >> 21) & 0x1F;
             let rs_value = runtime.state().get_reg(rs).unwrap();
@@ -181,8 +189,10 @@ pub fn handle(
             let inst  = state.get_word(state.get_pc()).unwrap();
             let decompiled = decompile::decompile_inst_into_parts(binary, iset, inst, state.get_pc());
 
-            eprintln!("\nthe instruction that failed was: ");
-            crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
+            if repl_line.is_none() {
+                eprintln!("\nthe instruction that failed was: ");
+                crate::interactive::commands::util::print_inst_parts(binary, &decompiled, Some(program), false);
+            }
 
             let rs = (inst >> 21) & 0x1F;
             let rt = (inst >> 16) & 0x1F;

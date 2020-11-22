@@ -14,16 +14,24 @@ fn color_arg(arg: &ArgumentType) -> String {
     }
 }
 
-fn highlight_line(file: &str, line: Option<u32>, col: Option<u32>, col_end: Option<u32>) {
+fn highlight_line(file: &str, line: Option<u32>, mut col: Option<u32>, mut col_end: Option<u32>) {
     let (line_num, line_text) = match line {
         Some(line) => {
             let line_num = line.to_string();
-            let line_text = file.lines().nth((line - 1) as usize).unwrap();
+            let line_text_untrimmed = mipsy_parser::tabs_to_spaces(file.lines().nth((line - 1) as usize).unwrap());
+            let line_text = line_text_untrimmed.trim().to_string();
+
+            col     = col    .map(|col| col - (line_text_untrimmed.len() - line_text.len()) as u32);
+            col_end = col_end.map(|col| col - (line_text_untrimmed.len() - line_text.len()) as u32);
 
             (line_num, line_text)
         }
         None => {
-            let line_text = file.lines().next().unwrap();
+            let line_text_untrimmed = mipsy_parser::tabs_to_spaces(file.lines().next().unwrap());
+            let line_text = line_text_untrimmed.trim().to_string();
+
+            col     = col    .map(|col| col - (line_text_untrimmed.len() - line_text.len()) as u32);
+            col_end = col_end.map(|col| col - (line_text_untrimmed.len() - line_text.len()) as u32);
 
             (String::new(), line_text)
         }
@@ -85,8 +93,10 @@ pub fn handle(
                 reg_index.to_string().bold()
             );
             prompt::tip_nl(format!(
-                "try using a register between {0}0 and {0}31",
-                "$".yellow().bold()
+                "try using a register between {0}{1} and {0}{2}",
+                "$".yellow().bold(),
+                "0".bold(),
+                "31".bold(),
             ));
         }
 
@@ -233,7 +243,7 @@ pub fn handle(
                 prompt::tip("label(s) with a similar name exist:");
 
                 for label in similar {
-                    eprintln!("     - {} ", label);
+                    eprintln!("     - {} ", label.yellow().bold());
                 }
             }
 

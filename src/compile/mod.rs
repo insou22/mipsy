@@ -44,10 +44,17 @@ impl Binary {
         } else {
             let label_lower = label.to_ascii_lowercase();
 
-            let similar = self.labels.keys()
+            let mut similar = self.labels.keys()
                     .map(|label| label.to_ascii_lowercase())
-                    .filter(|label| strsim::levenshtein(label, &label_lower) <= 3)
-                    .collect();
+                    .map(|label| (strsim::levenshtein(&label, &label_lower), label))
+                    .filter(|&(sim, _)| sim <= 3)
+                    .collect::<Vec<_>>();
+
+            similar.sort_by_key(|&(sim, _)| sim);
+
+            let similar = similar.into_iter()
+                    .map(|(_, label)| label)
+                    .collect::<Vec<_>>();
 
             cerr(CompileError::UnresolvedLabel(label.to_string(), similar))
         }

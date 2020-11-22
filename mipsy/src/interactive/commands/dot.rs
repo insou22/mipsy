@@ -20,10 +20,18 @@ pub(crate) fn dot_command() -> Command {
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let opcodes = mipsy_lib::compile1(binary, &state.iset, &inst)
-                    .map_err(|mipsy_error| CommandError::CannotCompileLine { line, mipsy_error })?;
+                    .map_err(|mipsy_error| CommandError::CannotCompileLine { line: line.to_string(), mipsy_error })?;
 
             for opcode in opcodes {
-                state.exec_inst(opcode, true)?;
+                state.exec_inst(opcode, true)
+                    .map_err(|err| {
+                        let mipsy_error = match err {
+                            CommandError::RuntimeError { mipsy_error } => mipsy_error,
+                            _ => unreachable!(),
+                        };
+
+                        CommandError::REPLRuntimeError { mipsy_error, line: line.to_string() }
+                    })?;
             }
 
             Ok(())
