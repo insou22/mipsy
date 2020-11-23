@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, str::FromStr};
 use crate::{Binary, error::MipsyResult, TEXT_BOT};
 use serde::{Serialize, Deserialize};
 use super::register::Register;

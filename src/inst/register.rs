@@ -1,3 +1,6 @@
+use crate::MipsyError;
+use std::str::FromStr;
+
 use crate::error::MipsyResult;
 use crate::error::CompileError;
 use crate::util::cerr;
@@ -51,6 +54,36 @@ pub const REGISTERS: [Register; 32] = [
     Register::GP, Register::SP, Register::FP, 
     Register::RA,
 ];
+
+impl FromStr for Register {
+    type Err = MipsyError;
+
+    fn from_str(name: &str) -> MipsyResult<Self> {
+        // $num
+        if let Ok(number) = name.parse::<i32>() {
+            return Self::from_number(number);
+        }
+
+        // $name
+        for reg in REGISTERS.iter() {
+            if reg.to_str().eq_ignore_ascii_case(name) {
+                return Ok(*reg);
+            }
+        }
+
+        // better error reporting
+        if name.starts_with('v') || name.starts_with('a') || 
+           name.starts_with('t') || name.starts_with('s') || 
+           name.starts_with('k') {
+            if let Ok(num) = name[1..].parse::<i32>() {
+                return cerr(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
+            }
+        }
+
+        // who knows
+        cerr(CompileError::UnknownRegister(name.into()))
+    }
+}
 
 impl Register {
     pub fn all() -> [Register; 32] {
@@ -142,32 +175,6 @@ impl Register {
 
     pub fn u32_to_str(num: u32) -> &'static str {
         Self::from_u32(num).unwrap().to_str()
-    }
-
-    pub fn from_str(name: &str) -> MipsyResult<Self> {
-        // $num
-        if let Ok(number) = name.parse::<i32>() {
-            return Self::from_number(number);
-        }
-
-        // $name
-        for reg in REGISTERS.iter() {
-            if reg.to_str().eq_ignore_ascii_case(name) {
-                return Ok(*reg);
-            }
-        }
-
-        // better error reporting
-        if name.starts_with('v') || name.starts_with('a') || 
-           name.starts_with('t') || name.starts_with('s') || 
-           name.starts_with('k') {
-            if let Ok(num) = name[1..].parse::<i32>() {
-                return cerr(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
-            }
-        }
-
-        // who knows
-        cerr(CompileError::UnknownRegister(name.into()))
     }
 
     pub fn to_str(&self) -> &'static str {

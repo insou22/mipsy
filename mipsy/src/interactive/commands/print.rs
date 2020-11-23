@@ -1,4 +1,4 @@
-use std::ascii;
+use std::{ascii, str::FromStr};
 
 use crate::interactive::{error::CommandError, prompt};
 
