@@ -333,25 +333,14 @@ impl ArgumentType {
         match arg {
             MPArgument::Register(register) => {
                 match register {
-                    MPRegister::Normal(_) => {
-                        match self {
-                            Self::Rd | Self::Rs | Self::Rt => true,
-                            _ => false,
-                        }
-                    }
+                    MPRegister::Normal(_) => matches!(self, Self::Rd | Self::Rs | Self::Rt),
                     MPRegister::Offset(imm, _) => match imm {
-                        MPImmediate::I16(_) => {
-                            match self {
-                                Self::OffRs | Self::OffRt | Self::Off32Rs | Self::Off32Rt => true,
-                                _ => false,
-                            }
-                        }
-                        MPImmediate::U16(_) | MPImmediate::U32(_) | MPImmediate::I32(_) | MPImmediate::LabelReference(_) => {
-                            match self {
-                                Self::Off32Rs | Self::Off32Rt => true,
-                                _ => false,
-                            }
-                        }
+                        MPImmediate::I16(_) => matches!(self, Self::OffRs | Self::OffRt | Self::Off32Rs | Self::Off32Rt),
+
+                        MPImmediate::U16(_)
+                        | MPImmediate::U32(_)
+                        | MPImmediate::I32(_)
+                        | MPImmediate::LabelReference(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
                     }
                 }
             }
@@ -367,12 +356,7 @@ impl ArgumentType {
                                     _ => false,
                                 }
                             }
-                            &MPImmediate::U16(_) => {
-                                match self {
-                                    Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
-                                    _ => false,
-                                }
-                            }
+                            MPImmediate::U16(_) => matches!(self, Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt),
                             &MPImmediate::I32(num) => {
                                 match self {
                                     Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
@@ -380,12 +364,7 @@ impl ArgumentType {
                                     _ => false,
                                 }
                             }
-                            MPImmediate::U32(_) => {
-                                match self {
-                                    Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
-                                    _ => false,
-                                }
-                            }
+                            MPImmediate::U32(_) => matches!(self, Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt),
                             MPImmediate::LabelReference(_) => {
                                 match self {
                                     Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
@@ -395,24 +374,9 @@ impl ArgumentType {
                             }
                         }
                     }
-                    MPNumber::Char(_) => {
-                        match self {
-                            Self::I16 | Self::I32 | Self::U16 | Self::U32 => true,
-                            _ => false,
-                        }
-                    }
-                    MPNumber::Float32(_) => {
-                        match self {
-                            Self::F32 | Self::F64 => true,
-                            _ => false,
-                        }
-                    }
-                    MPNumber::Float64(_) => {
-                        match self {
-                            Self::F64 => true,
-                            _ => false,
-                        }
-                    }
+                    MPNumber::Char(_) => matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32),
+                    MPNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
+                    MPNumber::Float64(_) => matches!(self, Self::F64),
                 }
             }
         }
@@ -580,8 +544,7 @@ impl PseudoSignature {
         let mut variables: HashMap<String, MPArgument> = HashMap::new();
         let mut used: HashMap<String, usize> = HashMap::new();
 
-        let mut i = 0;
-        for (arg_type, &arg) in self.compile.format.iter().zip(&args) {
+        for (i, (arg_type, &arg)) in self.compile.format.iter().zip(&args).enumerate() {
             let last = i == args.len() - 1;
 
             match arg_type {
@@ -661,8 +624,6 @@ impl PseudoSignature {
                     self.new_variable(program, PseudoVariable::Off32, arg.clone(), &mut variables, &mut used, last)?;
                 }
             }
-
-            i += 1;
         }
 
         Ok(variables)
@@ -774,7 +735,7 @@ impl<'a> SignatureRef<'a> {
 }
 
 impl Signature {
-    pub fn sigref<'a>(&'a self) -> SignatureRef<'a> {
+    pub fn sigref(&self) -> SignatureRef<'_> {
         match self {
             Self::Native(native) => SignatureRef::Native(&native),
             Self::Pseudo(pseudo) => SignatureRef::Pseudo(&pseudo),

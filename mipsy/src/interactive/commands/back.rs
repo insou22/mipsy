@@ -25,8 +25,8 @@ pub(crate) fn back_command() -> Command {
                     label,
                     &"[times]".bright_magenta().to_string(),
                     arg, 
-                    Some(|neg| 
-                        format!("try `{}{}`", "step ".bold(), (-1 * neg as i32).to_string().bold())
+                    Some(|neg: i32|
+                        format!("try `{}{}`", "step ".bold(), (-neg).to_string().bold())
                     )
                 ),
                 None => Ok(1),
@@ -39,10 +39,8 @@ pub(crate) fn back_command() -> Command {
                 if runtime.back() {
                     backs += 1;
                     state.exited = false;
-                } else {
-                    if backs == 0 {
-                        return Err(CommandError::CannotStepFurtherBack);
-                    }
+                } else if backs == 0 {
+                    return Err(CommandError::CannotStepFurtherBack);
                 }
             }
 
@@ -51,7 +49,7 @@ pub(crate) fn back_command() -> Command {
 
             let pluralise = if backs != 1 { "s" } else { "" };
 
-            let mut text = String::from(format!("stepped back {} instruction{}", backs.to_string().magenta(), pluralise));
+            let mut text = format!("stepped back {} instruction{}", backs.to_string().magenta(), pluralise);
             if backs < times {
                 text.push_str(" (reached start of program)");
             }

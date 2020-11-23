@@ -33,12 +33,7 @@ pub(crate) fn step2input_command() -> Command {
                     
                     if inst == 0xC {
                         let syscall = runtime.state().get_reg(Register::V0.to_u32()).unwrap_or(-1);
-
-                        match syscall {
-                            // input syscalls
-                            5 | 6 | 7 | 8 | 12 => true,
-                            _ => false,
-                        }        
+                        matches!(syscall, 5 | 6 | 7 | 8 | 12)  
                     } else {
                         false
                     }

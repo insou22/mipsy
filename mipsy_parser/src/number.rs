@@ -75,20 +75,20 @@ impl fmt::Display for MPImmediate {
 
 pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
     alt((
-        map(parse_immediate, |i| MPNumber::Immediate(i)),
-        map(parse_f32,       |f| MPNumber::Float32(f)),
-        map(parse_f64,       |f| MPNumber::Float64(f)),
-        map(parse_char,      |c| MPNumber::Char(c)),
+        map(parse_immediate, MPNumber::Immediate),
+        map(parse_f32,       MPNumber::Float32),
+        map(parse_f64,       MPNumber::Float64),
+        map(parse_char,      MPNumber::Char),
     ))(i)
 }
 
 pub fn parse_immediate<'a>(i: Span<'a>) -> IResult<Span<'a>, MPImmediate> {
     alt((
-        map(parse_i16,      |i| MPImmediate::I16(i)),
-        map(parse_u16,      |i| MPImmediate::U16(i)),
-        map(parse_i32,      |i| MPImmediate::I32(i)),
-        map(parse_u32,      |i| MPImmediate::U32(i)),
-        map(parse_labelref, |l| MPImmediate::LabelReference(l)),
+        map(parse_i16,      MPImmediate::I16),
+        map(parse_u16,      MPImmediate::U16),
+        map(parse_i32,      MPImmediate::I32),
+        map(parse_u32,      MPImmediate::U32),
+        map(parse_labelref, MPImmediate::LabelReference),
     ))(i)
 }
 

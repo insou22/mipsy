@@ -138,7 +138,7 @@ pub fn handle(
                 "{}{}{}",
                 "unknown register ".bright_red().bold(),
                 "$".yellow().bold(),
-                name.to_string().bold()
+                name.bold()
             );
         }
 

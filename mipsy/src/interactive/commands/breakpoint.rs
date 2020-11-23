@@ -103,19 +103,17 @@ pub(crate) fn breakpoint_command() -> Command {
 
                             return Ok(());
                         }
-                    } else {
-                        if binary.breakpoints.contains(&addr) {
-                            prompt::error_nl(format!(
-                                "breakpoint at {} already exists", 
-                                if is_label {
-                                    args[1].yellow().bold().to_string()
-                                } else {
-                                    args[1].to_string()
-                                }
-                            ));
+                    } else if binary.breakpoints.contains(&addr) {
+                        prompt::error_nl(format!(
+                            "breakpoint at {} already exists", 
+                            if is_label {
+                                args[1].yellow().bold().to_string()
+                            } else {
+                                args[1].to_string()
+                            }
+                        ));
 
-                            return Ok(());
-                        }
+                        return Ok(());
                     }
 
                     let action = 

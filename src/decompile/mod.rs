@@ -21,7 +21,7 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
     let decompiled = decompile_into_parts(program, iset);
 
     let mut keys: Vec<u32> = decompiled.keys().copied().collect();
-    keys.sort();
+    keys.sort_unstable();
 
     for (addr, parts) in keys.into_iter().map(|addr| (addr, decompiled.get(&addr).unwrap())) {
         if !parts.labels.is_empty() {

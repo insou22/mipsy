@@ -84,11 +84,13 @@ impl State {
     fn find_command(&self, cmd: &str) -> Option<&Command> {
         self.commands.iter()
                 .find(|command| {
-                    command.name == cmd || command.aliases.iter().find(|&alias| alias == cmd).is_some()
+                    command.name == cmd || 
+                        command.aliases.iter()
+                                .any(|alias| alias == cmd)
                 })
     }
 
-    fn do_exec(&mut self, line: &String) {
+    fn do_exec(&mut self, line: &str) {
         let parts = match shlex::split(line) {
             Some(parts) => parts,
             None => return,
@@ -173,7 +175,7 @@ impl State {
                 self.mipsy_error(MipsyError::Compile(CompileError::ParseFailure { line: 1, col }), Some(&line), None);
             }
             CommandError::CannotCompileLine { line, mipsy_error } => {
-                prompt::error(format!("failed to compile instruction"));
+                prompt::error("failed to compile instruction");
                 self.mipsy_error(mipsy_error, Some(&line), None);
             }
             CommandError::UnknownRegister { register } => {

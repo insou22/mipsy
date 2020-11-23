@@ -53,11 +53,11 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyRes
             );
         }
 
-        return cerr(
+        cerr(
             CompileError::UnknownInstruction(
                 inst.clone()
             )
-        );
+        )
     }
 }
 

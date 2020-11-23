@@ -131,7 +131,7 @@ fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResul
             many_till(parse_escaped_char, char('"')),
         ))(i)?;
 
-        let text = String::from_iter(text.iter()).to_string();
+        let text = String::from_iter(text.iter());
 
         Ok((remaining_data, text))
     }
@@ -140,14 +140,14 @@ fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResul
 fn parse_ascii<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_ascii_type(".ascii"),
-        |text| MPDirective::Ascii(text)
+        MPDirective::Ascii
     )(i)
 }
 
 fn parse_asciiz<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_ascii_type(".asciiz"),
-        |text| MPDirective::Asciiz(text)
+        MPDirective::Asciiz
     )(i)
 }
 
@@ -188,35 +188,35 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
 fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_num_type(".byte", parse_i8),
-        |data| MPDirective::Byte(data),
+        MPDirective::Byte,
     )(i)
 }
 
 fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_num_type(".half", parse_i16),
-        |data| MPDirective::Half(data),
+        MPDirective::Half,
     )(i)
 }
 
 fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_num_type(".word", parse_i32),
-        |data| MPDirective::Word(data),
+        MPDirective::Word,
     )(i)
 }
 
 fn parse_float<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_num_type(".float", parse_f32),
-        |data| MPDirective::Float(data),
+        MPDirective::Float,
     )(i)
 }
 
 fn parse_double<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_num_type(".double", parse_f64),
-        |data| MPDirective::Double(data),
+        MPDirective::Double,
     )(i)
 }
 
@@ -243,14 +243,14 @@ fn parse_u32_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<
 fn parse_space<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_u32_type(".space"),
-        |num| MPDirective::Space(num),
+        MPDirective::Space,
     )(i)
 }
 
 fn parse_align<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
         parse_u32_type(".align"),
-        |num| MPDirective::Space(num),
+        MPDirective::Space,
     )(i)
 }
 

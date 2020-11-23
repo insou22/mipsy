@@ -116,13 +116,13 @@ pub fn parse_argument<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPArgument, u32, u3
 fn parse_argument_reg<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {
     map(
         parse_register,
-        |reg| MPArgument::Register(reg)
+        MPArgument::Register
     )(i)
 }
 
 fn parse_argument_num<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {
     map(
         parse_number,
-        |num| MPArgument::Number(num)
+        MPArgument::Number
     )(i)
 }

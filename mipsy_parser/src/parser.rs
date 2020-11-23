@@ -53,9 +53,9 @@ pub fn parse_mips_item<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPItem, u32)> {
             comment_multispace0,
             position,
             alt((
-                map(parse_label,       |l| MPItem::Label(l)),
-                map(parse_directive,   |d| MPItem::Directive(d)),
-                map(parse_instruction, |i| MPItem::Instruction(i)),
+                map(parse_label,       MPItem::Label),
+                map(parse_directive,   MPItem::Directive),
+                map(parse_instruction, MPItem::Instruction),
             )),
             comment_multispace0,
         )),

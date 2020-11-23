@@ -64,8 +64,8 @@ where
     }
 }
 
-const IDENT_FIRST_CHAR:  &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
-const IDENT_CONTD_CHARS: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
+const IDENT_FIRST_CHAR:  &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
+const IDENT_CONTD_CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
 
 pub fn escape_char(char: char) -> String {
     match char {

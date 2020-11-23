@@ -8,9 +8,7 @@ pub(crate) fn dot_command() -> Command {
         vec![],
         vec!["instruction"],
         "execute a MIPS instruction",
-        &format!(
-            "Executes a MIPS instruction immediately"
-        ),
+        "Executes a MIPS instruction immediately",
         |state, _label, args| {
             let line = args.join(" ");
 

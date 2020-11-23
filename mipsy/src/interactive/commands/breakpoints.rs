@@ -9,9 +9,7 @@ pub(crate) fn breakpoints_command() -> Command {
         vec!["bs", "brs", "brks", "breaks"],
         vec![],
         vec![],
-        &format!(
-            "lists currently set breakpoints",
-        ),
+        "lists currently set breakpoints",
         &format!(
             "Lists currently set breakpoints.\n\
              When running or stepping through your program, a breakpoint will cause execution to\n\

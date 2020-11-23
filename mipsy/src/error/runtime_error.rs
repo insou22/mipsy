@@ -68,32 +68,32 @@ pub fn handle(
                     let name = Register::from_u32(reg_num).unwrap().to_lower_str();
                     let last_mod = get_last_mod(
                         runtime, 
-                        |state| (state.is_register_written(reg_num), state.get_reg(reg_num).map(|t| Safe::valid(t)).unwrap_or(Safe::Uninitialised))
+                        |state| (state.is_register_written(reg_num), state.get_reg(reg_num).map(Safe::valid).unwrap_or(Safe::Uninitialised))
                     );
 
                     (name, last_mod)
                 }
                 Uninitialised::Lo => {
-                    let name = "lo".into();
+                    let name = "lo";
                     let last_mod = get_last_mod(
                         runtime, 
-                        |state| (state.is_lo_written(), state.get_lo().map(|t| Safe::valid(t)).unwrap_or(Safe::Uninitialised))
+                        |state| (state.is_lo_written(), state.get_lo().map(Safe::valid).unwrap_or(Safe::Uninitialised))
                     );
 
                     (name, last_mod)
                 }
                 Uninitialised::Hi => {
-                    let name = "hi".into();
+                    let name = "hi";
                     let last_mod = get_last_mod(
                         runtime, 
-                        |state| (state.is_hi_written(), state.get_hi().map(|t| Safe::valid(t)).unwrap_or(Safe::Uninitialised))
+                        |state| (state.is_hi_written(), state.get_hi().map(Safe::valid).unwrap_or(Safe::Uninitialised))
                     );
 
                     (name, last_mod)
                 }
             };
 
-            prompt::error(format!("your program tried to read uninitialised memory"));
+            prompt::error("your program tried to read uninitialised memory");
 
             let state = runtime.state();
             let inst  = state.get_word(state.get_pc()).unwrap();
@@ -216,6 +216,4 @@ pub fn handle(
             todo!()
         }
     }
-
-    ()
 }

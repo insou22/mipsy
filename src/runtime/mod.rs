@@ -116,13 +116,11 @@ impl Runtime {
         initial_state.write_ureg(Register::FP.to_number() as u32, STACK_TOP);
         initial_state.write_ureg(Register::GP.to_number() as u32, HEAP_BOT);
 
-        let runtime = Runtime {
+        Runtime {
             timeline: vec![initial_state],
             current_state: 0,
             program_len: program.text.len(),
-        };
-
-        runtime
+        }
     }
 
     pub fn next_inst(&self) -> MipsyResult<u32> {
@@ -317,7 +315,7 @@ impl Runtime {
 
                 let state = self.state_mut();
                 if size < 0 {
-                    let magnitude = ((-1) * size) as u32;
+                    let magnitude = -size as u32;
                     if magnitude > state.heap_size {
                         return rerr!(RuntimeError::SbrkNegative);
                     }

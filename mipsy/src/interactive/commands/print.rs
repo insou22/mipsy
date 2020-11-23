@@ -56,7 +56,7 @@ pub(crate) fn print_command() -> Command {
             let arg = mipsy_parser::parse_argument(&args[0])
                     .map_err(|_| get_error())?;
 
-            let print_type = &*args.get(1).cloned().unwrap_or("word".to_string());
+            let print_type = &*args.get(1).cloned().unwrap_or_else(|| "word".to_string());
             match print_type {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" | "string" |
                 "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    | "s" => {}
@@ -83,12 +83,9 @@ pub(crate) fn print_command() -> Command {
 
                     if matches!(ident, MPRegisterIdentifier::Named(ref name) if name == "all") {
                         for register in &Register::all() {
-                            match runtime.state().get_reg(register.to_u32()) {
-                                Ok(val) => {
-                                    let out = format_simple_print(val, print_type);
-                                    println!("{}{:4} = {}", "$".yellow(), register.to_lower_str().bold(), out);
-                                }
-                                Err(_) => {}
+                            if let Ok(val) = runtime.state().get_reg(register.to_u32()) {
+                                let out = format_simple_print(val, print_type);
+                                println!("{}{:4} = {}", "$".yellow(), register.to_lower_str().bold(), out);
                             }
                         }
 
@@ -171,7 +168,7 @@ pub(crate) fn print_command() -> Command {
                         "xbyte" | "xb" => format!("0x{:02x}", runtime.state().get_byte(imm).map_err(map_err)? as u8),
                         "xhalf" | "xh" => format!("0x{:04x}", runtime.state().get_half(imm).map_err(map_err)? as u16),
                         "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", runtime.state().get_word(imm).map_err(map_err)? as u32),
-                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default((runtime.state().get_byte(imm).map_err(map_err)? & 0xFF) as u8)),
+                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default(runtime.state().get_byte(imm).map_err(map_err)? as u8)),
                         "string"| "s"  => {
                             let mut text = String::new();
 

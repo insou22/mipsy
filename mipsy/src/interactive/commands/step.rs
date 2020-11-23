@@ -25,8 +25,8 @@ pub(crate) fn step_command() -> Command {
                     label,
                     &"[times]".bright_magenta().to_string(),
                     arg, 
-                    Some(|neg| 
-                        format!("try `{}{}`", "back ".bold(), (-1 * neg as i32).to_string().bold())
+                    Some(|neg: i32|
+                        format!("try `{}{}`", "back ".bold(), (-neg).to_string().bold())
                     )
                 ),
                 None => Ok(1),

@@ -64,7 +64,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, file: Option
                     }
                 }
 
-                while let Some(chr) = reg_chars.next() {
+                for chr in reg_chars {
                     post_chars.push(chr);
                 }
 

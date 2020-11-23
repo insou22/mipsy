@@ -129,7 +129,7 @@ impl RuntimeHandler for Handler {
 fn main() {
     let opts: Opts = Opts::parse();
 
-    if let None = opts.file {
+    if opts.file.is_none() {
         interactive::launch();
     }
 
