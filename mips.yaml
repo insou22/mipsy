@@ -1310,3 +1310,4 @@ pseudoinstructions:
         data: [$At, $At, $Rs]
       - inst: SW
         data: [$Rt, ($At)]
+
