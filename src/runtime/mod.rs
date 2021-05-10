@@ -110,10 +110,10 @@ impl Runtime {
             kdata_addr += 1;
         }
 
-        initial_state.write_ureg(Register::ZERO.to_number() as u32, 0);
-        initial_state.write_ureg(Register::SP.to_number() as u32, STACK_TOP);
-        initial_state.write_ureg(Register::FP.to_number() as u32, STACK_TOP);
-        initial_state.write_ureg(Register::GP.to_number() as u32, HEAP_BOT);
+        initial_state.write_ureg(Register::Zero.to_number() as u32, 0);
+        initial_state.write_ureg(Register::Sp.to_number() as u32, STACK_TOP);
+        initial_state.write_ureg(Register::Fp.to_number() as u32, STACK_TOP);
+        initial_state.write_ureg(Register::Gp.to_number() as u32, HEAP_BOT);
 
         Runtime {
             timeline: vec![initial_state],
@@ -234,7 +234,7 @@ impl Runtime {
             }
             0b000010 | 0b000011 => {
                 // J-Type
-                self.execute_j(opcode, addr)?;
+                self.execute_j(opcode, addr);
             }
             _ => {
                 // I-Type
@@ -242,7 +242,7 @@ impl Runtime {
             }
         }
 
-        self.state_mut().registers[Register::ZERO.to_number() as usize] = Safe::Valid(0);
+        self.state_mut().registers[Register::Zero.to_number() as usize] = Safe::Valid(0);
 
         Ok(())
     }
@@ -398,7 +398,7 @@ impl Runtime {
 
             // JALR $Rs
             0x09 => { 
-                state.write_ureg(Register::RA.to_number() as u32, state.pc); 
+                state.write_ureg(Register::Ra.to_number() as u32, state.pc); 
                 state.pc = state.get_ureg(rs)?;
             },
             
@@ -717,7 +717,7 @@ impl Runtime {
         Ok(())
     }
 
-    fn execute_j(&mut self, opcode: u32, target: u32) -> MipsyResult<()> {
+    fn execute_j(&mut self, opcode: u32, target: u32) {
         let state = self.state_mut();
 
         match opcode {
@@ -728,13 +728,12 @@ impl Runtime {
 
             // JAL  addr
             0x03 => { 
-                state.write_ureg(Register::RA.to_number() as u32, state.pc);
+                state.write_ureg(Register::Ra.to_number() as u32, state.pc);
                 state.pc = (state.pc & 0xF000_0000) | (target << 2);
             },
 
             _ => unreachable!(),
         }
-        Ok(())
     }
 }
 
@@ -900,7 +899,7 @@ impl State {
             let offset = Self::offset_in_page(address);
     
             page[offset as usize].as_option().copied()
-        })().ok_or(MipsyError::Runtime(RuntimeError::new(Error::Uninitialised { value: Uninitialised::Byte { addr: address } } )))
+        })().ok_or_else(|| MipsyError::Runtime(RuntimeError::new(Error::Uninitialised { value: Uninitialised::Byte { addr: address } } )))
     }
 
     pub fn write_word(&mut self, address: u32, word: u32) {

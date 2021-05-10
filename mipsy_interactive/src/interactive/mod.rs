@@ -199,13 +199,13 @@ impl State {
                             error.col as u32,
                         )
                     ),
-                    ErrorContext::REPL,
+                    ErrorContext::Repl,
                     Some(line),
                 );
             }
             CommandError::CannotCompileLine { line, error } => {
                 prompt::error("failed to compile instruction");
-                self.mipsy_error(error, ErrorContext::REPL, Some(line));
+                self.mipsy_error(error, ErrorContext::Repl, Some(line));
             }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
@@ -223,8 +223,8 @@ impl State {
             CommandError::RuntimeError { mipsy_error, } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);
             }
-            CommandError::REPLRuntimeError { mipsy_error, line, } => {
-                self.mipsy_error(mipsy_error, ErrorContext::REPL, Some(line));
+            CommandError::ReplRuntimeError { mipsy_error, line, } => {
+                self.mipsy_error(mipsy_error, ErrorContext::Repl, Some(line));
             }
             CommandError::WithTip { error, tip, } => {
                 self.handle_error(*error, false);

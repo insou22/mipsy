@@ -33,7 +33,7 @@ pub(crate) fn dot_command() -> Command {
                     .map_err(|error| CommandError::CannotCompileLine { line: line.to_string(), error })?;
 
             let opcodes = mipsy_lib::compile1(binary, &state.iset, &inst)
-                    .map_err(|error| error.to_compiler_mipsy_error(Rc::from(""), 1, inst.col(), inst.col_end()))
+                    .map_err(|error| error.into_compiler_mipsy_error(Rc::from(""), 1, inst.col(), inst.col_end()))
                     .map_err(|error| CommandError::CannotCompileLine { line: line.to_string(), error })?;
 
             for opcode in opcodes {
@@ -44,7 +44,7 @@ pub(crate) fn dot_command() -> Command {
                             _ => unreachable!(),
                         };
 
-                        CommandError::REPLRuntimeError { mipsy_error, line: line.to_string() }
+                        CommandError::ReplRuntimeError { mipsy_error, line: line.to_string() }
                     })?;
             }
 

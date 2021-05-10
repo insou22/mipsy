@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 #[derive(Copy, Clone)]
 pub enum Register {
-    ZERO,
-    AT,
+    Zero,
+    At,
     V0,
     V1,
     A0,
@@ -31,14 +31,14 @@ pub enum Register {
     T9,
     K0,
     K1,
-    GP,
-    SP,
-    FP,
-    RA,
+    Gp,
+    Sp,
+    Fp,
+    Ra,
 }
 
 pub const REGISTERS: [Register; 32] = [
-    Register::ZERO, Register::AT, 
+    Register::Zero, Register::At, 
     Register::V0, Register::V1, 
     Register::A0, Register::A1, Register::A2, Register::A3, 
     Register::T0, Register::T1, Register::T2, Register::T3, 
@@ -47,8 +47,8 @@ pub const REGISTERS: [Register; 32] = [
     Register::S4, Register::S5, Register::S6, Register::S7, 
     Register::T8, Register::T9, 
     Register::K0, Register::K1, 
-    Register::GP, Register::SP, Register::FP, 
-    Register::RA,
+    Register::Gp, Register::Sp, Register::Fp, 
+    Register::Ra,
 ];
 
 impl FromStr for Register {
@@ -101,8 +101,8 @@ impl Register {
 
     pub fn to_number(&self) -> u8 {
         match self {
-            Self::ZERO => 0,
-            Self::AT   => 1,
+            Self::Zero => 0,
+            Self::At   => 1,
             Self::V0   => 2,
             Self::V1   => 3,
             Self::A0   => 4,
@@ -129,17 +129,17 @@ impl Register {
             Self::T9   => 25,
             Self::K0   => 26,
             Self::K1   => 27,
-            Self::GP   => 28,
-            Self::SP   => 29,
-            Self::FP   => 30,
-            Self::RA   => 31,
+            Self::Gp   => 28,
+            Self::Sp   => 29,
+            Self::Fp   => 30,
+            Self::Ra   => 31,
         }
     }
 
     pub fn from_number(num: i32) -> MipsyInternalResult<Self> {
         match num {
-            0  => Ok(Self::ZERO),
-            1  => Ok(Self::AT),
+            0  => Ok(Self::Zero),
+            1  => Ok(Self::At),
             2  => Ok(Self::V0),
             3  => Ok(Self::V1),
             4  => Ok(Self::A0),
@@ -166,10 +166,10 @@ impl Register {
             25 => Ok(Self::T9),
             26 => Ok(Self::K0),
             27 => Ok(Self::K1),
-            28 => Ok(Self::GP),
-            29 => Ok(Self::SP),
-            30 => Ok(Self::FP),
-            31 => Ok(Self::RA),
+            28 => Ok(Self::Gp),
+            29 => Ok(Self::Sp),
+            30 => Ok(Self::Fp),
+            31 => Ok(Self::Ra),
             _  => Err(
                 InternalError::Compiler(
                     compiler::Error::NumberedRegisterOutOfRange {
@@ -194,8 +194,8 @@ impl Register {
 
     pub fn to_str(&self) -> &'static str {
         match self {
-            Self::ZERO => "ZERO",
-            Self::AT   => "AT",
+            Self::Zero => "ZERO",
+            Self::At   => "AT",
             Self::V0   => "V0",
             Self::V1   => "V1",
             Self::A0   => "A0",
@@ -222,17 +222,17 @@ impl Register {
             Self::T9   => "T9",
             Self::K0   => "K0",
             Self::K1   => "K1",
-            Self::GP   => "GP",
-            Self::SP   => "SP",
-            Self::FP   => "FP",
-            Self::RA   => "RA",
+            Self::Gp   => "GP",
+            Self::Sp   => "SP",
+            Self::Fp   => "FP",
+            Self::Ra   => "RA",
         }
     }
 
     pub fn to_lower_str(&self) -> &'static str {
         match self {
-            Self::ZERO => "zero",
-            Self::AT   => "at",
+            Self::Zero => "zero",
+            Self::At   => "at",
             Self::V0   => "v0",
             Self::V1   => "v1",
             Self::A0   => "a0",
@@ -259,10 +259,10 @@ impl Register {
             Self::T9   => "t9",
             Self::K0   => "k0",
             Self::K1   => "k1",
-            Self::GP   => "gp",
-            Self::SP   => "sp",
-            Self::FP   => "fp",
-            Self::RA   => "ra",
+            Self::Gp   => "gp",
+            Self::Sp   => "sp",
+            Self::Fp   => "fp",
+            Self::Ra   => "ra",
         }
     }
 }

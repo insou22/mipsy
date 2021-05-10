@@ -25,7 +25,7 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
                                 MpRegister::Offset(_, id) => id,
                             };
 
-                            ident.to_register().to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                            ident.to_register().into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                         }
                         MpArgument::Number(_) => {}
                     }
@@ -59,7 +59,7 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
                                     match imm {
                                         MpImmediate::LabelReference(label) => {
                                             binary.get_label(label)
-                                                .to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                                                .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                                         }
                                         MpImmediate::I16(_) => {}
                                         MpImmediate::U16(_) => {}

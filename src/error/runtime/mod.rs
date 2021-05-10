@@ -35,7 +35,7 @@ impl RuntimeError {
 pub enum ErrorContext {
     Binary,
     Interactive,
-    REPL,
+    Repl,
 }
 
 #[derive(Debug)]

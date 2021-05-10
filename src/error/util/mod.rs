@@ -48,12 +48,12 @@ pub fn tip_header() -> String {
     format!("{}{}", header, colon)
 }
 
-pub fn inst_to_string(inst: u32, addr: u32, source_code: &Vec<(Rc<str>, Rc<str>)>, binary: &Binary, iset: &InstSet, highlight_curr_inst: bool) -> String {
+pub fn inst_to_string(inst: u32, addr: u32, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, iset: &InstSet, highlight_curr_inst: bool) -> String {
     let parts = decompile_inst_into_parts(binary, iset, inst, addr);
     inst_parts_to_string(&parts, source_code, binary, highlight_curr_inst)
 }
 
-pub fn inst_parts_to_string(parts: &Decompiled, source_code: &Vec<(Rc<str>, Rc<str>)>, binary: &Binary, highlight_curr_inst: bool) -> String {
+pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, highlight_curr_inst: bool) -> String {
     let mut string = String::new();
     
     if parts.inst_name.is_none() {

@@ -28,36 +28,36 @@ pub enum InternalError {
 }
 
 pub trait ToMipsyResult<T> {
-    fn to_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T>;
-    fn to_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T>;
-    fn to_runtime_mipsy_result(self) -> MipsyResult<T>;
+    fn into_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T>;
+    fn into_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T>;
+    fn into_runtime_mipsy_result(self) -> MipsyResult<T>;
 }
 
 impl<T> ToMipsyResult<T> for MipsyInternalResult<T> {
-    fn to_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T> {
+    fn into_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T> {
         match self {
             Ok(t) => Ok(t),
-            Err(error) => Err(error.to_parser_mipsy_error(file_tag, line, col)),
+            Err(error) => Err(error.into_parser_mipsy_error(file_tag, line, col)),
         }
     }
 
-    fn to_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T> {
+    fn into_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T> {
         match self {
             Ok(t) => Ok(t),
-            Err(error) => Err(error.to_compiler_mipsy_error(file_tag, line, col, col_end)),
+            Err(error) => Err(error.into_compiler_mipsy_error(file_tag, line, col, col_end)),
         }
     }
 
-    fn to_runtime_mipsy_result(self) -> MipsyResult<T> {
+    fn into_runtime_mipsy_result(self) -> MipsyResult<T> {
         match self {
             Ok(t) => Ok(t),
-            Err(error) => Err(error.to_runtime_mipsy_error()),
+            Err(error) => Err(error.into_runtime_mipsy_error()),
         }
     }
 }
 
 impl InternalError {
-    pub fn to_parser_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyError {
+    pub fn into_parser_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyError {
         match self {
             InternalError::Parser(error) => {
                 MipsyError::Parser(
@@ -73,7 +73,7 @@ impl InternalError {
         }
     }
 
-    pub fn to_compiler_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyError {
+    pub fn into_compiler_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyError {
         match self {
             InternalError::Parser(error) => {
                 MipsyError::Parser(
@@ -93,7 +93,7 @@ impl InternalError {
         }
     }
 
-    pub fn to_runtime_mipsy_error(self) -> MipsyError {
+    pub fn into_runtime_mipsy_error(self) -> MipsyError {
         match self {
             InternalError::Parser(..) => panic!("expected error type runtime didn't match actual error type parser"),
             InternalError::Compiler(..) => panic!("expected error type runtime didn't match actual error type compiler"),

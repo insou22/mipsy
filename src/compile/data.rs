@@ -112,11 +112,11 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 match segment {
                     Segment::Text => {
                         text_len += instruction_length(iset, instruction)
-                            .to_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
+                            .into_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
                     }
                     Segment::KText => {
                         ktext_len += instruction_length(iset, instruction)
-                            .to_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
+                            .into_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
                     }
                     _ => {
                         todo!()

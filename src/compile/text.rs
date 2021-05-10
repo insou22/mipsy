@@ -97,7 +97,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
             }
             MpItem::Instruction(ref instruction) => {
                 let mut compiled = compile1(binary, iset, instruction)
-                    .to_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())?;
+                    .into_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())?;
 
                 let text = match segment {
                     Segment::Text  => {

@@ -22,12 +22,10 @@ pub(crate) fn load_command() -> Command {
 
             let program: HashMap<_, _> = args.iter()
                     .map(|path| {
-                        let value = match std::fs::read_to_string(path) {
+                        match std::fs::read_to_string(path) {
                             Ok(content) => Ok((path.to_string(), content)),
-                            Err(err) => Err(CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })
-                        };
-
-                        value
+                            Err(err)     => Err(CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })
+                        }
                     })
                     .collect::<Result<_, _>>()?;
 

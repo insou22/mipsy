@@ -24,7 +24,7 @@ pub enum CommandError {
 
     CannotStepFurtherBack,
     RuntimeError { mipsy_error: MipsyError },
-    REPLRuntimeError { mipsy_error: MipsyError, line: String },
+    ReplRuntimeError { mipsy_error: MipsyError, line: String },
 
     WithTip { error: Box<CommandError>, tip: String },
 }
