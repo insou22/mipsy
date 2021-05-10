@@ -1,8 +1,3 @@
-use crate::{
-    MipsyResult,
-    error::CompileError,
-    util::cerr,
-};
 use crate::yaml::{
     YamlFile,
     InstructionType,
@@ -17,7 +12,7 @@ use super::instruction::{
     PseudoExpand,
 };
 
-pub fn from_yaml(yaml: &YamlFile) -> MipsyResult<InstSet> {
+pub fn from_yaml(yaml: &YamlFile) -> InstSet {
     let mut native_set = vec![];
 
     for inst in &yaml.instructions {
@@ -32,21 +27,21 @@ pub fn from_yaml(yaml: &YamlFile) -> MipsyResult<InstSet> {
                     if let Some(funct) = inst.runtime.funct {
                         RuntimeSignature::R { funct }
                     } else {
-                        return cerr(CompileError::YamlMissingFunct(inst.name.to_ascii_lowercase()));
+                        panic!("invalid mips.yaml: missing funct for {}", inst.name);
                     }
                 }
                 InstructionType::I => {
                     if let Some(opcode) = inst.runtime.opcode {
                         RuntimeSignature::I { opcode, rt: inst.runtime.rt }
                     } else {
-                        return cerr(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        panic!("invalid mips.yaml: missing opcode for {}", inst.name);
                     }
                 }
                 InstructionType::J => {
                     if let Some(opcode) = inst.runtime.opcode {
                         RuntimeSignature::J { opcode }
                     } else {
-                        return cerr(CompileError::YamlMissingOpcode(inst.name.to_ascii_lowercase()));
+                        panic!("invalid mips.yaml: missing opcode for {}", inst.name);
                     }
                 }
             },
@@ -78,10 +73,8 @@ pub fn from_yaml(yaml: &YamlFile) -> MipsyResult<InstSet> {
         pseudo_set.push(pseudo_inst);
     }
 
-    Ok(
-        InstSet {
-            native_set,
-            pseudo_set,
-        }
-    )
+    InstSet {
+        native_set,
+        pseudo_set,
+    }
 }

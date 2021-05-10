@@ -1,15 +1,109 @@
-pub mod compile_error;
-pub mod runtime_error;
+use std::rc::Rc;
+
+pub mod parser;
+pub mod compiler;
+pub mod runtime;
+pub mod util;
 
 pub type MipsyResult<T> = Result<T, MipsyError>;
-pub type CompileError   = compile_error::CompileError;
-pub type RuntimeError   = runtime_error::RuntimeError;
+pub type ParserError    = parser::ParserError;
+pub type CompilerError  = compiler::CompilerError;
+pub type RuntimeError   = runtime::RuntimeError;
+
+pub type MipsyInternalResult<T> = Result<T, InternalError>;
+
 
 #[derive(Debug)]
 pub enum MipsyError {
-    Compile(CompileError),
-    CompileLoc { line: Option<u32>, col: Option<u32>, col_end: Option<u32>, error: CompileError },
-    Runtime(RuntimeError),
+    Parser  (parser::ParserError),
+    Compiler(compiler::CompilerError),
+    Runtime (runtime::RuntimeError),
+}
+
+#[derive(Debug)]
+pub enum InternalError {
+    Parser  (parser::Error),
+    Compiler(compiler::Error),
+    Runtime (runtime::Error),
+}
+
+pub trait ToMipsyResult<T> {
+    fn to_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T>;
+    fn to_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T>;
+    fn to_runtime_mipsy_result(self) -> MipsyResult<T>;
+}
+
+impl<T> ToMipsyResult<T> for MipsyInternalResult<T> {
+    fn to_parser_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyResult<T> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(error) => Err(error.to_parser_mipsy_error(file_tag, line, col)),
+        }
+    }
+
+    fn to_compiler_mipsy_result(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<T> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(error) => Err(error.to_compiler_mipsy_error(file_tag, line, col, col_end)),
+        }
+    }
+
+    fn to_runtime_mipsy_result(self) -> MipsyResult<T> {
+        match self {
+            Ok(t) => Ok(t),
+            Err(error) => Err(error.to_runtime_mipsy_error()),
+        }
+    }
+}
+
+impl InternalError {
+    pub fn to_parser_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32) -> MipsyError {
+        match self {
+            InternalError::Parser(error) => {
+                MipsyError::Parser(
+                    ParserError::new(error, file_tag, line, col)
+                )
+            }
+            InternalError::Compiler(..) => panic!("expected error type parser didn't match actual error type compiler"),
+            InternalError::Runtime(error) => {
+                MipsyError::Runtime(
+                    RuntimeError::new(error)
+                )
+            }
+        }
+    }
+
+    pub fn to_compiler_mipsy_error(self, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyError {
+        match self {
+            InternalError::Parser(error) => {
+                MipsyError::Parser(
+                    ParserError::new(error, file_tag, line, col)
+                )
+            }
+            InternalError::Compiler(error) => {
+                MipsyError::Compiler(
+                    CompilerError::new(error, file_tag, line, col, col_end)
+                )
+            }
+            InternalError::Runtime(error) => {
+                MipsyError::Runtime(
+                    RuntimeError::new(error)
+                )
+            }
+        }
+    }
+
+    pub fn to_runtime_mipsy_error(self) -> MipsyError {
+        match self {
+            InternalError::Parser(..) => panic!("expected error type runtime didn't match actual error type parser"),
+            InternalError::Compiler(..) => panic!("expected error type runtime didn't match actual error type compiler"),
+            InternalError::Runtime(error) => {
+                MipsyError::Runtime(
+                    RuntimeError::new(error)
+                )
+            }
+        }
+    }
 }
 
 #[macro_export]

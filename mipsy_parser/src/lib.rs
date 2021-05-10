@@ -35,7 +35,7 @@ where
 {
     let string = misc::tabs_to_spaces(input);
 
-    parse_result(Span::new(string.as_bytes()), instruction::parse_instruction)
+    parse_result(Span::new(string.as_bytes()), None, instruction::parse_instruction)
 }
 
 pub fn parse_argument<T>(input: T) -> Result<MPArgument, ErrorLocation>
@@ -46,6 +46,7 @@ where
 
     parse_result(
         Span::new(string.as_bytes()),
+        None,
         map(
             instruction::parse_argument,
             |(arg, _, _)| arg

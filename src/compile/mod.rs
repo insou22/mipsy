@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use crate::{error::CompileError, InstSet, MPProgram, MipsyResult, util::{Safe, cerr}};
+use std::{collections::HashMap, rc::Rc};
+use crate::{InstSet, MPProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
 use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
 
 mod checker;
-use checker::{
+pub use checker::{
     check_pre,
     check_post_data_label,
 };
@@ -34,11 +34,11 @@ pub struct Binary {
     pub labels:  CaseInsensitiveHashMap<u32>,
     pub breakpoints:  Vec<u32>,
     pub globals: Vec<String>,
-    pub line_numbers: HashMap<u32, u32>,
+    pub line_numbers: HashMap<u32, (Rc<str>, u32)>,
 }
 
 impl Binary {
-    pub fn get_label(&self, label: &str) -> MipsyResult<u32> {
+    pub fn get_label(&self, label: &str) -> MipsyInternalResult<u32> {
         if let Some(&addr) = self.labels.get(label) {
             Ok(addr)
         } else {
@@ -56,7 +56,14 @@ impl Binary {
                     .map(|(_, label)| label)
                     .collect::<Vec<_>>();
 
-            cerr(CompileError::UnresolvedLabel(label.to_string(), similar))
+            Err(
+                InternalError::Compiler(
+                    compiler::Error::UnresolvedLabel {
+                        label: label.to_string(),
+                        similar,
+                    }
+                )
+            )
         }
     }
 
@@ -100,5 +107,5 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
 }
 
 fn get_kernel() -> MPProgram {
-    mipsy_parser::parse_mips(KERN_FILE).unwrap()
+    mipsy_parser::parse_mips(vec![(None, &KERN_FILE)]).unwrap()
 }

@@ -1,12 +1,13 @@
-use std::str::FromStr;
+use std::{collections::HashMap, fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
-use mipsy_lib::*;
-use interactive::prompt;
+use colored::Colorize;
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, RuntimeHandler, error::runtime::ErrorContext, fd, flags, len, mode, n_bytes, void_ptr};
+use mipsy_interactive::{
+    prompt,
+};
 use clap::Clap;
-
-mod interactive;
-mod error;
+use text_io::try_read;
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
@@ -19,19 +20,32 @@ struct Opts {
     hex_pad_zero: bool,
     #[clap(long, short('v'))]
     version: bool,
-    file: Option<String>,
+    files: Vec<String>,
 }
 
-fn get_input<T: FromStr>(name: &str) -> T {
+fn get_input<T>(name: &str, line: bool) -> T
+where
+    T: FromStr + Display,
+    <T as FromStr>::Err: Debug,
+{
     loop {
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
+        let result: Result<T, _> = if line {
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).unwrap();
+            
+            input.parse()
+                .map_err(|_| ())
+        } else {
+            try_read!()
+                .map_err(|_| ())
+        };
 
-        match input.trim().parse::<T>() {
+        match result {
             Ok(n) => return n,
             Err(_) => {
                 print!("[mipsy] bad input (expected {}), try again: ", name);
                 std::io::stdout().flush().unwrap();
+
                 continue;
             },
         };
@@ -59,25 +73,34 @@ impl RuntimeHandler for Handler {
     }
 
     fn sys5_read_int(&mut self) -> i32 {
-        get_input("int")
+        get_input("int", false)
     }
 
     fn sys6_read_float(&mut self) -> f32 {
-        get_input("float")
+        get_input("float", false)
     }
 
     fn sys7_read_double(&mut self) -> f64 {
-        get_input("double")
+        get_input("double", false)
     }
 
     fn sys8_read_string(&mut self, max_len: u32) -> String {
         loop {
-            let input: String = get_input("string");
+            let input: String = get_input("string", true);
 
             if input.len() > max_len as usize {
                 println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes)", max_len, input.len());
                 print!  ("[mipsy] please try again: ");
                 std::io::stdout().flush().unwrap();
+
+                continue;
+            }
+
+            if input.len() == max_len as usize {
+                println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len());
+                print!  ("[mipsy] please try again: ");
+                std::io::stdout().flush().unwrap();
+
                 continue;
             }
 
@@ -98,7 +121,7 @@ impl RuntimeHandler for Handler {
     }
 
     fn sys12_read_char(&mut self) -> char {
-        get_input("character")
+        get_input("character", false)
     }
 
     fn sys13_open(&mut self, _path: String, _flags: flags, _mode: mode) -> fd {
@@ -129,33 +152,51 @@ impl RuntimeHandler for Handler {
 fn main() {
     let opts: Opts = Opts::parse();
 
-    if opts.file.is_none() {
-        interactive::launch();
+    if opts.files.is_empty() {
+        // launch() returns !
+        mipsy_interactive::launch();
     }
 
-    let file = opts.file.as_ref().unwrap();
-    let file_contents = std::fs::read_to_string(file).expect("Could not read file {}");
+    let files = opts.files.into_iter()
+            .map(|name| {
+                let file_contents = match fs::read_to_string(&name) {
+                    Ok(contents) => contents,
+                    Err(err) => {
+                        prompt::error_nl(format!("failed to read file `{}`: {}", name.bold(), err.to_string().bright_red()));
+            
+                        process::exit(1);
+                    },
+                };
 
-    let (iset, binary, mut runtime) = match compile(&file_contents) {
+                (name, file_contents)
+            })
+            .collect::<HashMap<_, _>>();
+
+    let (iset, binary, mut runtime) = match compile(&files) {
         Ok((iset, binary, runtime)) => (iset, binary, runtime),
 
-        Err(MipsyError::Compile(error)) => {
-            prompt::error(format!("failed to compile `{}`", file));
-            error::compile_error::handle(error, &file_contents, None, None, None);
-            return;
+        Err(MipsyError::Parser(error)) => {
+            prompt::error(format!("failed to parse `{}`", error.file_tag()));
+            error.show_error(error.file_tag());
+
+            process::exit(1);
         }
 
-        Err(MipsyError::CompileLoc { line, col, col_end, error }) => {
-            prompt::error(format!("failed to compile `{}`", file));
-            error::compile_error::handle(error, &file_contents, line, col, col_end);
-            return;
+        Err(MipsyError::Compiler(error)) => {
+            prompt::error(format!("failed to compile `{}`", error.file_tag()));
+            error.show_error(error.file_tag());
+
+            process::exit(1);
         }
-        _ => unreachable!(),
+
+        // unreachable: a bit tricky to get a runtime error at compile-time
+        Err(MipsyError::Runtime(_)) => unreachable!(),
     };
 
     if opts.compile {
         let decompiled = mipsy_lib::decompile(&iset, &binary);
         println!("Compiled program:\n{}\n", decompiled);
+
         return;
     }
 
@@ -176,19 +217,35 @@ fn main() {
 
         match runtime.step(&mut handler) {
             Ok(_) => {}
+            
             Err(MipsyError::Runtime(error)) => {
-                error::runtime_error::handle(error, &file_contents, &iset, &binary, &runtime, None, false);
-                break;
+                error.show_error(
+                    ErrorContext::Binary,
+                    files.iter()
+                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                        .collect(),
+                    &iset,
+                    &binary,
+                    &runtime
+                );
+
+                process::exit(1);
             }
+
+            // unreachable: the only possible error at runtime is a MipsyError::Runtime
             _ => unreachable!(),
         }
     }
 }
 
-fn compile(file: &str) -> MipsyResult<(InstSet, Binary, Runtime)> {
-    let iset       = mipsy_lib::inst_set()?;
-    let binary     = mipsy_lib::compile(&iset, file)?;
-    let runtime    = mipsy_lib::runtime(&binary);
+fn compile(files: &HashMap<String, String>) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    let files = files.iter()
+            .map(|(k, v)| (Some(&**k), &**v))
+            .collect::<Vec<_>>();
+
+    let iset    = mipsy_lib::inst_set();
+    let binary   = mipsy_lib::compile(&iset, files)?;
+    let runtime = mipsy_lib::runtime(&binary);
 
     Ok((iset, binary, runtime))
 }

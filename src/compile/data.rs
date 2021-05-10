@@ -1,4 +1,6 @@
-use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, inst::instruction::InstSet, util::{Safe, WithLoc}};
+use std::rc::Rc;
+
+use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, error::ToMipsyResult, inst::instruction::InstSet, util::Safe};
 use super::{
     TEXT_BOT,
     DATA_BOT,
@@ -24,9 +26,11 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
     let mut ktext_len = 0;
     let mut segment = Segment::Text;
 
-    for item in program.items() {
-        let line = item.1;
-        match &item.0 {
+    for (item, file_tag, line) in program.items() {
+        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
+        let line = *line;
+        
+        match item {
             MPItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text || segment == Segment::KText {
@@ -52,7 +56,7 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                         let chars: Vec<char> = string.chars().collect();
 
                         insert_data(&segment, binary, &chars);
-                        insert_data(&segment, binary, &[0]);
+                        insert_data(&segment, binary, &[0u8]);
                     }
                     MPDirective::Byte(bytes) => {
                         insert_data(&segment, binary, bytes);
@@ -107,10 +111,12 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 // how many bytes-worth we've seen so far
                 match segment {
                     Segment::Text => {
-                        text_len += instruction_length(iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())? * 4;
+                        text_len += instruction_length(iset, instruction)
+                            .to_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
                     }
                     Segment::KText => {
-                        ktext_len += instruction_length(iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())? * 4;
+                        ktext_len += instruction_length(iset, instruction)
+                            .to_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
                     }
                     _ => {
                         todo!()

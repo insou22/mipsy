@@ -9,9 +9,6 @@ use crate::{
         comment_multispace1,
     },
     number::{
-        parse_i8,
-        parse_i16,
-        parse_i32,
         parse_u32,
         parse_f32,
         parse_f64,
@@ -24,10 +21,7 @@ use nom::{
     bytes::complete::{
         tag,
     },
-    character::complete::{
-        char,
-        space0,
-    },
+    character::complete::char,
     combinator::{
         map,
     },
@@ -45,9 +39,9 @@ pub enum MPDirective {
     KData,
     Ascii(String),
     Asciiz(String),
-    Byte(Vec<i8>),
-    Half(Vec<i16>),
-    Word(Vec<i32>),
+    Byte(Vec<u8>),
+    Half(Vec<u16>),
+    Word(Vec<u32>),
     Float(Vec<f32>),
     Double(Vec<f64>),
     Align(u32),
@@ -126,7 +120,7 @@ fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResul
             )
         ) = tuple((
             tag(tag_str),
-            space0,
+            comment_multispace0,
             char('"'),
             many_till(parse_escaped_char, char('"')),
         ))(i)?;
@@ -187,21 +181,21 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
 
 fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
-        parse_num_type(".byte", parse_i8),
+        parse_num_type(".byte", crate::number::parse_byte),
         MPDirective::Byte,
     )(i)
 }
 
 fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
-        parse_num_type(".half", parse_i16),
+        parse_num_type(".half", crate::number::parse_half),
         MPDirective::Half,
     )(i)
 }
 
 fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     map(
-        parse_num_type(".word", parse_i32),
+        parse_num_type(".word", crate::number::parse_word),
         MPDirective::Word,
     )(i)
 }

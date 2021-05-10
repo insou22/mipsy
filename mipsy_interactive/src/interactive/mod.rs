@@ -1,10 +1,12 @@
-pub(crate) mod prompt;
+pub mod prompt;
 pub(crate) mod commands;
 mod helper;
 mod error;
 mod runtime_handler;
 
-use mipsy_lib::{CompileError, MipsyError};
+use std::{collections::HashMap, rc::Rc};
+
+use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}};
 use helper::MyHelper;
 
 use rustyline::{
@@ -33,7 +35,7 @@ use self::error::{CommandError, CommandResult};
 pub(crate) struct State {
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
-    pub(crate) program: Option<String>,
+    pub(crate) program: Option<HashMap<String, String>>,
     pub(crate) binary:  Option<Binary>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
@@ -44,7 +46,7 @@ pub(crate) struct State {
 impl State {
     fn new() -> Self {
         Self {
-            iset: mipsy_lib::inst_set().unwrap(),
+            iset: mipsy_lib::inst_set(),
             commands: vec![],
             program: None,
             binary:  None,
@@ -166,17 +168,44 @@ impl State {
             CommandError::CannotReadFile { path, os_error, } => {
                 prompt::error(format!("failed to read file `{}`: {}", path, os_error));
             }
-            CommandError::CannotCompile  { path, program, mipsy_error, } => {
-                prompt::error(format!("failed to compile `{}`", path));
-                self.mipsy_error(mipsy_error, Some(&program), None);
+            CommandError::CannotCompile  { mipsy_error } => {
+                let file_tag = match mipsy_error {
+                    MipsyError::Parser(ref error) => error.file_tag(),
+                    MipsyError::Compiler(ref error) => error.file_tag(),
+                    // unreachable: can't have a runtime error at compile time (hopefully)
+                    MipsyError::Runtime(_) => unreachable!(),
+                };
+
+                let file_prompt = {
+                    if file_tag.is_empty() {
+                        String::new()
+                    } else {
+                        format!("`{}`", file_tag)
+                    }
+                };
+
+                prompt::error(format!("failed to compile {}", file_prompt));
+                self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);
             }
-            CommandError::CannotParseLine { line, col } => {
+            CommandError::CannotParseLine { line, error } => {
                 prompt::error("failed to parse");
-                self.mipsy_error(MipsyError::Compile(CompileError::ParseFailure { line: 1, col }), Some(&line), None);
+
+                self.mipsy_error(
+                    MipsyError::Parser(
+                        ParserError::new(
+                            parser::Error::ParseFailure,
+                            Rc::from(""),
+                            error.line,
+                            error.col as u32,
+                        )
+                    ),
+                    ErrorContext::REPL,
+                    Some(line),
+                );
             }
-            CommandError::CannotCompileLine { line, mipsy_error } => {
+            CommandError::CannotCompileLine { line, error } => {
                 prompt::error("failed to compile instruction");
-                self.mipsy_error(mipsy_error, Some(&line), None);
+                self.mipsy_error(error, ErrorContext::REPL, Some(line));
             }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
@@ -192,10 +221,10 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RuntimeError { mipsy_error, } => {
-                self.mipsy_error(mipsy_error, None, None);
+                self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);
             }
             CommandError::REPLRuntimeError { mipsy_error, line, } => {
-                self.mipsy_error(mipsy_error, None, Some(line));
+                self.mipsy_error(mipsy_error, ErrorContext::REPL, Some(line));
             }
             CommandError::WithTip { error, tip, } => {
                 self.handle_error(*error, false);
@@ -218,24 +247,28 @@ impl State {
         }
     }
 
-    pub(crate) fn mipsy_error(&self, error: MipsyError, program: Option<&str>, repl_line: Option<String>) {
+    pub(crate) fn mipsy_error(&self, error: MipsyError, context: ErrorContext, repl_line: Option<String>) {
         match error {
-            MipsyError::Compile(error) => {
-                crate::error::compile_error::handle(error, program.unwrap(), None, None, None);
+            MipsyError::Parser(error) => {
+                error.show_error(error.file_tag());
             }
-            MipsyError::CompileLoc { line, col, col_end, error } => {
-                crate::error::compile_error::handle(error, program.unwrap(), line, col, col_end);
+            MipsyError::Compiler(error) => {
+                error.show_error(error.file_tag());
             }
             MipsyError::Runtime(error) => {
-                crate::error::runtime_error::handle(
-                    error,
-                    self.program.as_ref().unwrap(),
+                error.show_error(
+                    context,
+                    if let Some(line) = repl_line {
+                        vec![(Rc::from(""), Rc::from(&*line))]
+                    } else {
+                        self.program.as_ref().unwrap().iter()
+                            .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                            .collect()
+                    },
                     &self.iset,
                     self.binary.as_ref().unwrap(),
                     self.runtime.as_ref().unwrap(),
-                    repl_line,
-                    true,
-                );
+                )
             }
         }
     }
@@ -356,7 +389,7 @@ fn state() -> State {
     state
 }
 
-pub(crate) fn launch() -> ! {
+pub fn launch() -> ! {
     let mut rl = editor();
     let mut state = state();
 

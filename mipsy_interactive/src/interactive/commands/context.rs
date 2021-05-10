@@ -1,6 +1,6 @@
 use mipsy_lib::decompile;
-use crate::KTEXT_BOT;
-use crate::TEXT_BOT;
+use mipsy_lib::KTEXT_BOT;
+use mipsy_lib::TEXT_BOT;
 use crate::interactive::{error::CommandError, commands::util::expect_u32};
 use super::*;
 use colored::*;

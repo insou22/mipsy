@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use mipsy_parser::{MPArgument, MPImmediate, MPItem, MPNumber, MPRegister};
 
-use crate::{Binary, MPProgram, MipsyResult, inst::instruction::ToRegister, util::WithLoc};
+use crate::{Binary, MPProgram, MipsyResult, error::ToMipsyResult, inst::instruction::ToRegister};
 
 pub enum Warning {
 
@@ -9,10 +11,11 @@ pub enum Warning {
 pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
-    for item in program.items() {
-        let line = item.1;
+    for (item, file_tag, line) in program.items() {
+        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
+        let line = *line;
 
-        match &item.0 {
+        match item {
             MPItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
@@ -22,7 +25,7 @@ pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
                                 MPRegister::Offset(_, id) => id,
                             };
 
-                            ident.to_register().with_line(line).with_col(*col).with_col_end(*col_end)?;
+                            ident.to_register().to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                         }
                         MPArgument::Number(_) => {}
                     }
@@ -41,10 +44,11 @@ pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
 pub fn check_post_data_label(program: &MPProgram, binary: &Binary) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
-    for item in program.items() {
-        let line = item.1;
+    for (item, file_tag, line) in program.items() {
+        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
+        let line = *line;
 
-        match &item.0 {
+        match item {
             MPItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
@@ -54,7 +58,8 @@ pub fn check_post_data_label(program: &MPProgram, binary: &Binary) -> MipsyResul
                                 MPNumber::Immediate(imm) => {
                                     match imm {
                                         MPImmediate::LabelReference(label) => {
-                                            binary.get_label(label).with_line(line).with_col(*col).with_col_end(*col_end)?;
+                                            binary.get_label(label)
+                                                .to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                                         }
                                         MPImmediate::I16(_) => {}
                                         MPImmediate::U16(_) => {}

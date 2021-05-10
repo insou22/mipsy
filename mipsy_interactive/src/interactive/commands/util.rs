@@ -1,4 +1,6 @@
-use crate::KTEXT_BOT;
+use std::collections::HashMap;
+
+use mipsy_lib::KTEXT_BOT;
 use crate::interactive::{error::{CommandError, CommandResult}, prompt};
 use colored::*;
 use mipsy_lib::{Binary, decompile::Decompiled, InstSet, decompile::decompile_inst_into_parts};
@@ -28,7 +30,7 @@ where
     }
 }
 
-pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, file: Option<&str>, highlight: bool) {
+pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, files: Option<&HashMap<String, String>>, highlight: bool) {
     if parts.inst_name.is_none() {
         return;
     }
@@ -85,8 +87,8 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, file: Option
         } else {
             format!("0x{:08x}", parts.addr).bright_black()
         },
-        match parts.line_num {
-            Some(num) => format!("{:<3}", num),
+        match parts.location {
+            Some((_, num)) => format!("{:<3}", num),
             None      => {
                 if parts.addr >= KTEXT_BOT {
                     "kernel".yellow().bold().to_string()
@@ -101,8 +103,8 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, file: Option
     );
 
     let mut line_part = String::new();
-    if let Some(line_num) = parts.line_num {
-        if let Some(file) = file {
+    if let Some((file_name, line_num)) = parts.location.clone() {
+        if let Some(file) = files.and_then(|files| files.get(&*file_name)) {
             if let Some(line) = file.lines().nth((line_num - 1) as usize) {
                 let repeat_space = {
                     let chars = strip_ansi_escapes::strip(&decompiled_part).unwrap().len();
@@ -122,9 +124,9 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, file: Option
     println!("{:60}{}", decompiled_part, line_part);
 }
 
-pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, file: Option<&str>) {
+pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&HashMap<String, String>>) {
     let parts = decompile_inst_into_parts(binary, iset, inst, addr);
-    print_inst_parts(binary, &parts, file, false);
+    print_inst_parts(binary, &parts, files, false);
 }
 
 pub(crate) fn get_last_line(binary: &Binary, addr: u32) -> u32 {
@@ -133,12 +135,12 @@ pub(crate) fn get_last_line(binary: &Binary, addr: u32) -> u32 {
     let mut lines = binary.line_numbers.iter().collect::<Vec<_>>();
     lines.sort_by_key(|&(addr, _line)| addr);
 
-    for (&prev_addr, &prev_line) in lines {
+    for (&prev_addr, (_file_name, prev_line)) in lines {
         if prev_addr >= addr {
             break;
         }
 
-        last_line = prev_line;
+        last_line = *prev_line;
     }
 
     last_line

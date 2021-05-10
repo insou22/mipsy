@@ -1,2 +1,2 @@
 #!/bin/zsh
-./extras/cargo.sh b "$@"
+cd mipsy && cargo build "$@"

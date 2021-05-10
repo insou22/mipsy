@@ -1,4 +1,5 @@
-use mipsy_lib::MipsyError;
+use mipsy_lib::{MipsyError};
+use mipsy_parser::ErrorLocation;
 
 pub type CommandResult<T> = Result<T, CommandError>;
 
@@ -10,9 +11,9 @@ pub enum CommandError {
     ArgExpectedU32     { arg: String, instead: String, },
     HelpUnknownCommand { command: String },
     CannotReadFile     { path: String, os_error: String, },
-    CannotCompile      { path: String, program: String, mipsy_error: MipsyError },
-    CannotParseLine    { line: String, col: usize },
-    CannotCompileLine  { line: String, mipsy_error: MipsyError },
+    CannotCompile      { mipsy_error: MipsyError },
+    CannotParseLine    { line: String, error: ErrorLocation },
+    CannotCompileLine  { line: String, error: MipsyError },
     UnknownRegister    { register: String },
     UnknownLabel       { label: String },
     UninitialisedPrint { addr: u32 },

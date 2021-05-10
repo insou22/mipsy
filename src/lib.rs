@@ -1,25 +1,28 @@
-pub(crate) mod error;
-pub(crate) mod inst;
-pub(crate) mod yaml;
-pub(crate) mod util;
-pub(crate) mod compile;
-pub        mod decompile;
-pub(crate) mod runtime;
-pub(crate) use mipsy_parser::MPProgram;
+pub mod error;
+pub mod inst;
+pub mod yaml;
+pub mod util;
+pub mod compile;
+pub mod decompile;
+pub mod runtime;
+use std::rc::Rc;
+
+pub use mipsy_parser::MPProgram;
 
 pub use error::{
     MipsyResult,
     MipsyError,
-    CompileError,
+    ParserError,
+    CompilerError,
     RuntimeError,
-    runtime_error::Uninitialised,
+    runtime::Uninitialised,
 };
 pub use inst::instruction::{
     InstSet,
     ArgumentType,
 };
 pub use inst::register::Register;
-pub use compile::Binary;
+pub use compile::{Binary};
 pub use runtime::{
     Runtime,
     State,
@@ -41,14 +44,25 @@ pub use compile::{
 };
 pub use util::Safe;
 
-pub fn inst_set() -> MipsyResult<InstSet> {
+pub fn inst_set() -> InstSet {
     let yaml = yaml::get_instructions();
+    
     InstSet::new(&yaml)
 }
 
-pub fn compile(iset: &InstSet, program: &str) -> MipsyResult<Binary> {
-    let parsed = mipsy_parser::parse_mips(program)
-            .map_err(|err| error::MipsyError::Compile(error::CompileError::ParseFailure { line: err.line, col: err.col }))?;
+pub fn compile(iset: &InstSet, files: Vec<(Option<&str>, &str)>) -> MipsyResult<Binary> {
+    let parsed = mipsy_parser::parse_mips(files)
+        .map_err(|err| 
+            error::MipsyError::Parser(
+                ParserError::new(
+                    error::parser::Error::ParseFailure,
+                    err.file_name.unwrap_or_else(|| Rc::from("")),
+                    err.line,
+                    err.col as u32
+                )
+            )
+        )?;
+
     let compiled = compile::compile(&parsed, &iset)?;
 
     Ok(compiled)

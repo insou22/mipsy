@@ -8,19 +8,19 @@ impl ToBytes for char {
     }
 }
 
-impl ToBytes for i8 {
+impl ToBytes for u8 {
     fn to_bytes(&self) -> Vec<u8> {
-        vec![*self as u8]
+        vec![*self]
     }
 }
 
-impl ToBytes for i16 {
+impl ToBytes for u16 {
     fn to_bytes(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }
 }
 
-impl ToBytes for i32 {
+impl ToBytes for u32 {
     fn to_bytes(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }

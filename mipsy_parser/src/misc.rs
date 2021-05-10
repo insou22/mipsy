@@ -1,40 +1,39 @@
+use std::{rc::Rc, u8};
+
 use crate::Span;
 use nom::{
     IResult,
-    Err::Error,
-    error::{
-        ParseError,
-        ErrorKind,
-    },
+    branch::alt,
+    bytes::complete::is_a,
     character::complete::{
+        anychar,
         char,
-        one_of,
-        none_of,
         multispace1,
-    },
-    multi::{
-        many0,
-        many1
+        none_of,
+        one_of
     },
     combinator::{
         map,
         opt,
     },
+    multi::{
+        many0,
+        many1
+    },
     sequence::{
         tuple,
         preceded,
     },
-    branch::alt,
-    bytes::complete::is_a,
 };
 
 #[derive(Debug)]
 pub struct ErrorLocation {
+    pub file_name: Option<Rc<str>>,
     pub line: u32,
     pub col:  usize,
 }
 
-pub(crate) fn parse_result<'a, T, P>(i: Span<'a>, mut parser: P) -> Result<T, ErrorLocation> 
+pub(crate) fn parse_result<'a, T, P>(i: Span<'a>, file_name: Option<Rc<str>>, mut parser: P) -> Result<T, ErrorLocation> 
 where
     P: FnMut(Span<'a>) -> IResult<Span<'a>, T>
 {
@@ -46,6 +45,7 @@ where
                 match comment_multispace0(leftover) {
                     Ok((leftover, _)) => {
                         Err(ErrorLocation {
+                            file_name,
                             line: leftover.location_line(),
                             col:  leftover.get_column(),
                         })
@@ -127,11 +127,10 @@ pub fn parse_ident<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
 }
 
 pub fn parse_any1<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
-    if i.len() > 0 {
-        Ok((Span::new(&i.fragment()[1..]), i[0]))
-    } else {
-        Err(Error(ParseError::from_error_kind(i, ErrorKind::Eof)))
-    }
+    map(
+        anychar,
+        |char| char as u8,
+    )(i)
 }
 
 pub fn comment_multispace0<'a>(i: Span<'a>) -> IResult<Span<'a>, ()> {

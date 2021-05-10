@@ -28,7 +28,7 @@ pub(crate) fn step2syscall_command() -> Command {
                 let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
                 let syscall = if let Ok(inst) = runtime.next_inst() {
-                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_deref());
+                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_ref());
 
                     inst == 0xC
                 } else {

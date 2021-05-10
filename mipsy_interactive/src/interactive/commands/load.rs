@@ -1,14 +1,15 @@
+use std::collections::HashMap;
+
 use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
 use colored::*;
 
 pub(crate) fn load_command() -> Command {
-    command(
+    command_varargs(
         "load",
         vec!["l"],
         vec!["file"],
-        vec![],
         "load a MIPS file to run",
         &format!(
             "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
@@ -18,16 +19,27 @@ pub(crate) fn load_command() -> Command {
             "print".bold(),
         ),
         |state, _label, args| {
-            let path = &args[0];
 
-            let program = std::fs::read_to_string(path)
-                .map_err(|err| CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })?;
+            let program: HashMap<_, _> = args.iter()
+                    .map(|path| {
+                        let value = match std::fs::read_to_string(path) {
+                            Ok(content) => Ok((path.to_string(), content)),
+                            Err(err) => Err(CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })
+                        };
+
+                        value
+                    })
+                    .collect::<Result<_, _>>()?;
 
             state.program = Some(program);
             let program = state.program.as_ref().unwrap();
 
-            let binary = mipsy_lib::compile(&state.iset, program)
-                .map_err(|err| CommandError::CannotCompile { path: path.clone(), program: program.clone(), mipsy_error: err })?;
+            let binary_files = program.iter()
+                    .map(|(path, file)| (Some(&**path), &**file))
+                    .collect::<Vec<_>>();
+
+            let binary = mipsy_lib::compile(&state.iset, binary_files)
+                .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
             let runtime = mipsy_lib::runtime(&binary);
 

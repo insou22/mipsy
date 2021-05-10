@@ -46,9 +46,6 @@ name = "bytecount"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0017894339f586ccb943b01b9555de56770c11cda818e7e3d8bd93f4ed7f46e"
-dependencies = [
- "packed_simd",
-]
 
 [[package]]
 name = "case_insensitive_hashmap"
@@ -263,12 +260,29 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "mipsy_interactive",
  "mipsy_lib",
  "mipsy_parser",
  "rustyline",
  "rustyline-derive",
  "shlex",
  "strip-ansi-escapes",
+ "text_io",
+ "vergen",
+]
+
+[[package]]
+name = "mipsy_interactive"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "mipsy_lib",
+ "mipsy_parser",
+ "rustyline",
+ "rustyline-derive",
+ "shlex",
+ "strip-ansi-escapes",
+ "text_io",
  "vergen",
 ]
 
@@ -277,9 +291,11 @@ name = "mipsy_lib"
 version = "0.1.0"
 dependencies = [
  "case_insensitive_hashmap",
+ "colored",
  "mipsy_parser",
  "serde",
  "serde_yaml",
+ "strip-ansi-escapes",
  "strsim",
  "vergen",
 ]
@@ -319,12 +335,13 @@ dependencies = [
 
 [[package]]
 name = "nom_locate"
-version = "2.1.0"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eea0a4e89c311de638c9f933521dbb8c7c4ab1cf722d0d6920aae0eb5c5c102"
 dependencies = [
  "bytecount",
  "memchr",
  "nom",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -351,15 +368,6 @@ name = "os_str_bytes"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ac6fe3538f701e339953a3ebbe4f39941aababa8a3f6964635b24ab526daeac"
-
-[[package]]
-name = "packed_simd"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85ea9fc0d4ac0deb6fe7911d38786b32fc11119afd9e9d38b84ff691ce64220"
-dependencies = [
- "cfg-if 0.1.10",
-]
 
 [[package]]
 name = "proc-macro-error"
@@ -505,12 +513,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -556,6 +558,12 @@ checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "text_io"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cb170b4f47dc48835fbc56259c12d8963e542b05a24be2e3a1f5a6c320fd2d4"
 
 [[package]]
 name = "textwrap"

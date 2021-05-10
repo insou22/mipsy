@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     Span,
     ErrorLocation,
@@ -27,7 +29,7 @@ use nom_locate::position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MPProgram {
-    pub(crate) items: Vec<(MPItem, u32)>,
+    pub(crate) items: Vec<(MPItem, Option<Rc<str>>, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,12 +40,26 @@ pub enum MPItem {
 }
 
 impl MPProgram {
-    pub fn items(&self) -> &[(MPItem, u32)] {
+    pub fn new(items: Vec<(MPItem, Option<Rc<str>>, u32)>) -> Self {
+        Self {
+            items,
+        }
+    }
+
+    pub fn items(&self) -> &[(MPItem, Option<Rc<str>>, u32)] {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut Vec<(MPItem, u32)> {
+    pub fn items_mut(&mut self) -> &mut Vec<(MPItem, Option<Rc<str>>, u32)> {
         &mut self.items
+    }
+
+    fn merge(&mut self, mut other: MPProgram) {
+        if !self.items.is_empty() {
+            self.items.push((MPItem::Directive(MPDirective::Text), None, 0));
+        }
+
+        self.items.append(&mut other.items);
     }
 }
 
@@ -63,27 +79,45 @@ pub fn parse_mips_item<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPItem, u32)> {
     )(i)
 }
 
-pub fn parse_mips_bytes<'a>(i: Span<'a>) -> IResult<Span<'a>, MPProgram> {
-    let (
-        remaining_input,
-        items
-    ) = many0(parse_mips_item)(i)?;
 
-    Ok((
-        remaining_input,
-        MPProgram {
+pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MPProgram> {
+    move |i| {
+        let (
+            remaining_input,
             items
-        },
-    ))
+        ) = many0(
+            map(
+                parse_mips_item,
+                |(item, line)| (item, file_name.clone(), line),
+            ),
+        )(i)?;
+
+        Ok((
+            remaining_input,
+            MPProgram {
+                items
+            },
+        ))
+    }
 }
 
-pub fn parse_mips<T>(input: T) -> Result<MPProgram, ErrorLocation>
-where
-    T: AsRef<str>,
-{
-    let string = crate::misc::tabs_to_spaces(input);
-    
-    parse_result(Span::new(string.as_bytes()), parse_mips_bytes)
+pub fn parse_mips(files: Vec<(Option<&str>, &str)>) -> Result<MPProgram, ErrorLocation> {
+    let mut program = MPProgram {
+        items: vec![],    
+    };
+
+    for file in files {
+        let (file_name, input) = file;
+
+        let file_name = file_name.map(|name| Rc::from(name));
+
+        let string = crate::misc::tabs_to_spaces(input);
+        let result = parse_result(Span::new(string.as_bytes()), file_name.clone(), parse_mips_bytes(file_name))?;
+
+        program.merge(result);
+    }
+
+    Ok(program)
 }
 
 // #[cfg(test)]

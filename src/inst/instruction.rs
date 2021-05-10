@@ -1,5 +1,5 @@
 use std::{collections::HashMap, fmt, str::FromStr};
-use crate::{Binary, error::MipsyResult, TEXT_BOT};
+use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
 use serde::{Serialize, Deserialize};
 use super::register::Register;
 use crate::yaml::YamlFile;
@@ -99,7 +99,7 @@ pub enum SignatureRef<'a> {
 }
 
 impl InstSet {
-    pub fn new(yaml: &YamlFile) -> MipsyResult<Self> {
+    pub fn new(yaml: &YamlFile) -> Self {
         super::yaml::from_yaml(yaml)
     }
 
@@ -141,7 +141,7 @@ impl InstSet {
 }
 
 impl InstSignature {
-    pub fn compile(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<u32> {
+    pub fn compile(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyInternalResult<u32> {
         let mut inst: u32 = 0;
 
         match self.runtime {
@@ -448,7 +448,7 @@ impl PseudoVariable {
 }
 
 impl PseudoSignature {
-    fn lower_upper(&self, program: &Binary, arg: &MPArgument, last: bool) -> MipsyResult<(u16, u16)> {
+    fn lower_upper(&self, program: &Binary, arg: &MPArgument, last: bool) -> MipsyInternalResult<(u16, u16)> {
         let (lower, upper) = match arg {
             MPArgument::Register(reg) => match reg {
                 MPRegister::Offset(imm, _) => self.lower_upper(program, &MPArgument::Number(MPNumber::Immediate(imm.clone())), last)?,
@@ -505,7 +505,7 @@ impl PseudoSignature {
         value: MPArgument, 
         variables: &mut HashMap<String, MPArgument>, 
         used: &mut HashMap<String, usize>, last: bool
-    ) -> MipsyResult<()> {
+    ) -> MipsyInternalResult<()> {
 
         let mappings: Vec<(String, MPArgument)> = match var_type {
             PseudoVariable::I32 | PseudoVariable::U32 | PseudoVariable::Off32 => {
@@ -540,7 +540,7 @@ impl PseudoSignature {
         Ok(())
     }
 
-    fn get_variables(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<HashMap<String, MPArgument>> {
+    fn get_variables(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyInternalResult<HashMap<String, MPArgument>> {
         let mut variables: HashMap<String, MPArgument> = HashMap::new();
         let mut used: HashMap<String, usize> = HashMap::new();
 
@@ -629,7 +629,7 @@ impl PseudoSignature {
         Ok(variables)
     }
 
-    fn pre_process(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<Vec<(String, Vec<MPArgument>)>> {
+    fn pre_process(&self, program: &Binary, args: Vec<&MPArgument>) -> MipsyInternalResult<Vec<(String, Vec<MPArgument>)>> {
         let variables = self.get_variables(program, args)?;
 
         let mut new_instns: Vec<(String, Vec<MPArgument>)> = vec![];
@@ -689,7 +689,7 @@ impl PseudoSignature {
         Ok(new_instns)
     }
 
-    pub fn compile(&self, iset: &InstSet, program: &Binary, args: Vec<&MPArgument>) -> MipsyResult<Vec<u32>> {
+    pub fn compile(&self, iset: &InstSet, program: &Binary, args: Vec<&MPArgument>) -> MipsyInternalResult<Vec<u32>> {
         let instns = self.pre_process(program, args)?;
 
         let mut ops = vec![];
@@ -717,7 +717,7 @@ impl<'a> SignatureRef<'a> {
         }
     }
 
-    pub fn compile_ops(&self, binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyResult<Vec<u32>> {
+    pub fn compile_ops(&self, binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<Vec<u32>> {
         Ok(
             match self {
                 Self::Native(sig) => vec![sig.compile(binary, inst.arguments().iter().map(|(arg, _, _)| arg).collect())?],
@@ -744,11 +744,11 @@ impl Signature {
 }
 
 pub(crate) trait ToRegister {
-    fn to_register(&self) -> MipsyResult<Register>;
+    fn to_register(&self) -> MipsyInternalResult<Register>;
 }
 
 impl ToRegister for MPRegisterIdentifier {
-    fn to_register(&self) -> MipsyResult<Register> {
+    fn to_register(&self) -> MipsyInternalResult<Register> {
         Ok(
             match self {
                 MPRegisterIdentifier::Named(name) => Register::from_str(name)?,

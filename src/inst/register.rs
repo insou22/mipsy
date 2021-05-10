@@ -1,9 +1,5 @@
-use crate::MipsyError;
+use crate::error::{InternalError, MipsyInternalResult, compiler};
 use std::str::FromStr;
-
-use crate::error::MipsyResult;
-use crate::error::CompileError;
-use crate::util::cerr;
 
 #[derive(Copy, Clone)]
 pub enum Register {
@@ -56,9 +52,9 @@ pub const REGISTERS: [Register; 32] = [
 ];
 
 impl FromStr for Register {
-    type Err = MipsyError;
+    type Err = InternalError;
 
-    fn from_str(name: &str) -> MipsyResult<Self> {
+    fn from_str(name: &str) -> MipsyInternalResult<Self> {
         // $num
         if let Ok(number) = name.parse::<i32>() {
             return Self::from_number(number);
@@ -76,12 +72,25 @@ impl FromStr for Register {
            name.starts_with('t') || name.starts_with('s') || 
            name.starts_with('k') {
             if let Ok(num) = name[1..].parse::<i32>() {
-                return cerr(CompileError::NamedRegisterOutOfRange { reg_name: name.chars().next().unwrap(), reg_index: num });
+                return Err(
+                    InternalError::Compiler(
+                        compiler::Error::NamedRegisterOutOfRange {
+                            reg_name: name.chars().next().unwrap(),
+                            reg_index: num
+                        }
+                    )
+                );
             }
         }
 
         // who knows
-        cerr(CompileError::UnknownRegister(name.into()))
+        Err(
+            InternalError::Compiler(
+                compiler::Error::UnknownRegister {
+                    reg_name: name.to_string(),
+                }
+            )
+        )
     }
 }
 
@@ -127,7 +136,7 @@ impl Register {
         }
     }
 
-    pub fn from_number(num: i32) -> MipsyResult<Self> {
+    pub fn from_number(num: i32) -> MipsyInternalResult<Self> {
         match num {
             0  => Ok(Self::ZERO),
             1  => Ok(Self::AT),
@@ -161,11 +170,17 @@ impl Register {
             29 => Ok(Self::SP),
             30 => Ok(Self::FP),
             31 => Ok(Self::RA),
-            _  => cerr(CompileError::NumRegisterOutOfRange(num))
+            _  => Err(
+                InternalError::Compiler(
+                    compiler::Error::NumberedRegisterOutOfRange {
+                        reg_num: num,
+                    }
+                )
+            )
         }
     }
 
-    pub fn from_u32(num: u32) -> MipsyResult<Self> {
+    pub fn from_u32(num: u32) -> MipsyInternalResult<Self> {
         Self::from_number(num as i32)
     }
 

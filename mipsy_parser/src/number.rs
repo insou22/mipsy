@@ -101,7 +101,7 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                     tag("0x"),
                     hex_digit1,
                 )),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 16, digits)
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 16, String::from_utf8_lossy(digits.fragment()).to_string())
             ),
             map(
                 tuple((
@@ -109,7 +109,7 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                     tag("0b"),
                     is_a("01"),
                 )),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 2, digits)
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 2, String::from_utf8_lossy(digits.fragment()).to_string())
             ),
             map(
                 tuple((
@@ -117,30 +117,62 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                     tag("0"),
                     oct_digit1,
                 )),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, digits)
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
             ),
             map(
                 tuple((
                     opt(char('-')),
                     digit1,
                 )),
-                |(neg, digits): (Option<char>, Span<'a>)| (get_sign(neg), 10, digits)
-            )
+                |(neg, digits): (Option<char>, Span<'a>)| (get_sign(neg), 10, String::from_utf8_lossy(digits.fragment()).to_string())
+            ),
+            map(
+                tuple((
+                    tag("'"),
+                    parse_escaped_char,
+                    tag("'"),
+                )),
+                |(_, ch, _)| ("", 10, format!("{}", ch as i32))
+            ),
         )),
         |(sign, base, digits)| 
             O::from_str_radix(
                 &format!(
                     "{}{}",
                     sign,
-                    String::from_utf8_lossy(digits.fragment()).to_string()
+                    digits
                 ),
                 base,
             )
     )(i)
 }
 
+pub fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
+    alt((
+        parse_u8,
+        map(
+            parse_i8,
+            |byte| byte as u8
+        )
+    ))(i)
+}
+
 pub fn parse_i8<'a>(i: Span<'a>) -> IResult<Span<'a>, i8> {
     parse_num(i)
+}
+
+pub fn parse_u8<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
+    parse_num(i)
+}
+
+pub fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
+    alt((
+        parse_u16,
+        map(
+            parse_i16,
+            |half| half as u16
+        )
+    ))(i)
 }
 
 pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
@@ -149,6 +181,16 @@ pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
 
 pub fn parse_u16<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
     parse_num(i)
+}
+
+pub fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, u32> {
+    alt((
+        parse_u32,
+        map(
+            parse_i32,
+            |word| word as u32
+        )
+    ))(i)
 }
 
 pub fn parse_i32<'a>(i: Span<'a>) -> IResult<Span<'a>, i32> {
@@ -239,6 +281,12 @@ pub trait RadixNum<O> {
 }
 
 impl RadixNum<Self> for i8 {
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
+impl RadixNum<Self> for u8 {
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
         Self::from_str_radix(src, radix)
     }

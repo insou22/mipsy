@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::Binary;
 use crate::inst::instruction::{InstSet, CompileSignature, ArgumentType, RuntimeSignature};
@@ -11,7 +11,7 @@ pub struct Decompiled<'a> {
     pub inst_name: Option<String>,
     pub arguments: Vec<String>,
     pub labels: Vec<String>,
-    pub line_num: Option<u32>,
+    pub location: Option<(Rc<str>, u32)>,
 }
 
 pub fn decompile(program: &Binary, iset: &InstSet) -> String {
@@ -69,7 +69,7 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
         inst_name: None,
         arguments: vec![],
         labels: vec![],
-        line_num: program.line_numbers.get(&text_addr).copied(),
+        location: program.line_numbers.get(&text_addr).cloned(),
     };
 
     for (label, &addr) in program.labels.iter() {

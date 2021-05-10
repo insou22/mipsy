@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 nom = { version = "6", features = ["alloc"] } # parser
-nom_locate = { version = "2.1.0", path = "../nom_locate" }
+nom_locate = "3" 
 
 [build-dependencies]
 vergen = "3"

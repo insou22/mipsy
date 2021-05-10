@@ -1,8 +1,8 @@
-use crate::TEXT_BOT;
-use crate::compile::CompileError;
-use crate::compile::cerr;
+use std::rc::Rc;
+
+use crate::{TEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
 use crate::inst::instruction::SignatureRef;
-use crate::{MPProgram, MipsyResult, util::WithLoc};
+use crate::{MPProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
 use super::{Binary, data::Segment};
 use mipsy_parser::{
@@ -11,7 +11,7 @@ use mipsy_parser::{
     MPDirective,
 };
 
-pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyResult<SignatureRef<'a>> {
+pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
     if let Some(native) = iset.find_native(inst) {
         Ok(SignatureRef::Native(&native))
     } else if let Some(pseudo) = iset.find_pseudo(inst) {
@@ -36,32 +36,38 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyRes
         }
         
         if !matching_names.is_empty() {
-            return cerr(
-                CompileError::InstructionBadFormat(
-                    inst.clone(),
-                    matching_names.iter().map(SignatureRef::cloned).collect()
+            return Err(
+                InternalError::Compiler(
+                    compiler::Error::InstructionBadFormat {
+                        inst_ast: inst.clone(),
+                        correct_formats: matching_names.iter().map(SignatureRef::cloned).collect(),
+                    }
                 )
             );
         }
         
         if !close_names.is_empty() {
-            return cerr(
-                CompileError::InstructionSimName(
-                    inst.clone(),
-                    close_names.iter().map(SignatureRef::cloned).collect()
+            return Err(
+                InternalError::Compiler(
+                    compiler::Error::InstructionSimName {
+                        inst_ast: inst.clone(),
+                        similar_instns: close_names.iter().map(SignatureRef::cloned).collect(),
+                    }
                 )
             );
         }
 
-        cerr(
-            CompileError::UnknownInstruction(
-                inst.clone()
+        return Err(
+            InternalError::Compiler(
+                compiler::Error::UnknownInstruction {
+                    inst_ast: inst.clone(),
+                }
             )
-        )
+        );
     }
 }
 
-pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyResult<usize> {
+pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<usize> {
     Ok(
         match find_instruction(iset, inst)? {
             SignatureRef::Native(_) => 1,
@@ -70,7 +76,7 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyResult<u
     )
 }
 
-pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyResult<Vec<u32>> {
+pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<Vec<u32>> {
     Ok(
         find_instruction(iset, inst)?.compile_ops(binary, iset, inst)?
     )
@@ -79,10 +85,11 @@ pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyR
 pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
     let mut segment = Segment::Text;
 
-    for item in program.items().iter() {
-        let line = item.1;
+    for (item, file_tag, line) in program.items().iter() {
+        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
+        let line = *line;
 
-        match &item.0 {
+        match item {
             MPItem::Directive(directive) => match directive {
                 MPDirective::Text  => segment = Segment::Text,
                 MPDirective::Data  => segment = Segment::Data,
@@ -91,11 +98,15 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
                 _ => {}
             }
             MPItem::Instruction(ref instruction) => {
-                let mut compiled = compile1(binary, iset, instruction).with_line(line).with_col(instruction.col()).with_col_end(instruction.col_end())?;
+                let mut compiled = compile1(binary, iset, instruction)
+                    .to_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())?;
 
                 let text = match segment {
                     Segment::Text  => {
-                        binary.line_numbers.insert(TEXT_BOT + (binary.text.len() as u32) * 4, line);
+                        if !file_tag.is_empty() {
+                            binary.line_numbers.insert(TEXT_BOT + (binary.text.len() as u32) * 4, (file_tag.clone(), line));
+                        }
+
                         &mut binary.text
                     }
                     Segment::KText => &mut binary.ktext,

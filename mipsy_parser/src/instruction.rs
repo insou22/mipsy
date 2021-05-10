@@ -99,7 +99,7 @@ pub fn parse_instruction<'a>(i: Span<'a>) -> IResult<Span<'a>, MPInstruction> {
     Ok((remaining_data, MPInstruction { name, arguments, col: position.get_column() as u32, col_end: position_end.get_column() as u32 }))
 }
 
-pub fn parse_argument<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPArgument, u32, u32)> {
+pub fn parse_argument(i: Span<'_>) -> IResult<Span<'_>, (MPArgument, u32, u32)> {
     map(
         tuple((
             position,
@@ -113,14 +113,14 @@ pub fn parse_argument<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPArgument, u32, u3
     )(i)
 }
 
-fn parse_argument_reg<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {
+fn parse_argument_reg(i: Span<'_>) -> IResult<Span<'_>, MPArgument> {
     map(
         parse_register,
         MPArgument::Register
     )(i)
 }
 
-fn parse_argument_num<'a>(i: Span<'a>) -> IResult<Span<'a>, MPArgument> {
+fn parse_argument_num(i: Span<'_>) -> IResult<Span<'_>, MPArgument> {
     map(
         parse_number,
         MPArgument::Number
