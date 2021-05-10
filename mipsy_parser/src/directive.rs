@@ -32,7 +32,7 @@ use nom::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPDirective {
+pub enum MpDirective {
     Text,
     Data,
     KText,
@@ -49,7 +49,7 @@ pub enum MPDirective {
     Globl(String),
 }
 
-pub fn parse_directive<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+pub fn parse_directive(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     alt((
         parse_text,
         parse_data,
@@ -68,40 +68,40 @@ pub fn parse_directive<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
     ))(i)
 }
 
-fn parse_text<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_text(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".text")(i)?;
 
-    Ok((remaining_data, MPDirective::Text))
+    Ok((remaining_data, MpDirective::Text))
 }
 
-fn parse_data<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_data(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".data")(i)?;
 
-    Ok((remaining_data, MPDirective::Data))
+    Ok((remaining_data, MpDirective::Data))
 }
 
-fn parse_ktext<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_ktext(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".ktext")(i)?;
 
-    Ok((remaining_data, MPDirective::KText))
+    Ok((remaining_data, MpDirective::KText))
 }
 
-fn parse_kdata<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_kdata(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     let (
         remaining_data,
         ..
     ) = tag(".kdata")(i)?;
 
-    Ok((remaining_data, MPDirective::KData))
+    Ok((remaining_data, MpDirective::KData))
 }
 
 fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, String> {
@@ -131,17 +131,17 @@ fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResul
     }
 }
 
-fn parse_ascii<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_ascii(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_ascii_type(".ascii"),
-        MPDirective::Ascii
+        MpDirective::Ascii
     )(i)
 }
 
-fn parse_asciiz<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_asciiz(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_ascii_type(".asciiz"),
-        MPDirective::Asciiz
+        MpDirective::Asciiz
     )(i)
 }
 
@@ -179,38 +179,38 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
     }
 }
 
-fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".byte", crate::number::parse_byte),
-        MPDirective::Byte,
+        MpDirective::Byte,
     )(i)
 }
 
-fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_half(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".half", crate::number::parse_half),
-        MPDirective::Half,
+        MpDirective::Half,
     )(i)
 }
 
-fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_word(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".word", crate::number::parse_word),
-        MPDirective::Word,
+        MpDirective::Word,
     )(i)
 }
 
-fn parse_float<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_float(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".float", parse_f32),
-        MPDirective::Float,
+        MpDirective::Float,
     )(i)
 }
 
-fn parse_double<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_double(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".double", parse_f64),
-        MPDirective::Double,
+        MpDirective::Double,
     )(i)
 }
 
@@ -234,21 +234,21 @@ fn parse_u32_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<
     }
 }
 
-fn parse_space<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_space(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_u32_type(".space"),
-        MPDirective::Space,
+        MpDirective::Space,
     )(i)
 }
 
-fn parse_align<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_align(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_u32_type(".align"),
-        MPDirective::Space,
+        MpDirective::Space,
     )(i)
 }
 
-fn parse_globl<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
+fn parse_globl(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     let (
         remaining_data,
         (
@@ -262,7 +262,7 @@ fn parse_globl<'a>(i: Span<'a>) -> IResult<Span<'a>, MPDirective> {
         parse_ident
     ))(i)?;
 
-    Ok((remaining_data, MPDirective::Globl(ident)))
+    Ok((remaining_data, MpDirective::Globl(ident)))
 }
 
 #[cfg(test)]
@@ -276,7 +276,7 @@ mod test {
             unspan(parse_ascii(span(".ascii \"hello\\n\"")).unwrap()),
             (
                 "".to_string(), 
-                MPDirective::Ascii("hello\n".to_string())
+                MpDirective::Ascii("hello\n".to_string())
             )
         );
 
@@ -284,7 +284,7 @@ mod test {
             unspan(parse_ascii(span(".ascii \"hello \\\"jeff\\\"\"")).unwrap()),
             (
                 "".to_string(),
-                MPDirective::Ascii("hello \"jeff\"".to_string())
+                MpDirective::Ascii("hello \"jeff\"".to_string())
             )
         );
     }

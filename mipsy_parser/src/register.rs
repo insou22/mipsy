@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     Span,
     number::{
-        MPImmediate,
+        MpImmediate,
         parse_immediate,
     },
 };
@@ -21,19 +21,19 @@ use nom::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPRegister {
-    Normal(MPRegisterIdentifier),
-    Offset(MPImmediate, MPRegisterIdentifier),
+pub enum MpRegister {
+    Normal(MpRegisterIdentifier),
+    Offset(MpImmediate, MpRegisterIdentifier),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPRegisterIdentifier {
+pub enum MpRegisterIdentifier {
     Numbered(u8),
     Named(String),
 }
 
-impl MPRegister {
-    fn get_identifier(&self) -> &MPRegisterIdentifier {
+impl MpRegister {
+    fn get_identifier(&self) -> &MpRegisterIdentifier {
         match self {
             Self::Normal(ident) => ident,
             Self::Offset(_, ident) => ident,
@@ -41,7 +41,7 @@ impl MPRegister {
     }
 }
 
-impl fmt::Display for MPRegister {
+impl fmt::Display for MpRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Normal(id)      => write!(f, "${}", id),
@@ -50,7 +50,7 @@ impl fmt::Display for MPRegister {
     }
 }
 
-impl fmt::Display for MPRegisterIdentifier {
+impl fmt::Display for MpRegisterIdentifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Numbered(num) => write!(f, "{}", num),
@@ -60,14 +60,14 @@ impl fmt::Display for MPRegisterIdentifier {
 }
 
 
-pub fn parse_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
+pub fn parse_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
     alt((
         parse_normal_register,
         parse_offset_register,
     ))(i)
 }
 
-pub fn parse_normal_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
+pub fn parse_normal_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
     let (
         remaining_data,
         (
@@ -84,16 +84,16 @@ pub fn parse_normal_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
 
     let text = String::from_utf8_lossy(text.fragment()).to_string();
 
-    Ok((remaining_data, MPRegister::Normal(
+    Ok((remaining_data, MpRegister::Normal(
         if let Ok(num) = text.parse::<u8>() {
-            MPRegisterIdentifier::Numbered(num)
+            MpRegisterIdentifier::Numbered(num)
         } else {
-            MPRegisterIdentifier::Named(text)
+            MpRegisterIdentifier::Named(text)
         }
     )))
 }
 
-pub fn parse_offset_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
+pub fn parse_offset_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
     let (
         remaining_data,
         (
@@ -116,8 +116,8 @@ pub fn parse_offset_register<'a>(i: Span<'a>) -> IResult<Span<'a>, MPRegister> {
 
     Ok((
         remaining_data, 
-        MPRegister::Offset(
-            imm.unwrap_or(MPImmediate::I16(0)), 
+        MpRegister::Offset(
+            imm.unwrap_or(MpImmediate::I16(0)), 
             reg.get_identifier().clone()
         )
     ))

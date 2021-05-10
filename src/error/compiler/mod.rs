@@ -1,7 +1,7 @@
 use std::{path::MAIN_SEPARATOR, rc::Rc};
 
 use colored::Colorize;
-use mipsy_parser::MPInstruction;
+use mipsy_parser::MpInstruction;
 use crate::inst::instruction::Signature;
 
 use super::util::{syntax_highlight_argument, tip_header};
@@ -135,9 +135,9 @@ pub enum Error {
     NamedRegisterOutOfRange    { reg_name: char, reg_index: i32 },
     UnknownRegister            { reg_name: String },
 
-    UnknownInstruction   { inst_ast: MPInstruction },
-    InstructionBadFormat { inst_ast: MPInstruction, correct_formats: Vec<Signature> },
-    InstructionSimName   { inst_ast: MPInstruction, similar_instns:  Vec<Signature> },
+    UnknownInstruction   { inst_ast: MpInstruction },
+    InstructionBadFormat { inst_ast: MpInstruction, correct_formats: Vec<Signature> },
+    InstructionSimName   { inst_ast: MpInstruction, similar_instns:  Vec<Signature> },
 
     UnresolvedLabel { label: String, similar: Vec<String> },
 }

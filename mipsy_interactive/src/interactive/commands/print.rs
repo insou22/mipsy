@@ -71,7 +71,7 @@ pub(crate) fn print_command() -> Command {
             let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             match arg {
-                MPArgument::Register(MPRegister::Normal(ident)) => {
+                MpArgument::Register(MpRegister::Normal(ident)) => {
                     match print_type {
                         "string" | "s" => {
                             prompt::error(format!("{} `string` unsupported for {} `register`", "[format]".magenta(), "<item>".magenta()));
@@ -81,7 +81,7 @@ pub(crate) fn print_command() -> Command {
                         _ => {}
                     }
 
-                    if matches!(ident, MPRegisterIdentifier::Named(ref name) if name == "all") {
+                    if matches!(ident, MpRegisterIdentifier::Named(ref name) if name == "all") {
                         for register in &Register::all() {
                             if let Ok(val) = runtime.state().get_reg(register.to_u32()) {
                                 let out = format_simple_print(val, print_type);
@@ -102,7 +102,7 @@ pub(crate) fn print_command() -> Command {
                         let (val, reg_name) = 
                         {
                             let (unchecked_val, reg_name) = match ident {
-                                MPRegisterIdentifier::Named(name) => {
+                                MpRegisterIdentifier::Named(name) => {
                                     let name = name.to_ascii_lowercase();
 
                                     if name == "pc" {
@@ -117,7 +117,7 @@ pub(crate) fn print_command() -> Command {
                                             .map_err(|_| CommandError::UnknownRegister { register: name })
                                     }
                                 },
-                                MPRegisterIdentifier::Numbered(num) => {
+                                MpRegisterIdentifier::Numbered(num) => {
                                     Register::from_number(num as i32)
                                         .map(|reg| (runtime.state().get_reg(reg.to_u32()), reg.to_lower_str()))
                                         .map_err(|_| CommandError::UnknownRegister { register: num.to_string() })
@@ -139,21 +139,21 @@ pub(crate) fn print_command() -> Command {
                         prompt::success_nl(format!("{}{} = {}", "$".yellow(), reg_name.bold(), value));
                     }
                 }
-                MPArgument::Number(MPNumber::Immediate(imm)) => {
+                MpArgument::Number(MpNumber::Immediate(imm)) => {
                     let imm = match imm {
-                        MPImmediate::I16(imm) => {
+                        MpImmediate::I16(imm) => {
                             imm as u32
                         }
-                        MPImmediate::U16(imm) => {
+                        MpImmediate::U16(imm) => {
                             imm as u32
                         }
-                        MPImmediate::I32(imm) => {
+                        MpImmediate::I32(imm) => {
                             imm as u32
                         }
-                        MPImmediate::U32(imm) => {
+                        MpImmediate::U32(imm) => {
                             imm
                         }
-                        MPImmediate::LabelReference(label) => {
+                        MpImmediate::LabelReference(label) => {
                             binary.get_label(&label)
                                     .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?
                         }

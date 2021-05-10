@@ -2,16 +2,16 @@ use std::rc::Rc;
 
 use crate::{TEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
 use crate::inst::instruction::SignatureRef;
-use crate::{MPProgram, MipsyResult};
+use crate::{MpProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
 use super::{Binary, data::Segment};
 use mipsy_parser::{
-    MPInstruction,
-    MPItem,
-    MPDirective,
+    MpInstruction,
+    MpItem,
+    MpDirective,
 };
 
-pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
+pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
     if let Some(native) = iset.find_native(inst) {
         Ok(SignatureRef::Native(&native))
     } else if let Some(pseudo) = iset.find_pseudo(inst) {
@@ -67,7 +67,7 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyInt
     }
 }
 
-pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<usize> {
+pub fn instruction_length(iset: &InstSet, inst: &MpInstruction) -> MipsyInternalResult<usize> {
     Ok(
         match find_instruction(iset, inst)? {
             SignatureRef::Native(_) => 1,
@@ -76,11 +76,11 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyInternal
     )
 }
 
-pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<Vec<u32>> {
+pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MpInstruction) -> MipsyInternalResult<Vec<u32>> {
     find_instruction(iset, inst)?.compile_ops(binary, iset, inst)
 }
 
-pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
+pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -> MipsyResult<()> {
     let mut segment = Segment::Text;
 
     for (item, file_tag, line) in program.items().iter() {
@@ -88,14 +88,14 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
         let line = *line;
 
         match item {
-            MPItem::Directive(directive) => match directive {
-                MPDirective::Text  => segment = Segment::Text,
-                MPDirective::Data  => segment = Segment::Data,
-                MPDirective::KText => segment = Segment::KText,
-                MPDirective::KData => segment = Segment::KData,
+            MpItem::Directive(directive) => match directive {
+                MpDirective::Text  => segment = Segment::Text,
+                MpDirective::Data  => segment = Segment::Data,
+                MpDirective::KText => segment = Segment::KText,
+                MpDirective::KData => segment = Segment::KData,
                 _ => {}
             }
-            MPItem::Instruction(ref instruction) => {
+            MpItem::Instruction(ref instruction) => {
                 let mut compiled = compile1(binary, iset, instruction)
                     .to_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())?;
 
@@ -113,7 +113,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -
 
                 text.append(&mut compiled);
             }
-            MPItem::Label(_) => {}
+            MpItem::Label(_) => {}
         }
     }
 

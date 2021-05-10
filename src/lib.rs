@@ -7,7 +7,7 @@ pub mod decompile;
 pub mod runtime;
 use std::rc::Rc;
 
-pub use mipsy_parser::MPProgram;
+pub use mipsy_parser::MpProgram;
 
 pub use error::{
     MipsyResult,

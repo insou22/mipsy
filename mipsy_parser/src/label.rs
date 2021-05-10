@@ -11,7 +11,7 @@ use nom::{
     sequence::tuple,
 };
 
-pub fn parse_label<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
+pub fn parse_label(i: Span<'_>) -> IResult<Span<'_>, String> {
     let (
         remaining_data,
         (

@@ -62,21 +62,21 @@ pub(crate) fn breakpoint_command() -> Command {
             let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
             match arg {
-                MPArgument::Number(MPNumber::Immediate(ref imm)) => {
+                MpArgument::Number(MpNumber::Immediate(ref imm)) => {
                     let (addr, is_label) = match imm {
-                        MPImmediate::I16(imm) => {
+                        MpImmediate::I16(imm) => {
                             (*imm as u32, false)
                         }
-                        MPImmediate::U16(imm) => {
+                        MpImmediate::U16(imm) => {
                             (*imm as u32, false)
                         }
-                        MPImmediate::I32(imm) => {
+                        MpImmediate::I32(imm) => {
                             (*imm as u32, false)
                         }
-                        MPImmediate::U32(imm) => {
+                        MpImmediate::U32(imm) => {
                             (*imm, false)
                         }
-                        MPImmediate::LabelReference(label) => {
+                        MpImmediate::LabelReference(label) => {
                             (
                                 binary.get_label(&label)
                                     .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,

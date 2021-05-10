@@ -73,14 +73,14 @@ pub fn escape_char(char: char) -> String {
         '\r' => "\\r".into(),
         '\n' => "\\n".into(),
         '\t' => "\\t".into(),
-        '\\' => "\\\'".into(),
+        '\\' => "\\\\".into(),
         '\"' => "\\\"".into(),
         '\'' => "\\\'".into(),
         other => other.to_string(),
     }
 }
 
-pub fn parse_escaped_char<'a>(i: Span<'a>) -> IResult<Span<'a>, char> {
+pub fn parse_escaped_char(i: Span<'_>) -> IResult<Span<'_>, char> {
     alt((
         map(
             tuple((
@@ -105,7 +105,7 @@ pub fn parse_escaped_char<'a>(i: Span<'a>) -> IResult<Span<'a>, char> {
     ))(i)
 }
 
-pub fn parse_ident<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
+pub fn parse_ident(i: Span<'_>) -> IResult<Span<'_>, String> {
     let (
         remaining_data,
         (
@@ -126,21 +126,21 @@ pub fn parse_ident<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
     Ok((remaining_data, ident))
 }
 
-pub fn parse_any1<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
+pub fn parse_any1(i: Span<'_>) -> IResult<Span<'_>, u8> {
     map(
         anychar,
         |char| char as u8,
     )(i)
 }
 
-pub fn comment_multispace0<'a>(i: Span<'a>) -> IResult<Span<'a>, ()> {
+pub fn comment_multispace0(i: Span<'_>) -> IResult<Span<'_>, ()> {
     map(
         opt(comment_multispace1),
         |_| ()
     )(i)
 }
 
-pub fn comment_multispace1<'a>(i: Span<'a>) -> IResult<Span<'a>, ()> {
+pub fn comment_multispace1(i: Span<'_>) -> IResult<Span<'_>, ()> {
     map(
         many1(
             alt((
@@ -199,7 +199,7 @@ pub(crate) fn span<'a>(string: &'a str) -> Span<'a> {
 }
 
 #[cfg(test)]
-pub(crate) fn unspan<'a, T>(tuple: (Span<'a>, T)) -> (String, T) {
+pub(crate) fn unspan<T>(tuple: (Span<'_>, T)) -> (String, T) {
     match tuple {
         (span, t) => (String::from_utf8_lossy(span.fragment()).to_string(), t)
     }

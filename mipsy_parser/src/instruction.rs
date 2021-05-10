@@ -4,11 +4,11 @@ use nom_locate::position;
 use crate::{
     Span,
     register::{
-        MPRegister,
+        MpRegister,
         parse_register,
     },
     number::{
-        MPNumber,
+        MpNumber,
         parse_number,
     },
     misc::{
@@ -29,25 +29,25 @@ use nom::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MPInstruction {
+pub struct MpInstruction {
     pub(crate) name: String,
-    pub(crate) arguments: Vec<(MPArgument, u32, u32)>,
+    pub(crate) arguments: Vec<(MpArgument, u32, u32)>,
     pub(crate) col: u32,
     pub(crate) col_end: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPArgument {
-    Register(MPRegister),
-    Number(MPNumber),
+pub enum MpArgument {
+    Register(MpRegister),
+    Number(MpNumber),
 }
 
-impl MPInstruction {
+impl MpInstruction {
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn arguments(&self) -> Vec<&(MPArgument, u32, u32)> {
+    pub fn arguments(&self) -> Vec<&(MpArgument, u32, u32)> {
         self.arguments.iter().collect()
     }
 
@@ -60,7 +60,7 @@ impl MPInstruction {
     }
 }
 
-impl fmt::Display for MPArgument {
+impl fmt::Display for MpArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Register(reg) => write!(f, "{}", reg),
@@ -69,7 +69,7 @@ impl fmt::Display for MPArgument {
     }
 }
 
-pub fn parse_instruction<'a>(i: Span<'a>) -> IResult<Span<'a>, MPInstruction> {
+pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
     let (
         remaining_data,
         (
@@ -96,10 +96,10 @@ pub fn parse_instruction<'a>(i: Span<'a>) -> IResult<Span<'a>, MPInstruction> {
         comment_multispace0,
     ))(i)?;
 
-    Ok((remaining_data, MPInstruction { name, arguments, col: position.get_column() as u32, col_end: position_end.get_column() as u32 }))
+    Ok((remaining_data, MpInstruction { name, arguments, col: position.get_column() as u32, col_end: position_end.get_column() as u32 }))
 }
 
-pub fn parse_argument(i: Span<'_>) -> IResult<Span<'_>, (MPArgument, u32, u32)> {
+pub fn parse_argument(i: Span<'_>) -> IResult<Span<'_>, (MpArgument, u32, u32)> {
     map(
         tuple((
             position,
@@ -113,16 +113,16 @@ pub fn parse_argument(i: Span<'_>) -> IResult<Span<'_>, (MPArgument, u32, u32)> 
     )(i)
 }
 
-fn parse_argument_reg(i: Span<'_>) -> IResult<Span<'_>, MPArgument> {
+fn parse_argument_reg(i: Span<'_>) -> IResult<Span<'_>, MpArgument> {
     map(
         parse_register,
-        MPArgument::Register
+        MpArgument::Register
     )(i)
 }
 
-fn parse_argument_num(i: Span<'_>) -> IResult<Span<'_>, MPArgument> {
+fn parse_argument_num(i: Span<'_>) -> IResult<Span<'_>, MpArgument> {
     map(
         parse_number,
-        MPArgument::Number
+        MpArgument::Number
     )(i)
 }

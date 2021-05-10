@@ -4,11 +4,11 @@ use crate::{
     Span,
     ErrorLocation,
     directive::{
-        MPDirective,
+        MpDirective,
         parse_directive,
     },
     instruction::{
-        MPInstruction,
+        MpInstruction,
         parse_instruction,
     },
     label::parse_label,
@@ -28,50 +28,50 @@ use nom_locate::position;
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MPProgram {
-    pub(crate) items: Vec<(MPItem, Option<Rc<str>>, u32)>,
+pub struct MpProgram {
+    pub(crate) items: Vec<(MpItem, Option<Rc<str>>, u32)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPItem {
-    Instruction(MPInstruction),
-    Directive(MPDirective),
+pub enum MpItem {
+    Instruction(MpInstruction),
+    Directive(MpDirective),
     Label(String),
 }
 
-impl MPProgram {
-    pub fn new(items: Vec<(MPItem, Option<Rc<str>>, u32)>) -> Self {
+impl MpProgram {
+    pub fn new(items: Vec<(MpItem, Option<Rc<str>>, u32)>) -> Self {
         Self {
             items,
         }
     }
 
-    pub fn items(&self) -> &[(MPItem, Option<Rc<str>>, u32)] {
+    pub fn items(&self) -> &[(MpItem, Option<Rc<str>>, u32)] {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut Vec<(MPItem, Option<Rc<str>>, u32)> {
+    pub fn items_mut(&mut self) -> &mut Vec<(MpItem, Option<Rc<str>>, u32)> {
         &mut self.items
     }
 
-    fn merge(&mut self, mut other: MPProgram) {
+    fn merge(&mut self, mut other: MpProgram) {
         if !self.items.is_empty() {
-            self.items.push((MPItem::Directive(MPDirective::Text), None, 0));
+            self.items.push((MpItem::Directive(MpDirective::Text), None, 0));
         }
 
         self.items.append(&mut other.items);
     }
 }
 
-pub fn parse_mips_item<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPItem, u32)> {
+pub fn parse_mips_item(i: Span<'_>) -> IResult<Span<'_>, (MpItem, u32)> {
     map(
         tuple((
             comment_multispace0,
             position,
             alt((
-                map(parse_label,       MPItem::Label),
-                map(parse_directive,   MPItem::Directive),
-                map(parse_instruction, MPItem::Instruction),
+                map(parse_label,       MpItem::Label),
+                map(parse_directive,   MpItem::Directive),
+                map(parse_instruction, MpItem::Instruction),
             )),
             comment_multispace0,
         )),
@@ -80,7 +80,7 @@ pub fn parse_mips_item<'a>(i: Span<'a>) -> IResult<Span<'a>, (MPItem, u32)> {
 }
 
 
-pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MPProgram> {
+pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MpProgram> {
     move |i| {
         let (
             remaining_input,
@@ -94,15 +94,15 @@ pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) 
 
         Ok((
             remaining_input,
-            MPProgram {
+            MpProgram {
                 items
             },
         ))
     }
 }
 
-pub fn parse_mips(files: Vec<(Option<&str>, &str)>) -> Result<MPProgram, ErrorLocation> {
-    let mut program = MPProgram {
+pub fn parse_mips(files: Vec<(Option<&str>, &str)>) -> Result<MpProgram, ErrorLocation> {
+    let mut program = MpProgram {
         items: vec![],    
     };
 

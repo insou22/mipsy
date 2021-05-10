@@ -34,15 +34,15 @@ use nom::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPNumber {
-    Immediate(MPImmediate),
+pub enum MpNumber {
+    Immediate(MpImmediate),
     Float32(f32),
     Float64(f64),
     Char(char),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum MPImmediate {
+pub enum MpImmediate {
     I16(i16),
     U16(u16),
     I32(i32),
@@ -50,7 +50,7 @@ pub enum MPImmediate {
     LabelReference(String),
 }
 
-impl fmt::Display for MPNumber {
+impl fmt::Display for MpNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Immediate(imm) => write!(f, "{}", imm),
@@ -61,7 +61,7 @@ impl fmt::Display for MPNumber {
     }
 }
 
-impl fmt::Display for MPImmediate {
+impl fmt::Display for MpImmediate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::I16(i) => write!(f, "{}", i),
@@ -73,22 +73,22 @@ impl fmt::Display for MPImmediate {
     }
 }
 
-pub fn parse_number<'a>(i: Span<'a>) -> IResult<Span<'a>, MPNumber> {
+pub fn parse_number(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
     alt((
-        map(parse_immediate, MPNumber::Immediate),
-        map(parse_f32,       MPNumber::Float32),
-        map(parse_f64,       MPNumber::Float64),
-        map(parse_char,      MPNumber::Char),
+        map(parse_immediate, MpNumber::Immediate),
+        map(parse_f32,       MpNumber::Float32),
+        map(parse_f64,       MpNumber::Float64),
+        map(parse_char,      MpNumber::Char),
     ))(i)
 }
 
-pub fn parse_immediate<'a>(i: Span<'a>) -> IResult<Span<'a>, MPImmediate> {
+pub fn parse_immediate(i: Span<'_>) -> IResult<Span<'_>, MpImmediate> {
     alt((
-        map(parse_i16,      MPImmediate::I16),
-        map(parse_u16,      MPImmediate::U16),
-        map(parse_i32,      MPImmediate::I32),
-        map(parse_u32,      MPImmediate::U32),
-        map(parse_labelref, MPImmediate::LabelReference),
+        map(parse_i16,      MpImmediate::I16),
+        map(parse_u16,      MpImmediate::U16),
+        map(parse_i32,      MpImmediate::I32),
+        map(parse_u32,      MpImmediate::U32),
+        map(parse_labelref, MpImmediate::LabelReference),
     ))(i)
 }
 
@@ -147,7 +147,7 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
     )(i)
 }
 
-pub fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
+pub fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, u8> {
     alt((
         parse_u8,
         map(
@@ -157,15 +157,15 @@ pub fn parse_byte<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
     ))(i)
 }
 
-pub fn parse_i8<'a>(i: Span<'a>) -> IResult<Span<'a>, i8> {
+pub fn parse_i8(i: Span<'_>) -> IResult<Span<'_>, i8> {
     parse_num(i)
 }
 
-pub fn parse_u8<'a>(i: Span<'a>) -> IResult<Span<'a>, u8> {
+pub fn parse_u8(i: Span<'_>) -> IResult<Span<'_>, u8> {
     parse_num(i)
 }
 
-pub fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
+pub fn parse_half(i: Span<'_>) -> IResult<Span<'_>, u16> {
     alt((
         parse_u16,
         map(
@@ -175,15 +175,15 @@ pub fn parse_half<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
     ))(i)
 }
 
-pub fn parse_i16<'a>(i: Span<'a>) -> IResult<Span<'a>, i16> {
+pub fn parse_i16(i: Span<'_>) -> IResult<Span<'_>, i16> {
     parse_num(i)
 }
 
-pub fn parse_u16<'a>(i: Span<'a>) -> IResult<Span<'a>, u16> {
+pub fn parse_u16(i: Span<'_>) -> IResult<Span<'_>, u16> {
     parse_num(i)
 }
 
-pub fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, u32> {
+pub fn parse_word(i: Span<'_>) -> IResult<Span<'_>, u32> {
     alt((
         parse_u32,
         map(
@@ -193,27 +193,27 @@ pub fn parse_word<'a>(i: Span<'a>) -> IResult<Span<'a>, u32> {
     ))(i)
 }
 
-pub fn parse_i32<'a>(i: Span<'a>) -> IResult<Span<'a>, i32> {
+pub fn parse_i32(i: Span<'_>) -> IResult<Span<'_>, i32> {
     parse_num(i)
 }
 
-pub fn parse_u32<'a>(i: Span<'a>) -> IResult<Span<'a>, u32> {
+pub fn parse_u32(i: Span<'_>) -> IResult<Span<'_>, u32> {
     parse_num(i)
 }
 
-pub fn parse_labelref<'a>(i: Span<'a>) -> IResult<Span<'a>, String> {
+pub fn parse_labelref(i: Span<'_>) -> IResult<Span<'_>, String> {
     parse_ident(i)
 }
 
-pub fn parse_f32<'a>(i: Span<'a>) -> IResult<Span<'a>, f32> {
+pub fn parse_f32(i: Span<'_>) -> IResult<Span<'_>, f32> {
     float(i)
 }
 
-pub fn parse_f64<'a>(i: Span<'a>) -> IResult<Span<'a>, f64> {
+pub fn parse_f64(i: Span<'_>) -> IResult<Span<'_>, f64> {
     double(i)
 }
 
-fn parse_char<'a>(i: Span<'a>) -> IResult<Span<'a>, char> {
+fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
     let (
         remaining_data,
         (

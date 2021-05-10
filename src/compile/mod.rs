@@ -1,5 +1,5 @@
 use std::{collections::HashMap, rc::Rc};
-use crate::{InstSet, MPProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
+use crate::{InstSet, MpProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
 use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
@@ -72,7 +72,7 @@ impl Binary {
     }
 }
 
-pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
+pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -106,6 +106,6 @@ pub fn compile(program: &MPProgram, iset: &InstSet) -> MipsyResult<Binary> {
     Ok(binary)
 }
 
-fn get_kernel() -> MPProgram {
+fn get_kernel() -> MpProgram {
     mipsy_parser::parse_mips(vec![(None, &KERN_FILE)]).unwrap()
 }

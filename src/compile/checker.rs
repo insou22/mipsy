@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
-use mipsy_parser::{MPArgument, MPImmediate, MPItem, MPNumber, MPRegister};
+use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber, MpRegister};
 
-use crate::{Binary, MPProgram, MipsyResult, error::ToMipsyResult, inst::instruction::ToRegister};
+use crate::{Binary, MpProgram, MipsyResult, error::ToMipsyResult, inst::instruction::ToRegister};
 
 pub enum Warning {
 
 }
 
-pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
+pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
     for (item, file_tag, line) in program.items() {
@@ -16,23 +16,23 @@ pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
         let line = *line;
 
         match item {
-            MPItem::Instruction(ref instruction) => {
+            MpItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
-                        MPArgument::Register(register) => {
+                        MpArgument::Register(register) => {
                             let ident = match register {
-                                MPRegister::Normal(id) => id,
-                                MPRegister::Offset(_, id) => id,
+                                MpRegister::Normal(id) => id,
+                                MpRegister::Offset(_, id) => id,
                             };
 
                             ident.to_register().to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                         }
-                        MPArgument::Number(_) => {}
+                        MpArgument::Number(_) => {}
                     }
                 }
             }
-            MPItem::Label(_) => {}
-            MPItem::Directive(_) => {}
+            MpItem::Label(_) => {}
+            MpItem::Directive(_) => {}
         }
     }
 
@@ -41,7 +41,7 @@ pub fn check_pre(program: &MPProgram) -> MipsyResult<Vec<Warning>> {
     Ok(warnings)
 }
 
-pub fn check_post_data_label(program: &MPProgram, binary: &Binary) -> MipsyResult<Vec<Warning>> {
+pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
     for (item, file_tag, line) in program.items() {
@@ -49,34 +49,34 @@ pub fn check_post_data_label(program: &MPProgram, binary: &Binary) -> MipsyResul
         let line = *line;
 
         match item {
-            MPItem::Instruction(ref instruction) => {
+            MpItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
-                        MPArgument::Register(_) => {}
-                        MPArgument::Number(number) => {
+                        MpArgument::Register(_) => {}
+                        MpArgument::Number(number) => {
                             match number {
-                                MPNumber::Immediate(imm) => {
+                                MpNumber::Immediate(imm) => {
                                     match imm {
-                                        MPImmediate::LabelReference(label) => {
+                                        MpImmediate::LabelReference(label) => {
                                             binary.get_label(label)
                                                 .to_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                                         }
-                                        MPImmediate::I16(_) => {}
-                                        MPImmediate::U16(_) => {}
-                                        MPImmediate::I32(_) => {}
-                                        MPImmediate::U32(_) => {}
+                                        MpImmediate::I16(_) => {}
+                                        MpImmediate::U16(_) => {}
+                                        MpImmediate::I32(_) => {}
+                                        MpImmediate::U32(_) => {}
                                     }
                                 }
-                                MPNumber::Float32(_) => {}
-                                MPNumber::Float64(_) => {}
-                                MPNumber::Char(_) => {}
+                                MpNumber::Float32(_) => {}
+                                MpNumber::Float64(_) => {}
+                                MpNumber::Char(_) => {}
                             }
                         }
                     }
                 }
             }
-            MPItem::Label(_) => {}
-            MPItem::Directive(_) => {}
+            MpItem::Label(_) => {}
+            MpItem::Directive(_) => {}
         }
     }
 

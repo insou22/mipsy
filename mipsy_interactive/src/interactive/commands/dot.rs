@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use mipsy_lib::{MPProgram, compile};
-use mipsy_parser::MPItem;
+use mipsy_lib::{MpProgram, compile};
+use mipsy_parser::MpItem;
 
 use crate::interactive::error::CommandError;
 
@@ -20,8 +20,8 @@ pub(crate) fn dot_command() -> Command {
             let inst = mipsy_parser::parse_instruction(&line)
                     .map_err(|error| CommandError::CannotParseLine { line: line.to_string(), error })?;
             
-            let program = MPProgram::new(
-                vec![(MPItem::Instruction(inst.clone()), None, 1)]
+            let program = MpProgram::new(
+                vec![(MpItem::Instruction(inst.clone()), None, 1)]
             );
 
             compile::check_pre(&program)

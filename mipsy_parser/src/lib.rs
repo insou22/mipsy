@@ -6,30 +6,30 @@ use misc::parse_result;
 
 pub type Span<'a> = LocatedSpan<&'a [u8]>;
 
-pub use parser::MPProgram;
-pub use parser::MPItem;
+pub use parser::MpProgram;
+pub use parser::MpItem;
 pub use instruction::{
-    MPInstruction,
-    MPArgument,
+    MpInstruction,
+    MpArgument,
 };
-pub use directive::MPDirective;
+pub use directive::MpDirective;
 pub use misc::{
     ErrorLocation,
     tabs_to_spaces,
 };
 pub use number::{
-    MPNumber,
-    MPImmediate,
+    MpNumber,
+    MpImmediate,
 };
 pub use register::{
-    MPRegister,
-    MPRegisterIdentifier,
+    MpRegister,
+    MpRegisterIdentifier,
 };
 
 
 pub use parser::parse_mips;
 
-pub fn parse_instruction<T>(input: T) -> Result<MPInstruction, ErrorLocation>
+pub fn parse_instruction<T>(input: T) -> Result<MpInstruction, ErrorLocation>
 where
     T: AsRef<str>,
 {
@@ -38,7 +38,7 @@ where
     parse_result(Span::new(string.as_bytes()), None, instruction::parse_instruction)
 }
 
-pub fn parse_argument<T>(input: T) -> Result<MPArgument, ErrorLocation>
+pub fn parse_argument<T>(input: T) -> Result<MpArgument, ErrorLocation>
 where
     T: AsRef<str>,
 {

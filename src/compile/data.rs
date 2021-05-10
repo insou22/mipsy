@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{KDATA_BOT, KTEXT_BOT, MPProgram, MipsyResult, error::ToMipsyResult, inst::instruction::InstSet, util::Safe};
+use crate::{KDATA_BOT, KTEXT_BOT, MpProgram, MipsyResult, error::ToMipsyResult, inst::instruction::InstSet, util::Safe};
 use super::{
     TEXT_BOT,
     DATA_BOT,
@@ -9,8 +9,8 @@ use super::{
     bytes::ToBytes
 };
 use mipsy_parser::{
-    MPItem,
-    MPDirective,
+    MpItem,
+    MpDirective,
 };
 
 #[derive(PartialEq)]
@@ -21,7 +21,7 @@ pub(crate) enum Segment {
     KData,
 }
 
-pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {
+pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -> MipsyResult<()> {
     let mut text_len = 0;
     let mut ktext_len = 0;
     let mut segment = Segment::Text;
@@ -31,11 +31,11 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
         let line = *line;
         
         match item {
-            MPItem::Directive(directive) => {
+            MpItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text || segment == Segment::KText {
                     match directive {
-                        MPDirective::Text | MPDirective::Data | MPDirective::KText | MPDirective::KData => {}
+                        MpDirective::Text | MpDirective::Data | MpDirective::KText | MpDirective::KData => {}
                         _other => {
                             // TODO: WARNING
                         }
@@ -43,37 +43,37 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                 }
 
                 match directive {
-                    MPDirective::Text => segment = Segment::Text,
-                    MPDirective::Data => segment = Segment::Data,
-                    MPDirective::KText => segment = Segment::KText,
-                    MPDirective::KData => segment = Segment::KData,
-                    MPDirective::Ascii(string) => {
+                    MpDirective::Text => segment = Segment::Text,
+                    MpDirective::Data => segment = Segment::Data,
+                    MpDirective::KText => segment = Segment::KText,
+                    MpDirective::KData => segment = Segment::KData,
+                    MpDirective::Ascii(string) => {
                         let chars: Vec<char> = string.chars().collect();
 
                         insert_data(&segment, binary, &chars);
                     }
-                    MPDirective::Asciiz(string) => {
+                    MpDirective::Asciiz(string) => {
                         let chars: Vec<char> = string.chars().collect();
 
                         insert_data(&segment, binary, &chars);
                         insert_data(&segment, binary, &[0u8]);
                     }
-                    MPDirective::Byte(bytes) => {
+                    MpDirective::Byte(bytes) => {
                         insert_data(&segment, binary, bytes);
                     }
-                    MPDirective::Half(halfs) => {
+                    MpDirective::Half(halfs) => {
                         insert_data(&segment, binary, halfs);
                     }
-                    MPDirective::Word(words) => {
+                    MpDirective::Word(words) => {
                         insert_data(&segment, binary, words);
                     }
-                    MPDirective::Float(floats) => {
+                    MpDirective::Float(floats) => {
                         insert_data(&segment, binary, floats);
                     }
-                    MPDirective::Double(doubles) => {
+                    MpDirective::Double(doubles) => {
                         insert_data(&segment, binary, doubles);
                     }
-                    &MPDirective::Align(num) => {
+                    &MpDirective::Align(num) => {
                         let multiple = 2usize.pow(num);
                         let curr_size = binary.data.len();
 
@@ -98,15 +98,15 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                             insert_safe_data(&segment, binary, &vec![Safe::Uninitialised; amount]);
                         }
                     }
-                    MPDirective::Space(num) => {
+                    MpDirective::Space(num) => {
                         insert_safe_data(&segment, binary, &vec![Safe::Uninitialised; *num as usize]);
                     }
-                    MPDirective::Globl(label) => {
+                    MpDirective::Globl(label) => {
                         binary.globals.push(label.to_string());
                     }
                 }
             }
-            MPItem::Instruction(instruction) => {
+            MpItem::Instruction(instruction) => {
                 // We can't compile instructions yet - so just keep track of
                 // how many bytes-worth we've seen so far
                 match segment {
@@ -123,7 +123,7 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                     }
                 }
             }
-            MPItem::Label(label) => {
+            MpItem::Label(label) => {
                 binary.labels.insert(
                     label.to_string(),
                     match segment {
