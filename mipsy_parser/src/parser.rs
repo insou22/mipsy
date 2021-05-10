@@ -109,7 +109,7 @@ pub fn parse_mips(files: Vec<(Option<&str>, &str)>) -> Result<MPProgram, ErrorLo
     for file in files {
         let (file_name, input) = file;
 
-        let file_name = file_name.map(|name| Rc::from(name));
+        let file_name = file_name.map(Rc::from);
 
         let string = crate::misc::tabs_to_spaces(input);
         let result = parse_result(Span::new(string.as_bytes()), file_name.clone(), parse_mips_bytes(file_name))?;

@@ -213,12 +213,12 @@ mod tests {
     fn test_parse_any1() {
         assert_eq!(
             unspan(parse_any1(span("hello")).unwrap()),
-            ("ello".to_string(), 'h' as u8)
+            ("ello".to_string(), b'h')
         );
 
         assert_eq!(
             unspan(parse_any1(span("h")).unwrap()),
-            ("".to_string(), 'h' as u8)
+            ("".to_string(), b'h')
         );
     }
 
