@@ -57,13 +57,13 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MPInstruction) -> MipsyInt
             );
         }
 
-        return Err(
+        Err(
             InternalError::Compiler(
                 compiler::Error::UnknownInstruction {
                     inst_ast: inst.clone(),
                 }
             )
-        );
+        )
     }
 }
 
@@ -77,9 +77,7 @@ pub fn instruction_length(iset: &InstSet, inst: &MPInstruction) -> MipsyInternal
 }
 
 pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MPInstruction) -> MipsyInternalResult<Vec<u32>> {
-    Ok(
-        find_instruction(iset, inst)?.compile_ops(binary, iset, inst)?
-    )
+    find_instruction(iset, inst)?.compile_ops(binary, iset, inst)
 }
 
 pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MPProgram) -> MipsyResult<()> {

@@ -25,7 +25,7 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
 
     for (addr, parts) in keys.into_iter().map(|addr| (addr, decompiled.get(&addr).unwrap())) {
         if !parts.labels.is_empty() {
-            text.push_str("\n");
+            text.push('\n');
         }
 
         for label in parts.labels.iter() {

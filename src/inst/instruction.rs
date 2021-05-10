@@ -352,7 +352,7 @@ impl ArgumentType {
                                 match self {
                                     Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
                                     Self::U16 | Self::U32 => num >= 0,
-                                    Self::Shamt => num >= 0 && num < 32,
+                                    Self::Shamt => (0..=31).contains(&num),
                                     _ => false,
                                 }
                             }
@@ -480,7 +480,7 @@ impl PseudoSignature {
                     }
                 }
                 &MPNumber::Char(chr) => {
-                    (chr as u16, 0 as u16)
+                    (chr as u16, 0_u16)
                 }
                 _ => unreachable!(),
             }

@@ -609,7 +609,7 @@ impl Runtime {
             0x0E => { state.write_reg(rt, state.get_reg(rs)? ^ imm_zero_extend); },
             
             // LUI  $Rt, Im
-            0x0F => { state.write_reg(rt, imm_zero_extend << 16 as i32); },
+            0x0F => { state.write_reg(rt, imm_zero_extend << 16); },
             
             // Unused
             0x10..=0x1F => {},
