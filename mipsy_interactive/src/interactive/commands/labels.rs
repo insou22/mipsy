@@ -13,7 +13,7 @@ pub(crate) fn labels_command() -> Command {
         "prints the addresses of all labels",
         "Prints the addresses of all labels in the currently loaded program.",
         |state, _label, _args| {
-            let binary = state.binary.as_ref().ok_or_else(|| CommandError::MustLoadFile)?;
+            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let max_len = binary.labels.keys()
                 .filter(|label| !label.starts_with("kernel__"))

@@ -17,7 +17,7 @@ pub(crate) fn label_command() -> Command {
         ),
         |state, _label, args| {
             let label = &args[0];
-            let binary = state.binary.as_ref().ok_or_else(|| CommandError::MustLoadFile)?;
+            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             match binary.get_label(label) {
                 Ok(addr) => prompt::success_nl(format!("{} => 0x{:08x}", label.yellow().bold(), addr)),

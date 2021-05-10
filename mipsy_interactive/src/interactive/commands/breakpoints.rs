@@ -23,7 +23,7 @@ pub(crate) fn breakpoints_command() -> Command {
              "break".bold(),
         ),
         |state, _label, _args| {
-            let binary = state.binary.as_mut().ok_or_else(|| CommandError::MustLoadFile)?;
+            let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
             if binary.breakpoints.is_empty() {
                 prompt::error_nl("no breakpoints set");

@@ -59,7 +59,7 @@ pub(crate) fn breakpoint_command() -> Command {
             let arg = mipsy_parser::parse_argument(&args[1])
                     .map_err(|_| get_error())?;
 
-            let binary = state.binary.as_mut().ok_or_else(|| CommandError::MustLoadFile)?;
+            let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
             match arg {
                 MPArgument::Number(MPNumber::Immediate(ref imm)) => {
