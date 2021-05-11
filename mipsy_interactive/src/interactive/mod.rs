@@ -250,10 +250,34 @@ impl State {
     pub(crate) fn mipsy_error(&self, error: MipsyError, context: ErrorContext, repl_line: Option<String>) {
         match error {
             MipsyError::Parser(error) => {
-                error.show_error(error.file_tag());
+                if let Some(line) = repl_line {
+                    error.show_error(Rc::from(&*line));
+                } else {
+                    let file_tag = error.file_tag();
+
+                    let file = self.program.as_ref()
+                        .expect("cannot get parser error without a file to compile")
+                        .get(&*file_tag)
+                        .map(|str| Rc::from(&**str))
+                        .expect("for file to throw a parser error, it should probably exist");
+
+                    error.show_error(file);
+                }
             }
             MipsyError::Compiler(error) => {
-                error.show_error(error.file_tag());
+                if let Some(line) = repl_line {
+                    error.show_error(Rc::from(&*line));
+                } else {
+                    let file_tag = error.file_tag();
+    
+                    let file = self.program.as_ref()
+                        .expect("cannot get compiler error without a file to compile")
+                        .get(&*file_tag)
+                        .map(|str| Rc::from(&**str))
+                        .expect("for file to throw a compiler error, it should probably exist");
+    
+                    error.show_error(file);
+                }
             }
             MipsyError::Runtime(error) => {
                 error.show_error(

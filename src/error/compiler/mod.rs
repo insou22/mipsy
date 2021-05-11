@@ -99,32 +99,39 @@ impl CompilerError {
         //    |      ^^^^ error: some useless diagnosis
         //
 
-        let line_num_str = line.to_string();
+        let line_num_str = self.line.to_string();
+        let line_num_str_colored = line_num_str.bright_blue().bold();
         let line_num_width = line_num_str.len();
         let line_num_blank = " ".repeat(line_num_width);
         let arrow = "-->".bright_blue().bold();
         let file_name = {
             if self.file_tag.is_empty() {
                 String::new()
-            } else if self.file_tag.contains(MAIN_SEPARATOR) {
-                self.file_tag.bold().to_string()
             } else {
-                format!("./{}", self.file_tag).bold().to_string()
+                let dot_slash = if !self.file_tag.contains(MAIN_SEPARATOR) {
+                    "./"
+                } else {
+                    ""
+                };
+
+                let line_col = format!(":{}:{}", self.line, self.col);
+
+                format!("{}{}{}", dot_slash.bold(), self.file_tag.bold(), line_col.bold())
             }
         };
         let bar = "|".bright_blue().bold();
         let line = updated_line;
-        let pre_highlight_space = untabbed_col;
+        let pre_highlight_space = " ".repeat((untabbed_col - 1) as usize);
         let highlight = "^".repeat((untabbed_col_end - untabbed_col) as usize).bright_red().bold();
 
         // and this is where the magic happens...
 
         if !file_name.is_empty() {
-            println!("{} {} {}", line_num_blank, arrow, file_name);
+            println!("{}{} {}", line_num_blank, arrow, file_name);
         }
 
         println!("{} {}", line_num_blank, bar);
-        println!("{} {} {}", line_num_str, bar, line);
+        println!("{} {} {}", line_num_str_colored, bar, line);
         print!  ("{} {} {}{} ", line_num_blank, bar, pre_highlight_space, highlight);
     }
 }
@@ -139,6 +146,7 @@ pub enum Error {
     InstructionBadFormat { inst_ast: MpInstruction, correct_formats: Vec<Signature> },
     InstructionSimName   { inst_ast: MpInstruction, similar_instns:  Vec<Signature> },
 
+    RedefinedLabel  { label: String },
     UnresolvedLabel { label: String, similar: Vec<String> },
 }
 
@@ -183,6 +191,14 @@ impl Error {
                 let inst_name = inst_ast.name().bold();
 
                 format!("{} `{}` {}", message_1, inst_name, message_2)
+            }
+
+            Error::RedefinedLabel { label } => {
+                let message_1 = "the label".bright_red().bold();
+                let message_2 = "is defined multiple times".bright_red().bold();
+                let label = label.bold();
+
+                format!("{} `{}` {}", message_1, label, message_2)
             }
             
             Error::UnresolvedLabel { label, .. } => {
@@ -318,6 +334,11 @@ impl Error {
                 }
 
                 vec![tip]
+            }
+
+            Error::RedefinedLabel { .. } => {
+                // good luck kiddo
+                vec![]
             }
             
             Error::UnresolvedLabel { label, similar } => {

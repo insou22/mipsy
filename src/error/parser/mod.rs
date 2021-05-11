@@ -39,13 +39,13 @@ impl ParserError {
     }
 
     pub fn show_error(&self, file: Rc<str>) {
-        let message = "failed to parse";
+        let message = "failed to parse".bright_red().bold();
         
         let line = file.lines()
             .nth((self.line - 1) as usize)
             .expect("invalid line position in compiler error");
 
-        let (updated_line, untabbed_col) = {
+        let (updated_line, untabbed_col, untabbed_col_end) = {
             let mut updated_line = String::new();
             let mut untabbed_col = self.col;
             
@@ -61,47 +61,55 @@ impl ParserError {
                 if idx < self.col as usize {
                     untabbed_col += spaces_to_insert - 1;
                 }
-
             }
 
-            (updated_line, untabbed_col)
+            let untabbed_col_end = updated_line.len() as u32 + 1;
+
+            (updated_line, untabbed_col, untabbed_col_end)
         };
 
         // format of the error:
 
         //   --> ./foo.s:1:2
         //    |
-        // 22 | mips c'ode here
-        //    |       ^ error: failed to parse this
+        // 22 | mips code here
+        //    |      ^^^^ error: some useless diagnosis
         //
 
-        let line_num_str = line.to_string();
+        let line_num_str = self.line.to_string();
+        let line_num_str_colored = line_num_str.bright_blue().bold();
         let line_num_width = line_num_str.len();
         let line_num_blank = " ".repeat(line_num_width);
         let arrow = "-->".bright_blue().bold();
         let file_name = {
             if self.file_tag.is_empty() {
                 String::new()
-            } else if self.file_tag.contains(MAIN_SEPARATOR) {
-                self.file_tag.bold().to_string()
             } else {
-                format!("./{}", self.file_tag).bold().to_string()
+                let dot_slash = if !self.file_tag.contains(MAIN_SEPARATOR) {
+                    "./"
+                } else {
+                    ""
+                };
+
+                let line_col = format!(":{}:{}", self.line, self.col);
+
+                format!("{}{}{}", dot_slash.bold(), self.file_tag.bold(), line_col.bold())
             }
         };
         let bar = "|".bright_blue().bold();
         let line = updated_line;
-        let pre_highlight_space = untabbed_col;
-        let highlight = "^".bright_red().bold();
+        let pre_highlight_space = " ".repeat((untabbed_col - 1) as usize);
+        let highlight = "^".repeat((untabbed_col_end - untabbed_col) as usize).bright_red().bold();
 
         // and this is where the magic happens...
 
         if !file_name.is_empty() {
-            println!("{} {} {}", line_num_blank, arrow, file_name);
+            println!("{}{} {}", line_num_blank, arrow, file_name);
         }
 
         println!("{} {}", line_num_blank, bar);
-        println!("{} {} {}", line_num_str, bar, line);
-        print!  ("{} {} {}{} {}", line_num_blank, bar, pre_highlight_space, highlight, message);
+        println!("{} {} {}", line_num_str_colored, bar, line);
+        println!("{} {} {}{} {}", line_num_blank, bar, pre_highlight_space, highlight, message);
     }
 }
 

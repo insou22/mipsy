@@ -1,22 +1,15 @@
 use std::rc::Rc;
 
-use crate::{
-    Span,
-    ErrorLocation,
-    directive::{
+use crate::{ErrorLocation, Span, directive::{
         MpDirective,
         parse_directive,
-    },
-    instruction::{
+    }, instruction::{
         MpInstruction,
         parse_instruction,
-    },
-    label::parse_label,
-    misc::{
+    }, label::{MpLabel, parse_label}, misc::{
         comment_multispace0,
         parse_result,
-    },
-};
+    }};
 use nom::{
     IResult,
     sequence::tuple,
@@ -36,7 +29,7 @@ pub struct MpProgram {
 pub enum MpItem {
     Instruction(MpInstruction),
     Directive(MpDirective),
-    Label(String),
+    Label(MpLabel),
 }
 
 impl MpProgram {

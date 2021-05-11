@@ -177,14 +177,30 @@ fn main() {
 
         Err(MipsyError::Parser(error)) => {
             prompt::error(format!("failed to parse `{}`", error.file_tag()));
-            error.show_error(error.file_tag());
+
+            let file_tag = error.file_tag();
+
+            let file = files
+                .get(&*file_tag)
+                .map(|str| Rc::from(&**str))
+                .expect("for file to throw a parser error, it should probably exist");
+
+            error.show_error(file);
 
             process::exit(1);
         }
 
         Err(MipsyError::Compiler(error)) => {
             prompt::error(format!("failed to compile `{}`", error.file_tag()));
-            error.show_error(error.file_tag());
+
+            let file_tag = error.file_tag();
+
+            let file = files
+                .get(&*file_tag)
+                .map(|str| Rc::from(&**str))
+                .expect("for file to throw a compiler error, it should probably exist");
+
+            error.show_error(file);
 
             process::exit(1);
         }

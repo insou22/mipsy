@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{KDATA_BOT, KTEXT_BOT, MpProgram, MipsyResult, error::ToMipsyResult, inst::instruction::InstSet, util::Safe};
+use crate::{CompilerError, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, MpProgram, error::{ToMipsyResult, compiler::Error}, inst::instruction::InstSet, util::Safe};
 use super::{
     TEXT_BOT,
     DATA_BOT,
@@ -123,7 +123,25 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                     }
                 }
             }
-            MpItem::Label(label) => {
+            MpItem::Label(mplabel) => {
+                let label = mplabel.label();
+                let col = mplabel.col();
+                let col_end = mplabel.col_end();
+
+                if binary.labels.contains_key(&*label) {
+                    return Err(
+                        MipsyError::Compiler(
+                            CompilerError::new(
+                                Error::RedefinedLabel { label },
+                                file_tag,
+                                line,
+                                col,
+                                col_end
+                            )
+                        )
+                    );
+                }
+
                 binary.labels.insert(
                     label.to_string(),
                     match segment {
