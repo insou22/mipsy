@@ -2,6 +2,7 @@
 mod display;
 
 use crate::{MipsyError, error::runtime::Error};
+use core::str;
 use std::{cmp::min, collections::HashMap};
 use crate::{Binary, KDATA_BOT};
 use crate::{DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_TOP, KTEXT_BOT};
@@ -13,7 +14,7 @@ use crate::error::{
 use crate::inst::register::Register;
 use crate::util::Safe;
 
-const PAGE_SIZE: u32 = 4096;
+const PAGE_SIZE: u32 = 64;
 pub(super) const HI: usize = 32;
 pub(super) const LO: usize = 33;
 
@@ -26,7 +27,7 @@ pub struct Runtime {
 }
 
 #[derive(Clone)]
-pub struct State { //       [Safe<u8>; PAGE_SIZE (4096)]
+pub struct State { //       [Safe<u8>; PAGE_SIZE (64)]
     pages: HashMap<u32, Box<[Safe<u8>]>>,
     pc: u32,
     registers: Vec<Safe<i32>>, // size=34 - 32 registers, $hi, $lo
@@ -63,7 +64,7 @@ pub trait RuntimeHandler {
 }
 
 impl Runtime {
-    pub fn new(program: &Binary) -> Self {
+    pub fn new(program: &Binary, args: &[&str]) -> Self {
         let mut initial_state = 
             State {
                 pages: HashMap::new(),
@@ -115,10 +116,62 @@ impl Runtime {
         initial_state.write_ureg(Register::Fp.to_number() as u32, STACK_TOP);
         initial_state.write_ureg(Register::Gp.to_number() as u32, HEAP_BOT);
 
+        Self::include_args(&mut initial_state, &args);
+
         Runtime {
             timeline: vec![initial_state],
             current_state: 0,
             program_len: program.text.len(),
+        }
+    }
+
+    fn include_args(state: &mut State, args: &[&str]) {
+        if args.len() == 0 {
+            state.write_ureg(Register::A0.to_u32(), 0);
+            state.write_ureg(Register::A1.to_u32(), 0);
+            return;
+        }
+
+        let total_strings_len = args.into_iter()
+            .fold(0, |len, string| len + string.bytes().count() + 1)
+            as u32;
+
+        // allocate total_strings_len on the stack
+        let strings_stack_addr = STACK_TOP - total_strings_len;
+
+        // and then 4-byte align it
+        let strings_stack_addr = strings_stack_addr - (strings_stack_addr % 4);
+
+        let total_char_star_stars_len = (args.len() + 1) * 4;
+        let total_char_star_stars_len = total_char_star_stars_len as u32;
+
+        let char_star_star_addr = strings_stack_addr - total_char_star_stars_len;
+
+        state.write_ureg(Register::A0.to_u32(), args.len() as u32);
+        state.write_ureg(Register::A1.to_u32(), char_star_star_addr);
+        state.write_ureg(Register::Sp.to_u32(), char_star_star_addr - 4);
+
+        {
+            let mut string_addr = strings_stack_addr;
+            let mut star_addr   = char_star_star_addr;
+
+            for &arg in args {
+                state.write_word(star_addr, string_addr);
+
+                for byte in arg.bytes() {
+                    state.write_byte(string_addr, byte);
+
+                    string_addr += 1;
+                }
+
+                // null terminator
+                state.write_byte(string_addr, 0);
+                string_addr += 1;
+
+                star_addr += 4;
+            }
+
+            state.write_word(star_addr, 0);
         }
     }
 

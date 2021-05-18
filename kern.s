@@ -1,4 +1,5 @@
 .ktext
+_start:
     la      $k0, main
     jalr    $k0
 

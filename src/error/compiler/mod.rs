@@ -180,7 +180,7 @@ impl Error {
             Error::UnknownInstruction { inst_ast } | 
             Error::InstructionSimName { inst_ast, .. } => {
                 let message = "unknown instruction".bright_red().bold();
-                let inst_name = inst_ast.name().bright_red().bold();
+                let inst_name = inst_ast.name().bold();
 
                 format!("{} `{}`", message, inst_name)
             }
@@ -204,7 +204,7 @@ impl Error {
             Error::UnresolvedLabel { label, .. } => {
                 let message_1 = "cannot find label".bright_red().bold();
                 let message_2 = "in program".bright_red().bold();
-                let label = label.bright_red().bold();
+                let label = label.bold();
                 
                 format!("{} `{}` {}", message_1, label, message_2)
             }

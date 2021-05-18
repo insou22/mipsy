@@ -21,6 +21,8 @@ struct Opts {
     #[clap(long, short('v'))]
     version: bool,
     files: Vec<String>,
+    #[clap(last = true)]
+    args:  Vec<String>,
 }
 
 fn get_input<T>(name: &str, line: bool) -> T
@@ -171,8 +173,12 @@ fn main() {
                 (name, file_contents)
             })
             .collect::<HashMap<_, _>>();
+    
+    let args = opts.args.iter()
+            .map(|arg| &**arg)
+            .collect::<Vec<_>>();
 
-    let (iset, binary, mut runtime) = match compile(&files) {
+    let (iset, binary, mut runtime) = match compile(&files, &args) {
         Ok((iset, binary, runtime)) => (iset, binary, runtime),
 
         Err(MipsyError::Parser(error)) => {
@@ -191,14 +197,20 @@ fn main() {
         }
 
         Err(MipsyError::Compiler(error)) => {
-            prompt::error(format!("failed to compile `{}`", error.file_tag()));
+            let compile_tag = if error.file_tag().is_empty() {
+                String::new()
+            } else {
+                format!(" `{}`", error.file_tag())
+            };
+
+            prompt::error(format!("failed to compile{}", compile_tag));
 
             let file_tag = error.file_tag();
 
             let file = files
                 .get(&*file_tag)
                 .map(|str| Rc::from(&**str))
-                .expect("for file to throw a compiler error, it should probably exist");
+                .unwrap_or_else(|| Rc::from(""));
 
             error.show_error(file);
 
@@ -254,14 +266,14 @@ fn main() {
     }
 }
 
-fn compile(files: &HashMap<String, String>) -> MipsyResult<(InstSet, Binary, Runtime)> {
+fn compile(files: &HashMap<String, String>, args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
     let files = files.iter()
             .map(|(k, v)| (Some(&**k), &**v))
             .collect::<Vec<_>>();
 
     let iset    = mipsy_lib::inst_set();
-    let binary   = mipsy_lib::compile(&iset, files)?;
-    let runtime = mipsy_lib::runtime(&binary);
+    let binary  = mipsy_lib::compile(&iset, files)?;
+    let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))
 }

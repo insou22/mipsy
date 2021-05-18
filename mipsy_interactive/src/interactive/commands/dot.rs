@@ -12,6 +12,7 @@ pub(crate) fn dot_command() -> Command {
         ".",
         vec![],
         vec!["instruction"],
+        "{args}",
         "execute a MIPS instruction",
         "Executes a MIPS instruction immediately",
         |state, _label, args| {

@@ -6,10 +6,7 @@ use crate::{ErrorLocation, Span, directive::{
     }, instruction::{
         MpInstruction,
         parse_instruction,
-    }, label::{MpLabel, parse_label}, misc::{
-        comment_multispace0,
-        parse_result,
-    }};
+    }, label::{MpLabel, parse_label}, misc::{comment_multispace0, comment_multispace1, parse_result}};
 use nom::{
     IResult,
     sequence::tuple,
@@ -79,11 +76,18 @@ pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) 
             remaining_input,
             items
         ) = many0(
-            map(
-                parse_mips_item,
-                |(item, line)| (item, file_name.clone(), line),
-            ),
+            alt((
+                map(
+                    parse_mips_item,
+                    |(item, line)| Some((item, file_name.clone(), line)),
+                ),
+                map(comment_multispace1, |_| None),
+            ))
         )(i)?;
+
+        let items = items.into_iter()
+            .filter_map(|x| x)
+            .collect();
 
         Ok((
             remaining_input,

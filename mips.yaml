@@ -1336,4 +1336,19 @@ pseudoinstructions:
         data: [$Rs, $At]
       - inst: MFHI
         data: [$Rd]
-
+  - name: PUSH
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$Rs, 4($sp)]
+  - name: POP
+    compile:
+      format: [Rd]
+    expand:
+      - inst: LW
+        data: [$Rd, 4($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]

@@ -113,7 +113,7 @@ impl State {
         let command = command.unwrap();
         let required = match &command.args {
             Arguments::Exactly { required, optional: _ } => required,
-            Arguments::VarArgs { required } => required
+            Arguments::VarArgs { required, format:   _ } => required,
         };
 
         if (parts.len() - 1) < required.len() {

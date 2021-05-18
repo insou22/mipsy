@@ -40,10 +40,27 @@ impl ParserError {
 
     pub fn show_error(&self, file: Rc<str>) {
         let message = "failed to parse".bright_red().bold();
-        
-        let line = file.lines()
-            .nth((self.line - 1) as usize)
-            .expect("invalid line position in compiler error");
+
+        let line = {
+            let target_line = (self.line - 1) as usize;
+
+            let line = file.lines()
+                .nth(target_line);
+
+            // special case: file is empty and ends with a newline, in which case the 
+            // parser will point to char 1-1 of the final line, but .lines() won't consider
+            // that an actual line, as it doesn't contain any actual content.
+            //
+            // the only way this can actually occur is if the file contains no actual items,
+            // as otherwise it would be happy to reach the end of the file, and return the
+            // program. so we can just give a customised error message instead.
+            if line.is_none() && file.ends_with("\n") && target_line == file.lines().count() {
+                eprintln!("file contains no MIPS contents!");
+                return;
+            }
+
+            line.expect("invalid line position in compiler error")
+        };
 
         let (updated_line, untabbed_col, untabbed_col_end) = {
             let mut updated_line = String::new();
@@ -104,12 +121,12 @@ impl ParserError {
         // and this is where the magic happens...
 
         if !file_name.is_empty() {
-            println!("{}{} {}", line_num_blank, arrow, file_name);
+            eprintln!("{}{} {}", line_num_blank, arrow, file_name);
         }
 
-        println!("{} {}", line_num_blank, bar);
-        println!("{} {} {}", line_num_str_colored, bar, line);
-        println!("{} {} {}{} {}", line_num_blank, bar, pre_highlight_space, highlight, message);
+        eprintln!("{} {}", line_num_blank, bar);
+        eprintln!("{} {} {}", line_num_str_colored, bar, line);
+        eprintln!("{} {} {}{} {}", line_num_blank, bar, pre_highlight_space, highlight, message);
     }
 }
 

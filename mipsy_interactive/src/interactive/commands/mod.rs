@@ -39,7 +39,7 @@ use super::{error::CommandResult, State};
 
 pub(crate) enum Arguments {
     Exactly { required: Vec<String>, optional: Vec<String> },
-    VarArgs { required: Vec<String>, },
+    VarArgs { required: Vec<String>, format: String, },
 }
 
 pub(crate) struct Command {
@@ -65,13 +65,13 @@ pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: 
     }
 }
 
-pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, desc: S, long_desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<()>) -> Command {
+pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, varargs_format: impl Into<String>, desc: S, long_desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<()>) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
         long_description: long_desc.into(),
         aliases: aliases.into_iter().map(S::into).collect(),
-        args: Arguments::VarArgs { required: required_args.into_iter().map(S::into).collect(), },
+        args: Arguments::VarArgs { required: required_args.into_iter().map(S::into).collect(), format: varargs_format.into() },
         exec,
     }
 }

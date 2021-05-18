@@ -47,7 +47,7 @@ impl Binary {
             let mut similar = self.labels.keys()
                     .map(|label| label.to_ascii_lowercase())
                     .map(|label| (strsim::levenshtein(&label, &label_lower), label))
-                    .filter(|&(sim, _)| sim <= 3)
+                    .filter(|&(sim, _)| sim <= 2)
                     .collect::<Vec<_>>();
 
             similar.sort_by_key(|&(sim, _)| sim);
@@ -88,6 +88,9 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
         globals: vec![],
         line_numbers: HashMap::new(),
     };
+    
+    let kernel = get_kernel();
+    populate_labels_and_data(&mut binary, iset, &kernel)?;
 
     populate_labels_and_data(&mut binary, iset, &program)?;
 
@@ -97,10 +100,7 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
     }
 
     populate_text           (&mut binary, iset, &program)?;
-    
-    let kernel = get_kernel();
 
-    populate_labels_and_data(&mut binary, iset, &kernel)?;
     populate_text           (&mut binary, iset, &kernel)?;
 
     Ok(binary)

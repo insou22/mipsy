@@ -9,7 +9,8 @@ pub(crate) fn load_command() -> Command {
     command_varargs(
         "load",
         vec!["l"],
-        vec!["file"],
+        vec!["files"],
+        "-- {args}".magenta().to_string(),
         "load a MIPS file to run",
         &format!(
             "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
@@ -20,7 +21,17 @@ pub(crate) fn load_command() -> Command {
         ),
         |state, _label, args| {
 
-            let program: HashMap<_, _> = args.iter()
+            let (files, arguments) = {
+                if let Some(index) = args.iter().position(|arg| arg == "--") {
+                    let (files, arguments) = args.split_at(index);
+
+                    (files, &arguments[1..])
+                } else {
+                    (args, &[][..])
+                }
+            };
+
+            let program: HashMap<_, _> = files.iter()
                     .map(|path| {
                         match std::fs::read_to_string(path) {
                             Ok(content) => Ok((path.to_string(), content)),
@@ -39,12 +50,19 @@ pub(crate) fn load_command() -> Command {
             let binary = mipsy_lib::compile(&state.iset, binary_files)
                 .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
-            let runtime = mipsy_lib::runtime(&binary);
+            let runtime = mipsy_lib::runtime(&binary, &arguments.into_iter().map(|x| &**x).collect::<Vec<_>>());
 
             state.binary  = Some(binary);
             state.runtime = Some(runtime);
             state.exited  = false;
-            prompt::success_nl("file loaded");
+
+            let loaded = if program.len() == 1 {
+                "file loaded"
+            } else {
+                "files loaded"
+            };
+
+            prompt::success_nl(loaded);
 
             Ok(())
         }

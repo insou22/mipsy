@@ -74,8 +74,8 @@ pub fn decompile(iset: &InstSet, binary: &Binary) -> String {
     decompile::decompile(binary, iset)
 }
 
-pub fn runtime(binary: &Binary) -> Runtime {
-    runtime::Runtime::new(binary)
+pub fn runtime(binary: &Binary, args: &[&str]) -> Runtime {
+    runtime::Runtime::new(binary, args)
 }
 
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));

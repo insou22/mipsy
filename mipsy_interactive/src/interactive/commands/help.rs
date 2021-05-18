@@ -49,13 +49,15 @@ pub(crate) fn help_command() -> Command {
                             len += arg.len() + 2;
                         }
                     }
-                    Arguments::VarArgs { required } => {
+                    Arguments::VarArgs { required, format } => {
                         len += required.len();
                         for arg in required.iter() {
                             len += arg.len() + 2;
                         }
 
-                        len += " {args}".len();
+                        len += 1;
+
+                        len += format.len();
                     }
                 }
 
@@ -73,7 +75,7 @@ pub(crate) fn help_command() -> Command {
                             "".magenta()       .to_string().len() * required.len() +
                             "".bright_magenta().to_string().len() * optional.len()
                         }
-                        Arguments::VarArgs { required } => {
+                        Arguments::VarArgs { required, format: _ } => {
                             "".magenta()       .to_string().len() * required.len() +
                             "".bright_magenta().to_string().len()
                         }
@@ -114,14 +116,14 @@ fn get_command_formatted(cmd: &Command) -> String {
                     .collect::<Vec<String>>()
             );
         }
-        Arguments::VarArgs { required } => {
+        Arguments::VarArgs { required, format } => {
             parts.append(
                 &mut required.iter()
                         .map(|arg| format!("<{}>", arg).magenta().to_string())
                         .collect::<Vec<String>>()
             );
 
-            parts.push("{args}".magenta().to_string());
+            parts.push(format.to_string());
         }
     }
 
