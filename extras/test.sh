@@ -1,2 +1,2 @@
-#!/bin/zsh
+#!/bin/sh
 ./extras/cargo.sh test;
