@@ -45,8 +45,8 @@ pub enum MpItem {
 impl<'tag, 'file> TaggedFile<'tag, 'file> {
     pub fn new(tag: Option<&'tag str>, file_contents: &'file str) -> Self {
         Self {
-            tag: tag,
-            file_contents: file_contents,
+            tag,
+            file_contents,
         }
     }
 }
@@ -159,7 +159,7 @@ pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) 
         ))(i)?;
 
         let items = items.into_iter()
-            .filter_map(|x| x)
+            .flatten()
             .collect();
 
         Ok((

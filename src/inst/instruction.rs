@@ -141,6 +141,7 @@ impl InstSet {
 }
 
 impl InstSignature {
+    #[allow(clippy::collapsible_match)]
     pub fn compile(&self, program: &Binary, args: Vec<&MpArgument>) -> MipsyInternalResult<u32> {
         let mut inst: u32 = 0;
 
@@ -540,6 +541,7 @@ impl PseudoSignature {
         Ok(())
     }
 
+    #[allow(clippy::collapsible_match)]
     fn get_variables(&self, program: &Binary, args: Vec<&MpArgument>) -> MipsyInternalResult<HashMap<String, MpArgument>> {
         let mut variables: HashMap<String, MpArgument> = HashMap::new();
         let mut used: HashMap<String, usize> = HashMap::new();
@@ -738,8 +740,8 @@ impl<'a> SignatureRef<'a> {
 impl Signature {
     pub fn sigref(&self) -> SignatureRef<'_> {
         match self {
-            Self::Native(native) => SignatureRef::Native(&native),
-            Self::Pseudo(pseudo) => SignatureRef::Pseudo(&pseudo),
+            Self::Native(native) => SignatureRef::Native(native),
+            Self::Pseudo(pseudo) => SignatureRef::Pseudo(pseudo),
         }
     }
 }

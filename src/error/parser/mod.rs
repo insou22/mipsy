@@ -37,6 +37,8 @@ impl ParserError {
         self.col
     }
 
+    // TODO(zkol): Can't just pull tab_size from the config, since
+    // file may have #![tabsize(...)]
     pub fn show_error(&self, config: &MipsyConfig, file: Rc<str>) {
         let message = "failed to parse".bright_red().bold();
 
@@ -53,7 +55,7 @@ impl ParserError {
             // the only way this can actually occur is if the file contains no actual items,
             // as otherwise it would be happy to reach the end of the file, and return the
             // program. so we can just give a customised error message instead.
-            if line.is_none() && file.ends_with("\n") && target_line == file.lines().count() {
+            if line.is_none() && file.ends_with('\n') && target_line == file.lines().count() {
                 eprintln!("file contains no MIPS contents!");
                 return;
             }

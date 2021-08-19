@@ -1,5 +1,3 @@
-use std::iter::FromIterator;
-
 use crate::{
     Span,
     misc::{
@@ -125,7 +123,7 @@ fn parse_ascii_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResul
             many_till(parse_escaped_char, char('"')),
         ))(i)?;
 
-        let text = String::from_iter(text.iter());
+        let text = text.iter().collect();
 
         Ok((remaining_data, text))
     }

@@ -13,9 +13,9 @@ use mipsy_parser::{
 
 pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
     if let Some(native) = iset.find_native(inst) {
-        Ok(SignatureRef::Native(&native))
+        Ok(SignatureRef::Native(native))
     } else if let Some(pseudo) = iset.find_pseudo(inst) {
-        Ok(SignatureRef::Pseudo(&pseudo))
+        Ok(SignatureRef::Pseudo(pseudo))
     } else {
         let mut matching_names: Vec<SignatureRef<'a>> = vec![];
         let mut close_names:    Vec<SignatureRef<'a>> = vec![];

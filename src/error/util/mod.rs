@@ -83,8 +83,8 @@ pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>
                 let mut reg_name   = String::new();
                 let mut post_chars = String::new();
 
-                let mut reg_chars = arg.chars().skip(index + 1);
-                while let Some(chr) = reg_chars.next() {
+                let reg_chars = arg.chars().skip(index + 1);
+                for chr in reg_chars.clone() {
                     if chr.is_alphanumeric() {
                         reg_name.push(chr);
                     } else {

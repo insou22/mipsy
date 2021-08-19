@@ -78,7 +78,7 @@ pub(crate) fn breakpoint_command() -> Command {
                         }
                         MpImmediate::LabelReference(label) => {
                             (
-                                binary.get_label(&label)
+                                binary.get_label(label)
                                     .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
                                 true
                             )

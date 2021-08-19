@@ -116,7 +116,7 @@ impl Runtime {
         initial_state.write_ureg(Register::Fp.to_number() as u32, STACK_TOP);
         initial_state.write_ureg(Register::Gp.to_number() as u32, HEAP_BOT);
 
-        Self::include_args(&mut initial_state, &args);
+        Self::include_args(&mut initial_state, args);
 
         Runtime {
             timeline: vec![initial_state],
@@ -126,13 +126,13 @@ impl Runtime {
     }
 
     fn include_args(state: &mut State, args: &[&str]) {
-        if args.len() == 0 {
+        if args.is_empty() {
             state.write_ureg(Register::A0.to_u32(), 0);
             state.write_ureg(Register::A1.to_u32(), 0);
             return;
         }
 
-        let total_strings_len = args.into_iter()
+        let total_strings_len = args.iter()
             .fold(0, |len, string| len + string.bytes().count() + 1)
             as u32;
 
@@ -872,10 +872,8 @@ impl State {
         self.get_reg(reg).map(|x| x as u32)
     }
 
-    #[allow(unreachable_code)]
     pub fn write_reg(&mut self, reg: u32, value: i32) {
-        if reg == 0 && value != 0 {
-            // TODO: Warning - cannot write to $zero
+        if reg == 0 {
             return;
         }
 

@@ -93,14 +93,14 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let kernel = get_kernel();
     populate_labels_and_data(&mut binary, iset, &kernel)?;
 
-    populate_labels_and_data(&mut binary, iset, &program)?;
+    populate_labels_and_data(&mut binary, iset, program)?;
 
     let warnings = check_post_data_label(program, &binary)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
     }
 
-    populate_text           (&mut binary, iset, &program)?;
+    populate_text           (&mut binary, iset, program)?;
 
     populate_text           (&mut binary, iset, &kernel)?;
 

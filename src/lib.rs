@@ -64,7 +64,7 @@ pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size:
             )
         )?;
 
-    let compiled = compile::compile(&parsed, &iset)?;
+    let compiled = compile::compile(&parsed, iset)?;
 
     Ok(compiled)
 }

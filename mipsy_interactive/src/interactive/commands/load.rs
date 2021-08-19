@@ -51,7 +51,7 @@ pub(crate) fn load_command() -> Command {
             let binary = mipsy_lib::compile(&state.iset, binary_files, state.config.tab_size)
                 .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
-            let runtime = mipsy_lib::runtime(&binary, &arguments.into_iter().map(|x| &**x).collect::<Vec<_>>());
+            let runtime = mipsy_lib::runtime(&binary, &arguments.iter().map(|x| &**x).collect::<Vec<_>>());
 
             state.binary  = Some(binary);
             state.runtime = Some(runtime);
