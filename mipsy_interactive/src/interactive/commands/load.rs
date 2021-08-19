@@ -4,6 +4,7 @@ use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
 use colored::*;
+use mipsy_parser::TaggedFile;
 
 pub(crate) fn load_command() -> Command {
     command_varargs(
@@ -44,10 +45,10 @@ pub(crate) fn load_command() -> Command {
             let program = state.program.as_ref().unwrap();
 
             let binary_files = program.iter()
-                    .map(|(path, file)| (Some(&**path), &**file))
+                    .map(|(path, file)| TaggedFile::new(Some(path), file))
                     .collect::<Vec<_>>();
 
-            let binary = mipsy_lib::compile(&state.iset, binary_files)
+            let binary = mipsy_lib::compile(&state.iset, binary_files, state.config.tab_size)
                 .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
             let runtime = mipsy_lib::runtime(&binary, &arguments.into_iter().map(|x| &**x).collect::<Vec<_>>());

@@ -678,7 +678,8 @@ impl PseudoSignature {
                     index = end;
                 }
 
-                let arg = parse_argument(data).unwrap();
+                // please don't use tabs in mips.yaml
+                let arg = parse_argument(data, 0).unwrap();
 
                 processed_args.push(arg);
             }

@@ -56,7 +56,7 @@ pub(crate) fn breakpoint_command() -> Command {
                 tip: format!("try `{}`", "help breakpoint".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(&args[1])
+            let arg = mipsy_parser::parse_argument(&args[1], state.config.tab_size)
                     .map_err(|_| get_error())?;
 
             let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;

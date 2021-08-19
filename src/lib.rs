@@ -23,6 +23,7 @@ pub use inst::instruction::{
 };
 pub use inst::register::Register;
 pub use compile::{Binary};
+use mipsy_parser::TaggedFile;
 pub use runtime::{
     Runtime,
     State,
@@ -50,8 +51,8 @@ pub fn inst_set() -> InstSet {
     InstSet::new(&yaml)
 }
 
-pub fn compile(iset: &InstSet, files: Vec<(Option<&str>, &str)>) -> MipsyResult<Binary> {
-    let parsed = mipsy_parser::parse_mips(files)
+pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> MipsyResult<Binary> {
+    let parsed = mipsy_parser::parse_mips(files, default_tab_size)
         .map_err(|err| 
             error::MipsyError::Parser(
                 ParserError::new(

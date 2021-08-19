@@ -11,9 +11,11 @@ pub enum Warning {
 pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
-    for (item, file_tag, line) in program.items() {
-        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
-        let line = *line;
+    for attributed_item in program.items() {
+        let item = attributed_item.item();
+        let line = attributed_item.line_number();
+        let file_tag = attributed_item.file_tag()
+            .unwrap_or_else(|| Rc::from(""));
 
         match item {
             MpItem::Instruction(ref instruction) => {
@@ -44,9 +46,11 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
 pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
 
-    for (item, file_tag, line) in program.items() {
-        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
-        let line = *line;
+    for attributed_item in program.items() {
+        let item = attributed_item.item();
+        let line = attributed_item.line_number();
+        let file_tag = attributed_item.file_tag()
+            .unwrap_or_else(|| Rc::from(""));
 
         match item {
             MpItem::Instruction(ref instruction) => {

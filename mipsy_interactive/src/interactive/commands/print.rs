@@ -53,7 +53,7 @@ pub(crate) fn print_command() -> Command {
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(&args[0])
+            let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
                     .map_err(|_| get_error())?;
 
             let print_type = &*args.get(1).cloned().unwrap_or_else(|| "word".to_string());

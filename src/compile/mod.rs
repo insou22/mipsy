@@ -14,6 +14,7 @@ mod data;
 use data::populate_labels_and_data;
 
 mod text;
+use mipsy_parser::TaggedFile;
 use text::populate_text;
 pub use text::compile1;
 
@@ -107,5 +108,7 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
 }
 
 fn get_kernel() -> MpProgram {
-    mipsy_parser::parse_mips(vec![(None, &KERN_FILE)]).unwrap()
+    // kernel file has tabsize of 8
+    mipsy_parser::parse_mips(vec![TaggedFile::new(None, KERN_FILE)], 8)
+        .expect("Kernel file should always build")
 }

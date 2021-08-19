@@ -15,6 +15,7 @@ case_insensitive_hashmap = "1.0.0"                  # mips labels
 colored = "2"                                       # for ansi colors
 strip-ansi-escapes = "0.1"                          # to strip color codes out for strlen calcs
 mipsy_parser = { version = "0.1", path = "./mipsy_parser" }
+mipsy_utils  = { version = "0.1", path = "./mipsy_utils" }
 
 [build-dependencies]
 vergen = "3"
@@ -22,6 +23,7 @@ vergen = "3"
 [workspace]
 members = [
     "mipsy",
+    "mipsy_utils",
     "mipsy_parser",
     "mipsy_interactive",
 ]

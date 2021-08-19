@@ -3,10 +3,10 @@ use std::io::Write;
 
 use colored::Colorize;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, RuntimeHandler, error::runtime::ErrorContext, fd, flags, len, mode, n_bytes, void_ptr};
-use mipsy_interactive::{
-    prompt,
-};
+use mipsy_interactive::prompt;
 use clap::Clap;
+use mipsy_parser::TaggedFile;
+use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
 #[derive(Clap, Debug)]
@@ -154,9 +154,22 @@ impl RuntimeHandler for Handler {
 fn main() {
     let opts: Opts = Opts::parse();
 
+    let config = match read_config() {
+        Ok(config) => config,
+        Err(MipsyConfigError::InvalidConfig) => {
+            let config_path = match config_path() {
+                Some(path) => path.to_string_lossy().to_string(),
+                None => String::from("~/.config/mipsy/config.yaml"),
+            };
+
+            prompt::error_nl(format!("your {} file failed to parse -- maybe try deleting it?", config_path));
+            return;
+        }
+    };
+
     if opts.files.is_empty() {
         // launch() returns !
-        mipsy_interactive::launch();
+        mipsy_interactive::launch(config);
     }
 
     let files = opts.files.into_iter()
@@ -178,7 +191,7 @@ fn main() {
             .map(|arg| &**arg)
             .collect::<Vec<_>>();
 
-    let (iset, binary, mut runtime) = match compile(&files, &args) {
+    let (iset, binary, mut runtime) = match compile(&config, &files, &args) {
         Ok((iset, binary, runtime)) => (iset, binary, runtime),
 
         Err(MipsyError::Parser(error)) => {
@@ -191,7 +204,7 @@ fn main() {
                 .map(|str| Rc::from(&**str))
                 .expect("for file to throw a parser error, it should probably exist");
 
-            error.show_error(file);
+            error.show_error(&config, file);
 
             process::exit(1);
         }
@@ -212,7 +225,7 @@ fn main() {
                 .map(|str| Rc::from(&**str))
                 .unwrap_or_else(|| Rc::from(""));
 
-            error.show_error(file);
+            error.show_error(&config, file);
 
             process::exit(1);
         }
@@ -266,13 +279,13 @@ fn main() {
     }
 }
 
-fn compile(files: &HashMap<String, String>, args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
+fn compile(config: &MipsyConfig, files: &HashMap<String, String>, args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
     let files = files.iter()
-            .map(|(k, v)| (Some(&**k), &**v))
-            .collect::<Vec<_>>();
+        .map(|(k, v)| TaggedFile::new(Some(k), v))
+        .collect::<Vec<_>>();
 
     let iset    = mipsy_lib::inst_set();
-    let binary  = mipsy_lib::compile(&iset, files)?;
+    let binary  = mipsy_lib::compile(&iset, files, config.tab_size)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))

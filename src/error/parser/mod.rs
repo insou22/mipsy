@@ -1,8 +1,7 @@
 use std::{path::MAIN_SEPARATOR, rc::Rc};
 
 use colored::Colorize;
-
-const TAB_SIZE: u32 = 4;
+use mipsy_utils::MipsyConfig;
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -38,7 +37,7 @@ impl ParserError {
         self.col
     }
 
-    pub fn show_error(&self, file: Rc<str>) {
+    pub fn show_error(&self, config: &MipsyConfig, file: Rc<str>) {
         let message = "failed to parse".bright_red().bold();
 
         let line = {
@@ -62,9 +61,8 @@ impl ParserError {
             line.expect("invalid line position in compiler error")
         };
 
-        let (updated_line, untabbed_col, untabbed_col_end) = {
+        let updated_line = {
             let mut updated_line = String::new();
-            let mut untabbed_col = self.col;
             
             for (idx, char) in line.char_indices() {
                 if char != '\t' {
@@ -72,18 +70,14 @@ impl ParserError {
                     continue;
                 }
 
-                let spaces_to_insert = TAB_SIZE - (idx as u32 % TAB_SIZE);
+                let spaces_to_insert = config.tab_size - (idx as u32 % config.tab_size);
                 updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
-
-                if idx < self.col as usize {
-                    untabbed_col += spaces_to_insert - 1;
-                }
             }
 
-            let untabbed_col_end = updated_line.len() as u32 + 1;
-
-            (updated_line, untabbed_col, untabbed_col_end)
+            updated_line
         };
+
+        let col_end = updated_line.len() as u32 + 1;
 
         // format of the error:
 
@@ -115,8 +109,8 @@ impl ParserError {
         };
         let bar = "|".bright_blue().bold();
         let line = updated_line;
-        let pre_highlight_space = " ".repeat((untabbed_col - 1) as usize);
-        let highlight = "^".repeat((untabbed_col_end - untabbed_col) as usize).bright_red().bold();
+        let pre_highlight_space = " ".repeat((self.col - 1) as usize);
+        let highlight = "^".repeat((col_end - self.col) as usize).bright_red().bold();
 
         // and this is where the magic happens...
 

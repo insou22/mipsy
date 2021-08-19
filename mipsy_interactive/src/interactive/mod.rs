@@ -30,9 +30,12 @@ use commands::{
 };
 use runtime_handler::Handler;
 
+use mipsy_utils::MipsyConfig;
+
 use self::error::{CommandError, CommandResult};
 
 pub(crate) struct State {
+    pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<HashMap<String, String>>,
@@ -44,8 +47,9 @@ pub(crate) struct State {
 }
 
 impl State {
-    fn new() -> Self {
+    fn new(config: MipsyConfig) -> Self {
         Self {
+            config,
             iset: mipsy_lib::inst_set(),
             commands: vec![],
             program: None,
@@ -248,10 +252,12 @@ impl State {
     }
 
     pub(crate) fn mipsy_error(&self, error: MipsyError, context: ErrorContext, repl_line: Option<String>) {
+        let config = &self.config;
+
         match error {
             MipsyError::Parser(error) => {
                 if let Some(line) = repl_line {
-                    error.show_error(Rc::from(&*line));
+                    error.show_error(config, Rc::from(&*line));
                 } else {
                     let file_tag = error.file_tag();
 
@@ -261,12 +267,12 @@ impl State {
                         .map(|str| Rc::from(&**str))
                         .expect("for file to throw a parser error, it should probably exist");
 
-                    error.show_error(file);
+                    error.show_error(config, file);
                 }
             }
             MipsyError::Compiler(error) => {
                 if let Some(line) = repl_line {
-                    error.show_error(Rc::from(&*line));
+                    error.show_error(config, Rc::from(&*line));
                 } else {
                     let file_tag = error.file_tag();
     
@@ -276,7 +282,7 @@ impl State {
                         .map(|str| Rc::from(&**str))
                         .expect("for file to throw a compiler error, it should probably exist");
     
-                    error.show_error(file);
+                    error.show_error(config, file);
                 }
             }
             MipsyError::Runtime(error) => {
@@ -389,8 +395,8 @@ fn editor() -> Editor<MyHelper> {
     rl
 }
 
-fn state() -> State {
-    let mut state = State::new();
+fn state(config: MipsyConfig) -> State {
+    let mut state = State::new(config);
 
     state.add_command(commands::load_command());
     state.add_command(commands::run_command());
@@ -413,9 +419,9 @@ fn state() -> State {
     state
 }
 
-pub fn launch() -> ! {
+pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
-    let mut state = state();
+    let mut state = state(config);
 
     loop {
         let readline = rl.readline(state.prompt());

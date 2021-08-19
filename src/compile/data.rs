@@ -26,9 +26,11 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
     let mut ktext_len = 0;
     let mut segment = Segment::Text;
 
-    for (item, file_tag, line) in program.items() {
-        let file_tag = file_tag.clone().unwrap_or_else(|| Rc::from(""));
-        let line = *line;
+    for attributed_item in program.items() {
+        let item = attributed_item.item();
+        let line = attributed_item.line_number();
+        let file_tag = attributed_item.file_tag()
+            .unwrap_or_else(|| Rc::from(""));
         
         match item {
             MpItem::Directive(directive) => {

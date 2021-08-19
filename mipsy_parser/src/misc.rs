@@ -1,30 +1,19 @@
-use std::{rc::Rc, u8};
+use std::rc::Rc;
 
 use crate::Span;
-use nom::{
-    IResult,
-    branch::alt,
-    bytes::complete::is_a,
-    character::complete::{
+use nom::{IResult, branch::alt, bytes::complete::{is_a, tag}, character::complete::{
         anychar,
         char,
         multispace1,
         none_of,
         one_of
-    },
-    combinator::{
-        map,
-        opt,
-    },
-    multi::{
+    }, combinator::{map, not, opt}, multi::{
         many0,
         many1
-    },
-    sequence::{
+    }, sequence::{
         tuple,
         preceded,
-    },
-};
+    }};
 
 #[derive(Debug)]
 pub struct ErrorLocation {
@@ -149,6 +138,8 @@ pub fn comment_multispace1(i: Span<'_>) -> IResult<Span<'_>, ()> {
                         multispace1,
                         opt(
                             tuple((
+                                not(tag("#![")),
+                                not(tag("#[")),
                                 preceded(char('#'), many0(none_of("\n"))),
                                 opt(char('\n')),
                             ))
@@ -158,6 +149,8 @@ pub fn comment_multispace1(i: Span<'_>) -> IResult<Span<'_>, ()> {
                 ),
                 map(
                     tuple((
+                        not(tag("#![")),
+                        not(tag("#[")),
                         preceded(char('#'), many0(none_of("\n"))),
                         opt(char('\n')),
                     )),
@@ -169,7 +162,7 @@ pub fn comment_multispace1(i: Span<'_>) -> IResult<Span<'_>, ()> {
     )(i)
 }
 
-pub fn tabs_to_spaces<T>(input: T) -> String
+pub fn tabs_to_spaces<T>(input: T, tab_size: u32) -> String
 where
     T: AsRef<str>
 {
@@ -178,9 +171,9 @@ where
     let mut line_len = 0;
     for char in input.as_ref().chars() {
         if char == '\t' {
-            let tab_size = 4 - (line_len % 4);
-            line_len += tab_size;
-            string.push_str(&" ".repeat(tab_size));
+            let this_tab_size = tab_size - (line_len % tab_size);
+            line_len += this_tab_size;
+            string.push_str(&" ".repeat(this_tab_size as usize));
         } else if char == '\n' {
             line_len = 0;
             string.push(char);

@@ -6,8 +6,11 @@ use misc::parse_result;
 
 pub type Span<'a> = LocatedSpan<&'a [u8]>;
 
-pub use parser::MpProgram;
-pub use parser::MpItem;
+pub use parser::{
+    MpProgram,
+    MpItem,
+    TaggedFile,
+};
 pub use instruction::{
     MpInstruction,
     MpArgument,
@@ -29,20 +32,20 @@ pub use register::{
 
 pub use parser::parse_mips;
 
-pub fn parse_instruction<T>(input: T) -> Result<MpInstruction, ErrorLocation>
+pub fn parse_instruction<T>(input: T, tab_size: u32) -> Result<MpInstruction, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    let string = misc::tabs_to_spaces(input);
+    let string = misc::tabs_to_spaces(input, tab_size);
 
     parse_result(Span::new(string.as_bytes()), None, instruction::parse_instruction)
 }
 
-pub fn parse_argument<T>(input: T) -> Result<MpArgument, ErrorLocation>
+pub fn parse_argument<T>(input: T, tab_size: u32) -> Result<MpArgument, ErrorLocation>
 where
     T: AsRef<str>,
 {
-    let string = misc::tabs_to_spaces(input);
+    let string = misc::tabs_to_spaces(input, tab_size);
 
     parse_result(
         Span::new(string.as_bytes()),
@@ -57,6 +60,7 @@ where
 pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));
 
 pub mod parser;
+mod attribute;
 mod directive;
 mod instruction;
 mod label;

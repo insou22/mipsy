@@ -2,11 +2,10 @@ use std::{path::MAIN_SEPARATOR, rc::Rc};
 
 use colored::Colorize;
 use mipsy_parser::MpInstruction;
+use mipsy_utils::MipsyConfig;
 use crate::inst::instruction::Signature;
 
 use super::util::{syntax_highlight_argument, tip_header};
-
-const TAB_SIZE: u32 = 4;
 
 #[derive(Debug)]
 pub struct CompilerError {
@@ -48,9 +47,9 @@ impl CompilerError {
         self.col_end
     }
 
-    pub fn show_error(&self, file: Rc<str>) {
+    pub fn show_error(&self, config: &MipsyConfig, file: Rc<str>) {
         if self.error().should_highlight_line() {
-            self.highlight_line(file);
+            self.highlight_line(config, file);
         }
 
         println!("{}", self.error.message());
@@ -60,15 +59,15 @@ impl CompilerError {
         }
     }
 
-    fn highlight_line(&self, file: Rc<str>) {
+    // TODO(zkol): Can't just pull tab_size from the config, since
+    // file may have #![tabsize(...)]
+    fn highlight_line(&self, config: &MipsyConfig, file: Rc<str>) {
         let line = file.lines()
             .nth((self.line - 1) as usize)
             .expect("invalid line position in compiler error");
 
-        let (updated_line, untabbed_col, untabbed_col_end) = {
+        let updated_line = {
             let mut updated_line = String::new();
-            let mut untabbed_col = self.col;
-            let mut untabbed_col_end = self.col_end;    
             
             for (idx, char) in line.char_indices() {
                 if char != '\t' {
@@ -76,19 +75,11 @@ impl CompilerError {
                     continue;
                 }
 
-                let spaces_to_insert = TAB_SIZE - (idx as u32 % TAB_SIZE);
+                let spaces_to_insert = config.tab_size - (idx as u32 % config.tab_size);
                 updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
-
-                if idx < self.col as usize {
-                    untabbed_col += spaces_to_insert - 1;
-                }
-
-                if idx < self.col_end as usize {
-                    untabbed_col_end += spaces_to_insert - 1;
-                }
             }
 
-            (updated_line, untabbed_col, untabbed_col_end)
+            updated_line
         };
 
         // format of the error:
@@ -121,8 +112,8 @@ impl CompilerError {
         };
         let bar = "|".bright_blue().bold();
         let line = updated_line;
-        let pre_highlight_space = " ".repeat((untabbed_col - 1) as usize);
-        let highlight = "^".repeat((untabbed_col_end - untabbed_col) as usize).bright_red().bold();
+        let pre_highlight_space = " ".repeat((self.col - 1) as usize);
+        let highlight = "^".repeat((self.col_end - self.col) as usize).bright_red().bold();
 
         // and this is where the magic happens...
 
