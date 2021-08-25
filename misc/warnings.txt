@@ -1,0 +1,5 @@
+unused label
+pseudo-instruction compiles to 1 native instruction
+indentation
+blank line before label
+...?
