@@ -1,7 +1,4 @@
-use crate::inst::instruction::ArgumentType;
 use serde::{Deserialize, Serialize};
-
-static CONFIG_FILE: &str = include_str!("../../mips.yaml");
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct YamlFile {
@@ -56,11 +53,23 @@ pub struct InstructionExpansionYaml {
     pub data: Vec<String>,
 }
 
-// Should be Result -- but not user facing
-pub fn get_instructions() -> YamlFile {
-    // let file = File::open("mips.yaml").expect("Failed to find mips.yaml!");
-    // let yaml: YamlFile = serde_yaml::from_reader(file).expect("Failed to parse mips.yaml!");
-    let yaml: YamlFile = serde_yaml::from_str(CONFIG_FILE).expect("Failed to parse mips.yaml!");
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArgumentType {
+    Rd,
+    Rs,
+    Rt,
+    Shamt,
+    I16,
+    U16,
+    J,
+    OffRs,
+    OffRt,
+    F32,
+    F64,
 
-    yaml
+    // pseudo
+    I32,
+    U32,
+    Off32Rs,
+    Off32Rt,
 }

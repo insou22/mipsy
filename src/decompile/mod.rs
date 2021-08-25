@@ -89,8 +89,8 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
     
     let mut inst = None;
 
-    for native_inst in &iset.native_set {
-        match &native_inst.runtime {
+    for native_inst in iset.native_set() {
+        match &native_inst.runtime_signature() {
             RuntimeSignature::R { funct: inst_funct } => {
                 if opcode != 0 || *inst_funct as u32 != funct {
                     continue;
@@ -111,17 +111,17 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
         }
 
         inst = Some(native_inst);
-        parts.inst_sig = Some(&native_inst.compile);
+        parts.inst_sig = Some(&native_inst.compile_signature());
         break;
     }
 
     if let Some(inst) = inst {
-        if inst.name == "sll" && rd == 0 && rt == 0 && shamt == 0 {
+        if inst.name() == "sll" && rd == 0 && rt == 0 && shamt == 0 {
             parts.inst_name = Some("nop".to_string());
         } else {
-            parts.inst_name = Some(inst.name.to_string());
+            parts.inst_name = Some(inst.name().to_string());
 
-            parts.arguments = inst.compile.format.iter()
+            parts.arguments = inst.compile_signature().format().iter()
                 .map(|arg| match arg {
                     ArgumentType::Rd     => format!("${}", Register::u32_to_str(rd)),
                     ArgumentType::Rt     => format!("${}", Register::u32_to_str(rt)),
@@ -132,7 +132,7 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
                     ArgumentType::I16    => {
                         let mut res = None;
 
-                        if inst.compile.relative_label {
+                        if inst.compile_signature().relative_label() {
 
                             for (label, &addr) in program.labels.iter() {
                                 if addr == text_addr.wrapping_add((imm as i32 * 4) as u32) {

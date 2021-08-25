@@ -1,10 +1,10 @@
 pub mod error;
 pub mod inst;
-pub mod yaml;
 pub mod util;
 pub mod compile;
 pub mod decompile;
 pub mod runtime;
+
 use std::rc::Rc;
 
 pub use mipsy_parser::MpProgram;
@@ -44,12 +44,6 @@ pub use compile::{
     KDATA_BOT,
 };
 pub use util::Safe;
-
-pub fn inst_set() -> InstSet {
-    let yaml = yaml::get_instructions();
-    
-    InstSet::new(&yaml)
-}
 
 pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> MipsyResult<Binary> {
     let parsed = mipsy_parser::parse_mips(files, default_tab_size)

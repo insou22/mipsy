@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::{Debug, Display}, fs, process, rc::Rc, str:
 use std::io::Write;
 
 use colored::Colorize;
+use mipsy_codegen::instruction_set;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, RuntimeHandler, error::runtime::ErrorContext, fd, flags, len, mode, n_bytes, void_ptr};
 use mipsy_interactive::prompt;
 use clap::Clap;
@@ -284,7 +285,7 @@ fn compile(config: &MipsyConfig, files: &HashMap<String, String>, args: &[&str])
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
-    let iset    = mipsy_lib::inst_set();
+    let iset    = instruction_set!("../mips.yaml");
     let binary  = mipsy_lib::compile(&iset, files, config.tab_size)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 

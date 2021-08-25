@@ -262,6 +262,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "mipsy_codegen",
  "mipsy_interactive",
  "mipsy_lib",
  "mipsy_parser",
@@ -275,11 +276,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mipsy_codegen"
+version = "0.1.0"
+dependencies = [
+ "mipsy_lib",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "mipsy_interactive"
 version = "0.1.0"
 dependencies = [
  "colored",
  "dirs",
+ "mipsy_codegen",
  "mipsy_lib",
  "mipsy_parser",
  "mipsy_utils",

@@ -1,8 +1,6 @@
 use std::{collections::HashMap, fmt, str::FromStr};
 use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
-use serde::{Serialize, Deserialize};
 use super::register::Register;
-use crate::yaml::YamlFile;
 use mipsy_parser::{
     MpInstruction,
     MpArgument,
@@ -13,34 +11,88 @@ use mipsy_parser::{
     parse_argument,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InstSet {
-    pub native_set: Vec<InstSignature>,
-    pub pseudo_set: Vec<PseudoSignature>,
+    native_set: Vec<InstSignature>,
+    pseudo_set: Vec<PseudoSignature>,
 }
 
-#[derive(Clone, Debug)]
+impl InstSet {
+    pub fn new(native_set: Vec<InstSignature>, pseudo_set: Vec<PseudoSignature>) -> Self {
+        Self {
+            native_set,
+            pseudo_set,
+        }
+    }
+
+    pub fn native_set(&self) -> &[InstSignature] {
+        &self.native_set
+    }
+
+    pub fn pseudo_set(&self) -> &[PseudoSignature] {
+        &self.pseudo_set
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct InstSignature {
-    pub name: String,
-    pub compile: CompileSignature,
-    pub runtime: RuntimeSignature,
-    pub meta: InstMetadata,
+    name: String,
+    compile: CompileSignature,
+    runtime: RuntimeSignature,
+    meta: InstMetadata,
 }
 
-#[derive(Clone, Debug)]
+impl InstSignature {
+    pub fn new(name: String, compile: CompileSignature, runtime: RuntimeSignature, meta: InstMetadata) -> Self {
+        Self {
+            name,
+            compile,
+            runtime,
+            meta,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn compile_signature(&self) -> &CompileSignature {
+        &self.compile
+    }
+
+    pub fn runtime_signature(&self) -> &RuntimeSignature {
+        &self.runtime
+    }
+
+    pub fn metadata(&self) -> &InstMetadata {
+        &self.meta
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct CompileSignature {
-    pub format: Vec<ArgumentType>,
-    pub relative_label: bool,
+    format: Vec<ArgumentType>,
+    relative_label: bool,
 }
 
-#[derive(Clone, Debug)]
-pub enum RuntimeSignature {
-    R { funct:  u8 },
-    I { opcode: u8, rt: Option<u8> },
-    J { opcode: u8 },
+impl CompileSignature {
+    pub fn new(format: Vec<ArgumentType>, relative_label: bool) -> Self {
+        Self {
+            format,
+            relative_label,
+        }
+    }
+
+    pub fn format(&self) -> &[ArgumentType] {
+        &self.format
+    }
+
+    pub fn relative_label(&self) -> bool {
+        self.relative_label
+    }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum ArgumentType {
     Rd,
     Rs,
@@ -62,9 +114,37 @@ pub enum ArgumentType {
 }
 
 #[derive(Clone, Debug)]
+pub enum RuntimeSignature {
+    R { funct:  u8 },
+    I { opcode: u8, rt: Option<u8> },
+    J { opcode: u8 },
+}
+
+#[derive(Clone, Debug)]
 pub struct InstMetadata {
-    pub desc_short: Option<String>,
-    pub desc_long:  Option<String>,
+    desc_short: Option<String>,
+    desc_long:  Option<String>,
+}
+
+impl InstMetadata {
+    pub fn new(desc_short: Option<String>, desc_long: Option<String>) -> Self {
+        Self {
+            desc_short,
+            desc_long,
+        }
+    }
+
+    pub fn desc_short(&self) -> Option<&str> {
+        self.desc_short
+            .as_ref()
+            .map(String::as_str)
+    }
+
+    pub fn desc_long(&self) -> Option<&str> {
+        self.desc_long
+            .as_ref()
+            .map(String::as_str)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -75,15 +155,54 @@ pub enum GenericSignature {
 
 #[derive(Debug, Clone)]
 pub struct PseudoSignature {
-    pub name: String,
-    pub compile: CompileSignature,
-    pub expand: Vec<PseudoExpand>,
+    name: String,
+    compile: CompileSignature,
+    expand: Vec<PseudoExpand>,
+}
+
+impl PseudoSignature {
+    pub fn new(name: String, compile: CompileSignature, expand: Vec<PseudoExpand>) -> Self {
+        Self {
+            name,
+            compile,
+            expand,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn compile_signature(&self) -> &CompileSignature {
+        &self.compile
+    }
+
+    pub fn expansion(&self) -> &[PseudoExpand] {
+        &self.expand
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct PseudoExpand {
-    pub inst: String,
-    pub data: Vec<String>,
+    inst: String,
+    data: Vec<String>,
+}
+
+impl PseudoExpand {
+    pub fn new(inst: String, data: Vec<String>) -> Self {
+        Self {
+            inst,
+            data,
+        }
+    }
+
+    pub fn inst(&self) -> &str {
+        &self.inst
+    }
+
+    pub fn data(&self) -> &[String] {
+        &self.data
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -99,9 +218,9 @@ pub enum SignatureRef<'a> {
 }
 
 impl InstSet {
-    pub fn new(yaml: &YamlFile) -> Self {
-        super::yaml::from_yaml(yaml)
-    }
+    // pub fn new(yaml: &YamlFile) -> Self {
+    //     super::yaml::from_yaml(yaml)
+    // }
 
     pub fn find_native_from_name(&self, inst: &str) -> Option<&InstSignature> {
         let name = inst.to_ascii_lowercase();
@@ -163,7 +282,7 @@ impl InstSignature {
 
         let mut arg_bits = vec![];
 
-        for (&arg_type, &arg) in self.compile.format.iter().zip(args.iter()) {
+        for (arg_type, &arg) in self.compile.format.iter().zip(args.iter()) {
             arg_bits.push(
                 match arg_type {
                     ArgumentType::Rd | ArgumentType::Rs | ArgumentType::Rt => match arg {
@@ -428,7 +547,7 @@ impl PseudoVariable {
         }.to_string()
     }
 
-    fn from_arg_type(arg_type: ArgumentType) -> Self {
+    fn from_arg_type(arg_type: &ArgumentType) -> Self {
         match arg_type {
             ArgumentType::Rd    => Self::Rd,
             ArgumentType::Rs    => Self::Rs,
@@ -551,7 +670,7 @@ impl PseudoSignature {
 
             match arg_type {
                 ArgumentType::Rd | ArgumentType::Rs | ArgumentType::Rt | ArgumentType::Shamt | ArgumentType::J => {
-                    self.new_variable(program, PseudoVariable::from_arg_type(*arg_type), arg.clone(), &mut variables, &mut used, last)?;
+                    self.new_variable(program, PseudoVariable::from_arg_type(arg_type), arg.clone(), &mut variables, &mut used, last)?;
                 }
                 ArgumentType::I16 => {
                     let arg = match arg {

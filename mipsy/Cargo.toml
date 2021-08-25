@@ -19,5 +19,8 @@ strip-ansi-escapes = "0.1"  # to strip color codes out for strlen calcs
 shlex = "0.1.0"             # 0.1.1 is latest, but I don't want # comments
 text_io = "0.1.8"           # to read values in, w/out per line
 
+# test
+mipsy_codegen = { version = "0.1", path = "../mipsy_codegen" }
+
 [build-dependencies]
 vergen = "3"

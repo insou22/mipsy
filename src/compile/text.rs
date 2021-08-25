@@ -20,10 +20,10 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInt
         let mut matching_names: Vec<SignatureRef<'a>> = vec![];
         let mut close_names:    Vec<SignatureRef<'a>> = vec![];
 
-        let all_instns = iset.native_set.iter()
+        let all_instns = iset.native_set().iter()
             .map(|native| SignatureRef::Native(native))
             .chain(
-                iset.pseudo_set.iter()
+                iset.pseudo_set().iter()
                     .map(|pseudo| SignatureRef::Pseudo(pseudo))
             );
 
@@ -71,7 +71,7 @@ pub fn instruction_length(iset: &InstSet, inst: &MpInstruction) -> MipsyInternal
     Ok(
         match find_instruction(iset, inst)? {
             SignatureRef::Native(_) => 1,
-            SignatureRef::Pseudo(pseudo) => pseudo.expand.len(),
+            SignatureRef::Pseudo(pseudo) => pseudo.expansion().len(),
         }
     )
 }

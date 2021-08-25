@@ -6,6 +6,7 @@ mod runtime_handler;
 
 use std::{collections::HashMap, rc::Rc};
 
+use mipsy_codegen::instruction_set;
 use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}};
 use helper::MyHelper;
 
@@ -50,7 +51,7 @@ impl State {
     fn new(config: MipsyConfig) -> Self {
         Self {
             config,
-            iset: mipsy_lib::inst_set(),
+            iset: instruction_set!("../mips.yaml"),
             commands: vec![],
             program: None,
             binary:  None,

@@ -26,4 +26,5 @@ members = [
     "mipsy_utils",
     "mipsy_parser",
     "mipsy_interactive",
+    "mipsy_codegen",
 ]

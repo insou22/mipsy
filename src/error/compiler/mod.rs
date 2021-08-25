@@ -269,12 +269,12 @@ impl Error {
                     tip.push_str(&format!("  - {} ", inst_name));
 
                     let args = sig
-                        .format
+                        .format()
                         .iter()
                         .enumerate()
                         .map(|(i, arg)| {
                             // special case for relative labels
-                            if sig.relative_label && i == sig.format.len() - 1 {
+                            if sig.relative_label() && i == sig.format().len() - 1 {
                                 "label".yellow().bold().to_string()
                             } else {
                                 syntax_highlight_argument(arg)
@@ -309,10 +309,10 @@ impl Error {
                     tip.push_str(&format!("  - {:5} ", inst.sigref().name().bold()));
 
                     let args = sig
-                        .format
+                        .format()
                         .iter()
                         .enumerate()
-                        .map(|(i, arg)| if sig.relative_label && i == sig.format.len() - 1 {
+                        .map(|(i, arg)| if sig.relative_label() && i == sig.format().len() - 1 {
                             "label".yellow().bold().to_string()
                         } else {
                             syntax_highlight_argument(arg)
