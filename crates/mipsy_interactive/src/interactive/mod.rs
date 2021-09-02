@@ -51,7 +51,7 @@ impl State {
     fn new(config: MipsyConfig) -> Self {
         Self {
             config,
-            iset: instruction_set!("../mips.yaml"),
+            iset: instruction_set!("../../mips.yaml"),
             commands: vec![],
             program: None,
             binary:  None,

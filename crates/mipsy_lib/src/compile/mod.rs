@@ -18,7 +18,7 @@ use mipsy_parser::TaggedFile;
 use text::populate_text;
 pub use text::compile1;
 
-static KERN_FILE: &str = include_str!("../../kern.s");
+static KERN_FILE: &str = include_str!("../../../../kern.s");
 
 pub const TEXT_BOT:  u32 = 0x00400000;
 pub const DATA_BOT:  u32 = 0x10010000;

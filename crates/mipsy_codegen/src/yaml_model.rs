@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct YamlFile {
     pub instructions: Vec<InstructionYaml>,
-    pub pseudoinstructions: Vec<PsuedoInstructionYaml>,
+    pub pseudoinstructions: Vec<PseudoInstructionYaml>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ pub enum InstructionType {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct PsuedoInstructionYaml {
+pub struct PseudoInstructionYaml {
     pub name: String,
     pub desc_short: Option<String>,
     pub desc_long: Option<String>,

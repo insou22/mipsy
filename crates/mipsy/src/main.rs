@@ -285,7 +285,7 @@ fn compile(config: &MipsyConfig, files: &HashMap<String, String>, args: &[&str])
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
-    let iset    = instruction_set!("../mips.yaml");
+    let iset    = instruction_set!("../../mips.yaml");
     let binary  = mipsy_lib::compile(&iset, files, config.tab_size)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
