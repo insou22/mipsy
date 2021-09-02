@@ -5,13 +5,14 @@ use colored::Colorize;
 use mipsy_codegen::instruction_set;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, RuntimeHandler, error::runtime::ErrorContext, fd, flags, len, mode, n_bytes, void_ptr};
 use mipsy_interactive::prompt;
-use clap::Clap;
+use clap::{Clap, AppSettings};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
+#[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
