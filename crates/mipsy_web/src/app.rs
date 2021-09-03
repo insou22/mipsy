@@ -1,16 +1,11 @@
 use yew::prelude::*;
 
-// messages to be passed around. 
-// can contain data (as with any item in an enum)
-pub enum Msg {
-    AddOne,
-}
+pub enum Msg {}
 
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
-    value: i64,
 }
 
 impl Component for App {
@@ -18,21 +13,11 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self {
-            link,
-            value: 0,
-        }
+        Self { link }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        match msg {
-            Msg::AddOne => {
-                self.value += 1;
-                // the value has changed so we need to
-                // re-render for it to appear on the page
-                true
-            }
-        }
+        false
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
@@ -44,12 +29,23 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-            <div>
-                <button onclick=self.link.callback(|_| Msg::AddOne)>{ "+1" }</button>
-                <p>{ self.value }</p>
-                <p class=classes!("bg-red-100")>{"Test!"}</p>
-            </div>
-        }
+                <div class="min-h-screen bg-gray-300">
+                    <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-6">
+                        <div class="flex items-center flex-shrink-0 text-black mr-6">
+                            <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
+                        </div>
+                        <div class="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+                            <div class="text-sm lg:flex-grow">
+                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white mr-4"> {"Docs"} </a>
+                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white mr-4"> {"Examples"}</a>
+                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white"> {"Blog"} </a>
+                            </div>
+                           <div>
+                                <button href="#" class="inline-block text-sm px-4 py-2 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 lg:mt-0">{"Load"}</button>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+            }
     }
 }
-
