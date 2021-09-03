@@ -1,4 +1,5 @@
 use yew::prelude::*;
+use crate::components::pagebackground::PageBackground;
 
 pub enum Msg {}
 
@@ -29,7 +30,7 @@ impl Component for App {
 
     fn view(&self) -> Html {
         html! {
-                <div class="min-h-screen bg-gray-300">
+            <PageBackground>
                     <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-6">
                         <div class="flex items-center flex-shrink-0 text-black mr-6">
                             <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
@@ -41,11 +42,14 @@ impl Component for App {
                                 <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white"> {"Blog"} </a>
                             </div>
                            <div>
-                                <button href="#" class="inline-block text-sm px-4 py-2 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 lg:mt-0">{"Load"}</button>
+                                <label for="load_file" class="inline-block text-sm px-5 py-2 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 lg:mt-0">
+                                {"Load"}
+                                </label>
+                                <input id="load_file" type="file" accept=".s" class="hidden" />
                             </div>
                         </div>
                     </nav>
-                </div>
+                </PageBackground>
             }
     }
 }
