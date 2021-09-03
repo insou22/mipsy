@@ -2,18 +2,18 @@ use yew::prelude::*;
 
 // messages to be passed around. 
 // can contain data (as with any item in an enum)
-enum Msg {
+pub enum Msg {
     AddOne,
 }
 
-struct Main {
+pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
     value: i64,
 }
 
-impl Component for Main {
+impl Component for App {
     type Message = Msg;
     type Properties = ();
 
@@ -52,6 +52,3 @@ impl Component for Main {
     }
 }
 
-fn main() {
-    yew::start_app::<Main>();
-}
