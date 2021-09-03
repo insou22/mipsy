@@ -47,6 +47,7 @@ impl Component for App {
             <div>
                 <button onclick=self.link.callback(|_| Msg::AddOne)>{ "+1" }</button>
                 <p>{ self.value }</p>
+                // <p class=classes!("bg-red-100")>{"Test!"}</p>
             </div>
         }
     }
