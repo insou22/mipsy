@@ -2,7 +2,6 @@ use yew::prelude::*;
 use yew::{Properties, Children};
 
 
-// rust analyser is literally on drugs
 #[derive(Properties, Clone)]
 pub struct Props {    
     #[prop_or_default]    

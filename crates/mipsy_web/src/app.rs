@@ -1,12 +1,16 @@
-use yew::prelude::*;
-use crate::components::pagebackground::PageBackground;
+use yew::{prelude::*, services::{ConsoleService, ReaderService, reader::FileData}, web_sys::File};
+use crate::components::{pagebackground::PageBackground, navbar::NavBar};
 
-pub enum Msg {}
+pub enum Msg {
+    FileChanged(File),
+    FileRead(FileData),
+}
 
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
+    file: Option<String>,
 }
 
 impl Component for App {
@@ -14,11 +18,30 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link }
+        Self { link, file: None }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        false
+
+        match msg {
+            Msg::FileChanged(file) => {
+                ConsoleService::info("file changed msg");
+                // FIXME -- check result
+                let result = ReaderService::read_file(file, self.link.callback(|file_data| Msg::FileRead(file_data))); 
+                
+                if let Err(err) = result {
+                    ConsoleService::error(&format!("{:?}",err));
+                }
+                false
+            }
+            Msg::FileRead(file_data) => {
+                ConsoleService::info(&format!("{:?}", file_data));
+                // TODO -- this should not be lossy
+                self.file = Some(String::from_utf8_lossy(&file_data.content).to_string()); 
+                true
+            }
+        }
+        
     }
 
     fn change(&mut self, _props: Self::Properties) -> ShouldRender {
@@ -27,29 +50,39 @@ impl Component for App {
         // This component has no properties so we will always return "false".
         false
     }
-
+    
     fn view(&self) -> Html {
+        let onchange = self.link.batch_callback(|event| {
+            ConsoleService::info("onchange fired");
+            match event {
+                ChangeData::Files(file_list) => {
+                    if let Some(file) = file_list.item(0) {
+                        ConsoleService::info(&format!("{:?}", file.name() ));
+                        Some(Msg::FileChanged(file))
+                    } else {
+                        None
+                    }
+                },
+                _ => None, 
+
+            } 
+        } );
+
+        ConsoleService::info(&format!("{:?}", self.file));
+
         html! {
             <PageBackground>
-                    <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-6">
-                        <div class="flex items-center flex-shrink-0 text-black mr-6">
-                            <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
-                        </div>
-                        <div class="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
-                            <div class="text-sm lg:flex-grow">
-                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white mr-4"> {"Docs"} </a>
-                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white mr-4"> {"Examples"}</a>
-                                <a href="#responsive-header" class="block mt-4 lg:inline-block lg:mt-0 text-teal-200 hover:text-white"> {"Blog"} </a>
-                            </div>
-                           <div>
-                                <label for="load_file" class="inline-block text-sm px-5 py-2 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 lg:mt-0">
-                                {"Load"}
-                                </label>
-                                <input id="load_file" type="file" accept=".s" class="hidden" />
-                            </div>
-                        </div>
-                    </nav>
-                </PageBackground>
-            }
+                <NavBar onchange=onchange/>
+                <div>
+                {
+                    if let Some(data) = self.file.as_deref() {
+                        data
+                    } else {
+                        ""
+                    }
+                }
+                </div>
+            </PageBackground>
+        }
     }
 }
