@@ -134,17 +134,20 @@ impl Component for App {
             }
 
             Msg::Run => {
-                
+               
+                ConsoleService::time_named("compile");
                 let inst_set = mipsy_codegen::instruction_set!("../../mips.yaml");
                 // hardcoded tabsize 8
                 let compiled = mipsy_lib::compile(&inst_set, vec![TaggedFile::new(None, self.file.as_deref().unwrap())], 8);
                 
                 match compiled {
                     Ok(binary) => {
+                        let text = mipsy_lib::decompile(&inst_set, &binary);
+                        self.file = Some(text);
                         let mut runtime = mipsy_lib::runtime(&binary, &[]);
                         let mut rh = Handler {
                             exited: false,
-                        }; 
+                        };
                         loop {
                             runtime.step(&mut rh);
                             if rh.exited {
@@ -158,6 +161,7 @@ impl Component for App {
                         ConsoleService::error(&format!("{:?}",err));
                     }
                 }
+                ConsoleService::time_named_end("compile");
                 true 
             }
         }
@@ -193,11 +197,11 @@ impl Component for App {
             Msg::Run
         });
 
-        let text: Html = {
+        let text = {
             if let Some(data) = self.file.as_deref() {
-                data.into()
+                data
             } else {
-                "No File Loaded :(".into()
+                "No File Loaded :("
             }
         };
 
@@ -207,7 +211,13 @@ impl Component for App {
             <PageBackground>
                 <NavBar load_onchange=onchange run_onclick=run_onclick />
                 <p>
-                {text}
+                {text.split("\n").map(|line| {
+                    html! {
+                        <p>
+                            {line}
+                        </p>
+                    }
+                }).collect::<Vec<_>>()}
                 </p>
             </PageBackground>
         }
