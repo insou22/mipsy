@@ -1,9 +1,10 @@
-use yew::{prelude::*, services::{ConsoleService, ReaderService, reader::FileData}, web_sys::File};
+use yew::{prelude::*, services::{ConsoleService, ReaderService, reader::{FileData, ReaderTask}}, web_sys::File};
 use crate::components::{pagebackground::PageBackground, navbar::NavBar};
 
 pub enum Msg {
     FileChanged(File),
     FileRead(FileData),
+    Run,
 }
 
 pub struct App {
@@ -11,6 +12,7 @@ pub struct App {
     // It can be used to send messages to the component
     link: ComponentLink<Self>,
     file: Option<String>,
+    jeff: Vec<ReaderTask>
 }
 
 impl Component for App {
@@ -18,7 +20,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        Self { link, file: None }
+        Self { link, file: None, jeff: vec![] }
     }
 
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
@@ -29,8 +31,14 @@ impl Component for App {
                 // FIXME -- check result
                 let result = ReaderService::read_file(file, self.link.callback(|file_data| Msg::FileRead(file_data))); 
                 
-                if let Err(err) = result {
-                    ConsoleService::error(&format!("{:?}",err));
+                match result {
+                    Ok(service) => {
+                        self.jeff.push(service);
+                    } 
+                
+                    Err(err) => {
+                        ConsoleService::error(&format!("{:?}",err));
+                    }
                 }
                 false
             }
@@ -39,6 +47,16 @@ impl Component for App {
                 // TODO -- this should not be lossy
                 self.file = Some(String::from_utf8_lossy(&file_data.content).to_string()); 
                 true
+            }
+
+            Msg::Run => {
+                
+                let inst_set = mipsy_codegen::instruction_set!("../../mips.yaml");
+               
+                // hardcoded tabsize 8
+                let compiled = mipsy_lib::compile(&inst_set, vec![ TaggedFile ]  ,8)
+                
+                true 
             }
         }
         
@@ -68,20 +86,23 @@ impl Component for App {
             } 
         } );
 
-        ConsoleService::info(&format!("{:?}", self.file));
 
+        let text: Html = {
+            if let Some(data) = self.file.as_deref() {
+                data.into()
+            } else {
+                "No File Loaded :(".into()
+            }
+        };
+
+        ConsoleService::info(&format!("render {:?}", text));
+        
         html! {
             <PageBackground>
-                <NavBar onchange=onchange/>
-                <div>
-                {
-                    if let Some(data) = self.file.as_deref() {
-                        data
-                    } else {
-                        ""
-                    }
-                }
-                </div>
+                <NavBar load_onchange=onchange run_onclick=self.link.batch_callback(|event| None)/>
+                <p>
+                {text}
+                </p>
             </PageBackground>
         }
     }

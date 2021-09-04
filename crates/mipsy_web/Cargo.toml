@@ -7,5 +7,6 @@ edition = "2018"
 
 [dependencies]
 yew = "0.18"
-
-
+mipsy_lib = { path = "../mipsy_lib" }
+mipsy_codegen = { path = "../mipsy_codegen" }
+mipsy_parser = { path = "../mipsy_parser" }
