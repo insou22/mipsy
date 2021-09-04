@@ -54,7 +54,7 @@ impl Component for App {
                 let inst_set = mipsy_codegen::instruction_set!("../../mips.yaml");
                
                 // hardcoded tabsize 8
-                let compiled = mipsy_lib::compile(&inst_set, vec![ TaggedFile ]  ,8)
+                let compiled = mipsy_lib::compile(&inst_set,vec![ ]  ,8)
                 
                 true 
             }
