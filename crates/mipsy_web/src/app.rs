@@ -268,11 +268,22 @@ impl Component for App {
             <>
                 <PageBackground>
                     <NavBar load_onchange=onchange run_onclick=run_onclick />
-                    <div id="text" class="px-2 resize-y border-2 border-black">
-                        { inner }
+                    <div id="pageContentContainer" style="height: calc(100vh - 122px)">
+                        <div id="text" class="flex flex-row px-2 ">
+                            <div id="regs" class="px-2 border-2 border-gray-600">
+                                {"Register garbage"}
+                            </div>
+                            <div id="text_data" class="px-2 border-2 border-gray-600">
+                                { inner }
+                            </div>
+                        </div>
+                    
+                        <div id="output" class="border-2 border-gray-600">
+                        {"Mipsy Output Here"}
+                        </div>
+                    
                     </div>
-                    <div id="output" class="border-2 border-green">
-                    </div>
+
                 </PageBackground>
 
             </>
