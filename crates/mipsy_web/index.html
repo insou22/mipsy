@@ -4,6 +4,22 @@
     <meta charset="utf-8" />
     <title>Mipsy</title>
     <link data-trunk href="static/tailwind.css" rel="css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+    <!-- <script data-trunk src="demo_defer.js" defer/ --> 
+    <script>
+            setTimeout(function(){
+              Split(['#text', '#output'], {
+                direction: 'vertical',
+              })
+            }, 1500);
+    </script>
+
   </head>
+
+  <body>
+    <div id="mount_application">
+    </div>
+
+  </body>
 </html>
