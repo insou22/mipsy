@@ -230,8 +230,9 @@ impl Component for App {
                     let mut rh = Handler {exit_status: 0, exited: false, stdout};
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
-                        
                         runtime.step(&mut rh);
+
+                        
                         if rh.exited {
                             ConsoleService::debug("loop");
                             break;
@@ -320,7 +321,7 @@ impl Component for App {
 impl App {
     fn render_running(&self, state: &RunningState) -> Html {
         html! {
-                {&state.file}
+            {&state.decompiled}
         }
     }
 
