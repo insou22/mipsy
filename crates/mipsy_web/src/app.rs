@@ -38,7 +38,7 @@ impl<'a> RuntimeHandler for Handler<'a> {
     }
 
     fn sys4_print_string(&mut self, val: String) {
-        todo!()
+        self.stdout.borrow_mut().push(val);
     }
 
     fn sys5_read_int(&mut self) -> i32 {
@@ -224,10 +224,13 @@ impl Component for App {
                     ref stdout,
                 }) = &self.state
                 {
+                    // clears stdout
+                    stdout.borrow_mut().drain(..);
+
                     let mut rh = Handler {exit_status: 0, exited: false, stdout};
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
-                    
+                        
                         runtime.step(&mut rh);
                         if rh.exited {
                             ConsoleService::debug("loop");
@@ -289,16 +292,20 @@ impl Component for App {
                     <NavBar load_onchange=onchange run_onclick=run_onclick />
                     <div id="pageContentContainer" style="height: calc(100vh - 122px)">
                         <div id="text" class="flex flex-row px-2 ">
-                            <div id="regs" class="px-2 border-2 border-gray-600">
+                            <div id="regs" class="overflow-y-auto px-2 border-2 border-gray-600">
                                 {"Register garbage"}
                             </div>
-                            <div id="text_data" class="px-2 border-2 border-gray-600">
+                            <div id="text_data" class="overflow-y-auto px-2 border-2 border-gray-600">
+                                <pre class="text-xs whitespace-pre-wrap">
                                 { text_html_content }
+                                </pre>
                             </div>
                         </div>
                     
-                        <div id="output" class="border-2 border-gray-600">
-                            {output_html_content}
+                        <div id="output" class="overflow-y-auto px-2 border-2 border-gray-600">
+                            <pre class="h-full whitespace-pre-wrap">
+                                {output_html_content}
+                            </pre>
                         </div>
                     
                     </div>
@@ -312,24 +319,15 @@ impl Component for App {
 
 impl App {
     fn render_running(&self, state: &RunningState) -> Html {
-        state
-            .file
-            .split("\n")
-            .map(|line| {
-                html! {
-                    <p>
-                        {line}
-                    </p>
-                }
-            })
-            .collect::<Html>()
+        html! {
+                {&state.file}
+        }
     }
 
     fn render_running_output(&self, state: &RunningState) -> Html {
         
         html! {
-
-            {state.stdout.borrow_mut().join("")}
+                {state.stdout.borrow_mut().join("")}
         }
 
     }
