@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::components::{navbar::NavBar, pagebackground::PageBackground};
 use mipsy_lib::{Binary, InstSet, RuntimeHandler};
 use mipsy_parser::TaggedFile;
@@ -14,13 +16,17 @@ fn crimes<T>() -> T {
     panic!()
 }
 
-struct Handler {
+struct Handler<'a> {
     exited: bool,
+    exit_status: i32,
+    // ask zac if I should do &str instead?
+    stdout: &'a RefCell<Vec<String>>
 }
 
-impl RuntimeHandler for Handler {
+impl<'a> RuntimeHandler for Handler<'a> {
     fn sys1_print_int(&mut self, val: i32) {
         ConsoleService::info(val.to_string().as_str());
+        self.stdout.borrow_mut().push(val.to_string());
     }
 
     fn sys2_print_float(&mut self, val: f32) {
@@ -61,6 +67,7 @@ impl RuntimeHandler for Handler {
 
     fn sys11_print_char(&mut self, val: char) {
         ConsoleService::info(val.to_string().as_str());
+        self.stdout.borrow_mut().push(val.to_string());
     }
 
     fn sys12_read_char(&mut self) -> char {
@@ -99,6 +106,7 @@ impl RuntimeHandler for Handler {
     }
 
     fn sys17_exit_status(&mut self, val: i32) {
+        self.exit_status = val;
         self.exited = true;
     }
 
@@ -117,6 +125,7 @@ pub struct RunningState {
     file: String,
     binary: Binary,
     decompiled: String,
+    stdout: RefCell<Vec<String>>, 
 }
 
 pub enum State {
@@ -190,6 +199,7 @@ impl Component for App {
                                     file,
                                     binary,
                                     decompiled,
+                                    stdout: RefCell::new(Vec::new())
                                 })
                             }
                         }
@@ -211,13 +221,16 @@ impl Component for App {
                     file,
                     binary,
                     decompiled,
+                    ref stdout,
                 }) = &self.state
                 {
-                    let mut rh = Handler { exited: false };
+                    let mut rh = Handler {exit_status: 0, exited: false, stdout};
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
+                    
                         runtime.step(&mut rh);
                         if rh.exited {
+                            ConsoleService::debug("loop");
                             break;
                         }
                     }
@@ -259,11 +272,17 @@ impl Component for App {
             Msg::Run
         });
 
-        let inner = match &self.state {
+        let text_html_content = match &self.state {
             &State::NoFile => "no file loaded".into(),
             &State::Running(ref state) => self.render_running(state),
         };
         
+        let output_html_content = match &self.state {
+                    &State::NoFile => "mipsy_web v0.1\nSchool of Computer Science and Engineering, University of New South Wales, Sydney.".into(),
+                    &State::Running(ref state) => self.render_running_output(state),  
+        };
+        
+        ConsoleService::info("rendering");
         html! {
             <>
                 <PageBackground>
@@ -274,12 +293,12 @@ impl Component for App {
                                 {"Register garbage"}
                             </div>
                             <div id="text_data" class="px-2 border-2 border-gray-600">
-                                { inner }
+                                { text_html_content }
                             </div>
                         </div>
                     
                         <div id="output" class="border-2 border-gray-600">
-                        {"Mipsy Output Here"}
+                            {output_html_content}
                         </div>
                     
                     </div>
@@ -304,5 +323,14 @@ impl App {
                 }
             })
             .collect::<Html>()
+    }
+
+    fn render_running_output(&self, state: &RunningState) -> Html {
+        
+        html! {
+
+            {state.stdout.borrow_mut().join("")}
+        }
+
     }
 }
