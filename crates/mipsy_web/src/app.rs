@@ -16,17 +16,23 @@ fn crimes<T>() -> T {
     panic!()
 }
 
-struct Handler<'a> {
-    exited: bool,
-    exit_status: i32,
-    // ask zac if I should do &str instead?
-    stdout: &'a RefCell<Vec<String>>
+pub struct RunningState {
+    file: String,
+    binary: Binary,
+    decompiled: String,
+    mips_state: MipsState,
 }
 
-impl<'a> RuntimeHandler for Handler<'a> {
+
+pub struct MipsState {
+    stdout: Vec<String>,
+    exit_status: Option<i32>,
+}
+
+impl RuntimeHandler for MipsState {
     fn sys1_print_int(&mut self, val: i32) {
         ConsoleService::info(val.to_string().as_str());
-        self.stdout.borrow_mut().push(val.to_string());
+        self.stdout.push(val.to_string());
     }
 
     fn sys2_print_float(&mut self, val: f32) {
@@ -38,7 +44,7 @@ impl<'a> RuntimeHandler for Handler<'a> {
     }
 
     fn sys4_print_string(&mut self, val: String) {
-        self.stdout.borrow_mut().push(val);
+        self.stdout.push(val);
     }
 
     fn sys5_read_int(&mut self) -> i32 {
@@ -62,12 +68,12 @@ impl<'a> RuntimeHandler for Handler<'a> {
     }
 
     fn sys10_exit(&mut self) {
-        self.exited = true;
+        self.exit_status = Some(0);
     }
 
     fn sys11_print_char(&mut self, val: char) {
         ConsoleService::info(val.to_string().as_str());
-        self.stdout.borrow_mut().push(val.to_string());
+        self.stdout.push(val.to_string());
     }
 
     fn sys12_read_char(&mut self) -> char {
@@ -106,8 +112,7 @@ impl<'a> RuntimeHandler for Handler<'a> {
     }
 
     fn sys17_exit_status(&mut self, val: i32) {
-        self.exit_status = val;
-        self.exited = true;
+        self.exit_status = Some(val);
     }
 
     fn breakpoint(&mut self) {
@@ -119,14 +124,11 @@ pub enum Msg {
     FileChanged(File),
     FileRead(FileData),
     Run,
+    StepForward,
+    StepBackward
 }
 
-pub struct RunningState {
-    file: String,
-    binary: Binary,
-    decompiled: String,
-    stdout: RefCell<Vec<String>>, 
-}
+
 
 pub enum State {
     NoFile,
@@ -199,7 +201,11 @@ impl Component for App {
                                     file,
                                     binary,
                                     decompiled,
-                                    stdout: RefCell::new(Vec::new())
+                                    mips_state: MipsState {
+                                        stdout: Vec::new(),
+                                        exit_status: None,
+
+                                    }
                                 })
                             }
                         }
@@ -221,29 +227,40 @@ impl Component for App {
                     file,
                     binary,
                     decompiled,
-                    ref stdout,
-                }) = &self.state
+                    mips_state,
+                }) = &mut self.state
                 {
                     // clears stdout
-                    stdout.borrow_mut().drain(..);
+                    mips_state.stdout.drain(..);
 
-                    let mut rh = Handler {exit_status: 0, exited: false, stdout};
+                    //let mut rh = Handler {exit_status: 0, exit_status: None, stdout};
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
-                        runtime.step(&mut rh);
-
                         
-                        if rh.exited {
+                        // dont error pls
+                        runtime.step(mips_state);
+
+                        if mips_state.exit_status.is_some() {
                             ConsoleService::debug("loop");
                             break;
                         }
                     }
+
+                    mips_state.stdout.push(format!("\nProgram exited with exit status {}", mips_state.exit_status.expect("infinite loop guarantees Some return")));
                 } else {
                     ConsoleService::error("No File, cannot run");
                     return false;
                 }
 
                 true
+            }
+
+            Msg::StepForward => {
+                todo!();
+            }
+
+            Msg::StepBackward => {
+                todo!();
             }
         }
     }
@@ -328,7 +345,7 @@ impl App {
     fn render_running_output(&self, state: &RunningState) -> Html {
         
         html! {
-                {state.stdout.borrow_mut().join("")}
+                {state.mips_state.stdout.join("")}
         }
 
     }

@@ -10,6 +10,7 @@ yew = "0.18"
 mipsy_lib = { path = "../mipsy_lib" }
 mipsy_codegen = { path = "../mipsy_codegen" }
 mipsy_parser = { path = "../mipsy_parser" }
+wasm-bindgen = "0.2.76"
 
 [profile.release]
 # less code to include into binary
