@@ -33,7 +33,7 @@ impl Component for PageBackground {
 
     fn view(&self) -> Html {
         html! {
-            <div class="min-h-screen bg-gray-300">
+            <div class="min-h-screen" style="background-color: #fee2e2;">
                 { for self.props.children.iter() }
             </div>
         }

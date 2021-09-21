@@ -241,14 +241,13 @@ impl Component for App {
                         runtime.step(mips_state);
 
                         if mips_state.exit_status.is_some() {
-                            ConsoleService::debug("loop");
                             break;
                         }
                     }
 
                     mips_state.stdout.push(format!("\nProgram exited with exit status {}", mips_state.exit_status.expect("infinite loop guarantees Some return")));
                 } else {
-                    ConsoleService::error("No File, cannot run");
+                    ConsoleService::error("No File loaded, cannot run");
                     return false;
                 }
 
@@ -310,17 +309,17 @@ impl Component for App {
                     <NavBar load_onchange=onchange run_onclick=run_onclick />
                     <div id="pageContentContainer" style="height: calc(100vh - 122px)">
                         <div id="text" class="flex flex-row px-2 ">
-                            <div id="regs" class="overflow-y-auto px-2 border-2 border-gray-600">
+                            <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                                 {"Register garbage"}
                             </div>
-                            <div id="text_data" class="overflow-y-auto px-2 border-2 border-gray-600">
+                            <div id="text_data" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                                 <pre class="text-xs whitespace-pre-wrap">
                                 { text_html_content }
                                 </pre>
                             </div>
                         </div>
                     
-                        <div id="output" class="overflow-y-auto px-2 border-2 border-gray-600">
+                        <div id="output" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                             <pre class="h-full whitespace-pre-wrap">
                                 {output_html_content}
                             </pre>

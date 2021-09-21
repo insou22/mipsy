@@ -487,6 +487,7 @@ dependencies = [
  "mipsy_codegen",
  "mipsy_lib",
  "mipsy_parser",
+ "wasm-bindgen",
  "yew",
 ]
 
