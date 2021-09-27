@@ -484,9 +484,11 @@ dependencies = [
 name = "mipsy_web"
 version = "0.1.0"
 dependencies = [
+ "js-sys",
  "mipsy_codegen",
  "mipsy_lib",
  "mipsy_parser",
+ "serde",
  "wasm-bindgen",
  "yew",
 ]

@@ -1,6 +1,9 @@
 use std::cell::RefCell;
 
-use crate::components::{navbar::NavBar, pagebackground::PageBackground};
+use crate::{
+    components::{navbar::NavBar, pagebackground::PageBackground},
+    worker::{Worker, WorkerOutput},
+};
 use mipsy_lib::{Binary, InstSet, RuntimeHandler};
 use mipsy_parser::TaggedFile;
 use yew::{
@@ -22,7 +25,6 @@ pub struct RunningState {
     decompiled: String,
     mips_state: MipsState,
 }
-
 
 pub struct MipsState {
     stdout: Vec<String>,
@@ -125,10 +127,9 @@ pub enum Msg {
     FileRead(FileData),
     Run,
     StepForward,
-    StepBackward
+    StepBackward,
+    FromWorker(WorkerOutput),
 }
-
-
 
 pub enum State {
     NoFile,
@@ -145,6 +146,7 @@ pub struct App {
     tasks: Vec<ReaderTask>,
     state: State,
     inst_set: InstSet,
+    worker: Box<dyn Bridge<Worker>>,
 }
 
 impl Component for App {
@@ -152,11 +154,13 @@ impl Component for App {
     type Properties = ();
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
+        let worker = Worker::bridge(link.callback(Self::Message::FromWorker));
         Self {
             link,
             state: State::NoFile,
             tasks: vec![],
             inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
+            worker,
         }
     }
 
@@ -204,8 +208,7 @@ impl Component for App {
                                     mips_state: MipsState {
                                         stdout: Vec::new(),
                                         exit_status: None,
-
-                                    }
+                                    },
                                 })
                             }
                         }
@@ -236,7 +239,6 @@ impl Component for App {
                     //let mut rh = Handler {exit_status: 0, exit_status: None, stdout};
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
-                        
                         // dont error pls
                         runtime.step(mips_state);
 
@@ -245,7 +247,12 @@ impl Component for App {
                         }
                     }
 
-                    mips_state.stdout.push(format!("\nProgram exited with exit status {}", mips_state.exit_status.expect("infinite loop guarantees Some return")));
+                    mips_state.stdout.push(format!(
+                        "\nProgram exited with exit status {}",
+                        mips_state
+                            .exit_status
+                            .expect("infinite loop guarantees Some return")
+                    ));
                 } else {
                     ConsoleService::error("No File loaded, cannot run");
                     return false;
@@ -296,12 +303,12 @@ impl Component for App {
             &State::NoFile => "no file loaded".into(),
             &State::Running(ref state) => self.render_running(state),
         };
-        
+
         let output_html_content = match &self.state {
                     &State::NoFile => "mipsy_web v0.1\nSchool of Computer Science and Engineering, University of New South Wales, Sydney.".into(),
-                    &State::Running(ref state) => self.render_running_output(state),  
+                    &State::Running(ref state) => self.render_running_output(state),
         };
-        
+
         ConsoleService::info("rendering");
         html! {
             <>
@@ -318,13 +325,13 @@ impl Component for App {
                                 </pre>
                             </div>
                         </div>
-                    
+
                         <div id="output" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                             <pre class="h-full whitespace-pre-wrap">
                                 {output_html_content}
                             </pre>
                         </div>
-                    
+
                     </div>
 
                 </PageBackground>
@@ -342,10 +349,8 @@ impl App {
     }
 
     fn render_running_output(&self, state: &RunningState) -> Html {
-        
         html! {
                 {state.mips_state.stdout.join("")}
         }
-
     }
 }
