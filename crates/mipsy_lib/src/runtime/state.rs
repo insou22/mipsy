@@ -1,7 +1,10 @@
-use std::{collections::{HashMap, VecDeque}, ops::DerefMut};
+use std::collections::{HashMap, VecDeque};
 
 use crate::{MipsyResult, Safe, Uninitialised};
 use super::{PAGE_SIZE, SafeToUninitResult, unsafe_cow::UnsafeCow};
+
+pub const WRITE_MARKER_LO: u32 = 32;
+pub const WRITE_MARKER_HI: u32 = 32;
 
 /// A timeline of states
 ///
@@ -21,13 +24,13 @@ impl Drop for Timeline {
         // Drop all states in the timeline *in reverse order*.
         // This is important for safety,
         // so that the state invariant is maintained.
-        while let Some(state) = self.timeline.pop_back() {}
+        while let Some(_state) = self.timeline.pop_back() {}
     }
 }
 
 impl Timeline {
     pub fn new(seed: State) -> Self {
-        let timeline = VecDeque::with_capacity(1);
+        let mut timeline = VecDeque::with_capacity(1);
         timeline.push_back(seed);
 
         Self {
@@ -59,7 +62,9 @@ impl Timeline {
 
     pub fn push_next_state(&mut self) -> &mut State {
         let last_state = self.timeline.back().expect("timelint cannot be empty");
-        self.timeline.push_back(last_state.clone());
+        let next_state = last_state.clone();
+
+        self.timeline.push_back(next_state);
 
         self.timeline.back_mut().expect("just pushed to the timeline")
     }
@@ -76,12 +81,13 @@ impl Timeline {
 }
 
 pub struct State {
-    pages: HashMap<u32, UnsafeCow<[Safe<u8>]>>,
-    pc: u32,
-    registers: [Safe<i32>; 32],
-    hi: Safe<i32>,
-    lo: Safe<i32>,
-    heap_size: u32,
+    pub(super) pages: HashMap<u32, UnsafeCow<[Safe<u8>]>>,
+    pub(super) pc: u32,
+    pub(super) registers: [Safe<i32>; 32],
+    pub(super) write_marker: u64,
+    pub(super) hi: Safe<i32>,
+    pub(super) lo: Safe<i32>,
+    pub(super) heap_size: u32,
 }
 
 impl State {
@@ -101,9 +107,21 @@ impl State {
         self.heap_size = heap_size;
     }
 
+    pub fn write_marker(&self) -> u64 {
+        self.write_marker
+    }
+
+    pub fn set_write_marker(&mut self, write_marker: u64) {
+        self.write_marker = write_marker;
+    }
+
     pub fn read_register(&self, reg_num: u32) -> MipsyResult<i32> {
         self.registers[reg_num as usize]
             .to_result(Uninitialised::Register { reg_num })
+    }
+
+    pub fn read_register_uninit(&self, reg_num: u32) -> Safe<i32> {
+        self.registers[reg_num as usize]
     }
 
     pub fn read_hi(&self) -> MipsyResult<i32> {
@@ -121,15 +139,31 @@ impl State {
             return;
         }
 
+        assert!(reg_num < 32);
+
         self.registers[reg_num as usize] = Safe::Valid(value);
+        self.write_marker |= 1u64 << reg_num;
+    }
+
+    pub fn write_register_uninit(&mut self, reg_num: u32, value: Safe<i32>) {
+        if reg_num == 0 {
+            return;
+        }
+
+        assert!(reg_num < 32);
+
+        self.registers[reg_num as usize] = value;
+        self.write_marker |= 1u64 << reg_num;
     }
 
     pub fn write_hi(&mut self, value: i32) {
         self.hi = Safe::Valid(value);
+        self.write_marker |= 1u64 << WRITE_MARKER_HI;
     }
 
     pub fn write_lo(&mut self, value: i32) {
         self.lo = Safe::Valid(value);
+        self.write_marker |= 1u64 << WRITE_MARKER_LO;
     }
 
     pub fn read_mem_byte(&self, address: u32) -> MipsyResult<u8> {
@@ -166,6 +200,43 @@ impl State {
         result.ok().to_result(Uninitialised::Word { addr: address })
     }
 
+    pub fn read_mem_byte_uninit(&self, address: u32) -> Safe<u8> {
+        self.get_page(address)
+            .and_then(|page| {
+                let offset = Self::offset_in_page(address);
+    
+                page[offset as usize].as_option().copied()
+            })
+            .map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
+    pub fn read_mem_half_uninit(&self, address: u32) -> Safe<u16> {
+        let result: MipsyResult<_> = (|| {
+            let byte1 = self.read_mem_byte(address)?;
+            let byte2 = self.read_mem_byte(address + 1)?;
+
+            Ok(u16::from_le_bytes([byte1, byte2]))
+        })();
+
+        result.map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
+    pub fn read_mem_word_uninit(&self, address: u32) -> Safe<u32> {
+        let result: MipsyResult<_> = (|| {
+            let byte1 = self.read_mem_byte(address)?;
+            let byte2 = self.read_mem_byte(address + 1)?;
+            let byte3 = self.read_mem_byte(address + 2)?;
+            let byte4 = self.read_mem_byte(address + 3)?;
+
+            Ok(u32::from_le_bytes([byte1, byte2, byte3, byte4]))
+        })();
+
+        result.map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
     pub fn write_mem_byte(&mut self, address: u32, byte: u8) {
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);
@@ -187,6 +258,35 @@ impl State {
         self.write_mem_byte(address + 1, b2);
         self.write_mem_byte(address + 2, b3);
         self.write_mem_byte(address + 3, b4);
+    }
+
+    pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) {
+        let page = self.get_mut_page_or_new(address);
+        let offset = Self::offset_in_page(address);
+
+        page[offset as usize] = byte;
+    }
+
+    pub fn write_mem_half_uninit(&mut self, address: u32, half: Safe<u16>) {
+        match half {
+            Safe::Valid(half) => self.write_mem_half(address, half),
+            Safe::Uninitialised => {
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
+            }
+        }
+    }
+
+    pub fn write_mem_word_uninit(&mut self, address: u32, word: Safe<u32>) {
+        match word {
+            Safe::Valid(word) => self.write_mem_word(address, word),
+            Safe::Uninitialised => {
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 2, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 3, Safe::Uninitialised);
+            }
+        }
     }
 
     pub fn read_mem_string(&self, address: u32) -> MipsyResult<Vec<u8>> {
@@ -258,28 +358,31 @@ impl State {
     pub fn get_mut_page_or_new(&mut self, address: u32) -> &mut [Safe<u8>] {
         let base_addr = Self::addr_to_page_base_addr(address);
 
-        let entry = self.pages.entry(base_addr)
-            .or_insert_with(|| UnsafeCow::new_boxed(Box::new([Default::default(); PAGE_SIZE as usize])))
-            .deref_mut();
+        self.pages.entry(base_addr)
+            .or_insert_with(|| UnsafeCow::new_boxed(Box::new([Default::default(); PAGE_SIZE as usize])));
+
+        // need to get the page again to appease the borrow checker
+        let page = self.pages.get_mut(&base_addr).expect("just inserted");
 
         // SAFETY: Same argument as Self::get_page,
         //   and mutability is safe because
         //   the reference's lifetime is tied
         //   to our &mut self.
-        unsafe { entry.unsafe_borrow_mut_slice() }
+        unsafe { page.unsafe_borrow_mut_slice() }
     }
 }
 
 impl Clone for State {
     fn clone(&self) -> Self {
-        let cow_pages = self.pages.into_iter()
-                .map(|(addr, val)| (addr, val.to_borrowed()))
+        let cow_pages = self.pages.iter()
+                .map(|(&addr, val)| (addr, val.to_borrowed()))
                 .collect::<HashMap<_, _>>();
 
         Self {
             pages: cow_pages,
             pc: self.pc,
             registers: self.registers.clone(),
+            write_marker: 0,
             hi: self.hi.clone(),
             lo: self.lo.clone(),
             heap_size: self.heap_size,

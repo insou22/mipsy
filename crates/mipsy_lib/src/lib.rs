@@ -26,6 +26,7 @@ pub use compile::{Binary};
 use mipsy_parser::TaggedFile;
 pub use runtime::{
     Runtime,
+    State,
 };
 pub use compile::{
     TEXT_BOT,

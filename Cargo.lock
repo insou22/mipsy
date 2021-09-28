@@ -420,7 +420,6 @@ dependencies = [
 name = "mipsy_codegen"
 version = "0.1.0"
 dependencies = [
- "mipsy_lib",
  "proc-macro2",
  "quote",
  "serde",
