@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 nom = "7" # parser
-nom_locate = { version = "4", git = "https://github.com/fflorent/nom_locate" } 
+nom_locate = "4"
 
 [build-dependencies]
 vergen = "3"
