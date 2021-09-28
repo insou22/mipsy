@@ -694,9 +694,9 @@ pub enum RuntimeSyscallGuard {
     Exit       (Runtime),
     PrintChar  (PrintCharArgs, Runtime),
     ReadChar   (           Box<dyn FnOnce(u8)      -> Runtime>),
-    Open       (OpenArgs,  Box<dyn FnOnce(u32)     -> Runtime>),
+    Open       (OpenArgs,  Box<dyn FnOnce(i32)     -> Runtime>),
     Read       (ReadArgs,  Box<dyn FnOnce(Vec<u8>) -> Runtime>),
-    Write      (WriteArgs, Box<dyn FnOnce(u32)     -> Runtime>),
+    Write      (WriteArgs, Box<dyn FnOnce(i32)     -> Runtime>),
     Close      (CloseArgs, Box<dyn FnOnce(i32)     -> Runtime>),
     ExitStatus (ExitStatusArgs, Runtime),
 
