@@ -120,6 +120,10 @@ impl State {
             .to_result(Uninitialised::Register { reg_num })
     }
 
+    pub fn read_register_uninit(&self, reg_num: u32) -> Safe<i32> {
+        self.registers[reg_num as usize]
+    }
+
     pub fn read_hi(&self) -> MipsyResult<i32> {
         self.hi
             .to_result(Uninitialised::Hi)
@@ -138,6 +142,17 @@ impl State {
         assert!(reg_num < 32);
 
         self.registers[reg_num as usize] = Safe::Valid(value);
+        self.write_marker |= 1u64 << reg_num;
+    }
+
+    pub fn write_register_uninit(&mut self, reg_num: u32, value: Safe<i32>) {
+        if reg_num == 0 {
+            return;
+        }
+
+        assert!(reg_num < 32);
+
+        self.registers[reg_num as usize] = value;
         self.write_marker |= 1u64 << reg_num;
     }
 
@@ -185,6 +200,43 @@ impl State {
         result.ok().to_result(Uninitialised::Word { addr: address })
     }
 
+    pub fn read_mem_byte_uninit(&self, address: u32) -> Safe<u8> {
+        self.get_page(address)
+            .and_then(|page| {
+                let offset = Self::offset_in_page(address);
+    
+                page[offset as usize].as_option().copied()
+            })
+            .map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
+    pub fn read_mem_half_uninit(&self, address: u32) -> Safe<u16> {
+        let result: MipsyResult<_> = (|| {
+            let byte1 = self.read_mem_byte(address)?;
+            let byte2 = self.read_mem_byte(address + 1)?;
+
+            Ok(u16::from_le_bytes([byte1, byte2]))
+        })();
+
+        result.map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
+    pub fn read_mem_word_uninit(&self, address: u32) -> Safe<u32> {
+        let result: MipsyResult<_> = (|| {
+            let byte1 = self.read_mem_byte(address)?;
+            let byte2 = self.read_mem_byte(address + 1)?;
+            let byte3 = self.read_mem_byte(address + 2)?;
+            let byte4 = self.read_mem_byte(address + 3)?;
+
+            Ok(u32::from_le_bytes([byte1, byte2, byte3, byte4]))
+        })();
+
+        result.map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised)
+    }
+
     pub fn write_mem_byte(&mut self, address: u32, byte: u8) {
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);
@@ -206,6 +258,35 @@ impl State {
         self.write_mem_byte(address + 1, b2);
         self.write_mem_byte(address + 2, b3);
         self.write_mem_byte(address + 3, b4);
+    }
+
+    pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) {
+        let page = self.get_mut_page_or_new(address);
+        let offset = Self::offset_in_page(address);
+
+        page[offset as usize] = byte;
+    }
+
+    pub fn write_mem_half_uninit(&mut self, address: u32, half: Safe<u16>) {
+        match half {
+            Safe::Valid(half) => self.write_mem_half(address, half),
+            Safe::Uninitialised => {
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
+            }
+        }
+    }
+
+    pub fn write_mem_word_uninit(&mut self, address: u32, word: Safe<u32>) {
+        match word {
+            Safe::Valid(word) => self.write_mem_word(address, word),
+            Safe::Uninitialised => {
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 2, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address + 3, Safe::Uninitialised);
+            }
+        }
     }
 
     pub fn read_mem_string(&self, address: u32) -> MipsyResult<Vec<u8>> {

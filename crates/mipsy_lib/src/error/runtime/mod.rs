@@ -71,9 +71,16 @@ impl Error {
             Error::Uninitialised { value } => {
                 let (name, last_mod) = match value {
                     Uninitialised::Byte { addr } | Uninitialised::Half { addr } | Uninitialised::Word { addr } => {
+                        let size = match value {
+                            Uninitialised::Byte { addr: _ } => "byte",
+                            Uninitialised::Half { addr: _ } => "half",
+                            Uninitialised::Word { addr: _ } => "word",
+                            _ => unreachable!(),
+                        };
+
                         let message = "is uninitialised";
                         let zero_x = "0x".yellow();
-                        return format!("{}{:08x} {}", zero_x, addr, message);
+                        return format!("{} at {}{:08x} {}", size, zero_x, addr, message);
                     }
 
                     Uninitialised::Register { reg_num } => {

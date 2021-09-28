@@ -556,22 +556,22 @@ impl Runtime {
             0x10..=0x1F => {},
             
             // LB   $Rt, Im($Rs)
-            0x20 => { state.write_register(rt, state.read_mem_byte(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)? as i8 as _); },
+            0x20 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
             
             // LH   $Rt, Im($Rs)
-            0x21 => { state.write_register(rt, state.read_mem_half(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)? as i16 as _); },
+            0x21 => { state.write_register_uninit(rt, state.read_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
             
             // Unused
             0x22 => {},
             
             // LW   $Rt, Im($Rs)
-            0x23 => { state.write_register(rt, state.read_mem_word(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)? as _); },
+            0x23 => { state.write_register_uninit(rt, state.read_mem_word_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
             
             // LBU  $Rt, Im($Rs)
-            0x24 => { state.write_register(rt, state.read_mem_byte(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)? as _); },
+            0x24 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_zero()); },
             
             // LHU  $Rt, Im($Rs)
-            0x25 => { state.write_register(rt, state.read_mem_half(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)? as _); },
+            0x25 => { state.write_register_uninit(rt, state.read_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_zero()); },
             
             // Unused
             0x26 => {},
@@ -580,16 +580,16 @@ impl Runtime {
             0x27 => {},
             
             // SB   $Rt, Im($Rs)
-            0x28 => { state.write_mem_byte(rt, state.read_register(rs)?.wrapping_add(imm_sign_extend) as _); },
+            0x28 => { state.write_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
             
             // SH   $Rt, Im($Rs)
-            0x29 => { state.write_mem_half(rt, state.read_register(rs)?.wrapping_add(imm_sign_extend) as _); },
+            0x29 => { state.write_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
             
             // Unused
             0x2A => {},
             
             // SW   $Rt, Im($Rs)
-            0x2B => { state.write_mem_word(rt, state.read_register(rs)?.wrapping_add(imm_sign_extend) as _); },
+            0x2B => { state.write_mem_word_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
             
             // Unused
             0x2C => {},
@@ -802,18 +802,177 @@ impl<T: Copy> SafeToUninitResult for Option<T> {
 }
 
 trait ExtendSign {
-    fn extend_sign(self) -> i32;
+    type Output;
+
+    fn extend_sign(self) -> Self::Output;
+}
+
+trait ExtendZero {
+    type Output;
+
+    fn extend_zero(self) -> Self::Output;
+}
+
+trait Truncate<T> {
+    fn truncate(self) -> T;
 }
 
 impl ExtendSign for u8 {
-    fn extend_sign(self) -> i32 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
         self as i8 as i32
     }
 }
 
 impl ExtendSign for u16 {
-    fn extend_sign(self) -> i32 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
         self as i16 as i32
+    }
+}
+
+impl ExtendSign for u32 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
+        self as i32
+    }
+}
+
+impl ExtendZero for u8 {
+    type Output = i32;
+
+    fn extend_zero(self) -> Self::Output {
+        self as u8 as i32
+    }
+}
+
+impl ExtendZero for u16 {
+    type Output = i32;
+
+    fn extend_zero(self) -> Self::Output {
+        self as u16 as i32
+    }
+}
+
+impl ExtendZero for u32 {
+    type Output = i32;
+
+    fn extend_zero(self) -> Self::Output {
+        self as i32
+    }
+}
+
+impl Truncate<u8> for i32 {
+    fn truncate(self) -> u8 {
+        self as _
+    }
+}
+
+impl Truncate<u16> for i32 {
+    fn truncate(self) -> u16 {
+        self as _
+    }
+}
+
+impl Truncate<u32> for i32 {
+    fn truncate(self) -> u32 {
+        self as _
+    }
+}
+
+impl ExtendSign for Safe<u8> {
+    type Output = Safe<i32>;
+
+    fn extend_sign(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_sign()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl ExtendSign for Safe<u16> {
+    type Output = Safe<i32>;
+
+    fn extend_sign(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_sign()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl ExtendSign for Safe<u32> {
+    type Output = Safe<i32>;
+
+    fn extend_sign(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_sign()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl ExtendZero for Safe<u8> {
+    type Output = Safe<i32>;
+
+    fn extend_zero(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_zero()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl ExtendZero for Safe<u16> {
+    type Output = Safe<i32>;
+
+    fn extend_zero(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_zero()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl ExtendZero for Safe<u32> {
+    type Output = Safe<i32>;
+
+    fn extend_zero(self) -> Self::Output {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.extend_zero()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl Truncate<Safe<u8>> for Safe<i32> {
+    fn truncate(self) -> Safe<u8> {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.truncate()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl Truncate<Safe<u16>> for Safe<i32> {
+    fn truncate(self) -> Safe<u16> {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.truncate()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
+    }
+}
+
+impl Truncate<Safe<u32>> for Safe<i32> {
+    fn truncate(self) -> Safe<u32> {
+        match self {
+            Safe::Valid(value)  => Safe::Valid(value.truncate()),
+            Safe::Uninitialised => Safe::Uninitialised,
+        }
     }
 }
 
@@ -862,7 +1021,7 @@ impl Runtime {
             kdata_addr += 1;
         }
 
-        initial_state.write_register(Register::Zero.to_number() as _, 0);
+        initial_state.registers[Register::Zero.to_number() as usize] = Safe::Valid(0);
         initial_state.write_register(Register::Sp.to_number()   as _, STACK_TOP as _);
         initial_state.write_register(Register::Fp.to_number()   as _, STACK_TOP as _);
         initial_state.write_register(Register::Gp.to_number()   as _, HEAP_BOT  as _);
