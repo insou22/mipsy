@@ -83,21 +83,21 @@ pub(crate) fn print_command() -> Command {
 
                     if matches!(ident, MpRegisterIdentifier::Named(ref name) if name == "all") {
                         for register in &Register::all() {
-                            if let Ok(val) = runtime.state().get_reg(register.to_u32()) {
+                            if let Ok(val) = runtime.timeline().state().read_register(register.to_u32()) {
                                 let out = format_simple_print(val, print_type);
                                 println!("{}{:4} = {}", "$".yellow(), register.to_lower_str().bold(), out);
                             }
                         }
 
-                        if let Ok(val) = runtime.state().get_lo() {
+                        if let Ok(val) = runtime.timeline().state().read_lo() {
                             println!(" {:4} = {}", "lo".bold(), format_simple_print(val, print_type));
                         }
 
-                        if let Ok(val) = runtime.state().get_hi() {
+                        if let Ok(val) = runtime.timeline().state().read_hi() {
                             println!(" {:4} = {}", "hi".bold(), format_simple_print(val, print_type));
                         }
 
-                        println!(" {:4} = {}", "pc".bold(), format_simple_print(runtime.state().get_pc() as i32, print_type));
+                        println!(" {:4} = {}", "pc".bold(), format_simple_print(runtime.timeline().state().pc() as i32, print_type));
                     } else {
                         let (val, reg_name) = 
                         {
@@ -106,20 +106,20 @@ pub(crate) fn print_command() -> Command {
                                     let name = name.to_ascii_lowercase();
 
                                     if name == "pc" {
-                                        Ok((Ok(runtime.state().get_pc() as i32), "pc"))
+                                        Ok((Ok(runtime.timeline().state().pc() as i32), "pc"))
                                     } else if name == "hi" {
-                                        Ok((runtime.state().get_hi(), "hi"))
+                                        Ok((runtime.timeline().state().read_hi(), "hi"))
                                     } else if name == "lo" {
-                                        Ok((runtime.state().get_lo(), "lo"))
+                                        Ok((runtime.timeline().state().read_lo(), "lo"))
                                     } else {
                                         Register::from_str(&name)
-                                            .map(|reg| (runtime.state().get_reg(reg.to_u32()), reg.to_lower_str()))
+                                            .map(|reg| (runtime.timeline().state().read_register(reg.to_u32()), reg.to_lower_str()))
                                             .map_err(|_| CommandError::UnknownRegister { register: name })
                                     }
                                 },
                                 MpRegisterIdentifier::Numbered(num) => {
                                     Register::from_number(num as i32)
-                                        .map(|reg| (runtime.state().get_reg(reg.to_u32()), reg.to_lower_str()))
+                                        .map(|reg| (runtime.timeline().state().read_register(reg.to_u32()), reg.to_lower_str()))
                                         .map_err(|_| CommandError::UnknownRegister { register: num.to_string() })
                                 }
                             }?;
@@ -162,20 +162,20 @@ pub(crate) fn print_command() -> Command {
                     let map_err = |_err| CommandError::UninitialisedPrint { addr: imm };
 
                     let value = match print_type {
-                        "byte"  | "b"  => format!("{}", runtime.state().get_byte(imm).map_err(map_err)?),
-                        "half"  | "h"  => format!("{}", runtime.state().get_half(imm).map_err(map_err)?),
-                        "word"  | "w"  => format!("{}", runtime.state().get_word(imm).map_err(map_err)?),
-                        "xbyte" | "xb" => format!("0x{:02x}", runtime.state().get_byte(imm).map_err(map_err)? as u8),
-                        "xhalf" | "xh" => format!("0x{:04x}", runtime.state().get_half(imm).map_err(map_err)? as u16),
-                        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", runtime.state().get_word(imm).map_err(map_err)? as u32),
-                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default(runtime.state().get_byte(imm).map_err(map_err)? as u8)),
+                        "byte"  | "b"  => format!("{}", runtime.timeline().state().read_mem_byte(imm).map_err(map_err)?),
+                        "half"  | "h"  => format!("{}", runtime.timeline().state().read_mem_half(imm).map_err(map_err)?),
+                        "word"  | "w"  => format!("{}", runtime.timeline().state().read_mem_word(imm).map_err(map_err)?),
+                        "xbyte" | "xb" => format!("0x{:02x}", runtime.timeline().state().read_mem_byte(imm).map_err(map_err)? as u8),
+                        "xhalf" | "xh" => format!("0x{:04x}", runtime.timeline().state().read_mem_half(imm).map_err(map_err)? as u16),
+                        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", runtime.timeline().state().read_mem_word(imm).map_err(map_err)? as u32),
+                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default(runtime.timeline().state().read_mem_byte(imm).map_err(map_err)? as u8)),
                         "string"| "s"  => {
                             let mut text = String::new();
 
                             let mut addr = imm;
                             loop {
                                 let chr =
-                                    match runtime.state().get_byte(addr) {
+                                    match runtime.timeline().state().read_mem_byte(addr) {
                                         Ok(byte) => byte,
                                         Err(_) => {
                                             return Err(CommandError::UnterminatedString { good_parts: text });

@@ -7,7 +7,7 @@ mod runtime_handler;
 use std::{collections::HashMap, rc::Rc};
 
 use mipsy_codegen::instruction_set;
-use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}};
+use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::SteppedRuntime};
 use helper::MyHelper;
 
 use rustyline::{
@@ -29,7 +29,6 @@ use commands::{
     Command,
     Arguments,
 };
-use runtime_handler::Handler;
 
 use mipsy_utils::MipsyConfig;
 
@@ -71,15 +70,6 @@ impl State {
             ""
         } else {
             "[mipsy] "
-        }
-    }
-
-    fn int(&mut self) {
-        if self.confirm_exit {
-            std::process::exit(0);
-        } else {
-            println!("press again to confirm exit...");
-            self.confirm_exit = true;
         }
     }
 
@@ -304,50 +294,139 @@ impl State {
         }
     }
 
+    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>) -> CommandResult<bool> {
+        let mut breakpoint = false;
+
+        match result {
+            Ok(Ok(new_runtime)) => {
+                self.runtime = Some(new_runtime);
+            }
+            Ok(Err(guard)) => {
+                // Ok(true) on exit or breakpoint, see self::exec_status
+                use mipsy_lib::runtime::RuntimeSyscallGuard::*;
+
+                match guard {
+                    PrintInt(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys1_print_int(verbose, args.value);
+                    }
+                    PrintFloat(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys2_print_float(verbose, args.value);
+                    }
+                    PrintDouble(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys3_print_double(verbose, args.value);
+                    }
+                    PrintString(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys4_print_string(verbose, &args.value);
+                    }
+                    ReadInt(guard) => {
+                        let value = runtime_handler::sys5_read_int(verbose);
+                        self.runtime = Some(guard(value));
+                    }
+                    ReadFloat(guard) => {
+                        let value = runtime_handler::sys6_read_float(verbose);
+                        self.runtime = Some(guard(value));
+                    }
+                    ReadDouble(guard) => {
+                        let value = runtime_handler::sys7_read_double(verbose);
+                        self.runtime = Some(guard(value));
+                    }
+                    ReadString(args, guard) => {
+                        let value = runtime_handler::sys8_read_string(verbose, args.max_len);
+                        self.runtime = Some(guard(value));
+                    }
+                    Sbrk(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys9_sbrk(verbose, args.bytes);
+                    }
+                    Exit(new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        self.exited = true;
+                        
+                        runtime_handler::sys10_exit(verbose);
+                    }
+                    PrintChar(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys11_print_char(verbose, args.value);
+                    }
+                    ReadChar(guard) => {
+                        let value = runtime_handler::sys12_read_char(verbose);
+                        self.runtime = Some(guard(value));
+                    }
+                    Open(args, guard) => {
+                        let value = runtime_handler::sys13_open(verbose, args);
+                        self.runtime = Some(guard(value));
+                    }
+                    Read(args, guard) => {
+                        let value = runtime_handler::sys14_read(verbose, args);
+                        self.runtime = Some(guard(value));
+                    }
+                    Write(args, guard) => {
+                        let value = runtime_handler::sys15_write(verbose, args);
+                        self.runtime = Some(guard(value));
+                    }
+                    Close(args, guard) => {
+                        let value = runtime_handler::sys16_close(verbose, args);
+                        self.runtime = Some(guard(value));
+                    }
+                    ExitStatus(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        self.exited = true;
+
+                        runtime_handler::sys17_exit_status(verbose, args.exit_code);
+                    }
+                    Breakpoint(new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        breakpoint = true;
+                    }
+                    UnknownSyscall(args, new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::sys_unknown(verbose, args.syscall_number);
+                    }
+                }
+            }
+            Err((new_runtime, err)) => {
+                self.runtime = Some(new_runtime);
+
+                return Err(CommandError::RuntimeError { mipsy_error: err });
+            }
+        };
+
+        Ok(
+            if self.exited {
+                true
+            } else {
+                let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
+                let binary = self.binary.as_ref().unwrap();
+    
+                if breakpoint || binary.breakpoints.contains(&pc) {
+                    let label = binary.labels.iter()
+                            .find(|(_, &addr)| addr == pc)
+                            .map(|(name, _)| name.yellow().bold().to_string());
+                    
+                    runtime_handler::breakpoint(label.as_deref(), pc);
+    
+                    true
+                } else {
+                    false
+                }
+            }
+        )
+    }
+
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
-        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+        let runtime = self.runtime.take().ok_or(CommandError::MustLoadFile)?;
 
-        let mut handler = Handler::make(verbose);
-        runtime.step(&mut handler).map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
-
-        Ok(self.exec_status(&handler))
+        self.eval_stepped_runtime(verbose, runtime.step())
     }
 
     pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
-        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+        let runtime = self.runtime.take().ok_or(CommandError::MustLoadFile)?;
 
-        let mut handler = Handler::make(verbose);
-        runtime.exec_inst(&mut handler, opcode)
-                .map_err(|err| CommandError::RuntimeError { mipsy_error: err })?;
-
-        Ok(self.exec_status(&handler))
-    }
-
-    pub(crate) fn exec_status(&mut self, handler: &Handler) -> bool {
-        if handler.exit_status.is_some() {
-            self.exited = true;
-            true
-        } else {
-            let pc = self.runtime.as_ref().unwrap().state().get_pc();
-
-            let binary = self.binary.as_ref().unwrap();
-
-            if handler.breakpoint || binary.breakpoints.contains(&pc) {
-                let label = binary.labels.iter()
-                        .find(|(_, &addr)| addr == pc)
-                        .map(|(name, _)| name.yellow().bold().to_string());
-
-                println!(
-                    "{}{}{}\n", 
-                    "\n[BREAKPOINT ".cyan().bold(), 
-                    label.unwrap_or(format!("{}{:08x}", "0x".yellow(), pc)), 
-                    "]".cyan().bold()
-                );
-                true
-            } else {
-                false
-            }
-        }
+        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<()> {
@@ -366,7 +445,7 @@ impl State {
 
     pub(crate) fn reset(&mut self) -> CommandResult<()> {
         let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
-        runtime.reset();
+        runtime.timeline_mut().reset();
         self.exited = false;
 
         Ok(())
@@ -441,8 +520,9 @@ pub fn launch(config: MipsyConfig) -> ! {
                 rl.add_history_entry(&line);
                 state.exec_command(line);
             }
-            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-                state.int();
+            Err(ReadlineError::Interrupted) => {}
+            Err(ReadlineError::Eof) => {
+                std::process::exit(0);
             }
             Err(err) => {
                 println!("Error: {:?}", err);
