@@ -73,15 +73,6 @@ impl State {
         }
     }
 
-    fn int(&mut self) {
-        if self.confirm_exit {
-            std::process::exit(0);
-        } else {
-            println!("press again to confirm exit...");
-            self.confirm_exit = true;
-        }
-    }
-
     fn cleanup_cmd(&mut self, cmd: String) {
         self.confirm_exit = false;
         self.prev_command = Some(cmd);
@@ -529,8 +520,9 @@ pub fn launch(config: MipsyConfig) -> ! {
                 rl.add_history_entry(&line);
                 state.exec_command(line);
             }
-            Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-                state.int();
+            Err(ReadlineError::Interrupted) => {}
+            Err(ReadlineError::Eof) => {
+                std::process::exit(0);
             }
             Err(err) => {
                 println!("Error: {:?}", err);
