@@ -23,7 +23,7 @@ pub fn start() {
     use js_sys::{global, Reflect};
 
     if Reflect::has(&global(), &JsValue::from_str("window")).unwrap() {
-        App::<Application>::new().mount_as_body();
+        App::<Application>::new().mount_to_body();
     } else {
         worker::Worker::register();
     }
