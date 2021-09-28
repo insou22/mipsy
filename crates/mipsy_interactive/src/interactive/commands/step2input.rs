@@ -29,10 +29,10 @@ pub(crate) fn step2input_command() -> Command {
                 let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
                 let input = if let Ok(inst) = runtime.next_inst() {
-                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_ref());
+                    util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_ref());
                     
                     if inst == 0xC {
-                        let syscall = runtime.state().get_reg(Register::V0.to_u32()).unwrap_or(-1);
+                        let syscall = runtime.timeline().state().read_register(Register::V0.to_u32()).unwrap_or(-1);
                         matches!(syscall, 5 | 6 | 7 | 8 | 12)  
                     } else {
                         false

@@ -41,7 +41,7 @@ pub(crate) fn step_command() -> Command {
                 let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
                 if let Ok(inst) = runtime.next_inst() {
-                    util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_ref());
+                    util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_ref());
                 }
 
                 let step = state.step(true)?;

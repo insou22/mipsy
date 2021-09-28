@@ -66,9 +66,9 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, files: Optio
                     }
                 }
 
-                for chr in reg_chars {
-                    post_chars.push(chr);
-                }
+                // for chr in reg_chars {
+                //     post_chars.push(chr);
+                // }
 
                 format!("{}{}{}{}", before, "$".yellow(), reg_name.bold(), post_chars)
             } else if arg.chars().next().unwrap().is_alphabetic() {

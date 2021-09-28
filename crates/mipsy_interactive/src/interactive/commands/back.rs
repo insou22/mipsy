@@ -36,7 +36,7 @@ pub(crate) fn back_command() -> Command {
             for _ in 0..times {
                 let runtime = state.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
 
-                if runtime.back() {
+                if runtime.timeline_mut().pop_last_state() {
                     backs += 1;
                     state.exited = false;
                 } else if backs == 0 {
@@ -57,7 +57,7 @@ pub(crate) fn back_command() -> Command {
 
             prompt::success(text);
             if let Ok(inst) = runtime.next_inst() {
-                util::print_inst(&state.iset, binary, inst, runtime.state().get_pc(), state.program.as_ref());
+                util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_ref());
             }
             println!();
 

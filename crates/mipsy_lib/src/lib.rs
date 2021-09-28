@@ -27,13 +27,6 @@ use mipsy_parser::TaggedFile;
 pub use runtime::{
     Runtime,
     State,
-    RuntimeHandler,
-    flags,
-    mode,
-    len,
-    fd,
-    n_bytes,
-    void_ptr,
 };
 pub use compile::{
     TEXT_BOT,
