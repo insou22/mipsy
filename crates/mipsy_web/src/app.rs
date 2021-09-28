@@ -1,10 +1,8 @@
-use std::cell::RefCell;
-
 use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerOutput},
 };
-use mipsy_lib::{Binary, InstSet, RuntimeHandler};
+use mipsy_lib::{Binary, InstSet};
 use mipsy_parser::TaggedFile;
 use yew::{
     prelude::*,
@@ -29,97 +27,6 @@ pub struct RunningState {
 pub struct MipsState {
     stdout: Vec<String>,
     exit_status: Option<i32>,
-}
-
-impl RuntimeHandler for MipsState {
-    fn sys1_print_int(&mut self, val: i32) {
-        ConsoleService::info(val.to_string().as_str());
-        self.stdout.push(val.to_string());
-    }
-
-    fn sys2_print_float(&mut self, val: f32) {
-        todo!()
-    }
-
-    fn sys3_print_double(&mut self, val: f64) {
-        todo!()
-    }
-
-    fn sys4_print_string(&mut self, val: String) {
-        self.stdout.push(val);
-    }
-
-    fn sys5_read_int(&mut self) -> i32 {
-        42
-    }
-
-    fn sys6_read_float(&mut self) -> f32 {
-        todo!()
-    }
-
-    fn sys7_read_double(&mut self) -> f64 {
-        todo!()
-    }
-
-    fn sys8_read_string(&mut self, max_len: u32) -> String {
-        todo!()
-    }
-
-    fn sys9_sbrk(&mut self, val: i32) {
-        todo!()
-    }
-
-    fn sys10_exit(&mut self) {
-        self.exit_status = Some(0);
-    }
-
-    fn sys11_print_char(&mut self, val: char) {
-        ConsoleService::info(val.to_string().as_str());
-        self.stdout.push(val.to_string());
-    }
-
-    fn sys12_read_char(&mut self) -> char {
-        todo!()
-    }
-
-    fn sys13_open(
-        &mut self,
-        path: String,
-        flags: mipsy_lib::flags,
-        mode: mipsy_lib::mode,
-    ) -> mipsy_lib::fd {
-        todo!()
-    }
-
-    fn sys14_read(
-        &mut self,
-        fd: mipsy_lib::fd,
-        buffer: mipsy_lib::void_ptr,
-        len: mipsy_lib::len,
-    ) -> mipsy_lib::n_bytes {
-        todo!()
-    }
-
-    fn sys15_write(
-        &mut self,
-        fd: mipsy_lib::fd,
-        buffer: mipsy_lib::void_ptr,
-        len: mipsy_lib::len,
-    ) -> mipsy_lib::n_bytes {
-        todo!()
-    }
-
-    fn sys16_close(&mut self, fd: mipsy_lib::fd) {
-        todo!()
-    }
-
-    fn sys17_exit_status(&mut self, val: i32) {
-        self.exit_status = Some(val);
-    }
-
-    fn breakpoint(&mut self) {
-        todo!()
-    }
 }
 
 pub enum Msg {
