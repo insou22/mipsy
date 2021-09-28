@@ -41,7 +41,7 @@ pub(crate) fn context_command() -> Command {
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-            let base_addr = runtime.state().get_pc();
+            let base_addr = runtime.timeline().state().pc();
             for i in (-n)..=n {
                 let addr = {
                     let addr = base_addr.wrapping_add((i * 4) as u32);
@@ -57,7 +57,7 @@ pub(crate) fn context_command() -> Command {
                 };
 
                 let inst = {
-                    if let Ok(inst) = runtime.state().get_word(addr) {
+                    if let Ok(inst) = runtime.timeline().state().read_mem_word(addr) {
                         inst
                     } else {
                         continue;

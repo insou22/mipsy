@@ -47,7 +47,7 @@ impl Runtime {
         &self.timeline
     }
 
-    pub fn timeline_mut(&mut self) -> &Timeline {
+    pub fn timeline_mut(&mut self) -> &mut Timeline {
         &mut self.timeline
     }
 
@@ -65,7 +65,7 @@ impl Runtime {
 
         state.set_pc(state.pc() + 4);
 
-        match self.execute(inst) {
+        match self.execute_in_current_state(inst) {
             Err((mut new_self, err)) => {
                 new_self.timeline.pop_last_state();
 
@@ -75,7 +75,26 @@ impl Runtime {
         }
     }
 
-    fn execute(mut self, inst: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
+    pub fn exec_inst(mut self, opcode: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
+        self.timeline.push_next_state();
+
+        match self.execute_in_current_state(opcode) {
+            Err((mut new_self, err)) => {
+                new_self.timeline.pop_last_state();
+
+                Err((new_self, err))
+            }
+            ok => ok,
+        }
+    }
+
+    pub fn next_inst(&self) -> MipsyResult<u32> {
+        let state = self.timeline().state();
+
+        self.timeline().state().read_mem_word(state.pc())
+    }
+
+    fn execute_in_current_state(mut self, inst: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
     {
         let opcode =  inst >> 26;
         let rs     = (inst >> 21) & 0x1F;
@@ -235,13 +254,13 @@ impl Runtime {
                             fd,
                             len,
                         },
-                        Box::new(move |bytes| {
+                        Box::new(move |(n_bytes, bytes)| {
                             let len = (len as usize).min(bytes.len());
 
                             bytes[..len].iter().enumerate().for_each(|(i, byte)| {
                                 self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
                             });
-                            self.timeline.state_mut().write_register(Register::V0.to_u32(), len as _);
+                            self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
                             
                             self
                         })
@@ -693,11 +712,11 @@ pub enum RuntimeSyscallGuard {
     Sbrk       (SbrkArgs, Runtime),
     Exit       (Runtime),
     PrintChar  (PrintCharArgs, Runtime),
-    ReadChar   (           Box<dyn FnOnce(u8)      -> Runtime>),
-    Open       (OpenArgs,  Box<dyn FnOnce(i32)     -> Runtime>),
-    Read       (ReadArgs,  Box<dyn FnOnce(Vec<u8>) -> Runtime>),
-    Write      (WriteArgs, Box<dyn FnOnce(i32)     -> Runtime>),
-    Close      (CloseArgs, Box<dyn FnOnce(i32)     -> Runtime>),
+    ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
+    Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
+    Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
+    Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+    Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
     ExitStatus (ExitStatusArgs, Runtime),
 
     // other

@@ -1,25 +1,9 @@
 use std::{fmt::{Debug, Display}, str::FromStr};
 use super::{prompt};
 use colored::*;
-use mipsy_lib::*;
+use mipsy_lib::{runtime::{CloseArgs, OpenArgs, ReadArgs, WriteArgs}};
 use text_io::try_read;
 use std::io::Write;
-
-pub(crate) struct Handler {
-    pub(crate) verbose: bool,
-    pub(crate) exit_status: Option<i32>,
-    pub(crate) breakpoint:  bool,
-}
-
-impl Handler {
-    pub fn make(verbose: bool) -> Handler {
-        Self {
-            verbose,
-            exit_status: None,
-            breakpoint: false,
-        }
-    }
-}
 
 fn get_input<T>(name: &str, verbose: bool, line: bool) -> T
 where
@@ -56,168 +40,182 @@ where
         }
 }
 
-impl<'a> RuntimeHandler for Handler {
-    fn sys1_print_int(&mut self, val: i32) {
-        if self.verbose {
-            prompt::syscall_nl(1, format!("print_int: {}", val.to_string().green()));
-        } else {
-            print!("{}", val);
-        }
+pub(crate) fn sys1_print_int(verbose: bool, val: i32) {
+    if verbose {
+        prompt::syscall_nl(1, format!("print_int: {}", val.to_string().green()));
+    } else {
+        print!("{}", val);
+    }
+}
+
+pub(crate) fn sys2_print_float(verbose: bool, val: f32) {
+    if verbose {
+        prompt::syscall_nl(2, format!("print_float: {}", val.to_string().green()));
+    } else {
+        print!("{}", val);
+    }
+}
+
+pub(crate) fn sys3_print_double(verbose: bool, val: f64) {
+    if verbose {
+        prompt::syscall_nl(3, format!("print_double: {}", val.to_string().green()));
+    } else {
+        print!("{}", val);
+    }
+}
+
+pub(crate) fn sys4_print_string(verbose: bool, val: &[u8]) {
+    let val = String::from_utf8_lossy(val);
+
+    if verbose {
+        prompt::syscall_nl(
+            4,
+            format!(
+                "print_string: \"{}\"",
+                val.escape_default().to_string().green()
+            ),
+        );
+    } else {
+        print!("{}", val);
+    }
+}
+
+pub(crate) fn sys5_read_int(verbose: bool, ) -> i32 {
+    if verbose {
+        prompt::syscall(5, "read_int: ");
+        std::io::stdout().flush().unwrap();
     }
 
-    fn sys2_print_float(&mut self, val: f32) {
-        if self.verbose {
-            prompt::syscall_nl(2, format!("print_float: {}", val.to_string().green()));
-        } else {
-            print!("{}", val);
-        }
+    get_input("int", verbose, false)
+}
+
+pub(crate) fn sys6_read_float(verbose: bool, ) -> f32 {
+    if verbose {
+        prompt::syscall(6, "read_float: ");
+        std::io::stdout().flush().unwrap();
     }
 
-    fn sys3_print_double(&mut self, val: f64) {
-        if self.verbose {
-            prompt::syscall_nl(3, format!("print_double: {}", val.to_string().green()));
-        } else {
-            print!("{}", val);
-        }
+    get_input("float", verbose, false)
+}
+
+pub(crate) fn sys7_read_double(verbose: bool, ) -> f64 {
+    if verbose {
+        prompt::syscall(7, "read_double: ");
+        std::io::stdout().flush().unwrap();
     }
 
-    fn sys4_print_string(&mut self, val: String) {
-        if self.verbose {
-            prompt::syscall_nl(
-                4,
-                format!(
-                    "print_string: \"{}\"",
-                    val.escape_default().to_string().green()
-                ),
-            );
-        } else {
-            print!("{}", val);
-        }
+    get_input("double", verbose, false)
+}
+
+pub(crate) fn sys8_read_string(verbose: bool, max_len: u32) -> Vec<u8> {
+    if verbose {
+        prompt::syscall(5, format!("read_string [size={}]: ", max_len));
+        std::io::stdout().flush().unwrap();
     }
 
-    fn sys5_read_int(&mut self) -> i32 {
-        if self.verbose {
-            prompt::syscall(5, "read_int: ");
+    loop {
+        let input: String = get_input("string", verbose, true);
+
+        if input.len() > max_len as usize {
+            prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
+            prompt::error_nonl("please try again: ");
             std::io::stdout().flush().unwrap();
+            continue;
         }
 
-        get_input("int", self.verbose, false)
-    }
-
-    fn sys6_read_float(&mut self) -> f32 {
-        if self.verbose {
-            prompt::syscall(6, "read_float: ");
+        if input.len() == max_len as usize {
+            prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
+            prompt::error_nonl("please try again: ");
             std::io::stdout().flush().unwrap();
+            continue;
         }
 
-        get_input("float", self.verbose, false)
+        return input.into_bytes();
+    }
+}
+
+pub(crate) fn sys9_sbrk(verbose: bool, val: i32) {
+    if verbose {
+        prompt::syscall_nl(1, format!("sbrk: {}", val.to_string().green()));
+    }
+}
+
+pub(crate) fn sys10_exit(verbose: bool) {
+    if verbose {
+        prompt::syscall_nl(10, "exit");
+    }
+}
+
+pub(crate) fn sys11_print_char(verbose: bool, val: u8) {
+    let val = val as char;
+
+    if verbose {
+        prompt::syscall_nl(
+            11,
+            format!("print_char: '{}'", val.escape_default().to_string().green()),
+        );
+    } else {
+        print!("{}", val);
+    }
+}
+
+pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
+    if verbose {
+        prompt::syscall(5, "read_character: ");
+        std::io::stdout().flush().unwrap();
     }
 
-    fn sys7_read_double(&mut self) -> f64 {
-        if self.verbose {
-            prompt::syscall(7, "read_double: ");
-            std::io::stdout().flush().unwrap();
-        }
+    get_input("character", verbose, false)
+}
 
-        get_input("double", self.verbose, false)
+pub(crate) fn sys13_open(_verbose: bool, _args: OpenArgs) -> i32 {
+    todo!()
+}
+
+pub(crate) fn sys14_read(_verbose: bool, _args: ReadArgs) -> (i32, Vec<u8>) {
+    todo!()
+}
+
+pub(crate) fn sys15_write(_verbose: bool, _args: WriteArgs) -> i32 {
+    todo!()
+}
+
+pub(crate) fn sys16_close(_verbose: bool, _args: CloseArgs) -> i32 {
+    todo!()
+}
+
+pub(crate) fn sys17_exit_status(verbose: bool, val: i32) {
+    if verbose {
+        prompt::syscall_nl(
+            17,
+            format!(
+                "exit_status: {}",
+                if val == 0 {
+                    val.to_string().green()
+                } else {
+                    val.to_string().red()
+                }
+            ),
+        );
     }
+}
 
-    fn sys8_read_string(&mut self, max_len: u32) -> String {
-        if self.verbose {
-            prompt::syscall(5, format!("read_string [size={}]: ", max_len));
-            std::io::stdout().flush().unwrap();
-        }
-
-        loop {
-            let input: String = get_input("string", self.verbose, true);
-
-            if input.len() > max_len as usize {
-                prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
-                prompt::error_nonl("please try again: ");
-                std::io::stdout().flush().unwrap();
-                continue;
-            }
-
-            if input.len() == max_len as usize {
-                prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
-                prompt::error_nonl("please try again: ");
-                std::io::stdout().flush().unwrap();
-                continue;
-            }
-
-            return input;
-        }
+pub(crate) fn sys_unknown(verbose: bool, syscall_number: i32) {
+    if verbose {
+        prompt::syscall_nl(
+            syscall_number,
+            format!(
+                "unknown",
+            ),
+        );
     }
+}
 
-    fn sys9_sbrk(&mut self, val: i32) {
-        if self.verbose {
-            prompt::syscall_nl(1, format!("sbrk: {}", val.to_string().green()));
-        }
-    }
-
-    fn sys10_exit(&mut self) {
-        if self.verbose {
-            prompt::syscall_nl(10, "exit");
-        }
-
-        self.exit_status = Some(0);
-    }
-
-    fn sys11_print_char(&mut self, val: char) {
-        if self.verbose {
-            prompt::syscall_nl(
-                11,
-                format!("print_char: '{}'", val.escape_default().to_string().green()),
-            );
-        } else {
-            print!("{}", val);
-        }
-    }
-
-    fn sys12_read_char(&mut self) -> char {
-        if self.verbose {
-            prompt::syscall(5, "read_character: ");
-            std::io::stdout().flush().unwrap();
-        }
-
-        get_input("character", self.verbose, false)
-    }
-
-    fn sys13_open(&mut self, _path: String, _flags: flags, _mode: mode) -> fd {
-        todo!()
-    }
-
-    fn sys14_read(&mut self, _fd: fd, _buffer: void_ptr, _len: len) -> n_bytes {
-        todo!()
-    }
-
-    fn sys15_write(&mut self, _fd: fd, _buffer: void_ptr, _len: len) -> n_bytes {
-        todo!()
-    }
-
-    fn sys16_close(&mut self, _fd: fd) {
-        todo!()
-    }
-
-    fn sys17_exit_status(&mut self, val: i32) {
-        if self.verbose {
-            prompt::syscall_nl(
-                17,
-                format!(
-                    "exit_status: {}",
-                    if val == 0 {
-                        val.to_string().green()
-                    } else {
-                        val.to_string().red()
-                    }
-                ),
-            );
-        }
-
-        self.exit_status = Some(val);
-    }
-
-    fn breakpoint(&mut self) {
-        self.breakpoint = true;
-    }
+pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
+    println!(
+        "{}{}{}\n", 
+        "\n[BREAKPOINT ".cyan().bold(), 
+        label.unwrap_or(&format!("{}{:08x}", "0x".yellow(), pc)), 
+        "]".cyan().bold()
+    );
 }
