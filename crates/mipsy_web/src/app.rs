@@ -1,9 +1,8 @@
 use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
-    worker::{Worker, WorkerOutput},
+    worker::{Worker, WorkerRequest, WorkerResponse},
 };
 use mipsy_lib::{Binary, InstSet};
-use mipsy_parser::TaggedFile;
 use yew::{
     prelude::*,
     services::{
@@ -18,8 +17,6 @@ fn crimes<T>() -> T {
 }
 
 pub struct RunningState {
-    file: String,
-    binary: Binary,
     decompiled: String,
     mips_state: MipsState,
 }
@@ -90,44 +87,15 @@ impl Component for App {
                 }
                 false
             }
+
             Msg::FileRead(file_data) => {
                 ConsoleService::info(&format!("{:?}", file_data));
                 // TODO -- this should not be lossy
 
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
 
-                let compiled = mipsy_lib::compile(
-                    &self.inst_set,
-                    vec![TaggedFile::new(None, file.as_str())],
-                    8,
-                );
-
-                match compiled {
-                    Ok(binary) => {
-                        let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                        match self.state {
-                            // Overwrite existing state,
-                            State::NoFile | State::Running(_) => {
-                                self.state = State::Running(RunningState {
-                                    file,
-                                    binary,
-                                    decompiled,
-                                    mips_state: MipsState {
-                                        stdout: Vec::new(),
-                                        exit_status: None,
-                                    },
-                                })
-                            }
-                        }
-                    }
-
-                    Err(err) => {
-                        // this should eventually go to a new state
-                        // errorstate
-                        // and show on page
-                        ConsoleService::error(&format!("{:?}", err));
-                    }
-                }
+                let input = WorkerRequest::CompileCode(file);
+                self.worker.send(input);
 
                 true
             }
@@ -175,6 +143,28 @@ impl Component for App {
             Msg::StepBackward => {
                 todo!();
             }
+
+            Msg::FromWorker(worker_output) => match worker_output {
+                WorkerResponse::DecompiledCode(decompiled) => {
+                    match self.state {
+                        // Overwrite existing state,
+                        State::NoFile | State::Running(_) => {
+                            self.state = State::Running(RunningState {
+                                decompiled,
+                                mips_state: MipsState {
+                                    stdout: Vec::new(),
+                                    exit_status: None,
+                                },
+                            });
+                            true
+                        }
+                    }
+                }
+
+                WorkerResponse::CompilerError(err) => {
+                    todo!();
+                }
+            },
         }
     }
 

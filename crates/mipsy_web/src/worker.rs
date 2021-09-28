@@ -18,38 +18,38 @@ pub struct Worker {
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
 enum RuntimeState {
-    Running      (Runtime),
-    WaitingInt   (Guard<i32>),
-    WaitingFloat (Guard<f32>),
+    Running(Runtime),
+    WaitingInt(Guard<i32>),
+    WaitingFloat(Guard<f32>),
     WaitingDouble(Guard<f64>),
     WaitingString(Guard<Vec<u8>>),
-    WaitingChar  (Guard<u8>),
-    WaitingOpen  (Guard<i32>),
-    WaitingRead  (Guard<(i32, Vec<u8>)>),
-    WaitingWrite (Guard<i32>),
-    WaitingClose (Guard<i32>),
+    WaitingChar(Guard<u8>),
+    WaitingOpen(Guard<i32>),
+    WaitingRead(Guard<(i32, Vec<u8>)>),
+    WaitingWrite(Guard<i32>),
+    WaitingClose(Guard<i32>),
     Stopped,
 }
 
 type File = String;
 
 #[derive(Serialize, Deserialize)]
-pub enum Request {
+pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(File),
 }
 
 #[derive(Serialize, Deserialize)]
-pub enum WorkerOutput {
+pub enum WorkerResponse {
     DecompiledCode(String),
-    CompilerError(MipsyError)
+    CompilerError(MipsyError),
 }
 
 impl Agent for Worker {
     type Reach = Public<Self>;
     type Message = ();
-    type Input = Request;
-    type Output = WorkerOutput;
+    type Input = WorkerRequest;
+    type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
         Self {
@@ -70,20 +70,18 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
-            Request::CompileCode(f) => {
+            Self::Input::CompileCode(f) => {
                 let compiled =
-                        mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], 8);
+                    mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], 8);
 
-               
                 match compiled {
-                    
                     Ok(binary) => {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                        let response = WorkerOutput::DecompiledCode(decompiled);
+                        let response = Self::Output::DecompiledCode(decompiled);
                         self.link.respond(id, response)
                     }
 
-                    Err(err) => self.link.respond(id, WorkerOutput::CompilerError(err))
+                    Err(err) => self.link.respond(id, Self::Output::CompilerError(err)),
                 }
             }
         }

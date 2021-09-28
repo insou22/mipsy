@@ -1,14 +1,14 @@
-use std::{path::MAIN_SEPARATOR, rc::Rc};
-
 use colored::Colorize;
 use mipsy_utils::MipsyConfig;
+use serde::{Deserialize, Serialize};
+use std::{path::MAIN_SEPARATOR, rc::Rc};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ParserError {
-    error:    Error,
+    error: Error,
     file_tag: Rc<str>,
     line: u32,
-    col:  u32,
+    col: u32,
 }
 
 impl ParserError {
@@ -45,10 +45,9 @@ impl ParserError {
         let line = {
             let target_line = (self.line - 1) as usize;
 
-            let line = file.lines()
-                .nth(target_line);
+            let line = file.lines().nth(target_line);
 
-            // special case: file is empty and ends with a newline, in which case the 
+            // special case: file is empty and ends with a newline, in which case the
             // parser will point to char 1-1 of the final line, but .lines() won't consider
             // that an actual line, as it doesn't contain any actual content.
             //
@@ -65,7 +64,7 @@ impl ParserError {
 
         let updated_line = {
             let mut updated_line = String::new();
-            
+
             for (idx, char) in line.char_indices() {
                 if char != '\t' {
                     updated_line.push(char);
@@ -106,13 +105,21 @@ impl ParserError {
 
                 let line_col = format!(":{}:{}", self.line, self.col);
 
-                format!("{}{}{}", dot_slash.bold(), self.file_tag.bold(), line_col.bold())
+                format!(
+                    "{}{}{}",
+                    dot_slash.bold(),
+                    self.file_tag.bold(),
+                    line_col.bold()
+                )
             }
         };
         let bar = "|".bright_blue().bold();
         let line = updated_line;
         let pre_highlight_space = " ".repeat((self.col - 1) as usize);
-        let highlight = "^".repeat((col_end - self.col) as usize).bright_red().bold();
+        let highlight = "^"
+            .repeat((col_end - self.col) as usize)
+            .bright_red()
+            .bold();
 
         // and this is where the magic happens...
 
@@ -122,11 +129,14 @@ impl ParserError {
 
         eprintln!("{} {}", line_num_blank, bar);
         eprintln!("{} {} {}", line_num_str_colored, bar, line);
-        eprintln!("{} {} {}{} {}", line_num_blank, bar, pre_highlight_space, highlight, message);
+        eprintln!(
+            "{} {} {}{} {}",
+            line_num_blank, bar, pre_highlight_space, highlight, message
+        );
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Error {
     ParseFailure,
 }
