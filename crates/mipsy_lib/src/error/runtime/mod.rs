@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use colored::Colorize;
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}};
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
 
@@ -82,9 +82,9 @@ impl Error {
                             runtime, 
                             |state| {
                                 (
-                                    state.is_register_written(*reg_num),
+                                    (state.write_marker() & 1u64 << *reg_num) != 0,
 
-                                    state.get_reg(*reg_num)
+                                    state.read_register(*reg_num)
                                         .map(Safe::valid)
                                         .unwrap_or(Safe::Uninitialised)
                                 )
@@ -100,9 +100,9 @@ impl Error {
                             runtime, 
                             |state| {
                                 (
-                                    state.is_lo_written(),
+                                    (state.write_marker() & 1u64 << WRITE_MARKER_LO) != 0,
                                     
-                                    state.get_lo()
+                                    state.read_lo()
                                         .map(Safe::valid)
                                         .unwrap_or(Safe::Uninitialised)
                                 )
@@ -118,9 +118,9 @@ impl Error {
                             runtime, 
                             |state| {
                                 (
-                                    state.is_hi_written(),
+                                    (state.write_marker() & 1u64 << WRITE_MARKER_HI) != 0,
                                     
-                                    state.get_hi()
+                                    state.read_hi()
                                         .map(Safe::valid)
                                         .unwrap_or(Safe::Uninitialised)
                                 )
@@ -134,9 +134,9 @@ impl Error {
                 let mut error = String::new();
                 error.push_str("your program tried to read uninitialised memory\n");
 
-                let state = runtime.state();
-                let inst  = state.get_word(state.get_pc()).unwrap();
-                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.get_pc());
+                let state = runtime.timeline().state();
+                let inst  = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
     
                 if let ErrorContext::Binary | ErrorContext::Interactive = context {
                     error.push_str("the instruction that failed was:\n");
@@ -151,13 +151,13 @@ impl Error {
                     error.push_str(&"|".red());
                     error.push(' ');
     
-                    let last_inst = last_mod.get_word(last_mod.get_pc()).unwrap();
+                    let last_inst = last_mod.read_mem_word(last_mod.pc()).unwrap();
 
-                    error.push_str(&inst_to_string(last_inst, last_mod.get_pc() - 4, &source_code, binary, inst_set, false));
+                    error.push_str(&inst_to_string(last_inst, last_mod.pc() - 4, &source_code, binary, inst_set, false));
                     error.push('\n');
 
                     if let ErrorContext::Interactive = context {
-                        let distance = runtime.timeline_len() - last_index - 1;
+                        let distance = runtime.timeline().timeline_len() - last_index - 1;
                         error.push_str(&format!("{}\n{0} to get back there, use `{} {}`\n", "|".red(), "back".bold(), distance.to_string().bold()));
                     }
                 } else {(
@@ -173,9 +173,9 @@ impl Error {
                 let mut error = String::new();
                 error.push_str("integer overflow\n");
                 
-                let state = runtime.state();
-                let inst  = state.get_word(state.get_pc()).unwrap();
-                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.get_pc());
+                let state = runtime.timeline().state();
+                let inst  = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
                 if let ErrorContext::Binary | ErrorContext::Interactive = context {
                     error.push_str("\nthe instruction that failed was:\n");
@@ -184,7 +184,7 @@ impl Error {
                 }
 
                 let rs = (inst >> 21) & 0x1F;
-                let rs_value = runtime.state().get_reg(rs).unwrap();
+                let rs_value = runtime.timeline().state().read_register(rs).unwrap();
                 error.push_str("values:\n");
                 error.push_str(&format!(
                     " - {}{} = {}\n",
@@ -198,7 +198,7 @@ impl Error {
                         imm as i32
                     } else {
                         let rt = (inst >> 16) & 0x1F;
-                        let value = runtime.state().get_reg(rt).unwrap();
+                        let value = runtime.timeline().state().read_register(rt).unwrap();
 
                         error.push_str(&format!(
                             " - {}{} = {}\n",
@@ -224,9 +224,9 @@ impl Error {
 
                 error.push_str("division by zero\n");
 
-                let state = runtime.state();
-                let inst  = state.get_word(state.get_pc()).unwrap();
-                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.get_pc());
+                let state = runtime.timeline().state();
+                let inst  = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
                 if let ErrorContext::Binary | ErrorContext::Interactive = context {
                     error.push_str("\nthe instruction that failed was:\n");
@@ -243,14 +243,14 @@ impl Error {
                     " - {}{} = {}\n",
                     "$".yellow(),
                     Register::from_u32(rs).unwrap().to_lower_str().bold(),
-                    runtime.state().get_reg(rs).unwrap()
+                    runtime.timeline().state().read_register(rs).unwrap()
                 ));
 
                 error.push_str(&format!(
                     " - {}{} = {}\n",
                     "$".yellow(),
                     Register::from_u32(rt).unwrap().to_lower_str().bold(),
-                    runtime.state().get_reg(rt).unwrap()
+                    runtime.timeline().state().read_register(rt).unwrap()
                 ));
 
                 error
@@ -273,14 +273,14 @@ impl Error {
             Error::IntegerOverflow => {
                 let mut tip = String::new();
 
-                let state = runtime.state();
-                let inst  = state.get_word(state.get_pc()).unwrap();
-                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.get_pc());
+                let state = runtime.timeline().state();
+                let inst  = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
                 let adding = decompiled.inst_name.as_ref().map(|name| name.contains("add")).unwrap_or(false);
 
                 let rs = (inst >> 21) & 0x1F;
-                let rs_value = runtime.state().get_reg(rs).unwrap();
+                let rs_value = runtime.timeline().state().read_register(rs).unwrap();
                 eprintln!("values:");
                 eprintln!(
                     " - {}{} = {}",
@@ -294,7 +294,7 @@ impl Error {
                         imm as i32
                     } else {
                         let rt = (inst >> 16) & 0x1F;
-                        let value = runtime.state().get_reg(rt).unwrap();
+                        let value = runtime.timeline().state().read_register(rt).unwrap();
     
                         eprintln!(
                             " - {}{} = {}",
@@ -337,12 +337,12 @@ where
     F: Fn(&State) -> T,
     T: PartialEq,
 {
-    let state = runtime.state();
+    let state = runtime.timeline().state();
     let initial_val = f(state);
 
-    let mut i = runtime.timeline_len() - 2;
+    let mut i = runtime.timeline().timeline_len() - 2;
     loop {
-        let old_state = runtime.nth_state(i).unwrap();
+        let old_state = runtime.timeline().nth_state(i).unwrap();
 
         if initial_val != f(old_state) {
             return Some((i, old_state));

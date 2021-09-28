@@ -1,4 +1,5 @@
-use std::mem;
+#![allow(dead_code)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 pub(super) enum UnsafeCow<T>
 where
@@ -73,7 +74,7 @@ where
                 // SAFETY: caller must ensure that value is a valid reference
                 let value: &'s T = unsafe { value.as_ref() }.unwrap();
 
-                mem::replace(self, Self::new(value.clone()));
+                *self = Self::new(value.clone());
 
                 match self {
                     Self::Owned(value) => value.as_mut(),
@@ -107,7 +108,7 @@ impl<T> UnsafeCow<[T]>
                 let value: &'s [T] = unsafe { value.as_ref() }.unwrap();
 
                 let boxed: Box<[T]> = value.iter().cloned().collect();
-                mem::replace(self, Self::new_boxed(boxed));
+                *self = Self::new_boxed(boxed);
 
                 match self {
                     Self::Owned(value) => value.as_mut(),

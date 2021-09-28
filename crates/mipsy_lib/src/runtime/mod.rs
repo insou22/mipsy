@@ -1,10 +1,10 @@
 mod unsafe_cow;
-mod state;
+pub mod state;
+
+pub use self::state::State;
 
 use std::collections::HashMap;
-
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_TOP, Safe, TEXT_BOT, Uninitialised, error::runtime::Error, runtime::state::State};
-
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_TOP, Safe, TEXT_BOT, Uninitialised, error::runtime::Error};
 use self::state::Timeline;
 
 pub const NUL:  u8  = 0;
@@ -29,24 +29,47 @@ pub const SYS15_WRITE:       i32 = 15;
 pub const SYS16_CLOSE:       i32 = 16;
 pub const SYS17_EXIT_STATUS: i32 = 17;
 
+macro_rules! try_owned_self {
+    ($self:ident, $res:expr) => {
+        match $res {
+            Ok(res) => res,
+            Err(err) => return Err(($self, err)),
+        }
+    };
+}
+
 pub struct Runtime {
     timeline: Timeline,
 }
 
 impl Runtime {
+    pub fn timeline(&self) -> &Timeline {
+        &self.timeline
+    }
+
+    pub fn timeline_mut(&mut self) -> &Timeline {
+        &mut self.timeline
+    }
+
     pub fn step(mut self) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
         let state = self.timeline.push_next_state();
 
-        let inst = state.read_mem_word(state.pc())
-                .map_err(|_| (self, MipsyError::Runtime(RuntimeError::new(Error::UnknownInstruction { addr: state.pc() }))))?;
+        let inst = match state.read_mem_word(state.pc()) {
+            Ok(inst) => inst,
+            Err(_) => {
+                let addr = state.pc();
+
+                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::UnknownInstruction { addr }))));
+            }
+        };
 
         state.set_pc(state.pc() + 4);
 
         match self.execute(inst) {
-            Err(err) => {
-                self.timeline.pop_last_state();
+            Err((mut new_self, err)) => {
+                new_self.timeline.pop_last_state();
 
-                Err(err)
+                Err((new_self, err))
             }
             ok => ok,
         }
@@ -76,8 +99,7 @@ impl Runtime {
             }
             _ => {
                 // I-Type
-                self.execute_i(opcode, rs, rt, imm)
-                    .map_err(|err| (self, err))?;
+                try_owned_self!(self, self.execute_i(opcode, rs, rt, imm));
 
                 Ok(Ok(self))
             }
@@ -86,180 +108,189 @@ impl Runtime {
 
     // remove when floating point syscalls are finished
     #[allow(unreachable_code)]
-    fn syscall(self) -> Result<RuntimeSyscallGuard, (Runtime, MipsyError)> {
-        let state = self.timeline.state();
+    fn syscall(mut self) -> Result<RuntimeSyscallGuard, (Runtime, MipsyError)> {
+        let syscall = try_owned_self!(self, self.timeline.state().read_register(Register::V0.to_u32()));
+    
+        Ok(
+            match syscall {
+                SYS1_PRINT_INT => {
+                    let value = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32()));
 
-        (|| {
-            let syscall = state.read_register(Register::V0.to_u32())?;
-        
-            Ok(
-                match syscall {
-                    SYS1_PRINT_INT => RuntimeSyscallGuard::PrintInt(
+                    RuntimeSyscallGuard::PrintInt(
                         PrintIntArgs {
-                            value: state.read_register(Register::A0.to_u32())?
+                            value
                         },
                         self
-                    ),
-                    SYS2_PRINT_FLOAT => RuntimeSyscallGuard::PrintFloat(
-                        PrintFloatArgs {
-                            value: todo!(),
-                        },
-                        self
-                    ),
-                    SYS3_PRINT_DOUBLE => RuntimeSyscallGuard::PrintDouble(
-                        PrintDoubleArgs {
-                            value: todo!(),
-                        },
-                        self
-                    ),
-                    SYS4_PRINT_STRING => RuntimeSyscallGuard::PrintString(
-                        PrintStringArgs {
-                            value: state.read_mem_string(
-                                state.read_register(Register::A0.to_u32())? as _
-                            )?,
-                        },
-                        self
-                    ),
-                    SYS5_READ_INT => RuntimeSyscallGuard::ReadInt(
-                        Box::new(move |value| {
-                            state.write_register(Register::V0.to_u32(), value);
-                            self
-                        })
-                    ),
-                    SYS6_READ_FLOAT => RuntimeSyscallGuard::ReadFloat(
-                        todo!()
-                    ),
-                    SYS7_READ_DOUBLE => RuntimeSyscallGuard::ReadDouble(
-                        todo!()
-                    ),
-                    SYS8_READ_STRING => {
-                        let buf = state.read_register(Register::A0.to_u32())? as u32;
-                        let len = state.read_register(Register::A1.to_u32())? as _;
-
-                        RuntimeSyscallGuard::ReadString(
-                            ReadStringArgs {
-                                max_len: len,
-                            },
-                            Box::new(move |mut string| {
-                                if string.len() >= len as usize {
-                                    string.resize(len.max(0) as _, 0);
-                                }
-                                
-                                for (i, byte) in string.into_iter().enumerate() {
-                                    state.write_mem_byte(buf + i as u32, byte);
-                                }
-
-                                self
-                            })
-                        )
-                    }
-                    SYS9_SBRK => {
-                        let bytes = state.read_register(Register::A0.to_u32())?;
-
-                        if bytes > 0 {
-                            state.set_heap_size(state.heap_size().saturating_add(bytes as _));
-                        } else if bytes < 0 {
-                            state.set_heap_size(state.heap_size().saturating_sub(bytes.abs() as _));
-                        }
-
-                        RuntimeSyscallGuard::Sbrk(
-                            SbrkArgs {
-                                bytes,
-                            },
-                            self,
-                        )
-                    }
-                    SYS10_EXIT => RuntimeSyscallGuard::Exit(
-                        self
-                    ),
-                    SYS11_PRINT_CHAR => RuntimeSyscallGuard::PrintChar(
-                        PrintCharArgs {
-                            value: state.read_register(Register::A0.to_u32())? as _,
-                        },
-                        self
-                    ),
-                    SYS12_READ_CHAR => RuntimeSyscallGuard::ReadChar(
-                        Box::new(move |value| {
-                            state.write_register(Register::V0.to_u32(), value as _);
-                            self
-                        })
-                    ),
-                    SYS13_OPEN => RuntimeSyscallGuard::Open(
-                        OpenArgs {
-                            path: state.read_mem_string(
-                                state.read_register(Register::A0.to_u32())? as _
-                            )?,
-                            flags: state.read_register(Register::A1.to_u32())? as _,
-                            mode:  state.read_register(Register::A2.to_u32())? as _,
-                        },
-                        Box::new(move |fd| {
-                            state.write_register(Register::V0.to_u32(), fd as _);
-                            self
-                        })
-                    ),
-                    SYS14_READ => {
-                        let fd  = state.read_register(Register::A0.to_u32())? as _;
-                        let buf = state.read_register(Register::A1.to_u32())? as u32;
-                        let len = state.read_register(Register::A2.to_u32())? as _;
-
-                        RuntimeSyscallGuard::Read(
-                            ReadArgs {
-                                fd,
-                                len,
-                            },
-                            Box::new(move |bytes| {
-                                let len = (len as usize).min(bytes.len());
-
-                                bytes[..len].iter().enumerate().for_each(|(i, byte)| {
-                                    state.write_mem_byte(buf + i as u32, *byte);
-                                });
-                                state.write_register(Register::V0.to_u32(), len as _);
-                                
-                                self
-                            })
-                        )
-                    }
-                    SYS15_WRITE => {
-                        let fd  = state.read_register(Register::A0.to_u32())? as _;
-                        let buf = state.read_register(Register::A1.to_u32())? as _;
-                        let len = state.read_register(Register::A2.to_u32())? as _;
-
-                        RuntimeSyscallGuard::Write(
-                            WriteArgs {
-                                fd,
-                                buf: state.read_mem_bytes(buf, len)?,
-                            },
-                            Box::new(move |written| {
-                                state.write_register(Register::V0.to_u32(), written as _);
-                                
-                                self
-                            })
-                        )
-                    }
-                    SYS16_CLOSE => RuntimeSyscallGuard::Close(
-                        CloseArgs {
-                            fd: state.read_register(Register::A0.to_u32())? as _,
-                        },
-                        Box::new(move |status| {
-                            state.write_register(Register::V0.to_u32(), status as _);
-                            self
-                        })
-                    ),
-                    SYS17_EXIT_STATUS => RuntimeSyscallGuard::ExitStatus(
-                        ExitStatusArgs {
-                            exit_code: state.read_register(Register::A0.to_u32())? as _,
-                        },
-                        self
-                    ),
+                    )
                 }
-            )
-        })().map_err(|err| (self, err))
+                SYS2_PRINT_FLOAT => RuntimeSyscallGuard::PrintFloat(
+                    PrintFloatArgs {
+                        value: todo!(),
+                    },
+                    self
+                ),
+                SYS3_PRINT_DOUBLE => RuntimeSyscallGuard::PrintDouble(
+                    PrintDoubleArgs {
+                        value: todo!(),
+                    },
+                    self
+                ),
+                SYS4_PRINT_STRING => {
+                    let value = try_owned_self!(self, self.timeline.state().read_mem_string(
+                        try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
+                    ));
+
+                    RuntimeSyscallGuard::PrintString(
+                        PrintStringArgs {
+                            value,
+                        },
+                        self
+                    )
+                }
+                SYS5_READ_INT => RuntimeSyscallGuard::ReadInt(
+                    Box::new(move |value| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), value);
+                        self
+                    })
+                ),
+                SYS6_READ_FLOAT => RuntimeSyscallGuard::ReadFloat(
+                    todo!()
+                ),
+                SYS7_READ_DOUBLE => RuntimeSyscallGuard::ReadDouble(
+                    todo!()
+                ),
+                SYS8_READ_STRING => {
+                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as u32;
+                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
+
+                    RuntimeSyscallGuard::ReadString(
+                        ReadStringArgs {
+                            max_len: len,
+                        },
+                        Box::new(move |mut string| {
+                            if string.len() >= len as usize {
+                                string.resize(len.max(0) as _, 0);
+                            }
+                            
+                            for (i, byte) in string.into_iter().enumerate() {
+                                self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
+                            }
+
+                            self
+                        })
+                    )
+                }
+                SYS9_SBRK => {
+                    let bytes = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32()));
+                    let heap_size = self.timeline.state().heap_size();
+
+                    if bytes > 0 {
+                        self.timeline.state_mut().set_heap_size(heap_size.saturating_add(bytes as _));
+                    } else if bytes < 0 {
+                        self.timeline.state_mut().set_heap_size(heap_size.saturating_sub(bytes.abs() as _));
+                    }
+
+                    RuntimeSyscallGuard::Sbrk(
+                        SbrkArgs {
+                            bytes,
+                        },
+                        self,
+                    )
+                }
+                SYS10_EXIT => RuntimeSyscallGuard::Exit(
+                    self
+                ),
+                SYS11_PRINT_CHAR => RuntimeSyscallGuard::PrintChar(
+                    PrintCharArgs {
+                        value: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                    },
+                    self
+                ),
+                SYS12_READ_CHAR => RuntimeSyscallGuard::ReadChar(
+                    Box::new(move |value| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), value as _);
+                        self
+                    })
+                ),
+                SYS13_OPEN => RuntimeSyscallGuard::Open(
+                    OpenArgs {
+                        path: try_owned_self!(self, self.timeline.state().read_mem_string(
+                            try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
+                        )),
+                        flags: try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _,
+                        mode:  try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _,
+                    },
+                    Box::new(move |fd| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), fd as _);
+                        self
+                    })
+                ),
+                SYS14_READ => {
+                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
+                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+
+                    RuntimeSyscallGuard::Read(
+                        ReadArgs {
+                            fd,
+                            len,
+                        },
+                        Box::new(move |bytes| {
+                            let len = (len as usize).min(bytes.len());
+
+                            bytes[..len].iter().enumerate().for_each(|(i, byte)| {
+                                self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
+                            });
+                            self.timeline.state_mut().write_register(Register::V0.to_u32(), len as _);
+                            
+                            self
+                        })
+                    )
+                }
+                SYS15_WRITE => {
+                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
+                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+
+                    RuntimeSyscallGuard::Write(
+                        WriteArgs {
+                            fd,
+                            buf: try_owned_self!(self, self.timeline.state().read_mem_bytes(buf, len)),
+                        },
+                        Box::new(move |written| {
+                            self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
+                            
+                            self
+                        })
+                    )
+                }
+                SYS16_CLOSE => RuntimeSyscallGuard::Close(
+                    CloseArgs {
+                        fd: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                    },
+                    Box::new(move |status| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), status as _);
+                        self
+                    })
+                ),
+                SYS17_EXIT_STATUS => RuntimeSyscallGuard::ExitStatus(
+                    ExitStatusArgs {
+                        exit_code: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                    },
+                    self,
+                ),
+                unknown => RuntimeSyscallGuard::UnknownSyscall(
+                    UnknownSyscallArgs {
+                        syscall_number: unknown,
+                    },
+                    self,
+                )
+            }
+        )
     }
 
     fn execute_r(mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
     {
-        let state = self.timeline.state_mut();
-
         match funct {
             // SYSCALL
             0x0C => { Ok(Err(self.syscall()?)) },
@@ -268,189 +299,195 @@ impl Runtime {
             0x0D => { Ok(Err(RuntimeSyscallGuard::Breakpoint(self))) },
 
             _ => {
-                (|| {
-                    match funct {
-                        // SLL  $Rd, $Rt, Sa
-                        0x00 => { state.write_register(rd, (state.read_register(rt)? << shamt) as i32); },
-            
-                        // Unused
-                        0x01 => {},
-            
-                        // SRL  $Rd, $Rt, Sa
-                        0x02 => { state.write_register(rd, (state.read_register(rt)? >> shamt) as i32); },
-            
-                        // SRA  $Rd, $Rt, Sa
-                        0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
-            
-                        // SLLV $Rd, $Rt, $Rs
-                        0x04 => { state.write_register(rd, (state.read_register(rt)? << state.read_register(rs)?) as i32); },
-            
-                        // Unused
-                        0x05 => {},
-            
-                        // SRLV $Rd, $Rt, $Rs
-                        0x06 => { state.write_register(rd, (state.read_register(rt)? >> state.read_register(rs)?) as i32); },
-            
-                        // SRAV $Rd, $Rt, $Rs
-                        0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
-            
-                        // JR   $Rs
-                        0x08 => { state.set_pc(state.read_register(rs)? as u32); },
-            
-                        // JALR $Rs
-                        0x09 => { 
-                            state.write_register(Register::Ra.to_number() as u32, state.pc() as _); 
-                            state.set_pc(state.read_register(rs)? as _);
-                        },
-                        
-                        // Unused
-                        0x0A => {},
-            
-                        // Unused
-                        0x0B => {},
-            
-                        // SYSCALL
-                        0x0C => unreachable!("covered above"),
-            
-                        // BREAK
-                        0x0D => unreachable!("covered above"),
-            
-                        // Unused
-                        0x0E => {},
-            
-                        // Unused
-                        0x0F => {},
-            
-                        // MFHI $Rd
-                        0x10 => { state.write_register(rd, state.read_hi()?); },
-            
-                        // MTHI $Rs
-                        0x11 => { state.write_hi(state.read_register(rs)?); },
-            
-                        // MFLO $Rd
-                        0x12 => { state.write_register(rd, state.read_lo()?); },
-            
-                        // MTLO $Rs
-                        0x13 => { state.write_lo(state.read_register(rs)?); },
-            
-                        // Unused
-                        0x14 => {},
-            
-                        // Unused
-                        0x15 => {},
-            
-                        // Unused
-                        0x16 => {},
-            
-                        // Unused
-                        0x17 => {},
-            
-                        // MULT $Rs, $Rt
-                        0x18 => {
-                            let rs_val = state.read_register(rs)?;
-                            let rt_val = state.read_register(rt)?;
-            
-                            let result = (rs_val as i64 * rt_val as i64) as u64;
-                            state.write_hi((result >> 32) as _);
-                            state.write_lo((result & 0xFFFF_FFFF) as _);
-                        },
-            
-                        // MULTU $Rs, $Rt
-                        0x19 => {
-                            let rs_val = state.read_register(rs)?;
-                            let rt_val = state.read_register(rt)?;
-            
-                            let result = rs_val as u64 * rt_val as u64;
-                            state.write_hi((result >> 32) as _);
-                            state.write_lo((result & 0xFFFF_FFFF) as _);
-                        },
-            
-                        // DIV  $Rs, $Rt
-                        0x1A => {
-                            let rs_val = state.read_register(rs)?;
-                            let rt_val = state.read_register(rt)?;
-            
-                            if rt_val == 0 {
-                                return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
-                            }
-            
-                            state.write_lo(rs_val / rt_val);
-                            state.write_hi(rs_val % rt_val);
-                        },
-            
-                        // DIVU $Rs, $Rt
-                        0x1B => {
-                            let rs_val = state.read_register(rs)?;
-                            let rt_val = state.read_register(rt)?;
-            
-                            if rt_val == 0 {
-                                return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
-                            }
-            
-                            state.write_lo(rs_val / rt_val);
-                            state.write_hi(rs_val % rt_val);
-                        },
-            
-                        // Unused
-                        0x1C => {},
-            
-                        // Unused
-                        0x1D => {},
-            
-                        // Unused
-                        0x1E => {},
-            
-                        // Unused
-                        0x1F => {},
-            
-                        // ADD  $Rd, $Rs, $Rt
-                        0x20 => { state.write_register(rd, checked_add(state.read_register(rs)?, state.read_register(rt)?)?); },
-            
-                        // ADDU $Rd, $Rs, $Rt
-                        0x21 => { state.write_register(rd, state.read_register(rs)?.wrapping_add(state.read_register(rt)?)); },
-            
-                        // SUB  $Rd, $Rs, $Rt
-                        0x22 => { state.write_register(rd, checked_sub(state.read_register(rs)?, state.read_register(rt)?)?); },
-            
-                        // SUBU $Rd, $Rs, $Rt
-                        0x23 => { state.write_register(rd, state.read_register(rs)?.wrapping_sub(state.read_register(rt)?)); },
-            
-                        // AND  $Rd, $Rs, $Rt
-                        0x24 => { state.write_register(rd, state.read_register(rs)? & state.read_register(rt)?); },
-            
-                        // OR   $Rd, $Rs, $Rt
-                        0x25 => { state.write_register(rd, state.read_register(rs)? | state.read_register(rt)?); },
-            
-                        // XOR  $Rd, $Rs, $Rt
-                        0x26 => { state.write_register(rd, state.read_register(rs)? ^ state.read_register(rt)?); },
-            
-                        // NOR  $Rd, $Rs, $Rt
-                        0x27 => { state.write_register(rd, ! (state.read_register(rs)? | state.read_register(rt)?)); },
-            
-                        // Unused
-                        0x28 => {},
-            
-                        // Unused
-                        0x29 => {},
-            
-                        // SLT  $Rd, $Rs, $Rt
-                        0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
-            
-                        // SLTU $Rd, $Rs, $Rt
-                        0x2B => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
-            
-                        // Unused
-                        0x2C..=0x3F => {},
-            
-                        // Doesn't fit in 6 bits
-                        _ => unreachable!(),
-                    }
-
-                    Ok(Ok(self))
-                })().map_err(|err| (self, err))
+                try_owned_self!(self, self.execute_hardware_r(funct, rd, rs, rt, shamt));
+                Ok(SteppedRuntime::Ok(self))
             }
         }
     }
+
+    fn execute_hardware_r(&mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()> {
+        let state = self.timeline.state_mut();
+
+        match funct {
+            // SLL  $Rd, $Rt, Sa
+            0x00 => { state.write_register(rd, (state.read_register(rt)? << shamt) as i32); },
+
+            // Unused
+            0x01 => {},
+
+            // SRL  $Rd, $Rt, Sa
+            0x02 => { state.write_register(rd, (state.read_register(rt)? >> shamt) as i32); },
+
+            // SRA  $Rd, $Rt, Sa
+            0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
+
+            // SLLV $Rd, $Rt, $Rs
+            0x04 => { state.write_register(rd, (state.read_register(rt)? << state.read_register(rs)?) as i32); },
+
+            // Unused
+            0x05 => {},
+
+            // SRLV $Rd, $Rt, $Rs
+            0x06 => { state.write_register(rd, (state.read_register(rt)? >> state.read_register(rs)?) as i32); },
+
+            // SRAV $Rd, $Rt, $Rs
+            0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
+
+            // JR   $Rs
+            0x08 => { state.set_pc(state.read_register(rs)? as u32); },
+
+            // JALR $Rs
+            0x09 => { 
+                state.write_register(Register::Ra.to_number() as u32, state.pc() as _); 
+                state.set_pc(state.read_register(rs)? as _);
+            },
+            
+            // Unused
+            0x0A => {},
+
+            // Unused
+            0x0B => {},
+
+            // SYSCALL
+            0x0C => unreachable!("covered above"),
+
+            // BREAK
+            0x0D => unreachable!("covered above"),
+
+            // Unused
+            0x0E => {},
+
+            // Unused
+            0x0F => {},
+
+            // MFHI $Rd
+            0x10 => { state.write_register(rd, state.read_hi()?); },
+
+            // MTHI $Rs
+            0x11 => { state.write_hi(state.read_register(rs)?); },
+
+            // MFLO $Rd
+            0x12 => { state.write_register(rd, state.read_lo()?); },
+
+            // MTLO $Rs
+            0x13 => { state.write_lo(state.read_register(rs)?); },
+
+            // Unused
+            0x14 => {},
+
+            // Unused
+            0x15 => {},
+
+            // Unused
+            0x16 => {},
+
+            // Unused
+            0x17 => {},
+
+            // MULT $Rs, $Rt
+            0x18 => {
+                let rs_val = state.read_register(rs)?;
+                let rt_val = state.read_register(rt)?;
+
+                let result = (rs_val as i64 * rt_val as i64) as u64;
+                state.write_hi((result >> 32) as _);
+                state.write_lo((result & 0xFFFF_FFFF) as _);
+            },
+
+            // MULTU $Rs, $Rt
+            0x19 => {
+                let rs_val = state.read_register(rs)?;
+                let rt_val = state.read_register(rt)?;
+
+                let result = rs_val as u64 * rt_val as u64;
+                state.write_hi((result >> 32) as _);
+                state.write_lo((result & 0xFFFF_FFFF) as _);
+            },
+
+            // DIV  $Rs, $Rt
+            0x1A => {
+                let rs_val = state.read_register(rs)?;
+                let rt_val = state.read_register(rt)?;
+
+                if rt_val == 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
+                }
+
+                state.write_lo(rs_val / rt_val);
+                state.write_hi(rs_val % rt_val);
+            },
+
+            // DIVU $Rs, $Rt
+            0x1B => {
+                let rs_val = state.read_register(rs)?;
+                let rt_val = state.read_register(rt)?;
+
+                if rt_val == 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
+                }
+
+                state.write_lo(rs_val / rt_val);
+                state.write_hi(rs_val % rt_val);
+            },
+
+            // Unused
+            0x1C => {},
+
+            // Unused
+            0x1D => {},
+
+            // Unused
+            0x1E => {},
+
+            // Unused
+            0x1F => {},
+
+            // ADD  $Rd, $Rs, $Rt
+            0x20 => { state.write_register(rd, checked_add(state.read_register(rs)?, state.read_register(rt)?)?); },
+
+            // ADDU $Rd, $Rs, $Rt
+            0x21 => { state.write_register(rd, state.read_register(rs)?.wrapping_add(state.read_register(rt)?)); },
+
+            // SUB  $Rd, $Rs, $Rt
+            0x22 => { state.write_register(rd, checked_sub(state.read_register(rs)?, state.read_register(rt)?)?); },
+
+            // SUBU $Rd, $Rs, $Rt
+            0x23 => { state.write_register(rd, state.read_register(rs)?.wrapping_sub(state.read_register(rt)?)); },
+
+            // AND  $Rd, $Rs, $Rt
+            0x24 => { state.write_register(rd, state.read_register(rs)? & state.read_register(rt)?); },
+
+            // OR   $Rd, $Rs, $Rt
+            0x25 => { state.write_register(rd, state.read_register(rs)? | state.read_register(rt)?); },
+
+            // XOR  $Rd, $Rs, $Rt
+            0x26 => { state.write_register(rd, state.read_register(rs)? ^ state.read_register(rt)?); },
+
+            // NOR  $Rd, $Rs, $Rt
+            0x27 => { state.write_register(rd, ! (state.read_register(rs)? | state.read_register(rt)?)); },
+
+            // Unused
+            0x28 => {},
+
+            // Unused
+            0x29 => {},
+
+            // SLT  $Rd, $Rs, $Rt
+            0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
+
+            // SLTU $Rd, $Rs, $Rt
+            0x2B => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
+
+            // Unused
+            0x2C..=0x3F => {},
+
+            // Doesn't fit in 6 bits
+            _ => unreachable!(),
+        }
+
+        Ok(())
+    }
+
 
     fn execute_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> MipsyResult<()> {
         let state = self.timeline.state_mut();
@@ -664,7 +701,8 @@ pub enum RuntimeSyscallGuard {
     ExitStatus (ExitStatusArgs, Runtime),
 
     // other
-    Breakpoint (Runtime),
+    Breakpoint     (Runtime),
+    UnknownSyscall (UnknownSyscallArgs, Runtime)
 }
 
 pub struct PrintIntArgs {
@@ -696,27 +734,31 @@ pub struct PrintCharArgs {
 }
 
 pub struct OpenArgs {
-    path: Vec<u8>,
-    flags: u32,
-    mode: u32,
+    pub path: Vec<u8>,
+    pub flags: u32,
+    pub mode: u32,
 }
 
 pub struct ReadArgs {
-    fd: u32,
-    len: u32,
+    pub fd: u32,
+    pub len: u32,
 }
 
 pub struct WriteArgs {
-    fd: u32,
-    buf: Vec<u8>,
+    pub fd: u32,
+    pub buf: Vec<u8>,
 }
 
 pub struct CloseArgs {
-    fd: u32,
+    pub fd: u32,
 }
 
 pub struct ExitStatusArgs {
     pub exit_code: i32,
+}
+
+pub struct UnknownSyscallArgs {
+    pub syscall_number: i32,
 }
 
 pub(self) trait SafeToUninitResult {
@@ -783,6 +825,7 @@ impl Runtime {
                 pc: KTEXT_BOT,
                 heap_size: 0,
                 registers: Default::default(),
+                write_marker: 0,
                 hi: Default::default(),
                 lo: Default::default(),
             };
