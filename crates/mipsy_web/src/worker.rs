@@ -1,7 +1,10 @@
 use mipsy_lib::{Binary, InstSet, MipsyError, Runtime};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
-use yew::worker::{Agent, AgentLink, HandlerId, Public};
+use yew::{
+    services::ConsoleService,
+    worker::{Agent, AgentLink, HandlerId, Public},
+};
 
 pub struct Worker {
     // the link that allows to communicate to main thread
@@ -52,6 +55,7 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
+        ConsoleService::info("CREATING WORKER");
         Self {
             link,
             inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
@@ -71,6 +75,7 @@ impl Agent for Worker {
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
             Self::Input::CompileCode(f) => {
+                ConsoleService::warn("Compiling code inside worker");
                 let compiled =
                     mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], 8);
 

@@ -32,7 +32,7 @@ pub enum Msg {
     Run,
     StepForward,
     StepBackward,
-    FromWorker(WorkerOutput),
+    FromWorker(WorkerResponse),
 }
 
 pub enum State {
@@ -95,15 +95,16 @@ impl Component for App {
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
 
                 let input = WorkerRequest::CompileCode(file);
+                ConsoleService::info("sending to worker");
                 self.worker.send(input);
 
                 true
             }
 
             Msg::Run => {
+                todo!()
+                /*
                 if let State::Running(RunningState {
-                    file,
-                    binary,
                     decompiled,
                     mips_state,
                 }) = &mut self.state
@@ -132,8 +133,7 @@ impl Component for App {
                     ConsoleService::error("No File loaded, cannot run");
                     return false;
                 }
-
-                true
+                true*/
             }
 
             Msg::StepForward => {
@@ -146,6 +146,8 @@ impl Component for App {
 
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
+                    ConsoleService::info("recieved decompiled code from worker");
+                    ConsoleService::info(&decompiled);
                     match self.state {
                         // Overwrite existing state,
                         State::NoFile | State::Running(_) => {
@@ -160,7 +162,6 @@ impl Component for App {
                         }
                     }
                 }
-
                 WorkerResponse::CompilerError(err) => {
                     todo!();
                 }
