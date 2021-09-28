@@ -139,6 +139,9 @@ pub enum Error {
 
     RedefinedLabel  { label: String },
     UnresolvedLabel { label: String, similar: Vec<String> },
+
+    RedefinedConstant  { label: String },
+    UnresolvedConstant { label: String },
 }
 
 impl Error {
@@ -194,6 +197,22 @@ impl Error {
             
             Error::UnresolvedLabel { label, .. } => {
                 let message_1 = "cannot find label".bright_red().bold();
+                let message_2 = "in program".bright_red().bold();
+                let label = label.bold();
+                
+                format!("{} `{}` {}", message_1, label, message_2)
+            }
+
+            Error::RedefinedConstant { label } => {
+                let message_1 = "the constant".bright_red().bold();
+                let message_2 = "is defined multiple times".bright_red().bold();
+                let label = label.bold();
+
+                format!("{} `{}` {}", message_1, label, message_2)
+            }
+            
+            Error::UnresolvedConstant { label } => {
+                let message_1 = "cannot find constant".bright_red().bold();
                 let message_2 = "in program".bright_red().bold();
                 let label = label.bold();
                 
@@ -353,6 +372,16 @@ impl Error {
                 } else {
                     vec![]
                 }
+            }
+
+            Error::RedefinedConstant { .. } => {
+                // good luck kiddo
+                vec![]
+            }
+            
+            Error::UnresolvedConstant { .. } => {
+                // good luck kiddo
+                vec![]
             }
         }
     }

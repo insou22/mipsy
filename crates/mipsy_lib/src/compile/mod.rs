@@ -1,6 +1,5 @@
 use std::{collections::HashMap, rc::Rc};
 use crate::{InstSet, MpProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
-use case_insensitive_hashmap::CaseInsensitiveHashMap;
 
 mod bytes;
 
@@ -32,7 +31,8 @@ pub struct Binary {
     pub data:    Vec<Safe<u8>>,
     pub ktext:   Vec<u32>,
     pub kdata:   Vec<Safe<u8>>,
-    pub labels:  CaseInsensitiveHashMap<u32>,
+    pub labels:  HashMap<String, u32>,
+    pub constants: HashMap<String, i64>,
     pub breakpoints:  Vec<u32>,
     pub globals: Vec<String>,
     pub line_numbers: HashMap<u32, (Rc<str>, u32)>,
@@ -69,7 +69,7 @@ impl Binary {
     }
 
     pub fn insert_label(&mut self, label: &str, addr: u32) {
-        self.labels.insert(label, addr);
+        self.labels.insert(label.to_string(), addr);
     }
 }
 
@@ -84,7 +84,8 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
         data: vec![],
         ktext: vec![],
         kdata: vec![],
-        labels: CaseInsensitiveHashMap::new(),
+        labels: HashMap::new(),
+        constants: HashMap::new(),
         breakpoints: vec![],
         globals: vec![],
         line_numbers: HashMap::new(),

@@ -307,12 +307,16 @@ impl InstSignature {
                                     imm as u32
                                 }
                                 MpImmediate::LabelReference(label) => {
-                                    // must be relative
-                                    let addr = program.get_label(label)?;
+                                    if let Some(value) = program.constants.get(label) {
+                                        *value as i32 as u32
+                                    } else {
+                                        // must be relative
+                                        let addr = program.get_label(label)?;
 
-                                    let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                        let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
 
-                                    ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
+                                        ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
+                                    }
                                 }
                                 _ => unreachable!()
                             }
@@ -333,12 +337,16 @@ impl InstSignature {
                                     imm as u32
                                 }
                                 MpImmediate::LabelReference(label) => {
-                                    // must be relative
-                                    let addr = program.get_label(label)?;
+                                    if let Some(value) = program.constants.get(label) {
+                                        *value as i32 as u32
+                                    } else {
+                                        // must be relative
+                                        let addr = program.get_label(label)?;
 
-                                    let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                        let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
 
-                                    ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
+                                        ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
+                                    }
                                 }
                                 _ => unreachable!()
                             }
@@ -353,7 +361,11 @@ impl InstSignature {
                         MpArgument::Number(num) => match num {
                             MpNumber::Immediate(imm) => match imm {
                                 MpImmediate::LabelReference(label) => {
-                                    program.get_label(label)?
+                                    if let Some(value) = program.constants.get(label) {
+                                        *value as i32 as u32
+                                    } else {
+                                        program.get_label(label)?
+                                    }
                                 }
                                 _ => unreachable!(),
                             }
@@ -449,7 +461,7 @@ impl fmt::Display for ArgumentType {
 }
 
 impl ArgumentType {
-    fn matches(&self, arg: &MpArgument, relative_label: bool) -> bool {
+    fn matches(&self, arg: &MpArgument, _relative_label: bool) -> bool {
         match arg {
             MpArgument::Register(register) => {
                 match register {
@@ -459,8 +471,9 @@ impl ArgumentType {
 
                         MpImmediate::U16(_)
                         | MpImmediate::U32(_)
-                        | MpImmediate::I32(_)
-                        | MpImmediate::LabelReference(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
+                        | MpImmediate::I32(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
+
+                        MpImmediate::LabelReference(_) => true, 
                     }
                 }
             }
@@ -485,13 +498,13 @@ impl ArgumentType {
                                 }
                             }
                             MpImmediate::U32(_) => matches!(self, Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt),
-                            MpImmediate::LabelReference(_) => {
+                            MpImmediate::LabelReference(_) => true, /*{ const value parses as a label reference, so we have to assume everything
                                 match self {
                                     Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                                     Self::I16 => relative_label,
                                     _ => false,
                                 }
-                            }
+                            }*/
                         }
                     }
                     MpNumber::Char(_) => matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32),
@@ -589,14 +602,20 @@ impl PseudoSignature {
                         ((imm & 0xFFFF) as u16, (imm >> 16) as u16)
                     }
                     MpImmediate::LabelReference(ref label) => {
-                        let mut addr = program.get_label(label)?;
+                        if let Some(value) = program.constants.get(label) {
+                            let value = *value;
 
-                        if self.compile.relative_label && last {
-                            let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
-                            addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                            ((value & 0xFFFF) as u16, (value >> 16) as u16)
+                        } else {
+                            let mut addr = program.get_label(label)?;
+
+                            if self.compile.relative_label && last {
+                                let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
+                                addr = (addr.wrapping_sub(current_inst_addr)) / 4;
+                            }
+
+                            ((addr & 0xFFFF) as u16, (addr >> 16) as u16)
                         }
-
-                        ((addr & 0xFFFF) as u16, (addr >> 16) as u16)
                     }
                 }
                 &MpNumber::Char(chr) => {

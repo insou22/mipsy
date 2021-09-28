@@ -114,6 +114,14 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
             map(
                 tuple((
                     opt(char('-')),
+                    tag("0o"),
+                    oct_digit1,
+                )),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
                     tag("0"),
                     oct_digit1,
                 )),
@@ -213,7 +221,7 @@ pub fn parse_f64(i: Span<'_>) -> IResult<Span<'_>, f64> {
     double(i)
 }
 
-fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
+pub fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
     let (
         remaining_data,
         (

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, parse_outer_attribute}, directive::{
+use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, parse_outer_attribute}, constant::{MpConst, parse_constant}, directive::{
         MpDirective,
         parse_directive,
     }, instruction::{
@@ -40,6 +40,7 @@ pub enum MpItem {
     Instruction(MpInstruction),
     Directive(MpDirective),
     Label(MpLabel),
+    Constant(MpConst),
 }
 
 impl<'tag, 'file> TaggedFile<'tag, 'file> {
@@ -124,6 +125,7 @@ pub fn parse_mips_item(i: Span<'_>) -> IResult<Span<'_>, (MpItem, Vec<Attribute>
             comment_multispace0,
             position,
             alt((
+                map(parse_constant,    MpItem::Constant),
                 map(parse_label,       MpItem::Label),
                 map(parse_directive,   MpItem::Directive),
                 map(parse_instruction, MpItem::Instruction),

@@ -35,6 +35,7 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
             }
             MpItem::Label(_) => {}
             MpItem::Directive(_) => {}
+            MpItem::Constant(_) => {}
         }
     }
 
@@ -62,8 +63,10 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
                                 MpNumber::Immediate(imm) => {
                                     match imm {
                                         MpImmediate::LabelReference(label) => {
-                                            binary.get_label(label)
-                                                .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                                            if binary.constants.get(label).is_none() {
+                                                binary.get_label(label)
+                                                    .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                                            }
                                         }
                                         MpImmediate::I16(_) => {}
                                         MpImmediate::U16(_) => {}
@@ -81,6 +84,7 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
             }
             MpItem::Label(_) => {}
             MpItem::Directive(_) => {}
+            MpItem::Constant(_) => {}
         }
     }
 

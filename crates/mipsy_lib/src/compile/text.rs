@@ -116,6 +116,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
                 text.append(&mut compiled);
             }
             MpItem::Label(_) => {}
+            MpItem::Constant(_) => {}
         }
     }
 

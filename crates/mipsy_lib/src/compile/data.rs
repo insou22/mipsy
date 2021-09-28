@@ -8,10 +8,7 @@ use super::{
     text::instruction_length,
     bytes::ToBytes
 };
-use mipsy_parser::{
-    MpItem,
-    MpDirective,
-};
+use mipsy_parser::{MpConstValue, MpDirective, MpItem};
 
 #[derive(PartialEq)]
 pub(crate) enum Segment {
@@ -154,10 +151,60 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &M
                     }
                 );
             }
+            MpItem::Constant(constant) => {
+                let label = constant.label();
+
+                if binary.constants.contains_key(&*label) {
+                    return Err(
+                        MipsyError::Compiler(
+                            CompilerError::new(
+                                Error::RedefinedConstant { label: label.to_string() },
+                                file_tag,
+                                line,
+                                constant.col(),
+                                constant.col_end()
+                            )
+                        )
+                    );
+                }
+
+                let value = eval_constant(binary, constant.value(), &(file_tag, line, constant.col(), constant.col_end()))?;
+                binary.constants.insert(label.to_string(), value);
+            }
         }
     }
 
     Ok(())
+}
+
+fn eval_constant(binary: &Binary, constant: &MpConstValue, error_info: &(Rc<str>, u32, u32, u32)) -> MipsyResult<i64> {
+    Ok(
+        match constant {
+            &MpConstValue::Value(value) => value as _,
+            MpConstValue::Const(label) => binary.constants.get(label).copied()
+                .ok_or_else(|| MipsyError::Compiler(
+                    CompilerError::new(
+                        Error::UnresolvedConstant { label: label.to_string() },
+                        error_info.0.clone(),
+                        error_info.1,
+                        error_info.2,
+                        error_info.3,
+                    )
+                ))?,
+            MpConstValue::Minus(value) => -eval_constant(binary, value, error_info)?,
+            MpConstValue::Mult(v1, v2) => eval_constant(binary, v1, error_info)? * eval_constant(binary, v2, error_info)?,
+            MpConstValue::Sum (v1, v2) => eval_constant(binary, v1, error_info)? + eval_constant(binary, v2, error_info)?,
+            MpConstValue::Sub (v1, v2) => eval_constant(binary, v1, error_info)? - eval_constant(binary, v2, error_info)?,
+            MpConstValue::Div (v1, v2) => eval_constant(binary, v1, error_info)? / eval_constant(binary, v2, error_info)?,
+            MpConstValue::Mod (v1, v2) => eval_constant(binary, v1, error_info)? % eval_constant(binary, v2, error_info)?,
+            MpConstValue::And (v1, v2) => eval_constant(binary, v1, error_info)? & eval_constant(binary, v2, error_info)?,
+            MpConstValue::Or  (v1, v2) => eval_constant(binary, v1, error_info)? | eval_constant(binary, v2, error_info)?,
+            MpConstValue::Xor (v1, v2) => eval_constant(binary, v1, error_info)? ^ eval_constant(binary, v2, error_info)?,
+            MpConstValue::Neg (value)  => !eval_constant(binary, value, error_info)?,
+            MpConstValue::Shl (v1, v2) => eval_constant(binary, v1, error_info)? << eval_constant(binary, v2, error_info)?,
+            MpConstValue::Shr (v1, v2) => eval_constant(binary, v1, error_info)? >> eval_constant(binary, v2, error_info)?,
+        }
+    )
 }
 
 fn insert_data<T: ToBytes>(segment: &Segment, binary: &mut Binary, values: &[T]) {
