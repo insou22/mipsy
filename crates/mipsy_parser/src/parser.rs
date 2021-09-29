@@ -7,18 +7,20 @@ use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, p
         MpInstruction,
         parse_instruction,
     }, label::{MpLabel, parse_label}, misc::{comment_multispace0, comment_multispace1, parse_result}};
-use nom::{
-    IResult,
-    sequence::tuple,
-    combinator::map,
-    multi::many0,
-    branch::alt,
-};
-use nom_locate::position;
+use nom::{AsBytes, IResult, branch::alt, combinator::map, multi::many0, sequence::tuple};
+use nom_locate::{LocatedSpan, position};
 
 pub struct TaggedFile<'tag, 'file> {
     tag: Option<&'tag str>,
     file_contents: &'file str,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Position {
+    line: u32,
+    line_end: u32,
+    col: u32,
+    col_end: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,6 +54,46 @@ impl<'tag, 'file> TaggedFile<'tag, 'file> {
     }
 }
 
+impl Position {
+    pub fn new(line: u32, line_end: u32, col: u32, col_end: u32) -> Self {
+        Self {
+            line,
+            line_end,
+            col,
+            col_end,
+        }
+    }
+
+    pub fn from_positions<S, E>(pos_start: LocatedSpan<S>, pos_end: LocatedSpan<E>) -> Self
+    where
+        S: AsBytes,
+        E: AsBytes,
+    {
+        Self {
+            line:     pos_start.location_line(),
+            line_end: pos_end.location_line(),
+            col:      pos_start.get_column() as _,
+            col_end:  pos_end.get_column() as _,
+        }
+    }
+
+    pub fn line(&self) -> u32 {
+        self.line
+    }
+
+    pub fn line_end(&self) -> u32 {
+        self.line_end
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
+
+    pub fn col_end(&self) -> u32 {
+        self.col_end
+    }
+}
+
 impl MpAttributedItem {
     pub fn new(item: MpItem, attributes: Vec<Attribute>, file_tag: Option<Rc<str>>, line_number: u32) -> Self {
         Self {
@@ -64,6 +106,10 @@ impl MpAttributedItem {
 
     pub fn item(&self) -> &MpItem {
         &self.item
+    }
+
+    pub fn item_mut(&mut self) -> &mut MpItem {
+        &mut self.item
     }
 
     pub fn attributes(&self) -> &[Attribute] {

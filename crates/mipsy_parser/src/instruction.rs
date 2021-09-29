@@ -40,8 +40,12 @@ impl MpInstruction {
         &self.name
     }
 
-    pub fn arguments(&self) -> Vec<&(MpArgument, u32, u32)> {
-        self.arguments.iter().collect()
+    pub fn arguments(&self) -> &[(MpArgument, u32, u32)] {
+        &self.arguments
+    }
+
+    pub fn arguments_mut(&mut self) -> &mut Vec<(MpArgument, u32, u32)> {
+        &mut self.arguments
     }
 
     pub fn col(&self) -> u32 {

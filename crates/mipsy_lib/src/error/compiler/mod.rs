@@ -1,4 +1,4 @@
-use std::{path::MAIN_SEPARATOR, rc::Rc};
+use std::{fmt::Display, path::MAIN_SEPARATOR, rc::Rc};
 
 use colored::Colorize;
 use mipsy_parser::MpInstruction;
@@ -142,6 +142,17 @@ pub enum Error {
 
     RedefinedConstant  { label: String },
     UnresolvedConstant { label: String },
+
+    ConstantValueDoesNotFit { directive_type: DirectiveType, value: i64, range_low: i64, range_high: i64 },
+}
+
+#[derive(Debug)]
+pub enum DirectiveType {
+    Byte,
+    Half,
+    Word,
+    Align,
+    Space,
 }
 
 impl Error {
@@ -217,6 +228,16 @@ impl Error {
                 let label = label.bold();
                 
                 format!("{} `{}` {}", message_1, label, message_2)
+            }
+
+            Error::ConstantValueDoesNotFit { directive_type: _, value, range_low, range_high } => {
+                let message_1 = "constant value".bright_red().bold();
+                let message_2 = "must be between".bright_red().bold();
+                let message_3 = "and".bright_red().bold();
+                let low = range_low.to_string().bold();
+                let high = range_high.to_string().bold();
+
+                format!("{} `{}` {} {} {} {}", message_1, value, message_2, low, message_3, high)
             }
         }
     }
@@ -383,6 +404,13 @@ impl Error {
                 // good luck kiddo
                 vec![]
             }
+
+            Error::ConstantValueDoesNotFit { directive_type, value: _, range_low: _, range_high: _ } => {
+                let directive = format!(".{}", directive_type).bold();
+                let tip = format!("required by `{}` directive", directive);
+
+                vec![tip]
+            }
         }
     }
 
@@ -394,5 +422,17 @@ impl Error {
             // otherwise highlight the line causing the error
             _ => true,
         }
+    }
+}
+
+impl Display for DirectiveType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Self::Byte  => "byte",
+            Self::Half  => "half",
+            Self::Word  => "word",
+            Self::Align => "align",
+            Self::Space => "space",
+        })
     }
 }

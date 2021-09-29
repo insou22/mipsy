@@ -386,7 +386,7 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         }
-                        _ => unreachable!(),
+                        x => unreachable!(format!("{:?}", x)),
                     },
                     ArgumentType::F32     => unimplemented!(),
                     ArgumentType::F64     => unimplemented!(),
@@ -461,7 +461,7 @@ impl fmt::Display for ArgumentType {
 }
 
 impl ArgumentType {
-    fn matches(&self, arg: &MpArgument, _relative_label: bool) -> bool {
+    fn matches(&self, arg: &MpArgument, relative_label: bool) -> bool {
         match arg {
             MpArgument::Register(register) => {
                 match register {
@@ -471,9 +471,8 @@ impl ArgumentType {
 
                         MpImmediate::U16(_)
                         | MpImmediate::U32(_)
-                        | MpImmediate::I32(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
-
-                        MpImmediate::LabelReference(_) => true, 
+                        | MpImmediate::I32(_)
+                        | MpImmediate::LabelReference(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
                     }
                 }
             }
@@ -498,13 +497,13 @@ impl ArgumentType {
                                 }
                             }
                             MpImmediate::U32(_) => matches!(self, Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt),
-                            MpImmediate::LabelReference(_) => true, /*{ const value parses as a label reference, so we have to assume everything
+                            MpImmediate::LabelReference(_) => {
                                 match self {
                                     Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                                     Self::I16 => relative_label,
                                     _ => false,
                                 }
-                            }*/
+                            }
                         }
                     }
                     MpNumber::Char(_) => matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32),

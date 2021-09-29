@@ -116,19 +116,19 @@ pub(crate) fn sys8_read_string(verbose: bool, max_len: u32) -> Vec<u8> {
     loop {
         let input: String = get_input("string", verbose, true);
 
-        if input.len() > max_len as usize {
-            prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
-            prompt::error_nonl("please try again: ");
-            std::io::stdout().flush().unwrap();
-            continue;
-        }
+        // if input.len() > max_len as usize {
+        //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
+        //     prompt::error_nonl("please try again: ");
+        //     std::io::stdout().flush().unwrap();
+        //     continue;
+        // }
 
-        if input.len() == max_len as usize {
-            prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
-            prompt::error_nonl("please try again: ");
-            std::io::stdout().flush().unwrap();
-            continue;
-        }
+        // if input.len() == max_len as usize {
+        //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
+        //     prompt::error_nonl("please try again: ");
+        //     std::io::stdout().flush().unwrap();
+        //     continue;
+        // }
 
         return input.into_bytes();
     }

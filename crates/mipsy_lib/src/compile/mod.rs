@@ -73,7 +73,7 @@ impl Binary {
     }
 }
 
-pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
+pub fn compile(program: &mut MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -91,8 +91,8 @@ pub fn compile(program: &MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
         line_numbers: HashMap::new(),
     };
     
-    let kernel = get_kernel();
-    populate_labels_and_data(&mut binary, iset, &kernel)?;
+    let mut kernel = get_kernel();
+    populate_labels_and_data(&mut binary, iset, &mut kernel)?;
 
     populate_labels_and_data(&mut binary, iset, program)?;
 

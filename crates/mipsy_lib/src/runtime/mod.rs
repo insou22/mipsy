@@ -294,7 +294,7 @@ impl Runtime {
                 ),
                 SYS17_EXIT_STATUS => RuntimeSyscallGuard::ExitStatus(
                     ExitStatusArgs {
-                        exit_code: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                        exit_code: self.timeline.state().read_register_uninit(Register::A0.to_u32()).into_option().unwrap_or(0) as _,
                     },
                     self,
                 ),

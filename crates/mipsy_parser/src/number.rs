@@ -155,6 +155,7 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
     )(i)
 }
 
+#[allow(unused)]
 pub fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, u8> {
     alt((
         parse_u8,
@@ -173,6 +174,7 @@ pub fn parse_u8(i: Span<'_>) -> IResult<Span<'_>, u8> {
     parse_num(i)
 }
 
+#[allow(unused)]
 pub fn parse_half(i: Span<'_>) -> IResult<Span<'_>, u16> {
     alt((
         parse_u16,
@@ -191,6 +193,7 @@ pub fn parse_u16(i: Span<'_>) -> IResult<Span<'_>, u16> {
     parse_num(i)
 }
 
+#[allow(unused)]
 pub fn parse_word(i: Span<'_>) -> IResult<Span<'_>, u32> {
     alt((
         parse_u32,

@@ -93,10 +93,6 @@ pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>
                     }
                 }
 
-                for chr in reg_chars {
-                    post_chars.push(chr);
-                }
-
                 format!("{}{}{}{}", before, "$".yellow(), reg_name.bold(), post_chars)
             } else if arg.chars().next().unwrap().is_alphabetic() {
                 arg.yellow().bold().to_string()

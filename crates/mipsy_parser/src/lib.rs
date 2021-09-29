@@ -31,6 +31,7 @@ pub use register::{
 pub use constant::{
     MpConst,
     MpConstValue,
+    MpConstValueLoc,
 };
 
 
