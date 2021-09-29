@@ -8,10 +8,12 @@ use yew::{
     prelude::*,
     services::{
         reader::{FileData, ReaderTask},
-        ConsoleService, ReaderService,
+        ReaderService,
     },
     web_sys::File,
 };
+
+use log::info;
 
 fn crimes<T>() -> T {
     panic!()
@@ -71,7 +73,7 @@ impl Component for App {
     fn update(&mut self, msg: Self::Message) -> ShouldRender {
         match msg {
             Msg::FileChanged(file) => {
-                ConsoleService::info("file changed msg");
+                info!("file changed msg");
                 // FIXME -- check result
                 let result = ReaderService::read_file(
                     file,
@@ -82,20 +84,20 @@ impl Component for App {
                     Ok(service) => self.tasks.push(service),
 
                     Err(err) => {
-                        ConsoleService::error(&format!("{:?}", err));
+                        info!("{:?}", err);
                     }
                 }
                 false
             }
 
             Msg::FileRead(file_data) => {
-                ConsoleService::info(&format!("{:?}", file_data));
+                info!("{:?}", file_data);
                 // TODO -- this should not be lossy
 
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
 
                 let input = WorkerRequest::CompileCode(file);
-                ConsoleService::info("sending to worker");
+                info!("sending to worker");
                 self.worker.send(input);
 
                 true
@@ -107,11 +109,11 @@ impl Component for App {
                     mips_state,
                 }) = &mut self.state
                 {
-                    ConsoleService::info("Sending Run Code Instr");
+                    info!("Sending Run Code Instr");
                     let input = WorkerRequest::RunCode(mips_state.clone());
                     self.worker.send(input);
                 } else {
-                    ConsoleService::error("No File loaded, cannot run");
+                    info!("No File loaded, cannot run");
                     return false;
                 }
                 true
@@ -127,8 +129,8 @@ impl Component for App {
 
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
-                    ConsoleService::info("recieved decompiled code from worker");
-                    ConsoleService::info(&decompiled);
+                    info!("recieved decompiled code from worker");
+                    info!("{}", &decompiled);
                     match self.state {
                         // Overwrite existing state,
                         State::NoFile | State::Running(_) => {
@@ -149,7 +151,7 @@ impl Component for App {
 
                 WorkerResponse::MipsyState(mips_state) => match &mut self.state {
                     State::Running(curr) => {
-                        ConsoleService::info("recieved mips_state");
+                        info!("recieved mips_state");
                         curr.mips_state = mips_state;
                         true
                     }
@@ -169,11 +171,10 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let onchange = self.link.batch_callback(|event| {
-            ConsoleService::info("onchange fired");
+            info!("onchange fired");
             match event {
                 ChangeData::Files(file_list) => {
                     if let Some(file) = file_list.item(0) {
-                        ConsoleService::info(&format!("{:?}", file.name()));
                         Some(Msg::FileChanged(file))
                     } else {
                         None
@@ -184,7 +185,7 @@ impl Component for App {
         });
 
         let run_onclick = self.link.callback(|_| {
-            ConsoleService::info("Run fired");
+            info!("Run fired");
             Msg::Run
         });
 
@@ -198,7 +199,7 @@ impl Component for App {
                     &State::Running(ref state) => self.render_running_output(state),
         };
 
-        ConsoleService::info("rendering");
+        info!("rendering");
         html! {
             <>
                 <PageBackground>

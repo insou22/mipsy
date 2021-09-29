@@ -20,7 +20,6 @@ pub struct Worker {
     // but that's a shift in the worker's behaviour
     // we can do that later
     binary: Option<Binary>,
-    counter: i8,
 }
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
@@ -54,6 +53,7 @@ pub enum WorkerResponse {
     MipsyState(MipsState),
 }
 
+// TODO - add RESET button
 impl Agent for Worker {
     type Reach = Public<Self>;
     type Message = ();
@@ -61,14 +61,14 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
-        info!"CREATING WORKER");
-        simple_logging::log_to_file("logs/log.txt", LevelFilter::Debug);
+        info!("CREATING WORKER");
+        wasm_logger::init(wasm_logger::Config::default());
+
         Self {
             link,
             inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
             runtime: None,
             binary: None,
-            counter: 0,
         }
     }
 
@@ -81,7 +81,7 @@ impl Agent for Worker {
     }
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
-        info!"Recieved input");
+        info!("Recieved input");
         match msg {
             Self::Input::CompileCode(f) => {
                 let compiled =
@@ -107,7 +107,7 @@ impl Agent for Worker {
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
                     loop {
                         let stepped_runtime = runtime.step();
-
+                        info!("step");
                         match stepped_runtime {
                             Ok(Ok(next_runtime)) => runtime = next_runtime,
                             Ok(Err(guard)) => {
@@ -116,36 +116,46 @@ impl Agent for Worker {
                                     PrintInt(print_int_args, next_runtime) => {
                                         info!("printing integer {}", print_int_args.value);
 
+                                        mips_state.stdout.push(print_int_args.value.to_string());
+
                                         runtime = next_runtime;
                                     }
 
                                     PrintFloat(print_float_args, next_runtime) => {
                                         info!("printing float {}", print_float_args.value);
 
+                                        mips_state.stdout.push(print_float_args.value.to_string());
+
                                         runtime = next_runtime;
                                     }
 
                                     PrintDouble(print_double_args, next_runtime) => {
-                                        info!(
-                                            "printing double {}",
-                                            print_double_args.value
-                                        );
+                                        info!("printing double {}", print_double_args.value);
+
+                                        mips_state.stdout.push(print_double_args.value.to_string());
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintString(print_string_args, next_runtime) => {
-                                        info!("printing string {:?}",
-                                            print_string_args.value
+                                        info!("printing string {:?}", print_string_args.value);
+
+                                        mips_state.stdout.push(
+                                            String::from_utf8_lossy(&print_string_args.value)
+                                                .to_string(),
                                         );
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintChar(print_char_args, next_runtime) => {
-                                        info!("printing char {:?}",
-                                            print_char_args.value
-                                        );
+                                        let string =
+                                            String::from_utf8_lossy(&[print_char_args.value])
+                                                .to_string();
+
+                                        info!("printing! char {:?}", string);
+
+                                        mips_state.stdout.push(string);
 
                                         runtime = next_runtime;
                                     }
@@ -157,64 +167,79 @@ impl Agent for Worker {
 
                                     ReadFloat(fn_ptr) => {
                                         info!("reading float");
+
                                         runtime = fn_ptr(42.0);
                                         todo!();
                                     }
 
                                     ReadString(_str_args, fn_ptr) => {
                                         info!("reading string");
+
                                         runtime = fn_ptr(vec![99, 99, 99, 99]);
                                         todo!();
                                     }
 
                                     ReadChar(fn_ptr) => {
                                         info!("Reading char");
+
                                         fn_ptr(79);
                                         todo!();
                                     }
 
                                     Sbrk(_sbrk_args, next_runtime) => {
                                         info!("sbrk");
+
                                         runtime = next_runtime;
                                         todo!();
                                     }
 
                                     Exit(next_runtime) => {
                                         info!("exit syscall");
+
+                                        mips_state.exit_status = Some(0);
+
                                         runtime = next_runtime;
                                     }
 
                                     Open(_open_args, _fn_ptr) => {
                                         info!("open");
+
                                         runtime = _fn_ptr(42);
+
                                         todo!();
                                     }
 
                                     Write(_write_args, _fn_ptr) => {
                                         info!("write");
+
                                         runtime = _fn_ptr(42);
+
                                         todo!();
                                     }
 
                                     Close(_close_args, _fn_ptr) => {
                                         info!("Close");
+
                                         runtime = _fn_ptr(42);
                                     }
 
-                                    ExitStatus(_exit_status_args, next_runtime) => {
+                                    ExitStatus(exit_status_args, next_runtime) => {
                                         info!("Exit");
+
+                                        mips_state.exit_status = Some(exit_status_args.exit_code);
+
                                         runtime = next_runtime;
-                                        self.counter += 1;
-                                        info!("counter: {}", self.counter);
                                     }
 
                                     Breakpoint(next_runtime) => {
                                         info!("breakpoint");
+
                                         runtime = next_runtime;
                                     }
 
                                     UnknownSyscall(_unknown_syscall_args, next_runtime) => {
                                         info!("Unknown");
+
                                         runtime = next_runtime;
                                     }
 

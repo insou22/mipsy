@@ -16,10 +16,8 @@ mipsy_parser = { path = "../mipsy_parser" }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 serde = "1"
-simple = "0.3.0"
-logging = "0.1.0"
-simple-logging = "2.0.2"
 log = "0.4.14"
+wasm-logger = "0.2.0"
 
 [profile.release]
 # less code to include into binary
