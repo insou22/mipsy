@@ -121,7 +121,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, files: Optio
         }
     }
 
-    println!("{:60}{}", decompiled_part, line_part);
+    println!("{:80}{}", decompiled_part, line_part);
 }
 
 pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&HashMap<String, String>>) {

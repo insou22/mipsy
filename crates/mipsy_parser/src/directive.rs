@@ -1,33 +1,18 @@
-use crate::{
-    Span,
-    misc::{
+use crate::{Span, constant::{MpConstValueLoc, parse_constant_value}, misc::{
         parse_ident,
         parse_escaped_char,
         comment_multispace0,
         comment_multispace1,
-    },
-    number::{
-        parse_u32,
+    }, number::{
         parse_f32,
         parse_f64,
-    },
-};
-use nom::{
-    IResult,
-    branch::alt,
-    sequence::tuple,
-    bytes::complete::{
+    }};
+use nom::{IResult, branch::alt, bytes::complete::{
         tag,
-    },
-    character::complete::char,
-    combinator::{
-        map,
-    },
-    multi::{
+    }, character::complete::{char, space0, space1}, combinator::{map, opt}, multi::{
         many_till,
         separated_list1
-    },
-};
+    }, sequence::tuple};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MpDirective {
@@ -37,13 +22,13 @@ pub enum MpDirective {
     KData,
     Ascii(String),
     Asciiz(String),
-    Byte(Vec<u8>),
-    Half(Vec<u16>),
-    Word(Vec<u32>),
+    Byte(Vec<MpConstValueLoc>),
+    Half(Vec<MpConstValueLoc>),
+    Word(Vec<MpConstValueLoc>),
     Float(Vec<f32>),
     Double(Vec<f64>),
-    Align(u32),
-    Space(u32),
+    Align(MpConstValueLoc),
+    Space(MpConstValueLoc),
     Globl(String),
 }
 
@@ -152,8 +137,9 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
                 _,
                 _,
                 list,
+                _,
             )
-        ): (Span<'a>, (_, _, Vec<T>)) 
+        ): (Span<'a>, (_, _, Vec<T>, _)) 
         = tuple((
             tag(tag_str),
             comment_multispace0,
@@ -161,16 +147,22 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
                 alt((
                     map(
                         tuple((
-                            comment_multispace0,
+                            space0,
                             char(','),
-                            comment_multispace0,
+                            space0,
                         )),
                         |_| ()
                     ),
-                    comment_multispace1,
+                    map(
+                        space1,
+                        |_| (),
+                    ),
                 )),
                 parser,
             ),
+            opt(
+                char(',')
+            )
         ))(i)?;
 
         Ok((remaining_data, list))
@@ -179,21 +171,21 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
 
 fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
-        parse_num_type(".byte", crate::number::parse_byte),
+        parse_num_type(".byte", parse_constant_value),
         MpDirective::Byte,
     )(i)
 }
 
 fn parse_half(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
-        parse_num_type(".half", crate::number::parse_half),
+        parse_num_type(".half", parse_constant_value),
         MpDirective::Half,
     )(i)
 }
 
 fn parse_word(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
-        parse_num_type(".word", crate::number::parse_word),
+        parse_num_type(".word", parse_constant_value),
         MpDirective::Word,
     )(i)
 }
@@ -212,7 +204,7 @@ fn parse_double(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     )(i)
 }
 
-fn parse_u32_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, u32> {
+fn parse_u32_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MpConstValueLoc> {
     move |i| {
         let (
             remaining_data,
@@ -225,7 +217,7 @@ fn parse_u32_type<'a>(tag_str: &'static str) -> impl FnMut(Span<'a>) -> IResult<
         ) = tuple((
             tag(tag_str),
             comment_multispace0,
-            parse_u32,
+            parse_constant_value,
         ))(i)?;
 
         Ok((remaining_data, num))

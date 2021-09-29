@@ -14,13 +14,31 @@ impl ToBytes for u8 {
     }
 }
 
+impl ToBytes for i8 {
+    fn to_bytes(&self) -> Vec<u8> {
+        vec![*self as _]
+    }
+}
+
 impl ToBytes for u16 {
     fn to_bytes(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }
 }
 
+impl ToBytes for i16 {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
 impl ToBytes for u32 {
+    fn to_bytes(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+impl ToBytes for i32 {
     fn to_bytes(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }

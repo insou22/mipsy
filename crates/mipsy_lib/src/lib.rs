@@ -39,7 +39,7 @@ pub use compile::{
 pub use util::Safe;
 
 pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> MipsyResult<Binary> {
-    let parsed = mipsy_parser::parse_mips(files, default_tab_size)
+    let mut parsed = mipsy_parser::parse_mips(files, default_tab_size)
         .map_err(|err| 
             error::MipsyError::Parser(
                 ParserError::new(
@@ -51,7 +51,7 @@ pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size:
             )
         )?;
 
-    let compiled = compile::compile(&parsed, iset)?;
+    let compiled = compile::compile(&mut parsed, iset)?;
 
     Ok(compiled)
 }

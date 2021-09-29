@@ -538,6 +538,15 @@ pseudoinstructions:
       - inst: BEQ
         data: [$Rs, $0, $I16]
 
+  - name: BNEZ
+    desc_short: Branch if $Rs != 0
+    compile:
+      format: [Rs, I16]
+      relative_label: true
+    expand:
+      - inst: BNE
+        data: [$Rs, $0, $I16]
+
   - name: BGE
     desc_short: Branch if $Rs >= $Rt
     compile:
@@ -896,6 +905,16 @@ pseudoinstructions:
         data: [$Rt, $At]
       - inst: MFLO
         data: [$Rs]
+
+  - name: ABS
+    desc_short: $Rs = |$Rt|
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: BGEZ
+        data: [$Rt, 2]
+      - inst: SUB
+        data: [$Rs, $0, $Rt]
 
   - name: LI
     desc_short: Load the immediate value into $Rs
@@ -1336,6 +1355,17 @@ pseudoinstructions:
         data: [$Rs, $At]
       - inst: MFHI
         data: [$Rd]
+
+  - name: REM
+    desc_short: todo
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: DIV
+        data: [$Rs, $Rt]
+      - inst: MFHI
+        data: [$Rd]
+
   - name: PUSH
     compile:
       format: [Rs]

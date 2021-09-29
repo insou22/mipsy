@@ -8,8 +8,8 @@ edition = "2018"
 
 [dependencies]
 nom = "7" # parser
+nom_locate = "4"
 serde = { version = "1.0", features = ["derive"] } 
-nom_locate = { version = "4", git = "https://github.com/fflorent/nom_locate" } 
 
 [build-dependencies]
 vergen = "3"

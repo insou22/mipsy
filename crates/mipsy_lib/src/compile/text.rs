@@ -5,11 +5,7 @@ use crate::inst::instruction::SignatureRef;
 use crate::{MpProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
 use super::{Binary, data::Segment};
-use mipsy_parser::{
-    MpInstruction,
-    MpItem,
-    MpDirective,
-};
+use mipsy_parser::{MpDirective, MpInstruction, MpItem};
 
 pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
     if let Some(native) = iset.find_native(inst) {
@@ -84,10 +80,10 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
     let mut segment = Segment::Text;
 
     for attributed_item in program.items() {
-        let item = attributed_item.item();
         let line = attributed_item.line_number();
         let file_tag = attributed_item.file_tag()
             .unwrap_or_else(|| Rc::from(""));
+        let item = attributed_item.item();
 
         match item {
             MpItem::Directive(directive) => match directive {
@@ -116,6 +112,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
                 text.append(&mut compiled);
             }
             MpItem::Label(_) => {}
+            MpItem::Constant(_) => {}
         }
     }
 

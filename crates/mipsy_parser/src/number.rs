@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{
     misc::{escape_char, parse_escaped_char, parse_ident},
     Span,
@@ -12,7 +14,6 @@ use nom::{
     IResult,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpNumber {
@@ -97,14 +98,20 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                 },
             ),
             map(
-                tuple((opt(char('-')), tag("0"), oct_digit1)),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| {
-                    (
-                        get_sign(neg),
-                        8,
-                        String::from_utf8_lossy(digits.fragment()).to_string(),
-                    )
-                },
+                tuple((
+                    opt(char('-')),
+                    tag("0o"),
+                    oct_digit1,
+                )),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
+            ),
+            map(
+                tuple((
+                    opt(char('-')),
+                    tag("0"),
+                    oct_digit1,
+                )),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
             ),
             map(
                 tuple((opt(char('-')), digit1)),
@@ -125,6 +132,7 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
     )(i)
 }
 
+#[allow(unused)]
 pub fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, u8> {
     alt((parse_u8, map(parse_i8, |byte| byte as u8)))(i)
 }
@@ -137,6 +145,7 @@ pub fn parse_u8(i: Span<'_>) -> IResult<Span<'_>, u8> {
     parse_num(i)
 }
 
+#[allow(unused)]
 pub fn parse_half(i: Span<'_>) -> IResult<Span<'_>, u16> {
     alt((parse_u16, map(parse_i16, |half| half as u16)))(i)
 }
@@ -149,6 +158,7 @@ pub fn parse_u16(i: Span<'_>) -> IResult<Span<'_>, u16> {
     parse_num(i)
 }
 
+#[allow(unused)]
 pub fn parse_word(i: Span<'_>) -> IResult<Span<'_>, u32> {
     alt((parse_u32, map(parse_i32, |word| word as u32)))(i)
 }
@@ -173,8 +183,19 @@ pub fn parse_f64(i: Span<'_>) -> IResult<Span<'_>, f64> {
     double(i)
 }
 
-fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
-    let (remaining_data, (_, chr, _)) = tuple((char('\''), parse_escaped_char, char('\'')))(i)?;
+pub fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
+    let (
+        remaining_data,
+        (
+            _,
+            chr,
+            _,
+        )
+    ) = tuple((
+        char('\''),
+        parse_escaped_char,
+        char('\''),
+    ))(i)?;
 
     Ok((remaining_data, chr as char))
 }

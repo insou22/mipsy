@@ -1,20 +1,17 @@
+use std::fmt;
+
 use crate::{
     misc::{comment_multispace0, parse_ident},
     number::{parse_number, MpNumber},
     register::{parse_register, MpRegister},
     Span,
 };
-use nom::{
-    branch::alt,
-    character::complete::{char, space0},
-    combinator::map,
-    multi::separated_list0,
-    sequence::tuple,
-    IResult,
-};
+use nom::{IResult, branch::alt, character::complete::{
+        char,
+        space0,
+    }, combinator::{map, opt}, multi::separated_list0, sequence::tuple};
 use nom_locate::position;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MpInstruction {
@@ -35,8 +32,12 @@ impl MpInstruction {
         &self.name
     }
 
-    pub fn arguments(&self) -> Vec<&(MpArgument, u32, u32)> {
-        self.arguments.iter().collect()
+    pub fn arguments(&self) -> &[(MpArgument, u32, u32)] {
+        &self.arguments
+    }
+
+    pub fn arguments_mut(&mut self) -> &mut Vec<(MpArgument, u32, u32)> {
+        &mut self.arguments
     }
 
     pub fn col(&self) -> u32 {
@@ -58,11 +59,35 @@ impl fmt::Display for MpArgument {
 }
 
 pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
-    let (remaining_data, (position, name, _, arguments, position_end, ..)) = tuple((
+    let (
+        remaining_data,
+        (
+            position,
+            name,
+            _,
+            arguments,
+            _,
+            position_end,
+            ..
+        )
+    ) = tuple((
         position,
         parse_ident,
         space0,
-        separated_list0(tuple((space0, char(','), space0)), parse_argument),
+        separated_list0(
+            tuple((
+                space0,
+                char(','),
+                space0,
+            )),
+            parse_argument,
+        ),
+        opt(
+            tuple((
+                comment_multispace0,
+                char(';'),
+            )),
+        ),
         position,
         comment_multispace0,
     ))(i)?;

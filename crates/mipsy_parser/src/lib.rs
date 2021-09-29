@@ -28,6 +28,11 @@ pub use register::{
     MpRegister,
     MpRegisterIdentifier,
 };
+pub use constant::{
+    MpConst,
+    MpConstValue,
+    MpConstValueLoc,
+};
 
 
 pub use parser::parse_mips;
@@ -67,3 +72,4 @@ mod label;
 mod misc;
 mod number;
 mod register;
+mod constant;

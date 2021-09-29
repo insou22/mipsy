@@ -262,25 +262,25 @@ fn main() {
     }
 }
 
-fn read_string(max_len: u32) -> String {
+fn read_string(_max_len: u32) -> String {
     loop {
         let input: String = get_input("string", true);
 
-        if input.len() > max_len as usize {
-            println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes)", max_len, input.len());
-            print!  ("[mipsy] please try again: ");
-            std::io::stdout().flush().unwrap();
+        // if input.len() > max_len as usize {
+        //     println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes)", max_len, input.len());
+        //     print!  ("[mipsy] please try again: ");
+        //     std::io::stdout().flush().unwrap();
 
-            continue;
-        }
+        //     continue;
+        // }
 
-        if input.len() == max_len as usize {
-            println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len());
-            print!  ("[mipsy] please try again: ");
-            std::io::stdout().flush().unwrap();
+        // if input.len() == max_len as usize {
+        //     println!("[mipsy] bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len());
+        //     print!  ("[mipsy] please try again: ");
+        //     std::io::stdout().flush().unwrap();
 
-            continue;
-        }
+        //     continue;
+        // }
 
         return input;
     }
