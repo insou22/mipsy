@@ -2,7 +2,8 @@ use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use mipsy_lib::{Binary, InstSet};
+
+use serde::{Deserialize, Serialize};
 use yew::{
     prelude::*,
     services::{
@@ -21,9 +22,10 @@ pub struct RunningState {
     mips_state: MipsState,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MipsState {
-    stdout: Vec<String>,
-    exit_status: Option<i32>,
+    pub stdout: Vec<String>,
+    pub exit_status: Option<i32>,
 }
 
 pub enum Msg {
@@ -49,7 +51,6 @@ pub struct App {
     // a tasks vec to keep track of any file uploads
     tasks: Vec<ReaderTask>,
     state: State,
-    inst_set: InstSet,
     worker: Box<dyn Bridge<Worker>>,
 }
 
@@ -63,7 +64,6 @@ impl Component for App {
             link,
             state: State::NoFile,
             tasks: vec![],
-            inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
             worker,
         }
     }
@@ -102,38 +102,19 @@ impl Component for App {
             }
 
             Msg::Run => {
-                todo!()
-                /*
                 if let State::Running(RunningState {
-                    decompiled,
+                    decompiled: _,
                     mips_state,
                 }) = &mut self.state
                 {
-                    // clears stdout
-                    mips_state.stdout.drain(..);
-
-                    //let mut rh = Handler {exit_status: 0, exit_status: None, stdout};
-                    let mut runtime = mipsy_lib::runtime(&binary, &[]);
-                    loop {
-                        // dont error pls
-                        runtime.step(mips_state);
-
-                        if mips_state.exit_status.is_some() {
-                            break;
-                        }
-                    }
-
-                    mips_state.stdout.push(format!(
-                        "\nProgram exited with exit status {}",
-                        mips_state
-                            .exit_status
-                            .expect("infinite loop guarantees Some return")
-                    ));
+                    ConsoleService::info("Sending Run Code Instr");
+                    let input = WorkerRequest::RunCode(mips_state.clone());
+                    self.worker.send(input);
                 } else {
                     ConsoleService::error("No File loaded, cannot run");
                     return false;
                 }
-                true*/
+                true
             }
 
             Msg::StepForward => {
@@ -165,6 +146,16 @@ impl Component for App {
                 WorkerResponse::CompilerError(err) => {
                     todo!();
                 }
+
+                WorkerResponse::MipsyState(mips_state) => match &mut self.state {
+                    State::Running(curr) => {
+                        ConsoleService::info("recieved mips_state");
+                        curr.mips_state = mips_state;
+                        true
+                    }
+
+                    State::NoFile => false,
+                },
             },
         }
     }

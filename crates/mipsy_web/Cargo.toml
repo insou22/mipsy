@@ -19,12 +19,12 @@ serde = "1"
 
 [profile.release]
 # less code to include into binary
-panic = 'abort' 
+#panic = 'abort' 
 # optimization over all codebase ( better optimization, slower build )
-codegen-units = 1
+#codegen-units = 1
 # optimization for size ( more aggressive )
-opt-level = 'z' 
+#opt-level = 'z' 
 # optimization for size 
 # opt-level = 's' 
 # link time optimization using using whole-program analysis
-lto = true 
+#lto = true 

@@ -15,7 +15,6 @@ use yew::prelude::*;
 extern "C" {
     fn split_setup();
 
-    fn alarm();
 }
 
 #[wasm_bindgen(start)]
@@ -30,6 +29,5 @@ pub fn start() {
 
     unsafe {
         split_setup();
-        alarm();
     }
 }
