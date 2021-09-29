@@ -1,3 +1,4 @@
+use log::{info, LevelFilter};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
@@ -60,7 +61,8 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
-        ConsoleService::info("CREATING WORKER");
+        info!"CREATING WORKER");
+        simple_logging::log_to_file("logs/log.txt", LevelFilter::Debug);
         Self {
             link,
             inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
@@ -79,7 +81,7 @@ impl Agent for Worker {
     }
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
-        ConsoleService::warn("Recieved input");
+        info!"Recieved input");
         match msg {
             Self::Input::CompileCode(f) => {
                 let compiled =
@@ -98,131 +100,121 @@ impl Agent for Worker {
             }
 
             Self::Input::RunCode(mut mips_state) => {
-                ConsoleService::warn("Recieved run request");
+                info!("Recieved run request");
+
                 if let Some(binary) = &self.binary {
                     mips_state.stdout.drain(..);
-                    ConsoleService::warn("here");
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
-                    ConsoleService::warn("there");
                     loop {
                         let stepped_runtime = runtime.step();
 
-                        ConsoleService::warn("step");
                         match stepped_runtime {
                             Ok(Ok(next_runtime)) => runtime = next_runtime,
                             Ok(Err(guard)) => {
                                 use RuntimeSyscallGuard::*;
                                 match guard {
                                     PrintInt(print_int_args, next_runtime) => {
-                                        ConsoleService::warn(&format!(
-                                            "printing integer {}",
-                                            print_int_args.value
-                                        ));
+                                        info!("printing integer {}", print_int_args.value);
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintFloat(print_float_args, next_runtime) => {
-                                        ConsoleService::warn(&format!(
-                                            "printing float {}",
-                                            print_float_args.value
-                                        ));
+                                        info!("printing float {}", print_float_args.value);
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintDouble(print_double_args, next_runtime) => {
-                                        ConsoleService::warn(&format!(
+                                        info!(
                                             "printing double {}",
                                             print_double_args.value
-                                        ));
+                                        );
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintString(print_string_args, next_runtime) => {
-                                        ConsoleService::warn(&format!(
-                                            "printing string {:?}",
+                                        info!("printing string {:?}",
                                             print_string_args.value
-                                        ));
+                                        );
 
                                         runtime = next_runtime;
                                     }
 
                                     PrintChar(print_char_args, next_runtime) => {
-                                        ConsoleService::warn(&format!(
-                                            "printing char {:?}",
+                                        info!("printing char {:?}",
                                             print_char_args.value
-                                        ));
+                                        );
 
                                         runtime = next_runtime;
                                     }
 
                                     ReadInt(_fn_ptr) => {
-                                        ConsoleService::warn(&format!("reading int"));
+                                        info!("reading int");
                                         runtime = _fn_ptr(42);
                                     }
 
                                     ReadFloat(fn_ptr) => {
-                                        ConsoleService::warn(&format!("reading float"));
+                                        info!("reading float");
                                         runtime = fn_ptr(42.0);
                                         todo!();
                                     }
 
                                     ReadString(_str_args, fn_ptr) => {
-                                        ConsoleService::warn(&format!("reading string"));
+                                        info!("reading string");
                                         runtime = fn_ptr(vec![99, 99, 99, 99]);
                                         todo!();
                                     }
 
                                     ReadChar(fn_ptr) => {
-                                        ConsoleService::warn(&format!("Reading char"));
+                                        info!("Reading char");
                                         fn_ptr(79);
                                         todo!();
                                     }
 
                                     Sbrk(_sbrk_args, next_runtime) => {
-                                        ConsoleService::warn(&format!("sbrk"));
+                                        info!("sbrk");
                                         runtime = next_runtime;
                                         todo!();
                                     }
 
                                     Exit(next_runtime) => {
-                                        ConsoleService::warn(&format!("exit syscall"));
+                                        info!("exit syscall");
                                         runtime = next_runtime;
                                     }
 
                                     Open(_open_args, _fn_ptr) => {
-                                        ConsoleService::warn(&format!("open"));
+                                        info!("open");
                                         runtime = _fn_ptr(42);
                                         todo!();
                                     }
 
                                     Write(_write_args, _fn_ptr) => {
-                                        ConsoleService::warn(&format!("write"));
+                                        info!("write");
                                         runtime = _fn_ptr(42);
                                         todo!();
                                     }
 
                                     Close(_close_args, _fn_ptr) => {
-                                        ConsoleService::warn(&format!("Close"));
+                                        info!("Close");
                                         runtime = _fn_ptr(42);
                                     }
 
                                     ExitStatus(_exit_status_args, next_runtime) => {
-                                        ConsoleService::warn(&format!("Exit"));
+                                        info!("Exit");
                                         runtime = next_runtime;
                                         self.counter += 1;
-                                        ConsoleService::warn(&format!("counter: {}", self.counter));
+                                        info!("counter: {}", self.counter);
                                     }
 
                                     Breakpoint(next_runtime) => {
-                                        ConsoleService::warn(&format!("breakpoint"));
+                                        info!("breakpoint");
                                         runtime = next_runtime;
                                     }
 
                                     UnknownSyscall(_unknown_syscall_args, next_runtime) => {
-                                        ConsoleService::warn(&format!("Unknown"));
+                                        info!("Unknown");
                                         runtime = next_runtime;
                                     }
 
