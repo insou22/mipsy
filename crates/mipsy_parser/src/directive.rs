@@ -12,22 +12,12 @@ use crate::{
         parse_f64,
     },
 };
-use nom::{
-    IResult,
-    branch::alt,
-    sequence::tuple,
-    bytes::complete::{
+use nom::{IResult, branch::alt, bytes::complete::{
         tag,
-    },
-    character::complete::char,
-    combinator::{
-        map,
-    },
-    multi::{
+    }, character::complete::char, combinator::{map, opt}, multi::{
         many_till,
         separated_list1
-    },
-};
+    }, sequence::tuple};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MpDirective {
@@ -152,8 +142,9 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
                 _,
                 _,
                 list,
+                _,
             )
-        ): (Span<'a>, (_, _, Vec<T>)) 
+        ): (Span<'a>, (_, _, Vec<T>, _)) 
         = tuple((
             tag(tag_str),
             comment_multispace0,
@@ -171,6 +162,9 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
                 )),
                 parser,
             ),
+            opt(
+                char(',')
+            )
         ))(i)?;
 
         Ok((remaining_data, list))

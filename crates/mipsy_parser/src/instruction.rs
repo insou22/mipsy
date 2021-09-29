@@ -16,17 +16,10 @@ use crate::{
         comment_multispace0,
     },
 };
-use nom::{
-    IResult,
-    sequence::tuple,
-    combinator::map,
-    branch::alt,
-    multi::separated_list0,
-    character::complete::{
+use nom::{IResult, branch::alt, character::complete::{
         char,
         space0,
-    },
-};
+    }, combinator::{map, opt}, multi::separated_list0, sequence::tuple};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MpInstruction {
@@ -77,6 +70,7 @@ pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
             name,
             _,
             arguments,
+            _,
             position_end,
             ..
         )
@@ -91,6 +85,12 @@ pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
                 space0,
             )),
             parse_argument,
+        ),
+        opt(
+            tuple((
+                comment_multispace0,
+                char(';'),
+            )),
         ),
         position,
         comment_multispace0,

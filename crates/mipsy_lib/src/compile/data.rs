@@ -222,7 +222,7 @@ fn insert_safe_data(segment: &Segment, binary: &mut Binary, values: &[Safe<u8>])
     match segment {
         Segment::Data  => &mut binary.data,
         Segment::KData => &mut binary.kdata,
-        _              => unreachable!()
+        _              => todo!()
     }.append(
         &mut values.to_vec()
     );
