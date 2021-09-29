@@ -19,14 +19,15 @@ use nom::{
         space0,
     },
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpRegister {
     Normal(MpRegisterIdentifier),
     Offset(MpImmediate, MpRegisterIdentifier),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpRegisterIdentifier {
     Numbered(u8),
     Named(String),

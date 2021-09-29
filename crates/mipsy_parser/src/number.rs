@@ -32,8 +32,9 @@ use nom::{
         double,
     },
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpNumber {
     Immediate(MpImmediate),
     Float32(f32),
@@ -41,7 +42,7 @@ pub enum MpNumber {
     Char(char),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpImmediate {
     I16(i16),
     U16(u16),
