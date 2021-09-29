@@ -207,7 +207,7 @@ impl Component for App {
                     <div id="pageContentContainer" style="height: calc(100vh - 122px)">
                         <div id="text" class="flex flex-row px-2 ">
                             <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
-                                {"Register garbage"}
+                                {"Register's coming soon™ to a browser near you"}
                             </div>
                             <div id="text_data" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                                 <pre class="text-xs whitespace-pre-wrap">
