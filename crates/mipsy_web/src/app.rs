@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
 
+use mipsy_lib::{Register, Safe};
 use serde::{Deserialize, Serialize};
 use yew::{
     prelude::*,
@@ -28,6 +31,7 @@ pub struct RunningState {
 pub struct MipsState {
     pub stdout: Vec<String>,
     pub exit_status: Option<i32>,
+    pub register_values: Vec<Safe<i32>>,
 }
 
 pub enum Msg {
@@ -157,6 +161,7 @@ impl Component for App {
                                 mips_state: MipsState {
                                     stdout: Vec::new(),
                                     exit_status: None,
+                                    register_values: vec![Safe::Uninitialised; 32],
                                 },
                             });
                             true
@@ -230,7 +235,7 @@ impl Component for App {
                     <div id="pageContentContainer" style="height: calc(100vh - 122px)">
                         <div id="text" class="flex flex-row px-2 ">
                             <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
-                                {"Register's coming soon™ to a browser near you"}
+                                { self.render_running_registers() }
                             </div>
                             <div id="text_data" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                                 <pre class="text-xs whitespace-pre-wrap">
@@ -263,7 +268,60 @@ impl App {
 
     fn render_running_output(&self, state: &RunningState) -> Html {
         html! {
-                {state.mips_state.stdout.join("")}
+            {state.mips_state.stdout.join("")}
+        }
+    }
+
+    fn render_running_registers(&self) -> Html {
+        let mut registers = &vec![Safe::Uninitialised; 32];
+        if let State::Running(state) = &self.state {
+            registers = &state.mips_state.register_values;
+        };
+
+        html! {
+            <table class="w-full border-collapse table-auto">
+                <thead>
+                    <tr>
+                        <th class="w-1/4">
+                        {"Register"}
+                        </th>
+                        <th class="w-3/4">
+                        {"Value"}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                {
+                    for registers.iter().enumerate().map(|(index, item)| {
+                        html! {
+                            <tr>
+                            {
+                                match item {
+                                    Safe::Valid(val) => {
+                                        html! {
+                                            <>
+                                                <td class="border-gray-500 border-b-2 pl-4">
+                                                    {"$"}
+                                                    {Register::from_u32(index as u32).unwrap().to_lower_str()}
+                                                </td>
+                                                <td class="pl-4 border-b-2 border-gray-500">
+                                                    <pre>
+                                                        {format!("0x{:08x}", val)}
+                                                    </pre>
+                                                </td>
+                                            </>
+                                        }
+                                    }
+
+                                    Safe::Uninitialised => {html!{}}
+                                }
+                            }
+                            </tr>
+                        }
+                    })
+                }
+                </tbody>
+            </table>
         }
     }
 }
