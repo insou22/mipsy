@@ -1,7 +1,8 @@
+use serde::{Serialize, Deserialize};
 use crate::error::{InternalError, MipsyInternalResult, compiler};
 use std::str::FromStr;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum Register {
     Zero,
     At,

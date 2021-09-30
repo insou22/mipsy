@@ -1,4 +1,6 @@
-#[derive(Copy, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Copy, Debug, Serialize, Deserialize)]
 pub enum Safe<T> {
     Valid(T),
     Uninitialised,

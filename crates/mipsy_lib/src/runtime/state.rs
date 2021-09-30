@@ -115,6 +115,10 @@ impl State {
         self.write_marker = write_marker;
     }
 
+    pub fn registers(&self) -> &[Safe<i32>] {
+       &self.registers 
+    }
+
     pub fn read_register(&self, reg_num: u32) -> MipsyResult<i32> {
         self.registers[reg_num as usize]
             .to_result(Uninitialised::Register { reg_num })
