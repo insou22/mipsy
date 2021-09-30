@@ -1,1 +1,4 @@
 dist/
+static/wasm.js
+static/tailwind.css
+static/wasm_bg.wasm
