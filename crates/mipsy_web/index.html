@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mipsy</title>
+    <link href="tailwind.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+
+    <script>
+        function split_setup() {
+          console.log("setting up splits...");
+          Split(["#text", "#output"], {
+            direction: "vertical",
+          });
+          Split(["#regs", "#text_data"]);          
+        };
+
+        function alarm() {
+            console.error("AHHHHHHHHHHH");
+        };
+    </script>
+    
+    <script src="wasm.js"></script>
+	<script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>
+
+    <style>
+      .gutter {
+        background-color: #eee;
+        background-repeat: no-repeat;
+        background-position: 50%;
+      }
+
+      .gutter.gutter-vertical {
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=");
+        cursor: row-resize;
+      }
+
+      .gutter.gutter-horizontal {
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==");
+        cursor: col-resize;
+      }
+    </style>
+  </head>
+
+  <body>
+  </body>
+</html>

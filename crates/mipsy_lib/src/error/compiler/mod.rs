@@ -1,4 +1,5 @@
 use std::{fmt::Display, path::MAIN_SEPARATOR, rc::Rc};
+use serde::{Serialize, Deserialize};
 
 use colored::Colorize;
 use mipsy_parser::MpInstruction;
@@ -7,7 +8,7 @@ use crate::inst::instruction::Signature;
 
 use super::util::{syntax_highlight_argument, tip_header};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CompilerError {
     error:    Error,
     file_tag: Rc<str>,
@@ -127,7 +128,7 @@ impl CompilerError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,  Serialize, Deserialize)]
 pub enum Error {
     NumberedRegisterOutOfRange { reg_num: i32 },
     NamedRegisterOutOfRange    { reg_name: char, reg_index: i32 },
@@ -146,7 +147,7 @@ pub enum Error {
     ConstantValueDoesNotFit { directive_type: DirectiveType, value: i64, range_low: i64, range_high: i64 },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum DirectiveType {
     Byte,
     Half,

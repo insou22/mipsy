@@ -1,4 +1,6 @@
 use std::{collections::HashMap, fmt, str::FromStr};
+use serde::{Serialize, Deserialize};
+
 use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
 use super::register::Register;
 use mipsy_parser::{
@@ -34,7 +36,7 @@ impl InstSet {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 pub struct InstSignature {
     name: String,
     compile: CompileSignature,
@@ -69,7 +71,7 @@ impl InstSignature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 pub struct CompileSignature {
     format: Vec<ArgumentType>,
     relative_label: bool,
@@ -92,7 +94,7 @@ impl CompileSignature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 pub enum ArgumentType {
     Rd,
     Rs,
@@ -113,14 +115,14 @@ pub enum ArgumentType {
     Off32Rt,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,  Serialize, Deserialize)]
 pub enum RuntimeSignature {
     R { funct:  u8 },
     I { opcode: u8, rt: Option<u8> },
     J { opcode: u8 },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,  Serialize, Deserialize)]
 pub struct InstMetadata {
     desc_short: Option<String>,
     desc_long:  Option<String>,
@@ -153,7 +155,7 @@ pub enum GenericSignature {
     Pseudo(PseudoSignature),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PseudoSignature {
     name: String,
     compile: CompileSignature,
@@ -182,7 +184,7 @@ impl PseudoSignature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PseudoExpand {
     inst: String,
     data: Vec<String>,
@@ -205,7 +207,7 @@ impl PseudoExpand {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone,  Serialize, Deserialize)]
 pub enum Signature {
     Native(InstSignature),
     Pseudo(PseudoSignature),

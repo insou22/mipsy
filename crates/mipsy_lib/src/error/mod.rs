@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use serde::{Serialize, Deserialize};
 
 pub mod parser;
 pub mod compiler;
@@ -13,7 +14,7 @@ pub type RuntimeError   = runtime::RuntimeError;
 pub type MipsyInternalResult<T> = Result<T, InternalError>;
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum MipsyError {
     Parser  (parser::ParserError),
     Compiler(compiler::CompilerError),
