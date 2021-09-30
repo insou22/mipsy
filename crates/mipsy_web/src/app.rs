@@ -13,7 +13,7 @@ use yew::{
     web_sys::File,
 };
 
-use log::info;
+use log::{error, info, warn};
 
 fn crimes<T>() -> T {
     panic!()
@@ -34,6 +34,7 @@ pub enum Msg {
     FileChanged(File),
     FileRead(FileData),
     Run,
+    Reset,
     StepForward,
     StepBackward,
     FromWorker(WorkerResponse),
@@ -62,6 +63,7 @@ impl Component for App {
 
     fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
         let worker = Worker::bridge(link.callback(Self::Message::FromWorker));
+        wasm_logger::init(wasm_logger::Config::default());
         Self {
             link,
             state: State::NoFile,
@@ -127,6 +129,22 @@ impl Component for App {
                 todo!();
             }
 
+            Msg::Reset => {
+                if let State::Running(RunningState {
+                    decompiled: _,
+                    mips_state,
+                }) = &mut self.state
+                {
+                    warn!("Sending Reset Instr");
+                    let input = WorkerRequest::ResetRuntime(mips_state.clone());
+                    self.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot run");
+                    return false;
+                }
+                true
+            }
+
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
                     info!("recieved decompiled code from worker");
@@ -145,19 +163,22 @@ impl Component for App {
                         }
                     }
                 }
+
                 WorkerResponse::CompilerError(err) => {
                     todo!();
                 }
 
-                WorkerResponse::MipsyState(mips_state) => match &mut self.state {
-                    State::Running(curr) => {
-                        info!("recieved mips_state");
-                        curr.mips_state = mips_state;
-                        true
-                    }
+                WorkerResponse::MipsyState(mips_state) => {
+                    warn!("recieved mips_state response");
+                    match &mut self.state {
+                        State::Running(curr) => {
+                            curr.mips_state = mips_state;
+                            true
+                        }
 
-                    State::NoFile => false,
-                },
+                        State::NoFile => false,
+                    }
+                }
             },
         }
     }
@@ -185,9 +206,11 @@ impl Component for App {
         });
 
         let run_onclick = self.link.callback(|_| {
-            info!("Run fired");
+            info!("run fired");
             Msg::Run
         });
+
+        let reset_onclick = self.link.callback(|_| Msg::Reset);
 
         let text_html_content = match &self.state {
             &State::NoFile => "no file loaded".into(),
@@ -203,7 +226,7 @@ impl Component for App {
         html! {
             <>
                 <PageBackground>
-                    <NavBar load_onchange=onchange run_onclick=run_onclick />
+                    <NavBar load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
                     <div id="pageContentContainer" style="height: calc(100vh - 122px)">
                         <div id="text" class="flex flex-row px-2 ">
                             <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
