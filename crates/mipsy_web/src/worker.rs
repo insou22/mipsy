@@ -56,7 +56,6 @@ pub enum WorkerResponse {
     MipsyState(MipsState),
 }
 
-// TODO - add RESET button
 impl Agent for Worker {
     type Reach = Public<Self>;
     type Message = ();
