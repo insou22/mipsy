@@ -1,4 +1,4 @@
-use log::{info, LevelFilter};
+use log::{info, warn, LevelFilter};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,7 @@ pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(File),
     RunCode(MipsState),
+    ResetRuntime(MipsState),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -96,6 +97,21 @@ impl Agent for Worker {
                     }
 
                     Err(err) => self.link.respond(id, Self::Output::CompilerError(err)),
+                }
+            }
+
+            Self::Input::ResetRuntime(mut mips_state) => {
+                warn!("Recieved reset request ");
+                if let Some(runtime_state) = &mut self.runtime {
+                    match runtime_state {
+                        RuntimeState::Running(runtime) => {
+                            runtime.timeline_mut().reset();
+                            mips_state.stdout.drain(..);
+                            self.link
+                                .respond(id, WorkerResponse::MipsyState(mips_state));
+                        }
+                        _ => {}
+                    }
                 }
             }
 
@@ -227,7 +243,6 @@ impl Agent for Worker {
                                         info!("Exit");
 
                                         mips_state.exit_status = Some(exit_status_args.exit_code);
-
                                         runtime = next_runtime;
                                     }
 
@@ -268,6 +283,7 @@ impl Agent for Worker {
                         }
 
                         if mips_state.exit_status.is_some() {
+                            self.runtime = Some(RuntimeState::Running(runtime));
                             break;
                         }
                     }
