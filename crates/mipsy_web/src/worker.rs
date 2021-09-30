@@ -1,5 +1,7 @@
 use log::{info, warn, LevelFilter};
-use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime};
+use mipsy_lib::{
+    inst::register::REGISTERS, runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime,
+};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
 use yew::{
@@ -121,6 +123,7 @@ impl Agent for Worker {
                 if let Some(binary) = &self.binary {
                     mips_state.stdout.drain(..);
                     let mut runtime = mipsy_lib::runtime(&binary, &[]);
+                    // runtime.timeline().state().registers;
                     loop {
                         let stepped_runtime = runtime.step();
                         info!("step");
@@ -283,10 +286,19 @@ impl Agent for Worker {
                         }
 
                         if mips_state.exit_status.is_some() {
-                            self.runtime = Some(RuntimeState::Running(runtime));
                             break;
                         }
                     }
+
+                    mips_state.register_values = runtime
+                        .timeline()
+                        .state()
+                        .registers()
+                        .iter()
+                        .cloned()
+                        .collect();
+
+                    self.runtime = Some(RuntimeState::Running(runtime));
 
                     mips_state.stdout.push(format!(
                         "\nProgram exited with exit status {}",
