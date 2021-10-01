@@ -239,7 +239,7 @@ impl Component for App {
 
 
                         <div id="information" class="split pr-2 ">
-                            <div id="regs" class="overflow-y-auto bg-gray-301 px-2 border-2 border-gray-600">
+                            <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
 
