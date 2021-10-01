@@ -10,7 +10,9 @@
     <script>
         function split_setup() {
           console.log("setting up splits...");
-          Split(["#source_file", "#information"]);          
+          Split(["#source_file", "#information"], {
+            sizes: [80, 20]
+          });          
           Split(["#regs", "#output"], {
             direction: "vertical",
           });
