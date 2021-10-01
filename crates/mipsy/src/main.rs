@@ -14,6 +14,8 @@ use text_io::try_read;
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
 #[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
+    #[clap(long, about("Just output compilation errors, if any"))]
+    check: bool,
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
     #[clap(long, about("Just compile program and output hexcodes"))]
@@ -138,6 +140,10 @@ fn main() {
         // unreachable: a bit tricky to get a runtime error at compile-time
         Err(MipsyError::Runtime(_)) => unreachable!(),
     };
+
+    if opts.check {
+        return;
+    }
 
     if opts.compile {
         let decompiled = mipsy_lib::decompile(&iset, &binary);
