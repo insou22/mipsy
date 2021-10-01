@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
@@ -223,7 +221,7 @@ impl Component for App {
         };
 
         let output_html_content = match &self.state {
-                    &State::NoFile => "mipsy_web v0.1\nSchool of Computer Science and Engineering, University of New South Wales, Sydney.".into(),
+                    &State::NoFile => "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney.".into(),
                     &State::Running(ref state) => self.render_running_output(state),
         };
 
@@ -232,22 +230,25 @@ impl Component for App {
             <>
                 <PageBackground>
                     <NavBar load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
-                    <div id="pageContentContainer" style="height: calc(100vh - 122px)">
-                        <div id="text" class="flex flex-row px-2 ">
-                            <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
-                                { self.render_running_registers() }
-                            </div>
-                            <div id="text_data" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
-                                <pre class="text-xs whitespace-pre-wrap">
+                    <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
+                        <div id="source_file" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
+                            <pre class="text-xs whitespace-pre-wrap">
                                 { text_html_content }
-                                </pre>
-                            </div>
+                            </pre>
                         </div>
 
-                        <div id="output" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
-                            <pre class="h-full whitespace-pre-wrap">
-                                {output_html_content}
-                            </pre>
+
+                        <div id="information" class="split pr-2 ">
+                            <div id="regs" class="overflow-y-auto bg-gray-301 px-2 border-2 border-gray-600">
+                                { self.render_running_registers() }
+                            </div>
+
+                           <div id="output" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
+                                <h1> <strong> {"Output"} </strong> </h1>
+                                <pre class="h-full whitespace-pre-wrap">
+                                    {output_html_content}
+                                </pre>
+                            </div>
                         </div>
 
                     </div>

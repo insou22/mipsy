@@ -32,7 +32,7 @@ impl Component for NavBar {
     fn view(&self) -> Html {
         // TODO - use hashmap of icon->svg and iter to render
         html! {
-        <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-6">
+        <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-4">
           <div class="flex items-center flex-shrink-0 text-black mr-6">
             <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
           </div>

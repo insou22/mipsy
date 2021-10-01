@@ -1,13 +1,8 @@
 use log::{info, warn, LevelFilter};
-use mipsy_lib::{
-    inst::register::REGISTERS, runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime,
-};
+use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
-use yew::{
-    services::ConsoleService,
-    worker::{Agent, AgentLink, HandlerId, Public},
-};
+use yew::worker::{Agent, AgentLink, HandlerId, Public};
 
 use crate::app::MipsState;
 
@@ -108,6 +103,7 @@ impl Agent for Worker {
                         RuntimeState::Running(runtime) => {
                             runtime.timeline_mut().reset();
                             mips_state.stdout.drain(..);
+                            mips_state.register_values = vec![Safe::Uninitialised; 32];
                             self.link
                                 .respond(id, WorkerResponse::MipsyState(mips_state));
                         }
