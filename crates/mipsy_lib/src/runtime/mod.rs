@@ -203,6 +203,8 @@ impl Runtime {
                     let bytes = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32()));
                     let heap_size = self.timeline.state().heap_size();
 
+                    self.timeline.state_mut().write_register(Register::V0.to_u32(), (HEAP_BOT + heap_size) as _);
+
                     if bytes > 0 {
                         self.timeline.state_mut().set_heap_size(heap_size.saturating_add(bytes as _));
                     } else if bytes < 0 {

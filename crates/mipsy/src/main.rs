@@ -215,7 +215,9 @@ fn main() {
                                 let string = read_string(args.max_len);
                                 runtime = guard(string.into_bytes());
                             }
-                            Sbrk(_, _) => todo!(),
+                            Sbrk(_args, new_runtime) => {
+                                runtime = new_runtime;
+                            }
                             Exit(_new_runtime) => {
                                 std::process::exit(0);
                             }
