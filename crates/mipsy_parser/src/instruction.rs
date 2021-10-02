@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 pub struct MpInstruction {
     pub(crate) name: String,
     pub(crate) arguments: Vec<(MpArgument, u32, u32)>,
+    pub(crate) line: u32,
     pub(crate) col: u32,
     pub(crate) col_end: u32,
 }
@@ -38,6 +39,10 @@ impl MpInstruction {
 
     pub fn arguments_mut(&mut self) -> &mut Vec<(MpArgument, u32, u32)> {
         &mut self.arguments
+    }
+
+    pub fn line(&self) -> u32 {
+        self.line
     }
 
     pub fn col(&self) -> u32 {
@@ -97,6 +102,7 @@ pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
         MpInstruction {
             name,
             arguments,
+            line: position.location_line(),
             col: position.get_column() as u32,
             col_end: position_end.get_column() as u32,
         },

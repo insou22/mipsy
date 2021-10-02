@@ -2,7 +2,7 @@ use std::{fmt::Display, path::MAIN_SEPARATOR, rc::Rc};
 use serde::{Serialize, Deserialize};
 
 use colored::Colorize;
-use mipsy_parser::MpInstruction;
+use mipsy_parser::{MpDirective, MpInstruction};
 use mipsy_utils::MipsyConfig;
 use crate::inst::instruction::Signature;
 
@@ -145,6 +145,9 @@ pub enum Error {
     UnresolvedConstant { label: String },
 
     ConstantValueDoesNotFit { directive_type: DirectiveType, value: i64, range_low: i64, range_high: i64 },
+
+    DataInTextSegment { directive_type: MpDirective },
+    InstructionInDataSegment,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -239,6 +242,20 @@ impl Error {
                 let high = range_high.to_string().bold();
 
                 format!("{} `{}` {} {} {} {}", message_1, value, message_2, low, message_3, high)
+            }
+
+            Error::DataInTextSegment { directive_type } => {
+                let message_1 = "cannot put".bright_red().bold();
+                let message_2 = directive_type.to_string().bold();
+                let message_3 = "directive into text segment".bright_red().bold();
+
+                format!("{} `{}{}` {}", message_1, ".".bold(), message_2, message_3)
+            }
+
+            Error::InstructionInDataSegment => {
+                let message_1 = "cannot put instruction into data segment".bright_red().bold();
+
+                format!("{}", message_1)
             }
         }
     }
@@ -409,6 +426,20 @@ impl Error {
             Error::ConstantValueDoesNotFit { directive_type, value: _, range_low: _, range_high: _ } => {
                 let directive = format!(".{}", directive_type).bold();
                 let tip = format!("required by `{}` directive", directive);
+
+                vec![tip]
+            }
+
+            Error::DataInTextSegment { directive_type } => {
+                let data = ".data".bold();
+                let tip = format!("you may want to insert a `{}` directive before your `{}{}`", data, ".".bold(), directive_type.to_string().bold());
+
+                vec![tip]
+            }
+
+            Error::InstructionInDataSegment => {
+                let data = ".text".bold();
+                let tip = format!("you may want to insert a `{}` directive before your instruction", data);
 
                 vec![tip]
             }

@@ -1,21 +1,19 @@
 use std::rc::Rc;
 
-use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, parse_outer_attribute}, constant::{MpConst, parse_constant}, directive::{
-        MpDirective,
-        parse_directive,
-    }, instruction::{
+use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, parse_outer_attribute}, constant::{MpConst, parse_constant}, directive::{MpDirective, MpDirectiveLoc, parse_directive}, instruction::{
         MpInstruction,
         parse_instruction,
     }, label::{MpLabel, parse_label}, misc::{comment_multispace0, comment_multispace1, parse_result}};
 use nom::{AsBytes, IResult, branch::alt, combinator::map, multi::many0, sequence::tuple};
 use nom_locate::{LocatedSpan, position};
+use serde::{Serialize, Deserialize};
 
 pub struct TaggedFile<'tag, 'file> {
     tag: Option<&'tag str>,
     file_contents: &'file str,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Position {
     line: u32,
     line_end: u32,
@@ -40,7 +38,7 @@ pub struct MpAttributedItem {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MpItem {
     Instruction(MpInstruction),
-    Directive(MpDirective),
+    Directive(MpDirectiveLoc),
     Label(MpLabel),
     Constant(MpConst),
 }
@@ -144,7 +142,7 @@ impl MpProgram {
     fn merge(&mut self, mut other: MpProgram) {
         if !self.items.is_empty() {
             self.items.push(MpAttributedItem {
-                item: MpItem::Directive(MpDirective::Text),
+                item: MpItem::Directive((MpDirective::Text, Position::new(0, 0, 0, 0))),
                 attributes: vec![],
                 file_tag: None,
                 line_number: 0,

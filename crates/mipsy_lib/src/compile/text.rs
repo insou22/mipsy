@@ -86,7 +86,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
         let item = attributed_item.item();
 
         match item {
-            MpItem::Directive(directive) => match directive {
+            MpItem::Directive(directive) => match directive.0 {
                 MpDirective::Text  => segment = Segment::Text,
                 MpDirective::Data  => segment = Segment::Data,
                 MpDirective::KText => segment = Segment::KText,

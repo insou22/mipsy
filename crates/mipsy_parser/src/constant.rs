@@ -6,6 +6,7 @@ use nom::multi::many0;
 use nom::sequence::tuple;
 use nom::branch::alt;
 use nom_locate::position;
+use serde::{Serialize, Deserialize};
 
 use crate::Span;
 use crate::misc::{comment_multispace0, parse_ident};
@@ -50,7 +51,7 @@ impl MpConst {
 
 pub type MpConstValueLoc = (MpConstValue, Position);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpConstValue {
     Value(u64),
     Const(String),

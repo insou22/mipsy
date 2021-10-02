@@ -33,15 +33,25 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &m
             MpItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
                 if segment == Segment::Text || segment == Segment::KText {
-                    match &directive {
-                        MpDirective::Text | MpDirective::Data | MpDirective::KText | MpDirective::KData => {}
-                        _other => {
-                            // TODO: WARNING
+                    match &*directive {
+                        (MpDirective::Text | MpDirective::Data | MpDirective::KText | MpDirective::KData, _) => {}
+                        (other, position) => {
+                            return Err(
+                                MipsyError::Compiler(
+                                    CompilerError::new(
+                                        Error::DataInTextSegment { directive_type: other.clone() },
+                                        file_tag,
+                                        position.line(),
+                                        position.col(),
+                                        position.col_end(),
+                                    )
+                                )
+                            );
                         }
                     }
                 }
 
-                match directive {
+                match &directive.0 {
                     MpDirective::Text => segment = Segment::Text,
                     MpDirective::Data => segment = Segment::Data,
                     MpDirective::KText => segment = Segment::KText,
@@ -157,17 +167,28 @@ pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &m
 
                 // We can't compile instructions yet - so just keep track of
                 // how many bytes-worth we've seen so far
+                let inst_length = instruction_length(iset, instruction)
+                    .into_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())? * 4;
+
                 match segment {
                     Segment::Text => {
-                        text_len += instruction_length(iset, instruction)
-                            .into_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
+                        text_len += inst_length;
                     }
                     Segment::KText => {
-                        ktext_len += instruction_length(iset, instruction)
-                            .into_compiler_mipsy_result(file_tag, line, instruction.col(), instruction.col_end())? * 4;
+                        ktext_len += inst_length;
                     }
                     _ => {
-                        todo!()
+                        return Err(
+                            MipsyError::Compiler(
+                                CompilerError::new(
+                                    Error::InstructionInDataSegment,
+                                    file_tag,
+                                    instruction.line(),
+                                    instruction.col(),
+                                    instruction.col_end(),
+                                )
+                            )
+                        );
                     }
                 }
             }

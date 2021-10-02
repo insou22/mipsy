@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{Span, constant::{MpConstValueLoc, parse_constant_value}, misc::{
         parse_ident,
         parse_escaped_char,
@@ -6,7 +8,9 @@ use crate::{Span, constant::{MpConstValueLoc, parse_constant_value}, misc::{
     }, number::{
         parse_f32,
         parse_f64,
-    }};
+    }, parser::Position};
+use nom_locate::position;
+use serde::{Serialize, Deserialize};
 use nom::{IResult, branch::alt, bytes::complete::{
         tag,
     }, character::complete::{char, space0, space1}, combinator::{map, opt}, multi::{
@@ -14,7 +18,9 @@ use nom::{IResult, branch::alt, bytes::complete::{
         separated_list1
     }, sequence::tuple};
 
-#[derive(Debug, Clone, PartialEq)]
+pub type MpDirectiveLoc = (MpDirective, Position);
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpDirective {
     Text,
     Data,
@@ -32,23 +38,53 @@ pub enum MpDirective {
     Globl(String),
 }
 
-pub fn parse_directive(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
-    alt((
-        parse_text,
-        parse_data,
-        parse_ktext,
-        parse_kdata,
-        parse_ascii,
-        parse_asciiz,
-        parse_byte,
-        parse_half,
-        parse_word,
-        parse_float,
-        parse_double,
-        parse_space,
-        parse_align,
-        parse_globl,
-    ))(i)
+impl Display for MpDirective {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use MpDirective::*;
+
+        write!(f, "{}", match self {
+            Ascii(_)  => "ascii",
+            Asciiz(_) => "asciiz",
+            Byte(_)   => "byte",
+            Half(_)   => "half",
+            Word(_)   => "word",
+            Float(_)  => "float",
+            Double(_) => "double",
+            Align(_)  => "align",
+            Space(_)  => "space",
+            Globl(_)  => "globl",
+            Text      => "text",
+            Data      => "data",
+            KText     => "ktext",
+            KData     => "kdata",
+        })
+    }
+}
+
+pub fn parse_directive(i: Span<'_>) -> IResult<Span<'_>, MpDirectiveLoc> {
+    map(
+        tuple((
+            position,
+            alt((
+                parse_text,
+                parse_data,
+                parse_ktext,
+                parse_kdata,
+                parse_ascii,
+                parse_asciiz,
+                parse_byte,
+                parse_half,
+                parse_word,
+                parse_float,
+                parse_double,
+                parse_space,
+                parse_align,
+                parse_globl,
+            )),
+            position,
+        )),
+        |(pos_start, directive, pos_end)| (directive, Position::from_positions(pos_start, pos_end))
+    )(i)
 }
 
 fn parse_text(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
