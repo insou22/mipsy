@@ -884,6 +884,46 @@ pseudoinstructions:
       - inst: MFLO
         data: [$Rs]
 
+  - name: MUL
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, U16]
+    expand:
+      - inst: ORI
+        data: [$At, $0, $U16]
+      - inst: MULT
+        data: [$Rt, $At]
+      - inst: MFLO
+        data: [$Rs]
+
+  - name: MUL
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, I32]
+    expand:
+      - inst: LUI
+        data: [$At, $I32uHi]
+      - inst: ORI
+        data: [$At, $At, $I32uLo]
+      - inst: MULT
+        data: [$Rt, $At]
+      - inst: MFLO
+        data: [$Rs]
+
+  - name: MUL
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, U32]
+    expand:
+      - inst: LUI
+        data: [$At, $U32uHi]
+      - inst: ORI
+        data: [$At, $At, $U32uLo]
+      - inst: MULT
+        data: [$Rt, $At]
+      - inst: MFLO
+        data: [$Rs]
+
   - name: DIV
     desc_short: todo
     compile:
@@ -1023,6 +1063,40 @@ pseudoinstructions:
     expand:
       - inst: ORI
         data: [$At, $0, $I16]
+      - inst: AND
+        data: [$Rs, $Rt, $At]
+
+  - name: AND
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, U16]
+    expand:
+      - inst: ORI
+        data: [$At, $0, $U16]
+      - inst: AND
+        data: [$Rs, $Rt, $At]
+
+  - name: AND
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, I32]
+    expand:
+      - inst: LUI
+        data: [$At, $I32uHi]
+      - inst: ORI
+        data: [$At, $At, $I32uLo]
+      - inst: AND
+        data: [$Rs, $Rt, $At]
+
+  - name: AND
+    desc_short: todo
+    compile:
+      format: [Rs, Rt, U32]
+    expand:
+      - inst: LUI
+        data: [$At, $U32uHi]
+      - inst: ORI
+        data: [$At, $At, $U32uLo]
       - inst: AND
         data: [$Rs, $Rt, $At]
 
