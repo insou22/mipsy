@@ -1,10 +1,9 @@
 use yew::prelude::*;
-use yew::{Properties, Children};
-
+use yew::{Children, Properties};
 
 #[derive(Properties, Clone)]
-pub struct Props {    
-    #[prop_or_default]    
+pub struct Props {
+    #[prop_or_default]
     pub children: Children,
 }
 
@@ -17,13 +16,11 @@ impl Component for PageBackground {
     type Properties = Props;
 
     fn create(props: Self::Properties, _: ComponentLink<Self>) -> Self {
-        PageBackground {
-            props,
-        }
+        PageBackground { props }
     }
 
     fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props; 
+        self.props = props;
         true
     }
 
@@ -33,7 +30,7 @@ impl Component for PageBackground {
 
     fn view(&self) -> Html {
         html! {
-            <div class="min-h-screen" style="background-color: #fee2e2;">
+            <div class="min-h-screen py-2" style="background-color: #fee2e2;">
                 { for self.props.children.iter() }
             </div>
         }
