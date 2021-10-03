@@ -73,7 +73,7 @@ impl Agent for Worker {
         "wasm.js"
     }
 
-    fn update(&mut self, msg: Self::Message) {
+    fn update(&mut self, _msg: Self::Message) {
         // no messaging exists
     }
 

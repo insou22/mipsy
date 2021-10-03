@@ -20,6 +20,7 @@ fn crimes<T>() -> T {
     panic!()
 }
 
+#[derive(Clone)]
 pub struct RunningState {
     decompiled: String,
     mips_state: MipsState,
@@ -42,6 +43,7 @@ pub enum Msg {
     FromWorker(WorkerResponse),
 }
 
+#[derive(Clone)]
 pub enum State {
     NoFile,
     // File is loaded, and compiled?
@@ -225,11 +227,15 @@ impl Component for App {
                     &State::Running(ref state) => self.render_running_output(state),
         };
 
+        let exit_status = match &self.state {
+            State::Running(RunningState { decompiled: _, mips_state }) => Some(mips_state.exit_status),
+            _ => None,
+        };
         info!("rendering");
         html! {
             <>
                 <PageBackground>
-                    <NavBar load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
+                    <NavBar exit_status=exit_status load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                             <pre class="text-xs whitespace-pre-wrap">
