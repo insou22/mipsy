@@ -136,8 +136,10 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
                     }
                     MpDirective::Space(num) => {
                         let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
+
+                        let space_byte = if config.spim { Safe::Valid(0) } else { Safe::Uninitialised };
                         
-                        insert_safe_data(&segment, binary, &vec![Safe::Valid(0); num as usize]);
+                        insert_safe_data(&segment, binary, &vec![space_byte; num as usize]);
                     }
                     MpDirective::Globl(label) => {
                         binary.globals.push(label.to_string());
