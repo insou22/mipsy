@@ -2,7 +2,7 @@ use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-
+use std::u32;
 use mipsy_lib::{Register, Safe};
 use serde::{Deserialize, Serialize};
 use yew::{
@@ -31,6 +31,7 @@ pub struct MipsState {
     pub stdout: Vec<String>,
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
+    pub current_instr: Option<u32>, 
 }
 
 pub enum Msg {
@@ -60,6 +61,8 @@ pub struct App {
     state: State,
     worker: Box<dyn Bridge<Worker>>,
 }
+
+const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
 impl Component for App {
     type Message = Msg;
@@ -108,15 +111,14 @@ impl Component for App {
 
                 true
             }
-
+            
             Msg::Run => {
                 if let State::Running(RunningState {
                     decompiled: _,
                     mips_state,
                 }) = &mut self.state
                 {
-                    info!("Sending Run Code Instr");
-                    let input = WorkerRequest::RunCode(mips_state.clone());
+                    let input = WorkerRequest::Run(mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot run");
@@ -126,7 +128,18 @@ impl Component for App {
             }
 
             Msg::StepForward => {
-                todo!();
+                 if let State::Running(RunningState {
+                    decompiled: _,
+                    mips_state,
+                }) = &mut self.state
+                {
+                    let input = WorkerRequest::Run(mips_state.clone(), 1);
+                    self.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot step");
+                    return false;
+                }
+                true
             }
 
             Msg::StepBackward => {
@@ -162,6 +175,7 @@ impl Component for App {
                                     stdout: Vec::new(),
                                     exit_status: None,
                                     register_values: vec![Safe::Uninitialised; 32],
+                                    current_instr: None
                                 },
                             });
                             true
@@ -173,8 +187,32 @@ impl Component for App {
                     todo!();
                 }
 
-                WorkerResponse::MipsyState(mips_state) => {
-                    warn!("recieved mips_state response");
+                WorkerResponse::ProgramExited(mips_state) => {
+                    match &mut self.state {
+                        State::Running(curr) => {
+                            curr.mips_state = mips_state;
+                            true
+                        }
+                        State::NoFile => false
+                    }
+                }
+
+                WorkerResponse::InstructionOk(mips_state) => {
+                    if let State::Running(curr) = &mut self.state
+                    {
+                        curr.mips_state = mips_state;
+                        
+                        // if the isntruction was ok, run another instruction
+                        let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                        self.worker.send(input);
+                    } else {
+                        info!("No File loaded, cannot run");
+                        return false;
+                    }
+                    true
+                }
+
+                WorkerResponse::UpdateMipsState(mips_state) => {
                     match &mut self.state {
                         State::Running(curr) => {
                             curr.mips_state = mips_state;
@@ -211,12 +249,13 @@ impl Component for App {
         });
 
         let run_onclick = self.link.callback(|_| {
-            info!("run fired");
             Msg::Run
         });
-
+    
         let reset_onclick = self.link.callback(|_| Msg::Reset);
-
+        
+        let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
+        
         let text_html_content = match &self.state {
             &State::NoFile => "no file loaded".into(),
             &State::Running(ref state) => self.render_running(state),
@@ -235,7 +274,7 @@ impl Component for App {
         html! {
             <>
                 <PageBackground>
-                    <NavBar exit_status=exit_status load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
+                    <NavBar step_forward_onclick=step_forward_onclick exit_status=exit_status load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                             <pre class="text-xs whitespace-pre-wrap">
@@ -268,8 +307,48 @@ impl Component for App {
 
 impl App {
     fn render_running(&self, state: &RunningState) -> Html {
-        html! {
-            {&state.decompiled}
+        let decompiled = &state.decompiled;
+        let runtime_instr = state.mips_state.current_instr.unwrap_or(0);
+        html!{
+            <table>
+                <tbody>
+                {
+                     for decompiled.as_str().split("\n").into_iter().map(|item| {
+                        if item == "" {
+                            html! {
+                                <tr>{"\u{00a0}"}</tr>
+                            }
+                        }
+                        else {
+                          
+                            
+                            let should_highlight = if item.starts_with("0x") {
+                                let source_instr = u32::from_str_radix(&item[2..10], 16).unwrap_or(0);
+                                source_instr == runtime_instr 
+                            } else {
+                                false
+                            };
+                            
+                            if should_highlight {
+                                html! {
+                                    <tr class={"bg-green-400"}>
+                                        {item}
+                                    </tr>
+                                }
+                            } else {
+
+                                html!{
+                                    <tr> 
+                                        {item}
+                                    </tr>
+                                }
+                            }
+                            
+                        }
+                    })
+                }
+                </tbody>
+            </table>
         }
     }
 

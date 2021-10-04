@@ -14,6 +14,7 @@ pub struct Props {
     pub run_onclick: Callback<MouseEvent>,
     pub reset_onclick: Callback<MouseEvent>,
     pub exit_status: Option<Option<i32>>,
+    pub step_forward_onclick: Callback<MouseEvent>,
 }
 
 struct Icon {
@@ -33,7 +34,7 @@ impl NavBar {
                     </svg>
                 },
                 callback: Some(props.run_onclick),
-            },
+            }, 
             Icon {
                 label: String::from("Reset"),
                 html: html! {
@@ -68,7 +69,7 @@ impl NavBar {
                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                     </svg>
                 },
-                callback: None,
+                callback: Some(props.step_forward_onclick),
             },
         ];
 
@@ -115,7 +116,7 @@ impl Component for NavBar {
               {
                   for icons.iter().map(|item| {
                       // special behaviour for the Run button
-                      if item.label == "Run" {
+                      if item.label == "Run" || item.label == "Step Next"{
                         let is_disabled = match &self.props.exit_status {
                             Some(mips_exit_status) => match mips_exit_status {
                                 Some(_exit_status) => true,
