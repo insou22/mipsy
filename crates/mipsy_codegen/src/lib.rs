@@ -1,27 +1,187 @@
-mod yaml_model;
+mod meta;
+mod base;
 
 use std::{env, fs::File, io::Read, path::PathBuf};
+use base::{InstructionYaml, PseudoInstructionYaml};
 use proc_macro::{TokenStream, TokenTree};
 use quote::quote;
-use yaml_model::{InstructionYaml, PseudoInstructionYaml};
 
-use crate::yaml_model::YamlFile;
+use crate::meta::DeriveStatementYaml;
+
+fn expand_one_derive(of: &meta::PseudoInstructionYaml, derive: &DeriveStatementYaml) -> Vec<meta::PseudoInstructionYaml> {
+    match derive {
+        DeriveStatementYaml::Imm2Reg { register, imm_types, sign_extend, derives } => {
+            imm_types.iter()
+                .map(|imm_type| {
+                    use meta::Imm2RegImmType::*;
+                    let mut expansion = match imm_type {
+                        I16 => vec![meta::InstructionExpansionYaml {
+                            inst: if *sign_extend { "ADDI" } else { "ORI" }.to_string(),
+                            data: vec![register.to_string(), "$0".to_string(), "$I16".to_string()],
+                        }],
+                        U16 => vec![meta::InstructionExpansionYaml {
+                            inst: "ORI".to_string(),
+                            data: vec![register.to_string(), "$0".to_string(), "$U16".to_string()],
+                        }],
+                        I32 => vec![meta::InstructionExpansionYaml {
+                            inst: "LUI".to_string(),
+                            data: vec![register.to_string(), "$I32uHi".to_string()],
+                        }, meta::InstructionExpansionYaml {
+                            inst: "ORI".to_string(),
+                            data: vec![register.to_string(), register.to_string(), "$I32uLo".to_string()],
+                        }],
+                        U32 => vec![meta::InstructionExpansionYaml {
+                            inst: "LUI".to_string(),
+                            data: vec![register.to_string(), "$U32uHi".to_string()],
+                        }, meta::InstructionExpansionYaml {
+                            inst: "ORI".to_string(),
+                            data: vec![register.to_string(), register.to_string(), "$U32uLo".to_string()],
+                        }],
+                    };
+
+                    expansion.extend(of.expand.clone());
+
+                    let arg_type = match imm_type {
+                        I16 => meta::ArgumentType::I16,
+                        U16 => meta::ArgumentType::U16,
+                        I32 => meta::ArgumentType::I32,
+                        U32 => meta::ArgumentType::U32,
+                    };
+
+                    meta::PseudoInstructionYaml {
+                        name: of.name.clone(),
+                        desc_short: of.desc_short.clone(),
+                        desc_long: of.desc_long.clone(),
+                        compile: meta::CompileYaml {
+                            format: of.compile.format
+                                .iter()
+                                .map(|arg| if &arg.to_string() == register { arg_type } else { *arg })
+                                .collect(),
+                            relative_label: of.compile.relative_label,
+                        },
+                        expand: expansion,
+                        only_derive: false,
+                        derives: derives.clone()
+                    }
+                })
+                .collect()
+        }
+        DeriveStatementYaml::DefaultValue { value, default, derives } => {
+            vec![
+                meta::PseudoInstructionYaml {
+                    name: of.name.clone(),
+                    desc_short: of.desc_short.clone(),
+                    desc_long: of.desc_long.clone(),
+                    compile: meta::CompileYaml {
+                        format: of.compile.format
+                            .iter()
+                            .filter(|arg| arg != &value)
+                            .cloned()
+                            .collect(),
+                        relative_label: of.compile.relative_label,
+                    },
+                    expand: of.expand.iter()
+                        .map(|expand| meta::InstructionExpansionYaml {
+                            inst: expand.inst.clone(),
+                            data: expand.data.iter()
+                                // TODO(zkol): this format is incredibly stupid
+                                .map(|arg| arg.replace(&format!("${}", value.to_string()), &default))
+                                .collect(),
+                        })
+                        .collect(),
+                    only_derive: false,
+                    derives: derives.clone(),
+                }
+            ]
+        }
+    }
+}
+
+fn expand_all_derives(of: meta::PseudoInstructionYaml) -> Vec<base::PseudoInstructionYaml> {
+    let mut all_derives = vec![];
+
+    for derive in of.derives.iter() {
+        let expandeds = expand_one_derive(&of, derive);
+
+        for expanded in expandeds {
+            all_derives.push(base::PseudoInstructionYaml {
+                name: expanded.name.clone(),
+                desc_short: expanded.desc_short.clone(),
+                desc_long: expanded.desc_long.clone(),
+                compile: base::CompileYaml {
+                    format: expanded.compile.format.iter().cloned().map(Into::into).collect(),
+                    relative_label: expanded.compile.relative_label,
+                },
+                expand: expanded.expand.iter().cloned().map(Into::into).collect(),
+            });
+
+            all_derives.extend(expand_all_derives(expanded));
+        }
+    }
+
+    all_derives
+}
 
 #[proc_macro]
 pub fn instruction_set(input: TokenStream) -> TokenStream {
     let (path, contents) = read_mips_yaml(input);
 
-    let yaml: YamlFile = serde_yaml::from_str(&contents)
+    let meta_yaml: meta::YamlFile = serde_yaml::from_str(&contents)
             .expect(&format!("Failed to parse {}", path.to_string_lossy()));
+    let mut base_yaml = base::YamlFile { instructions: vec![], pseudoinstructions: vec![] };
     
+    for instruction in meta_yaml.instructions {
+        base_yaml.instructions.push(base::InstructionYaml {
+            name: instruction.name,
+            desc_short: instruction.desc_short,
+            desc_long: instruction.desc_long,
+            compile: base::CompileYaml {
+                format: instruction.compile.format.into_iter().map(Into::into).collect(),
+                relative_label: instruction.compile.relative_label,
+            },
+            runtime: base::RuntimeYaml {
+                inst_type: instruction.runtime.inst_type.into(),
+                opcode: instruction.runtime.opcode,
+                funct: instruction.runtime.funct,
+                rt: instruction.runtime.rt
+            },
+        });
+    }
+    
+    for instruction in meta_yaml.pseudoinstructions {
+        let base = base::PseudoInstructionYaml {
+            name: instruction.name.clone(),
+            desc_short: instruction.desc_short.clone(),
+            desc_long: instruction.desc_long.clone(),
+            compile: base::CompileYaml {
+                format: instruction.compile.format.iter().cloned().map(Into::into).collect(),
+                relative_label: instruction.compile.relative_label,
+            },
+            expand: instruction.expand.iter().cloned().map(Into::into).collect(),
+        };
+
+        let only_derive = instruction.only_derive;
+
+        let derives = expand_all_derives(instruction);
+
+        // if !derives.is_empty() {
+        //     println!("{:?}", derives);
+        // }
+
+        if !only_derive {
+            base_yaml.pseudoinstructions.push(base);
+        }
+        base_yaml.pseudoinstructions.extend(derives);
+    }
+
     let mut native_instructions: Vec<proc_macro2::TokenStream> = vec![];
     let mut pseudo_instructions: Vec<proc_macro2::TokenStream> = vec![];
 
-    for instruction in yaml.instructions {
+    for instruction in base_yaml.instructions {
         native_instructions.push(quote_instruction(instruction));
     }
 
-    for instruction in yaml.pseudoinstructions {
+    for instruction in base_yaml.pseudoinstructions {
         pseudo_instructions.push(quote_pseudo_instruction(instruction));      
     }
 
@@ -40,7 +200,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
     let format = instruction.compile.format
         .into_iter()
         .map(|arg| {
-            use yaml_model::ArgumentType;
+            use base::ArgumentType;
 
             let arg_type = match arg {
                 ArgumentType::Rd      => quote! { Rd },
@@ -66,7 +226,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
         });
     let relative_label = instruction.compile.relative_label;
     let runtime_signature = {
-        use yaml_model::InstructionType;
+        use base::InstructionType;
 
         let inst_type = match instruction.runtime.inst_type {
             InstructionType::R => {
@@ -136,7 +296,7 @@ fn quote_pseudo_instruction(instruction: PseudoInstructionYaml) -> proc_macro2::
     let format = instruction.compile.format
         .into_iter()
         .map(|arg| {
-            use yaml_model::ArgumentType;
+            use base::ArgumentType;
 
             let arg_type = match arg {
                 ArgumentType::Rd      => quote! { Rd },
