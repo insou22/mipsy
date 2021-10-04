@@ -1380,6 +1380,24 @@ pseudoinstructions:
           imm_types: [I32, U32]
           imm_register: 'Rs'
 
+  - name: LA
+    compile:
+      format: [Rs, OffRt]
+    expand:
+      - inst: ADDIU
+        data: [$Rs, $Rt, $Off]
+
+  - name: LA
+    compile:
+      format: [Rs, Off32Rt]
+    expand:
+      - inst: LUI
+        data: [$Rs, $Off32uHi]
+      - inst: ORI
+        data: [$Rs, $Rs, $Off32uLo]
+      - inst: ADDU
+        data: [$Rs, $Rs, $Rt]
+
   - name: NOP
     desc_short: No-Operation - doesn't do anything
     compile:
