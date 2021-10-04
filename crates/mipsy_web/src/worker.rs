@@ -141,6 +141,49 @@ impl Agent for Worker {
                             runtime.timeline_mut().pop_last_state();
                             mips_state.exit_status = None;
                         } 
+                        
+                        
+                        // kernel instructions start with 0x80000000
+                        // we want to keep looping forever if we're in a kernel section
+                        // so that step only steps user space
+                        let mut fast_forwarded = false;
+                        while runtime.timeline().state().pc() >= 0x80000000 {
+                            
+                            if step_size == -1 {
+                                runtime.timeline_mut().pop_last_state();
+                                mips_state.exit_status = None;
+                            } else {
+                                fast_forwarded = true;
+                                let stepped_runtime = runtime.step();
+                                match stepped_runtime {
+                                    Ok(Ok(next_runtime)) => {runtime = next_runtime},
+                                    Ok(Err(guard)) => {
+                                        use RuntimeSyscallGuard::*;
+                                        match guard {
+                                            ExitStatus(exit_status_args, next_runtime) => {
+                                                info!("Exit");
+
+                                                mips_state.exit_status = Some(exit_status_args.exit_code);
+                                                runtime = next_runtime;
+                                            }
+                                            _ => { unreachable!() }
+                                        }
+                                    }
+                                    Err((prev_runtime, err)) => {
+                                        runtime = prev_runtime;
+                                        error!("{:?}", err);
+                                        todo!("Send error to frontend iguess");
+                                    }
+                                }
+                            }
+                        }
+
+                        if fast_forwarded {
+                            runtime.timeline_mut().pop_last_state();
+                            mips_state.exit_status = None;
+                        }
+
+
                         for _ in 1..=step_size {
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
