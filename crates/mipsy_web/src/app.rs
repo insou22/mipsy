@@ -41,6 +41,7 @@ pub enum Msg {
     Run,
     Reset,
     Kill,
+    OpenModal,
     StepForward,
     StepBackward,
     FromWorker(WorkerResponse),
@@ -62,6 +63,7 @@ pub struct App {
     tasks: Vec<ReaderTask>,
     state: State,
     worker: Box<dyn Bridge<Worker>>,
+    display_modal: bool,
 }
 
 const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -78,6 +80,7 @@ impl Component for App {
             state: State::NoFile,
             tasks: vec![],
             worker,
+            display_modal: false,
         }
     }
 
@@ -131,6 +134,11 @@ impl Component for App {
                 if let State::Running(curr) = &mut self.state {
                     curr.should_kill = true;
                 };
+                true
+            }
+
+            Msg::OpenModal => {
+                self.display_modal = !self.display_modal;
                 true
             }
 
@@ -274,6 +282,8 @@ impl Component for App {
         let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
         
         let step_back_onclick = self.link.callback(|_| Msg::StepBackward);
+        
+        let toggle_modal_onclick = self.link.callback(|_| Msg::OpenModal);
 
         let text_html_content = match &self.state {
             &State::NoFile => "no file loaded".into(),
@@ -290,14 +300,48 @@ impl Component for App {
             _ => None,
         };
         info!("rendering");
+        
+        let classes = if self.display_modal {
+            "modal bg-th-primary border-black border-2 absolute top-1/4 h-1/3 w-3/4"
+        } else {
+            "modal hidden"
+        };
+
+        let modal_overlay_classes = if self.display_modal {
+            "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen"
+        } else {
+            "hidden"
+        };
         html! {
             <>
+                <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
+                </div>
                 <PageBackground>
+                    // TODO - move this into a component 
+                    <div class={classes} id="modal1" style="left: 13%;">
+                        <div class="modal-dialog">
+                            <div class="absolute modal-header top-0 right-0 h-16 w-16">
+                                <div onclick={toggle_modal_onclick.clone()} class="cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
+                                {"x"}
+                                </div>
+                            </div>
+                            <section class="modal-content p-2 flex items-center flex-col">
+                                <h1> 
+                                <strong>{"Welcome to Mipsy Web"}</strong>
+                                </h1>
+                                <br />
+                                <p>
+                                {"this is heavily beta lol"}
+                                </p>
+                            </section>
+                            <footer class="modal-footer"></footer>
+                        </div>
+                    </div>
                     <NavBar 
                         step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick 
                         exit_status=exit_status load_onchange=onchange 
                         reset_onclick=reset_onclick run_onclick=run_onclick
-                        kill_onclick=kill_onclick
+                        kill_onclick=kill_onclick open_modal_onclick=toggle_modal_onclick
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">

@@ -16,7 +16,8 @@ pub struct Props {
     pub exit_status: Option<Option<i32>>,
     pub step_forward_onclick: Callback<MouseEvent>,
     pub step_back_onclick: Callback<MouseEvent>,
-    pub kill_onclick: Callback<MouseEvent>
+    pub kill_onclick: Callback<MouseEvent>,
+    pub open_modal_onclick: Callback<MouseEvent>,
 }
 
 struct Icon {
@@ -157,10 +158,9 @@ impl Component for NavBar {
                   })
               }
             </div>
-            <div class="text-sm">
-              <a href="https://cgi.cse.unsw.edu.au/~cs1521/21T3/resources/spim-guide.html" class="block mt-4 inline-block mt-0 text-teal-200 hover:text-white mr-4"> {"MIPS documentation"}</a>
-
-            </div>
+            <button onclick={self.props.open_modal_onclick.clone()} class="mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+            {"About Mipsy Web"}
+            </button>
           </div>
         </nav>
               }
