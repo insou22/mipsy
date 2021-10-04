@@ -53,8 +53,6 @@ pub enum WorkerResponse {
     ProgramExited(MipsState),
 }
 
-const NUM_INSTR_BEFORE_RESPONSE: u16 = 40;
-
 impl Agent for Worker {
     type Reach = Public<Self>;
     type Message = ();
@@ -103,7 +101,6 @@ impl Agent for Worker {
             }
 
             Self::Input::ResetRuntime(mut mips_state) => {
-                warn!("Recieved reset request ");
                 if let Some(runtime_state) = &mut self.runtime {
                     match runtime_state {
                         RuntimeState::Running(runtime) => {
