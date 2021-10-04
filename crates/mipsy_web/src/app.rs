@@ -24,6 +24,7 @@ fn crimes<T>() -> T {
 pub struct RunningState {
     decompiled: String,
     mips_state: MipsState,
+    should_kill: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -39,6 +40,7 @@ pub enum Msg {
     FileRead(FileData),
     Run,
     Reset,
+    Kill,
     StepForward,
     StepBackward,
     FromWorker(WorkerResponse),
@@ -113,12 +115,9 @@ impl Component for App {
             }
             
             Msg::Run => {
-                if let State::Running(RunningState {
-                    decompiled: _,
-                    mips_state,
-                }) = &mut self.state
+                if let State::Running(curr) = &mut self.state
                 {
-                    let input = WorkerRequest::Run(mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                    let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot run");
@@ -126,11 +125,20 @@ impl Component for App {
                 }
                 true
             }
+            
+            Msg::Kill => {
+                error!("KILL BUTTONM PRESSED");
+                if let State::Running(curr) = &mut self.state {
+                    curr.should_kill = true;
+                };
+                true
+            }
 
             Msg::StepForward => {
                  if let State::Running(RunningState {
                     decompiled: _,
                     mips_state,
+                    should_kill: _,
                 }) = &mut self.state
                 {
                     let input = WorkerRequest::Run(mips_state.clone(), 1);
@@ -143,12 +151,9 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
-                if let State::Running(RunningState {
-                    decompiled: _,
-                    mips_state,
-                }) = &mut self.state
+                if let State::Running(curr) = &mut self.state
                 {
-                    let input = WorkerRequest::Run(mips_state.clone(), -1);
+                    let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot step");
@@ -158,12 +163,9 @@ impl Component for App {
             }
 
             Msg::Reset => {
-                if let State::Running(RunningState {
-                    decompiled: _,
-                    mips_state,
-                }) = &mut self.state
+                if let State::Running(curr) = &mut self.state
                 {
-                    let input = WorkerRequest::ResetRuntime(mips_state.clone());
+                    let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot run");
@@ -187,6 +189,7 @@ impl Component for App {
                                     register_values: vec![Safe::Uninitialised; 32],
                                     current_instr: None
                                 },
+                                should_kill: false,
                             });
                             true
                         }
@@ -211,10 +214,14 @@ impl Component for App {
                     if let State::Running(curr) = &mut self.state
                     {
                         curr.mips_state = mips_state;
-                        
                         // if the isntruction was ok, run another instruction
-                        let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
-                        self.worker.send(input);
+                        // unless the user has said it should be killed
+                        if !curr.should_kill 
+                        {
+                            let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                            self.worker.send(input);
+                        }
+                        curr.should_kill = false;
                     } else {
                         info!("No File loaded, cannot run");
                         return false;
@@ -258,10 +265,10 @@ impl Component for App {
             }
         });
 
-        let run_onclick = self.link.callback(|_| {
-            Msg::Run
-        });
+        let run_onclick = self.link.callback(|_| { Msg::Run });
     
+        let kill_onclick = self.link.callback(|_| Msg::Kill);
+
         let reset_onclick = self.link.callback(|_| Msg::Reset);
         
         let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
@@ -279,7 +286,7 @@ impl Component for App {
         };
 
         let exit_status = match &self.state {
-            State::Running(RunningState { decompiled: _, mips_state }) => Some(mips_state.exit_status),
+            State::Running(curr) => Some(curr.mips_state.exit_status),
             _ => None,
         };
         info!("rendering");
@@ -289,7 +296,8 @@ impl Component for App {
                     <NavBar 
                         step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick 
                         exit_status=exit_status load_onchange=onchange 
-                        reset_onclick=reset_onclick run_onclick=run_onclick 
+                        reset_onclick=reset_onclick run_onclick=run_onclick
+                        kill_onclick=kill_onclick
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
