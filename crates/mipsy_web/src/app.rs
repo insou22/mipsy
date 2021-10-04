@@ -347,7 +347,7 @@ impl App {
                             
                             if should_highlight {
                                 html! {
-                                    <tr class={"bg-green-400"}>
+                                    <tr class={"bg-th-highlighting"}>
                                         {item}
                                     </tr>
                                 }
