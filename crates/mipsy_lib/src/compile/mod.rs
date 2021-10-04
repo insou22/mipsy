@@ -14,6 +14,7 @@ use data::populate_labels_and_data;
 
 mod text;
 use mipsy_parser::TaggedFile;
+use mipsy_utils::MipsyConfig;
 use text::populate_text;
 pub use text::compile1;
 
@@ -73,7 +74,7 @@ impl Binary {
     }
 }
 
-pub fn compile(program: &mut MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
+pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -92,9 +93,9 @@ pub fn compile(program: &mut MpProgram, iset: &InstSet) -> MipsyResult<Binary> {
     };
     
     let mut kernel = get_kernel();
-    populate_labels_and_data(&mut binary, iset, &mut kernel)?;
+    populate_labels_and_data(&mut binary, config, iset, &mut kernel)?;
 
-    populate_labels_and_data(&mut binary, iset, program)?;
+    populate_labels_and_data(&mut binary, config, iset, program)?;
 
     let warnings = check_post_data_label(program, &binary)?;
     if !warnings.is_empty() {

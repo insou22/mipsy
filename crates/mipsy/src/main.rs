@@ -22,6 +22,8 @@ struct Opts {
     hex: bool,
     #[clap(long, about("With --hex: pad to 8 hex digits with zeroes"))]
     hex_pad_zero: bool,
+    #[clap(long, about("Enable some SPIM compatibility options"))]
+    spim: bool,
     #[clap(long, short('v'))]
     version: bool,
     files: Vec<String>,
@@ -61,7 +63,7 @@ where
 fn main() {
     let opts: Opts = Opts::parse();
 
-    let config = match read_config() {
+    let mut config = match read_config() {
         Ok(config) => config,
         Err(MipsyConfigError::InvalidConfig) => {
             let config_path = match config_path() {
@@ -73,6 +75,10 @@ fn main() {
             return;
         }
     };
+
+    if opts.spim {
+        config.spim = true;
+    }
 
     if opts.files.is_empty() {
         // launch() returns !
@@ -300,7 +306,7 @@ fn compile(config: &MipsyConfig, files: &HashMap<String, String>, args: &[&str])
         .collect::<Vec<_>>();
 
     let iset    = instruction_set!("../../mips.yaml");
-    let binary  = mipsy_lib::compile(&iset, files, config.tab_size)?;
+    let binary  = mipsy_lib::compile(&iset, files, &config)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))

@@ -9,6 +9,7 @@ use super::{
     bytes::ToBytes
 };
 use mipsy_parser::{MpArgument, MpConstValue, MpConstValueLoc, MpDirective, MpImmediate, MpItem, MpNumber};
+use mipsy_utils::MipsyConfig;
 
 #[derive(PartialEq)]
 pub(crate) enum Segment {
@@ -18,7 +19,7 @@ pub(crate) enum Segment {
     KData,
 }
 
-pub fn populate_labels_and_data(binary: &mut Binary, iset: &InstSet, program: &mut MpProgram) -> MipsyResult<()> {
+pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset: &InstSet, program: &mut MpProgram) -> MipsyResult<()> {
     let mut text_len = 0;
     let mut ktext_len = 0;
     let mut segment = Segment::Text;

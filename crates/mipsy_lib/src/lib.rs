@@ -24,6 +24,7 @@ pub use inst::instruction::{
 pub use inst::register::Register;
 pub use compile::{Binary};
 use mipsy_parser::TaggedFile;
+use mipsy_utils::MipsyConfig;
 pub use runtime::{
     Runtime,
     State,
@@ -38,8 +39,8 @@ pub use compile::{
 };
 pub use util::Safe;
 
-pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> MipsyResult<Binary> {
-    let mut parsed = mipsy_parser::parse_mips(files, default_tab_size)
+pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, config: &MipsyConfig) -> MipsyResult<Binary> {
+    let mut parsed = mipsy_parser::parse_mips(files, config.tab_size)
         .map_err(|err| 
             error::MipsyError::Parser(
                 ParserError::new(
@@ -51,7 +52,7 @@ pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, default_tab_size:
             )
         )?;
 
-    let compiled = compile::compile(&mut parsed, iset)?;
+    let compiled = compile::compile(&mut parsed, config, iset)?;
 
     Ok(compiled)
 }

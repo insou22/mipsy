@@ -7,6 +7,7 @@ const CONFIG_NAME: &str = "config.yaml";
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct MipsyConfig {
     pub tab_size: u32,
+    pub spim: bool,
 }
 
 pub enum MipsyConfigError {
@@ -31,6 +32,7 @@ impl Default for MipsyConfig {
     fn default() -> Self {
         Self {
             tab_size: 8,
+            spim: false,
         }
     }
 }

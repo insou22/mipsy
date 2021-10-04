@@ -1,6 +1,7 @@
 use log::{error, info, warn, LevelFilter};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
+use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use yew::worker::{Agent, AgentLink, HandlerId, Public};
 
@@ -81,8 +82,13 @@ impl Agent for Worker {
         info!("Recieved input");
         match msg {
             Self::Input::CompileCode(f) => {
+                // TODO(shreys): this is a hack to get the file to compile
+                let config = MipsyConfig {
+                    tab_size: 8,
+                    spim: false,
+                };
                 let compiled =
-                    mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], 8);
+                    mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], &config);
 
                 match compiled {
                     Ok(binary) => {
