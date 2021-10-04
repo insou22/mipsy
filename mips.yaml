@@ -1501,6 +1501,33 @@ pseudoinstructions:
           imm_types: [I16, U16, I32, U32]
           sign_extend: true
 
+  - name: REMU
+    desc_short: Store the remainder of $Rs / $Rt (unsigned) into $Rd
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: DIVU
+        data: [$Rs, $Rt]
+      - inst: MFHI
+        data: [$Rd]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [U16, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [U16, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [U16, U32]
+          sign_extend: true
+
   - name: ABS
     desc_short: $Rs = |$Rt|
     compile:
