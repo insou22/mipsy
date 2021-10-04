@@ -143,7 +143,18 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
-                todo!();
+                if let State::Running(RunningState {
+                    decompiled: _,
+                    mips_state,
+                }) = &mut self.state
+                {
+                    let input = WorkerRequest::Run(mips_state.clone(), -1);
+                    self.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot step");
+                    return false;
+                }
+                true
             }
 
             Msg::Reset => {
@@ -256,6 +267,8 @@ impl Component for App {
         
         let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
         
+        let step_back_onclick = self.link.callback(|_| Msg::StepBackward);
+
         let text_html_content = match &self.state {
             &State::NoFile => "no file loaded".into(),
             &State::Running(ref state) => self.render_running(state),
@@ -274,7 +287,11 @@ impl Component for App {
         html! {
             <>
                 <PageBackground>
-                    <NavBar step_forward_onclick=step_forward_onclick exit_status=exit_status load_onchange=onchange reset_onclick=reset_onclick run_onclick=run_onclick />
+                    <NavBar 
+                        step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick 
+                        exit_status=exit_status load_onchange=onchange 
+                        reset_onclick=reset_onclick run_onclick=run_onclick 
+                    />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
                             <pre class="text-xs whitespace-pre-wrap">

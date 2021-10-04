@@ -131,11 +131,16 @@ impl Agent for Worker {
             // hey the instruction @ breakpoint ran good
             // run this Instr
             // the program exited
+            //
+            // TODO - if hit step, keep stepping until address < 0x80
             Self::Input::Run(mut mips_state, step_size) => {
 
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
-                        
+                        if step_size == -1 {
+                            runtime.timeline_mut().pop_last_state();
+                            mips_state.exit_status = None;
+                        } 
                         for _ in 1..=step_size {
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
@@ -319,7 +324,7 @@ impl Agent for Worker {
                                     .expect("infinite loop guarantees Some return")
                             ));
                             response = Self::Output::ProgramExited(mips_state);
-                        } else if step_size == 1 {
+                        } else if step_size.abs() == 1 {
                             // just update the state
                             response = Self::Output::UpdateMipsState(mips_state);
                         } 
