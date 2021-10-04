@@ -10,7 +10,16 @@ module.exports = {
             "./src/**/*.css",
         ],
     },
-    theme: {},
+    theme: {
+        colors: {
+            // this  is the colour of the background
+            'th-primary': '#fee2e2',
+            // this is the colour of the code/register/output areas
+            'th-secondary': '#d1d5db',
+            // this is the colour used for step highlighting
+            'th-highlighting':'#34d399'
+        }
+    },
     variants: {},
     plugins: [],
 };

@@ -41,15 +41,17 @@ type File = String;
 pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(File),
-    RunCode(MipsState),
     ResetRuntime(MipsState),
+    Run(MipsState, i32),
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum WorkerResponse {
     DecompiledCode(String),
     CompilerError(MipsyError),
-    MipsyState(MipsState),
+    UpdateMipsState(MipsState),
+    InstructionOk(MipsState),
+    ProgramExited(MipsState),
 }
 
 impl Agent for Worker {
@@ -74,12 +76,11 @@ impl Agent for Worker {
         "wasm.js"
     }
 
-    fn update(&mut self, msg: Self::Message) {
+    fn update(&mut self, _msg: Self::Message) {
         // no messaging exists
     }
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
-        info!("Recieved input");
         match msg {
             Self::Input::CompileCode(f) => {
                 // TODO(shreys): this is a hack to get the file to compile
@@ -106,34 +107,91 @@ impl Agent for Worker {
             }
 
             Self::Input::ResetRuntime(mut mips_state) => {
-                warn!("Recieved reset request ");
                 if let Some(runtime_state) = &mut self.runtime {
                     match runtime_state {
                         RuntimeState::Running(runtime) => {
-                            info!("inside");
                             runtime.timeline_mut().reset();
-                            info!("{:08x}", runtime.timeline().state().pc());
                             mips_state.stdout.drain(..);
                             mips_state.exit_status = None;
+                            mips_state.current_instr = None;
                             mips_state.register_values = vec![Safe::Uninitialised; 32];
                             self.link
-                                .respond(id, WorkerResponse::MipsyState(mips_state));
+                                .respond(id, WorkerResponse::UpdateMipsState(mips_state));
                         }
                         _ => {}
                     }
                 }
             }
 
-            Self::Input::RunCode(mut mips_state) => {
-                info!("Recieved run request");
+            // Run this Instr
+            // hey one instruction ran good
+            // run this Instr
+            // hey one instruction ran good
+            // run this Instr
+            // syscall
+            // here's the syscall value
+            // hey the instruction ran good
+            // run this code
+            // there is breakpoint
+            // run this code
+            // hey the instruction @ breakpoint ran good
+            // run this Instr
+            // the program exited
+            //
+            // TODO - if hit step, keep stepping until address < 0x80
+            Self::Input::Run(mut mips_state, step_size) => {
 
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
-                        mips_state.stdout.drain(..);
-                        loop {
-                            info!("{:08x}", runtime.timeline().state().pc());
+                        if step_size == -1 {
+                            runtime.timeline_mut().pop_last_state();
+                            mips_state.exit_status = None;
+                        } 
+                        
+                        
+                        // kernel instructions start with 0x80000000
+                        // we want to keep looping forever if we're in a kernel section
+                        // so that step only steps user space
+                        let mut fast_forwarded = false;
+                        while runtime.timeline().state().pc() >= 0x80000000 {
+                            
+                            if step_size == -1 {
+                                runtime.timeline_mut().pop_last_state();
+                                mips_state.exit_status = None;
+                            } else {
+                                fast_forwarded = true;
+                                let stepped_runtime = runtime.step();
+                                match stepped_runtime {
+                                    Ok(Ok(next_runtime)) => {runtime = next_runtime},
+                                    Ok(Err(guard)) => {
+                                        use RuntimeSyscallGuard::*;
+                                        match guard {
+                                            ExitStatus(exit_status_args, next_runtime) => {
+                                                info!("Exit");
+
+                                                mips_state.exit_status = Some(exit_status_args.exit_code);
+                                                runtime = next_runtime;
+                                            }
+                                            _ => { unreachable!() }
+                                        }
+                                    }
+                                    Err((prev_runtime, err)) => {
+                                        runtime = prev_runtime;
+                                        error!("{:?}", err);
+                                        todo!("Send error to frontend iguess");
+                                    }
+                                }
+                            }
+                        }
+
+                        if fast_forwarded {
+                            runtime.timeline_mut().pop_last_state();
+                            mips_state.exit_status = None;
+                        }
+
+
+                        for _ in 1..=step_size {
                             let stepped_runtime = runtime.step();
-                            info!("step");
                             match stepped_runtime {
                                 Ok(Ok(next_runtime)) => runtime = next_runtime,
                                 Ok(Err(guard)) => {
@@ -142,9 +200,7 @@ impl Agent for Worker {
                                         PrintInt(print_int_args, next_runtime) => {
                                             info!("printing integer {}", print_int_args.value);
 
-                                            mips_state
-                                                .stdout
-                                                .push(print_int_args.value.to_string());
+                                            mips_state.stdout.push(print_int_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -152,9 +208,7 @@ impl Agent for Worker {
                                         PrintFloat(print_float_args, next_runtime) => {
                                             info!("printing float {}", print_float_args.value);
 
-                                            mips_state
-                                                .stdout
-                                                .push(print_float_args.value.to_string());
+                                            mips_state.stdout.push(print_float_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -162,9 +216,7 @@ impl Agent for Worker {
                                         PrintDouble(print_double_args, next_runtime) => {
                                             info!("printing double {}", print_double_args.value);
 
-                                            mips_state
-                                                .stdout
-                                                .push(print_double_args.value.to_string());
+                                            mips_state.stdout.push(print_double_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -258,8 +310,7 @@ impl Agent for Worker {
                                         ExitStatus(exit_status_args, next_runtime) => {
                                             info!("Exit");
 
-                                            mips_state.exit_status =
-                                                Some(exit_status_args.exit_code);
+                                            mips_state.exit_status = Some(exit_status_args.exit_code);
                                             runtime = next_runtime;
                                         }
 
@@ -300,11 +351,9 @@ impl Agent for Worker {
                                 }
                             }
 
-                            if mips_state.exit_status.is_some() {
-                                break;
-                            }
+                            if mips_state.exit_status.is_some() { break };
                         }
-
+                        mips_state.current_instr = Some(runtime.timeline().state().pc());
                         mips_state.register_values = runtime
                             .timeline()
                             .state()
@@ -315,14 +364,24 @@ impl Agent for Worker {
 
                         self.runtime = Some(RuntimeState::Running(runtime));
 
-                        mips_state.stdout.push(format!(
-                            "\nProgram exited with exit status {}",
-                            mips_state
-                                .exit_status
-                                .expect("infinite loop guarantees Some return")
-                        ));
+                        let response;
+                        if mips_state.exit_status.is_some() {
+                            mips_state.stdout.push(format!(
+                                "\nProgram exited with exit status {}",
+                                mips_state
+                                    .exit_status
+                                    .expect("infinite loop guarantees Some return")
+                            ));
+                            response = Self::Output::ProgramExited(mips_state);
+                        } else if step_size.abs() == 1 {
+                            // just update the state
+                            response = Self::Output::UpdateMipsState(mips_state);
+                        } 
+                        else {
+                            // update state and tell frontend to run more isntructions
+                            response = Self::Output::InstructionOk(mips_state);
+                        }
 
-                        let response = Self::Output::MipsyState(mips_state);
                         self.link.respond(id, response);
                     }
                 }

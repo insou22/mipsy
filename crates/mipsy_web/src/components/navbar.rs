@@ -1,18 +1,22 @@
-use std::collections::HashMap;
 use yew::prelude::*;
 use yew::Html;
+use log::info;
 
 pub struct NavBar {
     link: ComponentLink<Self>,
     pub props: Props,
 }
 
-#[derive(Properties, Clone)]
+#[derive(Properties, Debug, Clone)]
 pub struct Props {
     #[prop_or_default]
     pub load_onchange: Callback<ChangeData>,
     pub run_onclick: Callback<MouseEvent>,
     pub reset_onclick: Callback<MouseEvent>,
+    pub exit_status: Option<Option<i32>>,
+    pub step_forward_onclick: Callback<MouseEvent>,
+    pub step_back_onclick: Callback<MouseEvent>,
+    pub kill_onclick: Callback<MouseEvent>
 }
 
 struct Icon {
@@ -32,7 +36,7 @@ impl NavBar {
                     </svg>
                 },
                 callback: Some(props.run_onclick),
-            },
+            }, 
             Icon {
                 label: String::from("Reset"),
                 html: html! {
@@ -49,7 +53,7 @@ impl NavBar {
                       <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                     </svg>
                 },
-                callback: None,
+                callback: Some(props.kill_onclick),
             },
             Icon {
                 label: String::from("Step Back"),
@@ -58,7 +62,7 @@ impl NavBar {
                         <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
                     </svg>
                 },
-                callback: None,
+                callback: Some(props.step_back_onclick),
             },
             Icon {
                 label: String::from("Step Next"),
@@ -67,7 +71,7 @@ impl NavBar {
                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                     </svg>
                 },
-                callback: None,
+                callback: Some(props.step_forward_onclick),
             },
         ];
 
@@ -83,8 +87,9 @@ impl Component for NavBar {
         NavBar { link, props }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        false
+    fn change(&mut self, props: Self::Properties) -> ShouldRender {
+        self.props = props;
+        true
     }
 
     fn update(&mut self, _: Self::Message) -> ShouldRender {
@@ -93,10 +98,10 @@ impl Component for NavBar {
 
     fn view(&self) -> Html {
         let icons = Self::icons(self.props.clone());
-
+        let noop = self.link.callback(|_| {});
         // TODO - use hashmap of icon->svg and iter to render
         html! {
-        <nav class="flex bg-red-100 items-center justify-between flex-wrap bg-teal-500 p-4">
+        <nav class="flex items-center justify-between flex-wrap bg-th-primary p-4">
           <div class="flex items-center flex-shrink-0 text-black mr-6">
             <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
           </div>
@@ -112,17 +117,38 @@ impl Component for NavBar {
               <input id="load_file" onchange=&self.props.load_onchange type="file" accept=".s" class="hidden" />
               {
                   for icons.iter().map(|item| {
-                      if item.callback.is_some() {
-                          html! {
-                              <button onclick={item.callback.clone().unwrap()} class="mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+                      // special behaviour for the Run button
+                      if item.label == "Run" || item.label == "Step Next"{
+                        let is_disabled = match &self.props.exit_status {
+                            Some(mips_exit_status) => match mips_exit_status {
+                                Some(_exit_status) => true,
+                                None => false,
+                            }
+                            None => false,
+                        };
+
+                        let mut button_classes = String::from("mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white");
+                        
+                        if is_disabled {
+                            button_classes.push_str(" opacity-50 cursor-not-allowed"); 
+                        }
+                        
+                        html! {
+                            <button disabled={is_disabled} onclick={item.callback.clone().unwrap()} class={button_classes}>
                                 { item.html.clone() }
                                 { item.label.clone() }
-                              </button>
+                            </button>
+                        }
+                      }
+                      else {
+                          let onclick = if item.callback.is_some() {
+                              item.callback.clone().unwrap()
+                          } else {
+                              noop.clone()
+                          };
 
-                          }
-                      } else {
                           html! {
-                              <button class="mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+                              <button onclick={onclick} class="mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
                                 { item.html.clone() }
                                 { item.label.clone() }
                               </button>
