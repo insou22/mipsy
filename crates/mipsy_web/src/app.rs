@@ -163,7 +163,6 @@ impl Component for App {
                     mips_state,
                 }) = &mut self.state
                 {
-                    warn!("Sending Reset Instr");
                     let input = WorkerRequest::ResetRuntime(mips_state.clone());
                     self.worker.send(input);
                 } else {
@@ -293,7 +292,7 @@ impl Component for App {
                         reset_onclick=reset_onclick run_onclick=run_onclick 
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
-                        <div id="source_file" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
+                        <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                             <pre class="text-xs whitespace-pre-wrap">
                                 { text_html_content }
                             </pre>
@@ -301,11 +300,11 @@ impl Component for App {
 
 
                         <div id="information" class="split pr-2 ">
-                            <div id="regs" class="overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
+                            <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
 
-                           <div id="output" class="py-2 overflow-y-auto bg-gray-300 px-2 border-2 border-gray-600">
+                           <div id="output" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 <h1> <strong> {"Output"} </strong> </h1>
                                 <pre class="h-full whitespace-pre-wrap">
                                     {output_html_content}
