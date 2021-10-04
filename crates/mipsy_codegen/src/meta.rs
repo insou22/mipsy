@@ -58,9 +58,11 @@ pub enum DeriveStatementYaml {
     Imm2Reg {
         register: String,
         imm_types: Vec<Imm2RegImmType>,
+        #[serde(default)]
         sign_extend: bool,
         #[serde(default)]
         derives: Vec<DeriveStatementYaml>,
+        imm_register: Option<String>,
     },
     DefaultValue {
         value: ArgumentType,
@@ -99,6 +101,7 @@ pub enum ArgumentType {
     F64,
 
     // pseudo
+    Rx,
     I32,
     U32,
     Off32Rs,
@@ -119,6 +122,7 @@ impl Display for ArgumentType {
             ArgumentType::OffRt => write!(f, "OffRt"),
             ArgumentType::F32 => write!(f, "F32"),
             ArgumentType::F64 => write!(f, "F64"),
+            ArgumentType::Rx => write!(f, "Rx"),
             ArgumentType::I32 => write!(f, "I32"),
             ArgumentType::U32 => write!(f, "U32"),
             ArgumentType::Off32Rs => write!(f, "Off32Rs"),
@@ -155,6 +159,7 @@ impl Into<super::base::ArgumentType> for ArgumentType {
             ArgumentType::U32     => super::base::ArgumentType::U32,
             ArgumentType::Off32Rs => super::base::ArgumentType::Off32Rs,
             ArgumentType::Off32Rt => super::base::ArgumentType::Off32Rt,
+            ArgumentType::Rx      => super::base::ArgumentType::Rx,
         }
     }
 }

@@ -68,6 +68,7 @@ pub enum ArgumentType {
     F64,
 
     // pseudo
+    Rx,
     I32,
     U32,
     Off32Rs,

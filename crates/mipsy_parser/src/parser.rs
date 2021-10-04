@@ -8,6 +8,7 @@ use nom::{AsBytes, IResult, branch::alt, combinator::map, multi::many0, sequence
 use nom_locate::{LocatedSpan, position};
 use serde::{Serialize, Deserialize};
 
+#[derive(Debug)]
 pub struct TaggedFile<'tag, 'file> {
     tag: Option<&'tag str>,
     file_contents: &'file str,

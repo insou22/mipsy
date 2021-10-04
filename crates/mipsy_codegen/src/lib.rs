@@ -10,36 +10,52 @@ use crate::meta::DeriveStatementYaml;
 
 fn expand_one_derive(of: &meta::PseudoInstructionYaml, derive: &DeriveStatementYaml) -> Vec<meta::PseudoInstructionYaml> {
     match derive {
-        DeriveStatementYaml::Imm2Reg { register, imm_types, sign_extend, derives } => {
+        DeriveStatementYaml::Imm2Reg { register, imm_types, sign_extend, imm_register, derives } => {
             imm_types.iter()
                 .map(|imm_type| {
                     use meta::Imm2RegImmType::*;
+                    let imm_register = format!("${}", imm_register.as_deref().unwrap_or("At"));
+
                     let mut expansion = match imm_type {
                         I16 => vec![meta::InstructionExpansionYaml {
                             inst: if *sign_extend { "ADDI" } else { "ORI" }.to_string(),
-                            data: vec![register.to_string(), "$0".to_string(), "$I16".to_string()],
+                            data: vec![imm_register.to_string(), "$0".to_string(), "$I16".to_string()],
                         }],
                         U16 => vec![meta::InstructionExpansionYaml {
                             inst: "ORI".to_string(),
-                            data: vec![register.to_string(), "$0".to_string(), "$U16".to_string()],
+                            data: vec![imm_register.to_string(), "$0".to_string(), "$U16".to_string()],
                         }],
                         I32 => vec![meta::InstructionExpansionYaml {
                             inst: "LUI".to_string(),
-                            data: vec![register.to_string(), "$I32uHi".to_string()],
+                            data: vec![imm_register.to_string(), "$I32uHi".to_string()],
                         }, meta::InstructionExpansionYaml {
                             inst: "ORI".to_string(),
-                            data: vec![register.to_string(), register.to_string(), "$I32uLo".to_string()],
+                            data: vec![imm_register.to_string(), imm_register.to_string(), "$I32uLo".to_string()],
                         }],
                         U32 => vec![meta::InstructionExpansionYaml {
                             inst: "LUI".to_string(),
-                            data: vec![register.to_string(), "$U32uHi".to_string()],
+                            data: vec![imm_register.to_string(), "$U32uHi".to_string()],
                         }, meta::InstructionExpansionYaml {
                             inst: "ORI".to_string(),
-                            data: vec![register.to_string(), register.to_string(), "$U32uLo".to_string()],
+                            data: vec![imm_register.to_string(), imm_register.to_string(), "$U32uLo".to_string()],
                         }],
                     };
 
-                    expansion.extend(of.expand.clone());
+                    expansion.extend(
+                        of.expand.iter()
+                            .map(|expand| meta::InstructionExpansionYaml {
+                                inst: expand.inst.clone(),
+                                data: expand.data.iter()
+                                    .map(|data| {
+                                        if data == &format!("${}", register) {
+                                            imm_register.to_string()
+                                        } else {
+                                            data.to_string()
+                                        }
+                                    })
+                                    .collect()
+                            })
+                    );
 
                     let arg_type = match imm_type {
                         I16 => meta::ArgumentType::I16,
@@ -218,6 +234,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
                 ArgumentType::U32     => quote! { U32 },
                 ArgumentType::Off32Rs => quote! { Off32Rs },
                 ArgumentType::Off32Rt => quote! { Off32Rt },
+                ArgumentType::Rx      => panic!("Rx is not a real register -- it must be macroed away"),
             };
 
             quote! {
@@ -314,6 +331,7 @@ fn quote_pseudo_instruction(instruction: PseudoInstructionYaml) -> proc_macro2::
                 ArgumentType::U32     => quote! { U32 },
                 ArgumentType::Off32Rs => quote! { Off32Rs },
                 ArgumentType::Off32Rt => quote! { Off32Rt },
+                ArgumentType::Rx      => panic!("Rx is not a real register -- it must be macroed away"),
             };
 
             quote! {
