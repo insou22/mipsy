@@ -49,7 +49,7 @@ pub(crate) fn context_command() -> Command {
                         continue;
                     }
 
-                    if addr < KTEXT_BOT && addr >= (TEXT_BOT + (binary.text.len() * 4) as u32) {
+                    if addr < KTEXT_BOT && addr >= (TEXT_BOT + binary.text.len() as u32) {
                         continue;
                     }
 
@@ -65,7 +65,7 @@ pub(crate) fn context_command() -> Command {
                 };
 
                 let parts = decompile::decompile_inst_into_parts(binary, &state.iset, inst, addr);
-                util::print_inst_parts(binary, &parts, Some(program), i == 0);
+                util::print_inst_parts(binary, &Ok(parts), Some(program), i == 0);
             }
 
             println!();

@@ -19,6 +19,116 @@ pub(crate) enum Segment {
     KData,
 }
 
+pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, config: &MipsyConfig, file_tag: Rc<str>, segment: &mut Segment, first_pass: bool) -> MipsyResult<Vec<Safe<u8>>> {
+    let bytes = match directive {
+        MpDirective::Text => {
+            *segment = Segment::Text;
+            vec![]
+        }
+        MpDirective::Data => {
+            *segment = Segment::Data;
+            vec![]
+        }
+        MpDirective::KText => {
+            *segment = Segment::KText;
+            vec![]
+        }
+        MpDirective::KData => {
+            *segment = Segment::KData;
+            vec![]
+        }
+        MpDirective::Ascii(ref string) => {
+            let chars: Vec<Safe<u8>> = string.chars().flat_map(|c| c.to_bytes()).map(Safe::Valid).collect();
+
+            chars
+        }
+        MpDirective::Asciiz(string) => {
+            let mut chars: Vec<Safe<u8>> = string.chars().flat_map(|c| c.to_bytes()).map(Safe::Valid).collect();
+            chars.push(Safe::Valid(0));
+
+            chars
+        }
+        MpDirective::Byte(bytes) => {
+            let mut output = vec![];
+
+            for byte in bytes {
+                let value = eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())?;
+                output.push(Safe::Valid(value as u8));
+            }
+
+            output
+        }
+        MpDirective::Half(halfs) => {
+            let mut output = vec![];
+
+            for half in halfs {
+                let value = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())?;
+                output.append(&mut (value as u16).to_bytes().into_iter().map(Safe::Valid).collect());
+            }
+
+            output
+        }
+        MpDirective::Word(words) => {
+            let mut output = vec![];
+
+            for word in words {
+                let value = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())?;
+                output.append(&mut (value as u32).to_bytes().into_iter().map(Safe::Valid).collect());
+            }
+
+            output
+        }
+        MpDirective::Float(floats) => {
+            floats.into_iter()
+                .flat_map(ToBytes::to_bytes)
+                .map(Safe::Valid)
+                .collect()
+        }
+        MpDirective::Double(doubles) => {
+            doubles.into_iter()
+                .flat_map(ToBytes::to_bytes)
+                .map(Safe::Valid)
+                .collect()
+        }
+        MpDirective::Align(num) => {
+            let num = eval_constant_in_range(&num, u32::MIN as _, 31, binary, file_tag)? as u32;
+
+            let multiple = 2usize.pow(num);
+            let curr_size = match segment {
+                Segment::Data  => binary.data.len(),
+                Segment::KData => binary.kdata.len(),
+                Segment::Text  => binary.text.len(),
+                Segment::KText => binary.ktext.len(),
+            };
+
+            let num = num as usize;
+
+            let amount = (num - curr_size) % multiple;
+            if amount < num {
+                vec![Safe::Uninitialised; amount]
+            } else {
+                vec![]
+            }
+        }
+        MpDirective::Space(num) => {
+            let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
+
+            let space_byte = if config.spim { Safe::Valid(0) } else { Safe::Uninitialised };
+            
+            vec![space_byte; num as usize]
+        }
+        MpDirective::Globl(label) => {
+            if first_pass {
+                binary.globals.push(label.to_string());
+            }
+
+            vec![]
+        }
+    };
+
+    Ok(bytes)
+}
+
 pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset: &InstSet, program: &mut MpProgram) -> MipsyResult<()> {
     let mut text_len = 0;
     let mut ktext_len = 0;
@@ -33,118 +143,27 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
         match item {
             MpItem::Directive(directive) => {
                 // Only allow .text and .data in a Text segment
-                if segment == Segment::Text || segment == Segment::KText {
-                    match &*directive {
-                        (MpDirective::Text | MpDirective::Data | MpDirective::KText | MpDirective::KData, _) => {}
-                        (other, position) => {
-                            return Err(
-                                MipsyError::Compiler(
-                                    CompilerError::new(
-                                        Error::DataInTextSegment { directive_type: other.clone() },
-                                        file_tag,
-                                        position.line(),
-                                        position.col(),
-                                        position.col_end(),
-                                    )
-                                )
-                            );
-                        }
-                    }
-                }
+                // if segment == Segment::Text || segment == Segment::KText {
+                //     match &*directive {
+                //         (MpDirective::Text | MpDirective::Data | MpDirective::KText | MpDirective::KData, _) => {}
+                //         (other, position) => {
+                //             return Err(
+                //                 MipsyError::Compiler(
+                //                     CompilerError::new(
+                //                         Error::DataInTextSegment { directive_type: other.clone() },
+                //                         file_tag,
+                //                         position.line(),
+                //                         position.col(),
+                //                         position.col_end(),
+                //                     )
+                //                 )
+                //             );
+                //         }
+                //     }
+                // }
 
-                match &directive.0 {
-                    MpDirective::Text => segment = Segment::Text,
-                    MpDirective::Data => segment = Segment::Data,
-                    MpDirective::KText => segment = Segment::KText,
-                    MpDirective::KData => segment = Segment::KData,
-                    MpDirective::Ascii(ref string) => {
-                        let chars: Vec<char> = string.chars().collect();
-
-                        insert_data(&segment, binary, &chars);
-                    }
-                    MpDirective::Asciiz(string) => {
-                        let chars: Vec<char> = string.chars().collect();
-
-                        insert_data(&segment, binary, &chars);
-                        insert_data(&segment, binary, &[0u8]);
-                    }
-                    MpDirective::Byte(bytes) => {
-                        for byte in bytes {
-                            let value = eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())?;
-
-                            if value < 0 {
-                                insert_data(&segment, binary, &[value as i8]);
-                            } else {
-                                insert_data(&segment, binary, &[value as u8]);
-                            }
-                        }
-                    }
-                    MpDirective::Half(halfs) => {
-                        for half in halfs {
-                            let value = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())?;
-
-                            if value < 0 {
-                                insert_data(&segment, binary, &[value as i16]);
-                            } else {
-                                insert_data(&segment, binary, &[value as u16]);
-                            }
-                        }
-                    }
-                    MpDirective::Word(words) => {
-                        for word in words {
-                            let value = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())?;
-
-                            if value < 0 {
-                                insert_data(&segment, binary, &[value as i32]);
-                            } else {
-                                insert_data(&segment, binary, &[value as u32]);
-                            }
-                        }
-                    }
-                    MpDirective::Float(floats) => {
-                        insert_data(&segment, binary, floats);
-                    }
-                    MpDirective::Double(doubles) => {
-                        insert_data(&segment, binary, doubles);
-                    }
-                    MpDirective::Align(num) => {
-                        let num = eval_constant_in_range(&num, u32::MIN as _, 31, binary, file_tag)? as u32;
-
-                        let multiple = 2usize.pow(num);
-                        let curr_size = binary.data.len();
-
-                        let num = num as usize;
-
-                        let amount = (num - curr_size) % multiple;
-                        if amount < num {
-                            // If labels sit before a .align, we want to make them point
-                            // at the next aligned value, rather than the padding bytes
-                            let mut to_update = vec![];
-
-                            for (label, &addr) in &binary.labels {
-                                if addr == TEXT_BOT + (curr_size as u32) {
-                                    to_update.push((label.to_string(), addr + (amount as u32)));
-                                }
-                            }
-
-                            for (label, addr) in to_update {
-                                binary.labels.insert(label, addr);
-                            }
-
-                            insert_safe_data(&segment, binary, &vec![Safe::Uninitialised; amount]);
-                        }
-                    }
-                    MpDirective::Space(num) => {
-                        let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
-
-                        let space_byte = if config.spim { Safe::Valid(0) } else { Safe::Uninitialised };
-                        
-                        insert_safe_data(&segment, binary, &vec![space_byte; num as usize]);
-                    }
-                    MpDirective::Globl(label) => {
-                        binary.globals.push(label.to_string());
-                    }
-                }
+                let bytes = eval_directive(&directive.0, binary, config, file_tag, &mut segment, true)?;
+                insert_safe_data(&segment, binary, &bytes);
             }
             MpItem::Instruction(instruction) => {
                 for arg in instruction.arguments_mut() {
@@ -175,10 +194,14 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
 
                 match segment {
                     Segment::Text => {
-                        text_len += inst_length;
+                        let alignment = (4 - text_len % 4) % 4;
+
+                        text_len += alignment + inst_length;
                     }
                     Segment::KText => {
-                        ktext_len += inst_length;
+                        let alignment = (4 - ktext_len % 4) % 4;
+
+                        ktext_len += alignment + inst_length;
                     }
                     _ => {
                         return Err(
@@ -303,22 +326,12 @@ fn eval_constant_in_range(constant: &MpConstValueLoc, range_low: i64, range_high
     Ok(value)
 }
 
-fn insert_data<T: ToBytes>(segment: &Segment, binary: &mut Binary, values: &[T]) {
-    insert_safe_data(
-        segment,
-        binary, 
-        &values.iter()
-            .flat_map(T::to_bytes)
-            .map(Safe::valid)
-            .collect::<Vec<Safe<u8>>>()
-    );
-}
-
 fn insert_safe_data(segment: &Segment, binary: &mut Binary, values: &[Safe<u8>]) {
     match segment {
         Segment::Data  => &mut binary.data,
         Segment::KData => &mut binary.kdata,
-        _              => todo!()
+        // these come later
+        Segment::Text | Segment::KText => return,
     }.append(
         &mut values.to_vec()
     );

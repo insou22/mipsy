@@ -315,7 +315,7 @@ impl InstSignature {
                                         // must be relative
                                         let addr = program.get_label(label)?;
 
-                                        let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                        let current_inst_addr = program.text.len() as u32 + TEXT_BOT;
 
                                         ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
                                     }
@@ -345,7 +345,7 @@ impl InstSignature {
                                         // must be relative
                                         let addr = program.get_label(label)?;
 
-                                        let current_inst_addr = program.text.len() as u32 * 4 + TEXT_BOT;
+                                        let current_inst_addr = program.text.len() as u32 + TEXT_BOT;
 
                                         ((addr.wrapping_sub(current_inst_addr)) / 4) & 0xFFFF
                                     }
@@ -698,7 +698,7 @@ impl PseudoSignature {
                         MpArgument::Number(MpNumber::Immediate(MpImmediate::LabelReference(label))) => {
                             let addr = program.get_label(label)?;
 
-                            let current_inst_addr = (program.text.len() + self.expand.len() - 1) as u32 * 4 + TEXT_BOT;
+                            let current_inst_addr = (program.text.len() + (self.expand.len() - 1) * 4) as u32 + TEXT_BOT;
                             let imm = ((addr.wrapping_sub(current_inst_addr)) / 4) as i16;
 
                             MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(imm)))

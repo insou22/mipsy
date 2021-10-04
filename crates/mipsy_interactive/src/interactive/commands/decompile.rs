@@ -3,7 +3,7 @@ use crate::interactive::error::CommandError;
 use super::*;
 use colored::*;
 
-use mipsy_lib::decompile::{Decompiled, decompile_into_parts};
+use mipsy_lib::decompile::{Decompiled, Uninit, decompile_into_parts};
 
 pub(crate) fn decompile_command() -> Command {
     command(
@@ -21,12 +21,17 @@ pub(crate) fn decompile_command() -> Command {
 
             let mut decompiled = decompile_into_parts(binary, &state.iset)
                     .into_iter()
-                    .collect::<Vec<(u32, Decompiled)>>();
+                    .collect::<Vec<(u32, Result<Decompiled, Uninit>)>>();
             
             decompiled.sort_by_key(|&(addr, _)| addr);
 
             if let Some((_, inst)) = decompiled.get(0) {
-                if inst.labels.is_empty() {
+                let labels = match inst {
+                    Ok(ok)   => &ok.labels,
+                    Err(err) => &err.labels,
+                };
+
+                if labels.is_empty() {
                     println!();
                 }
             }

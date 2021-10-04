@@ -1011,9 +1011,9 @@ impl Runtime {
             };
 
         let mut text_addr = TEXT_BOT;
-        for &word in &program.text {
-            initial_state.write_mem_word(text_addr, word);
-            text_addr += 4;
+        for &byte in &program.text {
+            initial_state.write_mem_byte_uninit(text_addr, byte);
+            text_addr += 1;
         }
 
         let mut data_addr = DATA_BOT;
@@ -1027,9 +1027,9 @@ impl Runtime {
         }
 
         let mut ktext_addr = KTEXT_BOT;
-        for &word in &program.ktext {
-            initial_state.write_mem_word(ktext_addr, word);
-            ktext_addr += 4;
+        for &byte in &program.ktext {
+            initial_state.write_mem_byte_uninit(ktext_addr, byte);
+            ktext_addr += 1;
         }
 
         let mut kdata_addr = KDATA_BOT;

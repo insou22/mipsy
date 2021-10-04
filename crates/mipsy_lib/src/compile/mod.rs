@@ -28,9 +28,9 @@ pub const KTEXT_BOT: u32 = 0x80000000;
 pub const KDATA_BOT: u32 = 0x90000000;
 
 pub struct Binary {
-    pub text:    Vec<u32>,
+    pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
-    pub ktext:   Vec<u32>,
+    pub ktext:   Vec<Safe<u8>>,
     pub kdata:   Vec<Safe<u8>>,
     pub labels:  HashMap<String, u32>,
     pub constants: HashMap<String, i64>,
@@ -72,6 +72,18 @@ impl Binary {
     pub fn insert_label(&mut self, label: &str, addr: u32) {
         self.labels.insert(label.to_string(), addr);
     }
+
+    pub fn text_words<'a>(&'a self) -> impl Iterator<Item = Safe<u32>> + 'a {
+        (&self.text).chunks_exact(4)
+            .into_iter()
+            .map(|chunk| match (chunk[0], chunk[1], chunk[2], chunk[3]) {
+                (Safe::Valid(b1), Safe::Valid(b2), Safe::Valid(b3), Safe::Valid(b4)) => {
+                    Safe::Valid(u32::from_le_bytes([b1, b2, b3, b4]))
+                }
+                _ => Safe::Uninitialised,
+            })
+
+    }
 }
 
 pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
@@ -102,9 +114,9 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
         // TODO: Deal with warnings here
     }
 
-    populate_text           (&mut binary, iset, program)?;
+    populate_text           (&mut binary, iset, config, program)?;
 
-    populate_text           (&mut binary, iset, &kernel)?;
+    populate_text           (&mut binary, iset, config, &kernel)?;
 
     Ok(binary)
 }

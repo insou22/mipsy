@@ -3,7 +3,7 @@ use std::io::Write;
 
 use colored::Colorize;
 use mipsy_codegen::instruction_set;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, error::runtime::ErrorContext};
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, Safe, error::runtime::ErrorContext};
 use mipsy_interactive::prompt;
 use clap::{Clap, AppSettings};
 use mipsy_parser::TaggedFile;
@@ -159,11 +159,15 @@ fn main() {
     }
 
     if opts.hex {
-        for &opcode in binary.text.iter() {
-            if opts.hex_pad_zero {
-                println!("{:08x}", opcode);
+        for opcode in binary.text_words() {
+            if let Safe::Valid(opcode) = opcode {
+                if opts.hex_pad_zero {
+                    println!("{:08x}", opcode);
+                } else {
+                    println!("{:x}", opcode);
+                }
             } else {
-                println!("{:x}", opcode);
+                println!("uninitialized");
             }
         }
 

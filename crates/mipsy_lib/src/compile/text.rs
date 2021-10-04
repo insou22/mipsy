@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use crate::{TEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
+use crate::{Safe, TEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
 use crate::inst::instruction::SignatureRef;
 use crate::{MpProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
-use super::{Binary, data::Segment};
-use mipsy_parser::{MpDirective, MpInstruction, MpItem};
+use super::{Binary, bytes::ToBytes, data::Segment};
+use mipsy_parser::{MpInstruction, MpItem};
+use mipsy_utils::MipsyConfig;
 
 pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInternalResult<SignatureRef<'a>> {
     if let Some(native) = iset.find_native(inst) {
@@ -76,7 +77,7 @@ pub fn compile1(binary: &Binary, iset: &InstSet, inst: &MpInstruction) -> MipsyI
     find_instruction(iset, inst)?.compile_ops(binary, iset, inst)
 }
 
-pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -> MipsyResult<()> {
+pub fn populate_text(binary: &mut Binary, iset: &InstSet, config: &MipsyConfig, program: &MpProgram) -> MipsyResult<()> {
     let mut segment = Segment::Text;
 
     for attributed_item in program.items() {
@@ -86,30 +87,44 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, program: &MpProgram) -
         let item = attributed_item.item();
 
         match item {
-            MpItem::Directive(directive) => match directive.0 {
-                MpDirective::Text  => segment = Segment::Text,
-                MpDirective::Data  => segment = Segment::Data,
-                MpDirective::KText => segment = Segment::KText,
-                MpDirective::KData => segment = Segment::KData,
-                _ => {}
+            MpItem::Directive(directive) => {
+                let bytes = super::data::eval_directive(&directive.0, binary, config, file_tag.clone(), &mut segment, false)?;
+                match segment {
+                    Segment::Text  => {
+                        binary.text.extend(bytes);
+                    }
+                    Segment::KText => {
+                        binary.ktext.extend(bytes);
+                    }
+                    // already dealt with
+                    Segment::Data | Segment::KData => {}
+                }
             }
             MpItem::Instruction(ref instruction) => {
-                let mut compiled = compile1(binary, iset, instruction)
+                let compiled = compile1(binary, iset, instruction)
                     .into_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())?;
 
                 let text = match segment {
                     Segment::Text  => {
+                        let alignment = (4 - binary.text.len() % 4) % 4;
+                        binary.text.append(&mut vec![Safe::Uninitialised; alignment]);
+
                         if !file_tag.is_empty() {
-                            binary.line_numbers.insert(TEXT_BOT + (binary.text.len() as u32) * 4, (file_tag.clone(), line));
+                            binary.line_numbers.insert(TEXT_BOT + (binary.text.len() as u32), (file_tag.clone(), line));
                         }
 
                         &mut binary.text
                     }
-                    Segment::KText => &mut binary.ktext,
+                    Segment::KText => {
+                        let alignment = (4 - binary.text.len() % 4) % 4;
+                        binary.ktext.append(&mut vec![Safe::Uninitialised; alignment]);
+                        
+                        &mut binary.ktext
+                    },
                     _              => continue,
                 };
 
-                text.append(&mut compiled);
+                text.append(&mut compiled.into_iter().flat_map(|ref b| ToBytes::to_bytes(b)).map(Safe::Valid).collect());
             }
             MpItem::Label(_) => {}
             MpItem::Constant(_) => {}

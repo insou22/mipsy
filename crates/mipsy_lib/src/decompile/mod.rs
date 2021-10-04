@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::Binary;
+use crate::{Binary, Safe};
 use crate::inst::instruction::{InstSet, CompileSignature, ArgumentType, RuntimeSignature};
 use crate::inst::register::Register;
 
@@ -10,6 +10,13 @@ pub struct Decompiled<'a> {
     pub inst_sig: Option<&'a CompileSignature>,
     pub inst_name: Option<String>,
     pub arguments: Vec<String>,
+    pub labels: Vec<String>,
+    pub location: Option<(Rc<str>, u32)>,
+}
+
+#[derive(Debug)]
+pub struct Uninit {
+    pub addr: u32,
     pub labels: Vec<String>,
     pub location: Option<(Rc<str>, u32)>,
 }
@@ -24,6 +31,21 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
     keys.sort_unstable();
 
     for (addr, parts) in keys.into_iter().map(|addr| (addr, decompiled.get(&addr).unwrap())) {
+        if let Err(parts) = parts {
+            if !parts.labels.is_empty() {
+                text.push('\n');
+            }
+
+            for label in parts.labels.iter() {
+                text.push_str(&format!("{}: \n", label));
+            }
+
+            text.push_str(&format!("0x{:08x}: [uninitialised]\n", addr));
+            continue;
+        }
+
+        let parts = parts.as_ref().expect("just checked Err case");
+
         if !parts.labels.is_empty() {
             text.push('\n');
         }
@@ -46,15 +68,32 @@ pub fn decompile(program: &Binary, iset: &InstSet) -> String {
     text
 }
 
-pub fn decompile_into_parts<'a>(program: &Binary, iset: &'a InstSet) -> HashMap<u32, Decompiled<'a>> {
+pub fn decompile_into_parts<'a>(program: &Binary, iset: &'a InstSet) -> HashMap<u32, Result<Decompiled<'a>, Uninit>> {
     let mut decompiled = HashMap::new();
     
     let mut text_addr = crate::TEXT_BOT;
 
-    for &word in &program.text {
-        let parts = decompile_inst_into_parts(program, iset, word, text_addr);
+    for word in program.text_words() {
+        if let Safe::Valid(word) = word {
+            let parts = decompile_inst_into_parts(program, iset, word, text_addr);
 
-        decompiled.insert(text_addr, parts);
+            decompiled.insert(text_addr, Ok(parts));
+        } else {
+            let mut labels = vec![];
+
+            for (label, &addr) in program.labels.iter() {
+                if addr == text_addr {
+                    labels.push(label.to_string());
+                }
+            }
+
+            decompiled.insert(text_addr, Err(Uninit {
+                addr: text_addr,
+                labels,
+                location: program.line_numbers.get(&text_addr).cloned(),
+            }));
+        }
+
         text_addr += 4;
     }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use mipsy_lib::KTEXT_BOT;
+use mipsy_lib::{KTEXT_BOT, decompile::Uninit};
 use crate::interactive::{error::{CommandError, CommandResult}, prompt};
 use colored::*;
 use mipsy_lib::{Binary, decompile::Decompiled, InstSet, decompile::decompile_inst_into_parts};
@@ -30,7 +30,35 @@ where
     }
 }
 
-pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, files: Option<&HashMap<String, String>>, highlight: bool) {
+pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Uninit>, files: Option<&HashMap<String, String>>, highlight: bool) {
+    if let Err(parts) = parts {
+        let last_line = get_last_line(binary, parts.addr);
+
+        println!(
+            "{} {} [{}]",
+            if highlight {
+                format!("0x{:08x}", parts.addr).green()
+            } else {
+                format!("0x{:08x}", parts.addr).bright_black()
+            },
+            match parts.location {
+                Some((_, num)) => format!("{:<3}", num),
+                None      => {
+                    if parts.addr >= KTEXT_BOT {
+                        "kernel".yellow().bold().to_string()
+                    } else {
+                        format!("{:3}", " ".repeat(last_line.to_string().len()))
+                    }
+                }
+            }.yellow().bold(),
+            "uninitialised".red(),
+        );
+
+        return;
+    }
+
+    let parts = parts.as_ref().expect("just checked Err case");
+    
     if parts.inst_name.is_none() {
         return;
     }
@@ -126,7 +154,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Decompiled, files: Optio
 
 pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&HashMap<String, String>>) {
     let parts = decompile_inst_into_parts(binary, iset, inst, addr);
-    print_inst_parts(binary, &parts, files, false);
+    print_inst_parts(binary, &Ok(parts), files, false);
 }
 
 pub(crate) fn get_last_line(binary: &Binary, addr: u32) -> u32 {
