@@ -2,9 +2,9 @@ use crate::{
     components::{navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use std::u32;
 use mipsy_lib::{Register, Safe};
 use serde::{Deserialize, Serialize};
+use std::u32;
 use yew::{
     prelude::*,
     services::{
@@ -32,7 +32,7 @@ pub struct MipsState {
     pub stdout: Vec<String>,
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
-    pub current_instr: Option<u32>, 
+    pub current_instr: Option<u32>,
 }
 
 pub enum Msg {
@@ -116,11 +116,11 @@ impl Component for App {
 
                 true
             }
-            
+
             Msg::Run => {
-                if let State::Running(curr) = &mut self.state
-                {
-                    let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                if let State::Running(curr) = &mut self.state {
+                    let input =
+                        WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot run");
@@ -128,7 +128,7 @@ impl Component for App {
                 }
                 true
             }
-            
+
             Msg::Kill => {
                 error!("KILL BUTTONM PRESSED");
                 if let State::Running(curr) = &mut self.state {
@@ -143,7 +143,7 @@ impl Component for App {
             }
 
             Msg::StepForward => {
-                 if let State::Running(RunningState {
+                if let State::Running(RunningState {
                     decompiled: _,
                     mips_state,
                     should_kill: _,
@@ -159,8 +159,7 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
-                if let State::Running(curr) = &mut self.state
-                {
+                if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                     self.worker.send(input);
                 } else {
@@ -171,8 +170,7 @@ impl Component for App {
             }
 
             Msg::Reset => {
-                if let State::Running(curr) = &mut self.state
-                {
+                if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
                 } else {
@@ -195,7 +193,7 @@ impl Component for App {
                                     stdout: Vec::new(),
                                     exit_status: None,
                                     register_values: vec![Safe::Uninitialised; 32],
-                                    current_instr: None
+                                    current_instr: None,
                                 },
                                 should_kill: false,
                             });
@@ -208,25 +206,24 @@ impl Component for App {
                     todo!();
                 }
 
-                WorkerResponse::ProgramExited(mips_state) => {
-                    match &mut self.state {
-                        State::Running(curr) => {
-                            curr.mips_state = mips_state;
-                            true
-                        }
-                        State::NoFile => false
+                WorkerResponse::ProgramExited(mips_state) => match &mut self.state {
+                    State::Running(curr) => {
+                        curr.mips_state = mips_state;
+                        true
                     }
-                }
+                    State::NoFile => false,
+                },
 
                 WorkerResponse::InstructionOk(mips_state) => {
-                    if let State::Running(curr) = &mut self.state
-                    {
+                    if let State::Running(curr) = &mut self.state {
                         curr.mips_state = mips_state;
                         // if the isntruction was ok, run another instruction
                         // unless the user has said it should be killed
-                        if !curr.should_kill 
-                        {
-                            let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                        if !curr.should_kill {
+                            let input = WorkerRequest::Run(
+                                curr.mips_state.clone(),
+                                NUM_INSTR_BEFORE_RESPONSE,
+                            );
                             self.worker.send(input);
                         }
                         curr.should_kill = false;
@@ -237,16 +234,14 @@ impl Component for App {
                     true
                 }
 
-                WorkerResponse::UpdateMipsState(mips_state) => {
-                    match &mut self.state {
-                        State::Running(curr) => {
-                            curr.mips_state = mips_state;
-                            true
-                        }
-
-                        State::NoFile => false,
+                WorkerResponse::UpdateMipsState(mips_state) => match &mut self.state {
+                    State::Running(curr) => {
+                        curr.mips_state = mips_state;
+                        true
                     }
-                }
+
+                    State::NoFile => false,
+                },
             },
         }
     }
@@ -273,16 +268,16 @@ impl Component for App {
             }
         });
 
-        let run_onclick = self.link.callback(|_| { Msg::Run });
-    
+        let run_onclick = self.link.callback(|_| Msg::Run);
+
         let kill_onclick = self.link.callback(|_| Msg::Kill);
 
         let reset_onclick = self.link.callback(|_| Msg::Reset);
-        
+
         let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
-        
+
         let step_back_onclick = self.link.callback(|_| Msg::StepBackward);
-        
+
         let toggle_modal_onclick = self.link.callback(|_| Msg::OpenModal);
 
         let text_html_content = match &self.state {
@@ -300,7 +295,7 @@ impl Component for App {
             _ => None,
         };
         info!("rendering");
-        
+
         let classes = if self.display_modal {
             "modal bg-th-primary border-black border-2 absolute top-1/4 h-1/3 w-3/4"
         } else {
@@ -317,7 +312,7 @@ impl Component for App {
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
                 </div>
                 <PageBackground>
-                    // TODO - move this into a component 
+                    // TODO - move this into a component
                     <div class={classes} id="modal1" style="left: 13%;">
                         <div class="modal-dialog">
                             <div class="absolute modal-header top-0 right-0 h-16 w-16">
@@ -326,20 +321,34 @@ impl Component for App {
                                 </div>
                             </div>
                             <section class="modal-content p-2 flex items-center flex-col">
-                                <h1> 
+                                <h1>
                                 <strong>{"Welcome to Mipsy Web"}</strong>
                                 </h1>
                                 <br />
                                 <p>
-                                {"this is heavily beta lol"}
+                                    {"mipsy_web is a MIPS emulator built using the mipsy platform."}
+                                </p>
+                                <p>
+                                    {"mipsy_web, alongside the mipsy platform, is fully open source "}
+                                    <a class="hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
+                                </p>
+                                <p>
+                                    {"mipsy_web is pre-alpha software, and will eventually be a full replacement for QtSpim"}
+                                </p>
+                                <br />
+                                <p>
+                                    {"Please leave any relevant feedback, issues or concerns on the"}
+                                    <a class="hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
+                                        {"Github Issues page"}
+                                    </a>
                                 </p>
                             </section>
                             <footer class="modal-footer"></footer>
                         </div>
                     </div>
-                    <NavBar 
-                        step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick 
-                        exit_status=exit_status load_onchange=onchange 
+                    <NavBar
+                        step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick
+                        exit_status=exit_status load_onchange=onchange
                         reset_onclick=reset_onclick run_onclick=run_onclick
                         kill_onclick=kill_onclick open_modal_onclick=toggle_modal_onclick
                     />
@@ -377,7 +386,7 @@ impl App {
     fn render_running(&self, state: &RunningState) -> Html {
         let decompiled = &state.decompiled;
         let runtime_instr = state.mips_state.current_instr.unwrap_or(0);
-        html!{
+        html! {
             <table>
                 <tbody>
                 {
@@ -388,15 +397,15 @@ impl App {
                             }
                         }
                         else {
-                          
-                            
+
+
                             let should_highlight = if item.starts_with("0x") {
                                 let source_instr = u32::from_str_radix(&item[2..10], 16).unwrap_or(0);
-                                source_instr == runtime_instr 
+                                source_instr == runtime_instr
                             } else {
                                 false
                             };
-                            
+
                             if should_highlight {
                                 html! {
                                     <tr class={"bg-th-highlighting"}>
@@ -406,12 +415,12 @@ impl App {
                             } else {
 
                                 html!{
-                                    <tr> 
+                                    <tr>
                                         {item}
                                     </tr>
                                 }
                             }
-                            
+
                         }
                     })
                 }
