@@ -100,7 +100,6 @@ impl Component for NavBar {
     fn view(&self) -> Html {
         let icons = Self::icons(self.props.clone());
         let noop = self.link.callback(|_| {});
-        // TODO - use hashmap of icon->svg and iter to render
         html! {
         <nav class="flex items-center justify-between flex-wrap bg-th-primary p-4">
           <div class="flex items-center flex-shrink-0 text-black mr-6">

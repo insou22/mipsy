@@ -7,6 +7,28 @@ use yew::worker::{Agent, AgentLink, HandlerId, Public};
 
 use crate::app::MipsState;
 
+//            Worker Overview
+// ___________________________________________
+// Main:   Please compile this file
+// Worker: Here is the decompiled code_
+// Main:   Run this Instr
+// Worker: One instruction ran good
+// Main:   Run this Instr
+// Worker: One instruction ran good
+// Main:   Run this Instr
+// Worker: There's a syscall I need input for
+// Main:   Here's the syscall value
+// Worker: hey the instruction ran good
+// Main:   Run this Instr
+// Worker: There is breakpoint
+// Main:   Run this Instr
+// Worker: Hey the instruction
+// Main:   Run this Instr
+// Worker: The program exited
+// Main:   Reset the runtime of the program
+// Worker: Sure, here is a cleared set of registers
+// ____________________________________________
+
 pub struct Worker {
     // the link that allows to communicate to main thread
     link: AgentLink<Self>,
@@ -21,6 +43,7 @@ pub struct Worker {
 }
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
+
 enum RuntimeState {
     Running(Runtime),
     WaitingInt(Guard<i32>),
@@ -36,13 +59,14 @@ enum RuntimeState {
 }
 
 type File = String;
+type NumSteps = i32;
 
 #[derive(Serialize, Deserialize)]
 pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(File),
     ResetRuntime(MipsState),
-    Run(MipsState, i32),
+    Run(MipsState, NumSteps),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -52,6 +76,14 @@ pub enum WorkerResponse {
     UpdateMipsState(MipsState),
     InstructionOk(MipsState),
     ProgramExited(MipsState),
+
+    NeedInt(MipsState),
+    //NeedFloat(f32),
+    //NeedDouble(f64),
+    //NeedString(Vec<u8>),
+    //NeedChar(u8),
+    //NeedRead((i32, Vec<u8>)),
+
 }
 
 impl Agent for Worker {
@@ -123,22 +155,7 @@ impl Agent for Worker {
                 }
             }
 
-            // Run this Instr
-            // hey one instruction ran good
-            // run this Instr
-            // hey one instruction ran good
-            // run this Instr
-            // syscall
-            // here's the syscall value
-            // hey the instruction ran good
-            // run this code
-            // there is breakpoint
-            // run this code
-            // hey the instruction @ breakpoint ran good
-            // run this Instr
-            // the program exited
-            //
-            // TODO - if hit step, keep stepping until address < 0x80
+
             Self::Input::Run(mut mips_state, step_size) => {
 
                 if let Some(runtime_state) = self.runtime.take() {
@@ -191,6 +208,7 @@ impl Agent for Worker {
 
 
                         for _ in 1..=step_size {
+                            let old_runtime = runtime.clone();
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
                                 Ok(Ok(next_runtime)) => runtime = next_runtime,
@@ -244,9 +262,24 @@ impl Agent for Worker {
                                             runtime = next_runtime;
                                         }
 
-                                        ReadInt(_fn_ptr) => {
+                                        ReadInt(guard) => {
                                             info!("reading int");
-                                            runtime = _fn_ptr(42);
+                                            self.runtime = Some(RuntimeState::WaitingInt(guard));
+
+                                            // we want to send the state of mipsy BEFORE executing
+                                            // this instruction, but I can't access previous
+                                            // runtime T_T_T_T_T__T_T
+                                            // do a clone for now and hope zac doesn't yell at me
+                                            mips_state.current_instr = Some(old_runtime.timeline().state().pc());
+                                            mips_state.register_values = old_runtime
+                                                .timeline()
+                                                .state()
+                                                .registers()
+                                                .iter()
+                                                .cloned()
+                                                .collect();
+                                            self.link.respond(id, WorkerResponse::NeedInt(mips_state));
+                                            return;
                                         }
 
                                         ReadFloat(fn_ptr) => {
@@ -350,9 +383,17 @@ impl Agent for Worker {
                                     todo!("Send error to frontend iguess");
                                 }
                             }
-
+                            
                             if mips_state.exit_status.is_some() { break };
                         }
+
+                        // runtime has been swallowed at this point, but the result is a guard
+                        // until we get a response from the main thread
+                        // I think the solution is to do a link.respond and end function inside the
+                        // guard match
+                        // BUT ALSO then, it's possible that the registers shown to the user while
+                        // they are waiting on syscall may be incorrect or outdated (since they are
+                        // only updated every 40 instructions);
                         mips_state.current_instr = Some(runtime.timeline().state().pc());
                         mips_state.register_values = runtime
                             .timeline()

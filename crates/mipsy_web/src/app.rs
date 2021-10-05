@@ -5,14 +5,10 @@ use crate::{
 use mipsy_lib::{Register, Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
-use yew::{
-    prelude::*,
-    services::{
+use yew::{prelude::*, services::{
         reader::{FileData, ReaderTask},
         ReaderService,
-    },
-    web_sys::File,
-};
+    }, web_sys::{File, Element, HtmlInputElement}};
 
 use log::{error, info, warn};
 
@@ -44,6 +40,7 @@ pub enum Msg {
     OpenModal,
     StepForward,
     StepBackward,
+    SubmitInput,
     FromWorker(WorkerResponse),
 }
 
@@ -64,6 +61,8 @@ pub struct App {
     state: State,
     worker: Box<dyn Bridge<Worker>>,
     display_modal: bool,
+    enable_input: bool,
+    input_ref: NodeRef,
 }
 
 const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -81,6 +80,8 @@ impl Component for App {
             tasks: vec![],
             worker,
             display_modal: false,
+            enable_input: false,
+            input_ref: NodeRef::default(),
         }
     }
 
@@ -179,6 +180,25 @@ impl Component for App {
                 }
                 true
             }
+            
+            Msg::SubmitInput => {
+                // need to find the input field with document.getElementById (rusty)
+                // and then get the value
+                
+                // we can afford to unwrap twice
+                // we know user_input will definitely exist
+                //let input = document.query_selector("#user_input")
+                    //.unwrap()
+                    //.unwrap();
+                if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
+                    //input.focus().unwrap();
+                    info!("{}", input.value());
+                };
+                true
+                // https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.HtmlInputElement.html#impl-From%3CHtmlInputElement%3E-2
+                // WHY DOESN'T THIS WORK IT SAYS THAT IT EXISTS
+                //let input: HtmlInputElement = input.into();
+            }
 
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
@@ -242,6 +262,22 @@ impl Component for App {
 
                     State::NoFile => false,
                 },
+                
+                WorkerResponse::NeedInt(mips_state) => match &mut self.state {
+                    State::Running(curr) => {
+                        info!("NEED AN INT PLS");
+                        curr.mips_state = mips_state;
+                        self.enable_input = true;
+
+                        if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
+                            input.focus().unwrap();
+                        };
+
+                        true
+                    }
+
+                    State::NoFile => false
+                }
             },
         }
     }
@@ -255,7 +291,6 @@ impl Component for App {
 
     fn view(&self) -> Html {
         let onchange = self.link.batch_callback(|event| {
-            info!("onchange fired");
             match event {
                 ChangeData::Files(file_list) => {
                     if let Some(file) = file_list.item(0) {
@@ -266,6 +301,19 @@ impl Component for App {
                 }
                 _ => None,
             }
+        });
+
+        let on_input_keydown = self.link.batch_callback(|event: KeyboardEvent| {
+            info!("recieved {}", event.key());
+
+            if event.key() == "Enter" {
+                return Some(Msg::SubmitInput);
+
+            }
+
+
+
+            None
         });
 
         let run_onclick = self.link.callback(|_| Msg::Run);
@@ -296,12 +344,6 @@ impl Component for App {
         };
         info!("rendering");
 
-        let classes = if self.display_modal {
-            "modal bg-th-primary border-black border-2 absolute top-1/4 h-1/3 w-3/4"
-        } else {
-            "modal hidden"
-        };
-
         let modal_overlay_classes = if self.display_modal {
             "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen"
         } else {
@@ -331,12 +373,23 @@ impl Component for App {
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
-
-                           <div id="output" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                                <h1> <strong> {"Output"} </strong> </h1>
-                                <pre class="h-full whitespace-pre-wrap">
-                                    {output_html_content}
-                                </pre>
+                            
+                            
+                            <div id="output"> 
+                                <div style="height: 90%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                                    <h1> <strong> {"Output"} </strong> </h1>
+                                    <pre class="h-full whitespace-pre-wrap">
+                                        {output_html_content}
+                                    </pre>
+                                </div>
+                                <div style="height: 10%;" class="border-2 border-black">
+                                    <input 
+                                        ref={self.input_ref.clone()}
+                                        id="user_input" 
+                                        onkeydown={on_input_keydown} 
+                                        style="padding-left: 3px; height: 100%;" 
+                                        class="block w-full" placeholder="> ..."/>
+                                </div>
                             </div>
                         </div>
 
