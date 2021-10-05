@@ -1,5 +1,5 @@
 use crate::{
-    components::{navbar::NavBar, pagebackground::PageBackground},
+    components::{navbar::NavBar, modal::Modal, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
 use mipsy_lib::{Register, Safe};
@@ -311,41 +311,8 @@ impl Component for App {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
                 </div>
+                <Modal should_display={self.display_modal} toggle_modal_onclick={toggle_modal_onclick.clone()} />
                 <PageBackground>
-                    // TODO - move this into a component
-                    <div class={classes} id="modal1" style="left: 13%;">
-                        <div class="modal-dialog">
-                            <div class="absolute modal-header top-0 right-0 h-16 w-16">
-                                <div onclick={toggle_modal_onclick.clone()} class="cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
-                                {"x"}
-                                </div>
-                            </div>
-                            <section class="modal-content p-2 flex items-center flex-col">
-                                <h1>
-                                <strong>{"Welcome to Mipsy Web"}</strong>
-                                </h1>
-                                <br />
-                                <p>
-                                    {"mipsy_web is a MIPS emulator built using the mipsy platform."}
-                                </p>
-                                <p>
-                                    {"mipsy_web, alongside the mipsy platform, is fully open source "}
-                                    <a class="hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
-                                </p>
-                                <p>
-                                    {"mipsy_web is pre-alpha software, and will eventually be a full replacement for QtSpim"}
-                                </p>
-                                <br />
-                                <p>
-                                    {"Please leave any relevant feedback, issues or concerns on the"}
-                                    <a class="hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
-                                        {"Github Issues page"}
-                                    </a>
-                                </p>
-                            </section>
-                            <footer class="modal-footer"></footer>
-                        </div>
-                    </div>
                     <NavBar
                         step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick
                         exit_status=exit_status load_onchange=onchange
