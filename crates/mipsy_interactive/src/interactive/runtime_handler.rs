@@ -46,6 +46,8 @@ pub(crate) fn sys1_print_int(verbose: bool, val: i32) {
     } else {
         print!("{}", val);
     }
+    
+    std::io::stdout().flush().unwrap();
 }
 
 pub(crate) fn sys2_print_float(verbose: bool, val: f32) {
@@ -54,6 +56,8 @@ pub(crate) fn sys2_print_float(verbose: bool, val: f32) {
     } else {
         print!("{}", val);
     }
+    
+    std::io::stdout().flush().unwrap();
 }
 
 pub(crate) fn sys3_print_double(verbose: bool, val: f64) {
@@ -62,6 +66,8 @@ pub(crate) fn sys3_print_double(verbose: bool, val: f64) {
     } else {
         print!("{}", val);
     }
+    
+    std::io::stdout().flush().unwrap();
 }
 
 pub(crate) fn sys4_print_string(verbose: bool, val: &[u8]) {
@@ -78,6 +84,8 @@ pub(crate) fn sys4_print_string(verbose: bool, val: &[u8]) {
     } else {
         print!("{}", val);
     }
+
+    std::io::stdout().flush().unwrap();
 }
 
 pub(crate) fn sys5_read_int(verbose: bool, ) -> i32 {
@@ -157,6 +165,8 @@ pub(crate) fn sys11_print_char(verbose: bool, val: u8) {
     } else {
         print!("{}", val);
     }
+    
+    std::io::stdout().flush().unwrap();
 }
 
 pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
