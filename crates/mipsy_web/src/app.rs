@@ -1,14 +1,18 @@
 use crate::{
-    components::{navbar::NavBar, modal::Modal, pagebackground::PageBackground},
+    components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
 use mipsy_lib::{Register, Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
-use yew::{prelude::*, services::{
+use yew::{
+    prelude::*,
+    services::{
         reader::{FileData, ReaderTask},
         ReaderService,
-    }, web_sys::{File, Element, HtmlInputElement}};
+    },
+    web_sys::{Element, File, HtmlInputElement},
+};
 
 use log::{error, info, warn};
 
@@ -21,6 +25,20 @@ pub struct RunningState {
     decompiled: String,
     mips_state: MipsState,
     should_kill: bool,
+    input_needed: Option<ReadSyscalls>,
+}
+
+#[derive(Clone, Debug)]
+pub enum ReadSyscalls {
+    ReadInt,
+    //ReadFloat(f32),
+    //ReadDouble(f64),
+    //ReadString(Vec<u8>),
+    //ReadChar(u8),
+    //Open(i32),
+    //Read((i32, Vec<u8>)),
+    //Write(i32),
+    //Close(i32),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -41,6 +59,7 @@ pub enum Msg {
     StepForward,
     StepBackward,
     SubmitInput,
+    ProcessKeypress(KeyboardEvent),
     FromWorker(WorkerResponse),
 }
 
@@ -61,7 +80,6 @@ pub struct App {
     state: State,
     worker: Box<dyn Bridge<Worker>>,
     display_modal: bool,
-    enable_input: bool,
     input_ref: NodeRef,
 }
 
@@ -80,7 +98,6 @@ impl Component for App {
             tasks: vec![],
             worker,
             display_modal: false,
-            enable_input: false,
             input_ref: NodeRef::default(),
         }
     }
@@ -144,13 +161,8 @@ impl Component for App {
             }
 
             Msg::StepForward => {
-                if let State::Running(RunningState {
-                    decompiled: _,
-                    mips_state,
-                    should_kill: _,
-                }) = &mut self.state
-                {
-                    let input = WorkerRequest::Run(mips_state.clone(), 1);
+                if let State::Running(curr) = &mut self.state {
+                    let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
                     self.worker.send(input);
                 } else {
                     info!("No File loaded, cannot step");
@@ -172,24 +184,51 @@ impl Component for App {
 
             Msg::Reset => {
                 if let State::Running(curr) = &mut self.state {
+                    info!("hello");
                     let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
-                } else {
-                    info!("No File loaded, cannot run");
-                    return false;
                 }
                 true
             }
-            
+
+            Msg::ProcessKeypress(event) => {
+                match &self.state {
+                    State::Running(curr) => match &curr.input_needed {
+                        Some(item) => match item {
+                            
+                            // for ReadInt - we only want to allow intgers
+                            ReadSyscalls::ReadInt => {
+
+                                if self.is_nav_or_special_key(&event) {
+                                    return true;
+                                };
+
+                                let key = event.key();
+                                match key.parse::<i32>() {
+                                    Ok(num) => {
+                                        info!("{} is a number", num);
+                                    }
+                                    Err(_) => {
+                                        Event::from(event).prevent_default();
+                                    }
+                                }
+                            } 
+                        },
+                        None => {}
+                    },
+                    State::NoFile => {}
+                }
+                true
+            }
             Msg::SubmitInput => {
                 // need to find the input field with document.getElementById (rusty)
                 // and then get the value
-                
+
                 // we can afford to unwrap twice
                 // we know user_input will definitely exist
                 //let input = document.query_selector("#user_input")
-                    //.unwrap()
-                    //.unwrap();
+                //.unwrap()
+                //.unwrap();
                 if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
                     //input.focus().unwrap();
                     info!("{}", input.value());
@@ -215,6 +254,7 @@ impl Component for App {
                                     register_values: vec![Safe::Uninitialised; 32],
                                     current_instr: None,
                                 },
+                                input_needed: None,
                                 should_kill: false,
                             });
                             true
@@ -262,22 +302,22 @@ impl Component for App {
 
                     State::NoFile => false,
                 },
-                
+
                 WorkerResponse::NeedInt(mips_state) => match &mut self.state {
                     State::Running(curr) => {
-                        info!("NEED AN INT PLS");
                         curr.mips_state = mips_state;
-                        self.enable_input = true;
+                        curr.input_needed = Some(ReadSyscalls::ReadInt);
 
                         if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
+                            input.set_disabled(false);
                             input.focus().unwrap();
                         };
 
                         true
                     }
 
-                    State::NoFile => false
-                }
+                    State::NoFile => false,
+                },
             },
         }
     }
@@ -290,30 +330,25 @@ impl Component for App {
     }
 
     fn view(&self) -> Html {
-        let onchange = self.link.batch_callback(|event| {
-            match event {
-                ChangeData::Files(file_list) => {
-                    if let Some(file) = file_list.item(0) {
-                        Some(Msg::FileChanged(file))
-                    } else {
-                        None
-                    }
+        let onchange = self.link.batch_callback(|event| match event {
+            ChangeData::Files(file_list) => {
+                if let Some(file) = file_list.item(0) {
+                    Some(Msg::FileChanged(file))
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         });
 
-        let on_input_keydown = self.link.batch_callback(|event: KeyboardEvent| {
+        let on_input_keydown = self.link.callback(|event: KeyboardEvent| {
             info!("recieved {}", event.key());
 
             if event.key() == "Enter" {
-                return Some(Msg::SubmitInput);
+                return Msg::SubmitInput;
+            };
 
-            }
-
-
-
-            None
+            Msg::ProcessKeypress(event)
         });
 
         let run_onclick = self.link.callback(|_| Msg::Run);
@@ -342,6 +377,7 @@ impl Component for App {
             State::Running(curr) => Some(curr.mips_state.exit_status),
             _ => None,
         };
+
         info!("rendering");
 
         let modal_overlay_classes = if self.display_modal {
@@ -349,6 +385,18 @@ impl Component for App {
         } else {
             "hidden"
         };
+
+        let input_classes = match &self.state {
+            State::Running(curr) => {
+                if curr.input_needed.is_none() {
+                    "block w-full cursor-not-allowed"
+                } else {
+                    "block w-full bg-th-highlighting"
+                }
+            }
+            State::NoFile => "block w-full",
+        };
+
         html! {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
@@ -373,9 +421,9 @@ impl Component for App {
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
-                            
-                            
-                            <div id="output"> 
+
+
+                            <div id="output">
                                 <div style="height: 90%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                     <h1> <strong> {"Output"} </strong> </h1>
                                     <pre class="h-full whitespace-pre-wrap">
@@ -383,12 +431,37 @@ impl Component for App {
                                     </pre>
                                 </div>
                                 <div style="height: 10%;" class="border-2 border-black">
-                                    <input 
+                                    <input
                                         ref={self.input_ref.clone()}
-                                        id="user_input" 
-                                        onkeydown={on_input_keydown} 
-                                        style="padding-left: 3px; height: 100%;" 
-                                        class="block w-full" placeholder="> ..."/>
+                                        id="user_input"
+                                        type="text"
+                                        maxlength={
+                                            match &self.state {
+                                                State::Running(curr) => match &curr.input_needed {
+                                                    Some(item) => match item {
+                                                        ReadSyscalls::ReadInt => ""
+                                                      //ReadSyscalls::ReadChar => "1"
+
+                                                    },
+                                                    None => {""}
+                                                },
+                                                State::NoFile => {
+                                                    ""
+                                                },
+                                            }
+                                        }
+                                        disabled={
+                                               match &self.state {
+                                                    State::Running(curr) => {
+                                                        if curr.input_needed.is_none() { true } else { false }
+                                                    },
+                                                    State::NoFile => { true },
+                                                }
+
+                                        }
+                                        onkeydown={on_input_keydown}
+                                        style="padding-left: 3px; height: 100%;"
+                                        class={input_classes} placeholder="> ..."/>
                                 </div>
                             </div>
                         </div>
@@ -403,6 +476,26 @@ impl Component for App {
 }
 
 impl App {
+    // if the key is a known nav key
+    // or some other key return true
+    fn is_nav_or_special_key(&self, event: &KeyboardEvent) -> bool {
+   
+    
+        if event.alt_key()
+            || event.ctrl_key()
+            || event.meta_key()
+        {
+            return true;
+        }
+        
+        match event.key().as_str() {
+            "Backspace" => true,
+            "-" => true,
+            _ => false,
+        }
+    }
+
+
     fn render_running(&self, state: &RunningState) -> Html {
         let decompiled = &state.decompiled;
         let runtime_instr = state.mips_state.current_instr.unwrap_or(0);

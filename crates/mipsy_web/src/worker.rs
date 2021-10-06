@@ -67,6 +67,24 @@ pub enum WorkerRequest {
     CompileCode(File),
     ResetRuntime(MipsState),
     Run(MipsState, NumSteps),
+    GiveInt(i32),
+    //GiveFloat(f32),
+    //GiveDouble(f64),
+    //GiveString(Vec<u8>),
+    //GiveChar(u8),
+    //GiveRead((i32, Vec<u8))
+}
+
+pub enum ReadSyscallsInputs {
+    ReadInt,
+    //ReadFloat(f32),
+    //ReadDouble(f64),
+    //ReadString(Vec<u8>),
+    //ReadChar(u8),
+    //Open(i32),
+    //Read((i32, Vec<u8>)),
+    //Write(i32),
+    //Close(i32),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,7 +101,6 @@ pub enum WorkerResponse {
     //NeedString(Vec<u8>),
     //NeedChar(u8),
     //NeedRead((i32, Vec<u8>)),
-
 }
 
 impl Agent for Worker {
@@ -140,6 +157,7 @@ impl Agent for Worker {
 
             Self::Input::ResetRuntime(mut mips_state) => {
                 if let Some(runtime_state) = &mut self.runtime {
+                    info!("inside if");
                     match runtime_state {
                         RuntimeState::Running(runtime) => {
                             runtime.timeline_mut().reset();
@@ -150,28 +168,65 @@ impl Agent for Worker {
                             self.link
                                 .respond(id, WorkerResponse::UpdateMipsState(mips_state));
                         }
-                        _ => {}
+                        _ => {
+                            info!("inside blanket");
+                            // if we are not running, then just recompile the file (since we have
+                            // lost the old runtime lawl)
+                            if let Some(binary) = &self.binary {
+                                let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
+                                let response = Self::Output::DecompiledCode(decompiled);
+                                let runtime = mipsy_lib::runtime(&binary, &[]);
+                                self.runtime = Some(RuntimeState::Running(runtime));
+                                self.link.respond(id, response)
+                            }
+
+                        }
+                    }
+                } else {
+                    info!("Inside else");
+                    if let Some(binary) = &self.binary {
+                        let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
+                        let response = Self::Output::DecompiledCode(decompiled);
+                        let runtime = mipsy_lib::runtime(&binary, &[]);
+                        self.runtime = Some(RuntimeState::Running(runtime));
+                        self.link.respond(id, response)
+                    }
+                }
+            }
+            
+            Self::Input::GiveInt(int) => {
+
+
+                // self.runtime = Some(RuntimeState::WaitingInt(guard));
+                match &self.runtime {
+                    Some(runtime_state) => {
+                        match &runtime_state {
+                            RuntimeState::WaitingInt(guard) => {
+                                //TODO - ask zac why this doesn't work AHH borrow checker pls
+                                self.runtime = Some(RuntimeState::Running(guard(int)));
+                            }
+                            _ => {error!("Error: please report this to developers, with steps to reproduce")}
+                        }
+                    },
+                    None => {
+                        error!("Error: please report this to developers, with steps to reproduce")
                     }
                 }
             }
 
-
             Self::Input::Run(mut mips_state, step_size) => {
-
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
                         if step_size == -1 {
                             runtime.timeline_mut().pop_last_state();
                             mips_state.exit_status = None;
-                        } 
-                        
-                        
+                        }
+
                         // kernel instructions start with 0x80000000
                         // we want to keep looping forever if we're in a kernel section
                         // so that step only steps user space
                         let mut fast_forwarded = false;
                         while runtime.timeline().state().pc() >= 0x80000000 {
-                            
                             if step_size == -1 {
                                 runtime.timeline_mut().pop_last_state();
                                 mips_state.exit_status = None;
@@ -179,17 +234,20 @@ impl Agent for Worker {
                                 fast_forwarded = true;
                                 let stepped_runtime = runtime.step();
                                 match stepped_runtime {
-                                    Ok(Ok(next_runtime)) => {runtime = next_runtime},
+                                    Ok(Ok(next_runtime)) => runtime = next_runtime,
                                     Ok(Err(guard)) => {
                                         use RuntimeSyscallGuard::*;
                                         match guard {
                                             ExitStatus(exit_status_args, next_runtime) => {
                                                 info!("Exit");
 
-                                                mips_state.exit_status = Some(exit_status_args.exit_code);
+                                                mips_state.exit_status =
+                                                    Some(exit_status_args.exit_code);
                                                 runtime = next_runtime;
                                             }
-                                            _ => { unreachable!() }
+                                            _ => {
+                                                unreachable!()
+                                            }
                                         }
                                     }
                                     Err((prev_runtime, err)) => {
@@ -206,7 +264,6 @@ impl Agent for Worker {
                             mips_state.exit_status = None;
                         }
 
-
                         for _ in 1..=step_size {
                             let old_runtime = runtime.clone();
                             let stepped_runtime = runtime.step();
@@ -218,7 +275,9 @@ impl Agent for Worker {
                                         PrintInt(print_int_args, next_runtime) => {
                                             info!("printing integer {}", print_int_args.value);
 
-                                            mips_state.stdout.push(print_int_args.value.to_string());
+                                            mips_state
+                                                .stdout
+                                                .push(print_int_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -226,7 +285,9 @@ impl Agent for Worker {
                                         PrintFloat(print_float_args, next_runtime) => {
                                             info!("printing float {}", print_float_args.value);
 
-                                            mips_state.stdout.push(print_float_args.value.to_string());
+                                            mips_state
+                                                .stdout
+                                                .push(print_float_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -234,7 +295,9 @@ impl Agent for Worker {
                                         PrintDouble(print_double_args, next_runtime) => {
                                             info!("printing double {}", print_double_args.value);
 
-                                            mips_state.stdout.push(print_double_args.value.to_string());
+                                            mips_state
+                                                .stdout
+                                                .push(print_double_args.value.to_string());
 
                                             runtime = next_runtime;
                                         }
@@ -270,7 +333,8 @@ impl Agent for Worker {
                                             // this instruction, but I can't access previous
                                             // runtime T_T_T_T_T__T_T
                                             // do a clone for now and hope zac doesn't yell at me
-                                            mips_state.current_instr = Some(old_runtime.timeline().state().pc());
+                                            mips_state.current_instr =
+                                                Some(old_runtime.timeline().state().pc());
                                             mips_state.register_values = old_runtime
                                                 .timeline()
                                                 .state()
@@ -278,7 +342,8 @@ impl Agent for Worker {
                                                 .iter()
                                                 .cloned()
                                                 .collect();
-                                            self.link.respond(id, WorkerResponse::NeedInt(mips_state));
+                                            self.link
+                                                .respond(id, WorkerResponse::NeedInt(mips_state));
                                             return;
                                         }
 
@@ -343,7 +408,8 @@ impl Agent for Worker {
                                         ExitStatus(exit_status_args, next_runtime) => {
                                             info!("Exit");
 
-                                            mips_state.exit_status = Some(exit_status_args.exit_code);
+                                            mips_state.exit_status =
+                                                Some(exit_status_args.exit_code);
                                             runtime = next_runtime;
                                         }
 
@@ -383,8 +449,10 @@ impl Agent for Worker {
                                     todo!("Send error to frontend iguess");
                                 }
                             }
-                            
-                            if mips_state.exit_status.is_some() { break };
+
+                            if mips_state.exit_status.is_some() {
+                                break;
+                            };
                         }
 
                         // runtime has been swallowed at this point, but the result is a guard
@@ -417,8 +485,7 @@ impl Agent for Worker {
                         } else if step_size.abs() == 1 {
                             // just update the state
                             response = Self::Output::UpdateMipsState(mips_state);
-                        } 
-                        else {
+                        } else {
                             // update state and tell frontend to run more isntructions
                             response = Self::Output::InstructionOk(mips_state);
                         }
