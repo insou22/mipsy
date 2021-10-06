@@ -75,17 +75,6 @@ pub enum WorkerRequest {
     //GiveRead((i32, Vec<u8))
 }
 
-pub enum ReadSyscallsInputs {
-    ReadInt,
-    //ReadFloat(f32),
-    //ReadDouble(f64),
-    //ReadString(Vec<u8>),
-    //ReadChar(u8),
-    //Open(i32),
-    //Read((i32, Vec<u8>)),
-    //Write(i32),
-    //Close(i32),
-}
 
 #[derive(Serialize, Deserialize)]
 pub enum WorkerResponse {
