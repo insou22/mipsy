@@ -5,10 +5,7 @@ use crate::{Span, constant::{MpConstValueLoc, parse_constant_value}, misc::{
         parse_escaped_char,
         comment_multispace0,
         comment_multispace1,
-    }, number::{
-        parse_f32,
-        parse_f64,
-    }, parser::Position};
+    }, number::{parse_f32, parse_f64, parse_u32}, parser::Position};
 use nom_locate::position;
 use serde::{Serialize, Deserialize};
 use nom::{IResult, branch::alt, bytes::complete::{
@@ -164,7 +161,7 @@ fn parse_asciiz(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     )(i)
 }
 
-fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Vec<T>>
+fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Vec<T>>
 {
     move |i| {
         let (
@@ -179,23 +176,43 @@ fn parse_num_type<'a, T>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<
         = tuple((
             tag(tag_str),
             comment_multispace0,
-            separated_list1(
-                alt((
-                    map(
-                        tuple((
-                            space0,
-                            char(','),
-                            space0,
-                        )),
-                        |_| ()
-                    ),
-                    map(
-                        space1,
-                        |_| (),
-                    ),
-                )),
-                parser,
-            ),
+            alt((
+                map(
+                    tuple((
+                        parser,
+                        space0,
+                        char(':'),
+                        space0,
+                        parse_u32,
+                    )),
+                    |(value, _, _, _, n)| {
+                        let mut vec = Vec::with_capacity(n as usize);
+
+                        for _ in 0..n {
+                            vec.push(value.clone());
+                        }
+
+                        vec
+                    }
+                ),
+                separated_list1(
+                    alt((
+                        map(
+                            tuple((
+                                space0,
+                                char(','),
+                                space0,
+                            )),
+                            |_| ()
+                        ),
+                        map(
+                            space1,
+                            |_| (),
+                        ),
+                    )),
+                    parser,
+                ),
+            )),
             opt(
                 char(',')
             )
