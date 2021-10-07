@@ -9,6 +9,7 @@ Features you will NOT find include:
 - Big-Endian mode
 - Kernel mode
 - An extensive trap file
+- Conditional Branch Likely Instructions
 - ... more to be included here ...
 
 Features you (hopefully) will be pleased to find in Mipsy:
