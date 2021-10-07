@@ -1,3 +1,4 @@
+use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
@@ -5,6 +6,7 @@ use crate::{
 use mipsy_lib::{Register, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
+use wasm_bindgen::UnwrapThrowExt;
 use yew::{
     prelude::*,
     services::{
@@ -31,8 +33,8 @@ pub struct RunningState {
 #[derive(Clone, Debug)]
 pub enum ReadSyscalls {
     ReadInt,
-    //ReadFloat(f32),
-    //ReadDouble(f64),
+    ReadFloat,
+    ReadDouble,
     //ReadString(Vec<u8>),
     //ReadChar(u8),
     //Open(i32),
@@ -229,43 +231,52 @@ impl Component for App {
                 }
                 true
             }
-            Msg::SubmitInput => {
-                // need to find the input field with document.getElementById (rusty)
-                // and then get the value
 
-                // we can afford to unwrap twice
-                // we know user_input will definitely exist
-                //let input = document.query_selector("#user_input")
-                //.unwrap()
-                //.unwrap();
+            Msg::SubmitInput => {
                 if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
-                    //input.focus().unwrap();
-                    info!("{}", input.value());
-                    match input.value().parse::<i32>() {
-                        Ok(num) => {
-                            info!("parsed i32 succesfully");
-                            match &mut self.state {
-                                State::Running(curr) => {
-                                    self.worker
-                                        .send(WorkerRequest::GiveInt(curr.mips_state.clone(), num));
-                                    curr.input_needed = None;
-                                    input.set_value("");
-                                    input.set_disabled(true);
+                    if let State::Running(curr) = &self.state {
+                        use ReadSyscallInputs::*;
+                        use ReadSyscalls::*;
+                        match &curr.input_needed.as_ref().unwrap_throw() {
+                            ReadInt => {
+                                match input.value().parse::<i32>() {
+                                    Ok(num) => {
+                                        Self::process_syscall_response(self, input, Int(num));    
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to parse input as an i32");
+                                    }
                                 }
-                                State::NoFile => {
-                                    error!("Should not be possible to submit int with no file");
+                            }
+
+                            ReadFloat => {
+                                match input.value().parse::<f32>() {
+                                    Ok(num) => {
+                                        Self::process_syscall_response(self, input, Float(num));    
+                                    }
+
+                                    Err(e) => {
+                                        error!("Failed to parse input as an f32");
+                                    }
+                                }
+                            }
+
+                            ReadDouble => {
+                                match input.value().parse::<f64>() {
+                                    Ok(num) => {
+                                        Self::process_syscall_response(self, input, Double(num));    
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to parse input as an f64");
+                                    }
                                 }
                             }
                         }
-                        Err(e) => {
-                            error!("Cannot parse user input into i32");
-                        }
+                    } else {
+                        error!("Should not be able to submit with no file");
                     }
                 };
                 true
-                // https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.HtmlInputElement.html#impl-From%3CHtmlInputElement%3E-2
-                // WHY DOESN'T THIS WORK IT SAYS THAT IT EXISTS
-                //let input: HtmlInputElement = input.into();
             }
 
             Msg::FromWorker(worker_output) => match worker_output {
@@ -332,21 +343,15 @@ impl Component for App {
                     State::NoFile => false,
                 },
 
-                WorkerResponse::NeedInt(mips_state) => match &mut self.state {
-                    State::Running(curr) => {
-                        curr.mips_state = mips_state;
-                        curr.input_needed = Some(ReadSyscalls::ReadInt);
-
-                        if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
-                            input.set_disabled(false);
-                            input.focus().unwrap();
-                        };
-
-                        true
-                    }
-
-                    State::NoFile => false,
+                WorkerResponse::NeedInt(mips_state) => {
+                    Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadInt)
+                }, 
+                WorkerResponse::NeedFloat(mips_state) => {
+                    Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadFloat)
                 },
+                WorkerResponse::NeedDouble(mips_state) => {
+                    Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadDouble)
+                } 
             },
         }
     }
@@ -619,6 +624,42 @@ impl App {
                 }
                 </tbody>
             </table>
+        }
+    }
+
+    fn process_syscall_request(&mut self, mips_state: MipsState, required_type: ReadSyscalls) -> bool {
+    
+        match &mut self.state {
+            State::Running(curr) => {
+                curr.mips_state = mips_state;
+                curr.input_needed = Some(required_type);
+
+                if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
+                    input.set_disabled(false);
+                    input.focus().unwrap();
+                };            
+                true
+            }
+
+            State::NoFile => false,
+        }
+
+    }
+
+    fn process_syscall_response(&mut self, input: HtmlInputElement, required_type: ReadSyscallInputs) {
+        match &mut self.state {
+            State::Running(curr) => {
+                self.worker.send(WorkerRequest::GiveSyscallValue(
+                    curr.mips_state.clone(),
+                    required_type,
+                ));
+                curr.input_needed = None;
+                input.set_value("");
+                input.set_disabled(true);
+            }
+            State::NoFile => {
+                error!("Should not be possible to submit int with no file");
+            }
         }
     }
 }

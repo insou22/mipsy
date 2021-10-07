@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use log::{error, info, warn, LevelFilter};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
@@ -62,17 +64,22 @@ type File = String;
 type NumSteps = i32;
 
 #[derive(Serialize, Deserialize)]
+pub enum ReadSyscallInputs {
+    Int(i32),
+    Float(f32),
+    Double(f64),
+    //Char(u8),
+    //String(Vec<u8>),
+    //Read((i32, Vec<u8>)),
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(File),
     ResetRuntime(MipsState),
     Run(MipsState, NumSteps),
-    GiveInt(MipsState, i32),
-    //GiveFloat(f32),
-    //GiveDouble(f64),
-    //GiveString(Vec<u8>),
-    //GiveChar(u8),
-    //GiveRead((i32, Vec<u8))
+    GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,8 +90,8 @@ pub enum WorkerResponse {
     InstructionOk(MipsState),
     ProgramExited(MipsState),
     NeedInt(MipsState),
-    //NeedFloat(f32),
-    //NeedDouble(f64),
+    NeedFloat(MipsState),
+    NeedDouble(MipsState),
     //NeedString(Vec<u8>),
     //NeedChar(u8),
     //NeedRead((i32, Vec<u8>)),
@@ -180,24 +187,35 @@ impl Agent for Worker {
                 }
             }
 
-            Self::Input::GiveInt(mut mips_state, int) => {
+            // I wonder if there's a nicer way to do this with generics..?
+            Self::Input::GiveSyscallValue(mips_state, val) => {
                 match self.runtime.take() {
                     Some(runtime_state) => {
                         match runtime_state {
                             RuntimeState::WaitingInt(guard) => {
-                                let runtime = guard(int);
-
-                                mips_state.stdout.push(format!("{}\n", int));
-                                mips_state.update_registers(&runtime);
-                                mips_state.update_current_instr(&runtime);
-
-                                self.runtime = Some(RuntimeState::Running(runtime));
-
-                                // if running we want InstructionOk
-                                // if stepping we want UpdateMipsState
-                                self.link
-                                    .respond(id, Self::Output::InstructionOk(mips_state))
+                                if let ReadSyscallInputs::Int(int) = val {
+                                    Self::upload_syscall_value(self, mips_state, guard, int, id);
+                                } else {
+                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                }
                             }
+
+                            RuntimeState::WaitingDouble(guard) => {
+                                if let ReadSyscallInputs::Double(double) = val {
+                                    Self::upload_syscall_value(self, mips_state, guard, double, id);
+                                } else {
+                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                }
+                            }
+
+                            RuntimeState::WaitingFloat(guard) => {
+                                if let ReadSyscallInputs::Float(float) = val {
+                                    Self::upload_syscall_value(self, mips_state, guard, float, id);
+                                } else {
+                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                }
+                            }
+
                             _ => {
                                 error!("Error: please report this to developers, with steps to reproduce")
                             }
@@ -471,5 +489,29 @@ impl Agent for Worker {
                 }
             }
         }
+    }
+}
+
+impl Worker {
+    fn upload_syscall_value<T: Display>(
+        &mut self,
+        mut mips_state: MipsState,
+        guard: Guard<T>,
+        val: T,
+        id: HandlerId,
+    ) {
+        mips_state.stdout.push(format!("{}\n", val));
+        
+        let runtime = guard(val);
+
+        mips_state.update_registers(&runtime);
+        mips_state.update_current_instr(&runtime);
+
+        self.runtime = Some(RuntimeState::Running(runtime));
+
+        // if running we want InstructionOk
+        // if stepping we want UpdateMipsState
+        self.link
+            .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
     }
 }
