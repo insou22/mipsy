@@ -35,8 +35,8 @@ pub enum ReadSyscalls {
     ReadInt,
     ReadFloat,
     ReadDouble,
-    //ReadString(Vec<u8>),
-    //ReadChar(u8),
+    ReadString,
+    ReadChar,
     //Open(i32),
     //Read((i32, Vec<u8>)),
     //Write(i32),
@@ -210,20 +210,54 @@ impl Component for App {
             }
 
             Msg::ProcessKeypress(event) => {
+                if self.is_nav_or_special_key(&event) {
+                    return true;
+                };
+                info!("processing {}", event.key());
                 match &self.state {
                     State::Running(curr) => match &curr.input_needed {
                         Some(item) => match item {
                             // for ReadInt - we only want to allow intgers
                             ReadSyscalls::ReadInt => {
-                                if self.is_nav_or_special_key(&event) {
-                                    return true;
-                                };
-
+                                info!("inside int");
                                 let key = event.key();
                                 if key.parse::<i32>().is_err() {
                                     Event::from(event).prevent_default();
                                 }
                             }
+
+                            ReadSyscalls::ReadDouble => {
+
+                                let key = event.key();
+                                if key.parse::<f64>().is_err() {
+                                    Event::from(event).prevent_default();
+                                }
+                            }
+
+                            ReadSyscalls::ReadFloat => {
+                                let key = event.key();
+                                if key.parse::<f32>().is_err() {
+                                    Event::from(event).prevent_default();
+                                }
+                            }
+
+                            ReadSyscalls::ReadChar => {
+                                info!("test");
+                                let key = event.key();
+                                if key.parse::<char>().is_err() {
+                                    info!("{} failed to parse", key);
+                                    Event::from(event).prevent_default();
+                                }
+                            }
+
+                            ReadSyscalls::ReadString => {
+                                let key = event.key();
+                                if key.parse::<char>().is_err() {
+                                    Event::from(event).prevent_default();
+                                }
+                            }
+
+
                         },
                         None => {}
                     },
@@ -255,7 +289,7 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Float(num));    
                                     }
 
-                                    Err(e) => {
+                                    Err(_e) => {
                                         error!("Failed to parse input as an f32");
                                     }
                                 }
@@ -266,10 +300,29 @@ impl Component for App {
                                     Ok(num) => {
                                         Self::process_syscall_response(self, input, Double(num));    
                                     }
-                                    Err(e) => {
+                                    Err(_e) => {
                                         error!("Failed to parse input as an f64");
                                     }
                                 }
+                            }
+
+                            ReadChar => {
+                                match input.value().parse::<char>() {
+                                    Ok(char) => {
+                                        Self::process_syscall_response(self, input, Char(char as u8))
+                                    }
+                                    Err(_e) => {
+                                        error!("Failed to parse input as a u8");
+                                    }
+                                }
+                            },
+
+                            ReadString => {
+
+                                let string = input.value().as_bytes().to_vec();
+
+                                Self::process_syscall_response(self, input, String(string));
+                                
                             }
                         }
                     } else {
@@ -351,6 +404,12 @@ impl Component for App {
                 },
                 WorkerResponse::NeedDouble(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadDouble)
+                },
+                WorkerResponse::NeedChar(mips_state) => {
+                    Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadChar)
+                },
+                WorkerResponse::NeedString(mips_state) => {
+                    Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadString)
                 } 
             },
         }
@@ -471,9 +530,12 @@ impl Component for App {
                                             match &self.state {
                                                 State::Running(curr) => match &curr.input_needed {
                                                     Some(item) => match item {
-                                                        ReadSyscalls::ReadInt => ""
-                                                      //ReadSyscalls::ReadChar => "1"
-
+                                                        ReadSyscalls::ReadChar   => "1",
+                                                        // should we have a limit for size?
+                                                        ReadSyscalls::ReadInt    => "",
+                                                        ReadSyscalls::ReadDouble => "",
+                                                        ReadSyscalls::ReadFloat  => "",
+                                                        ReadSyscalls::ReadString => "",
                                                     },
                                                     None => {""}
                                                 },
