@@ -67,14 +67,13 @@ pub enum WorkerRequest {
     CompileCode(File),
     ResetRuntime(MipsState),
     Run(MipsState, NumSteps),
-    GiveInt(i32),
+    GiveInt(MipsState, i32),
     //GiveFloat(f32),
     //GiveDouble(f64),
     //GiveString(Vec<u8>),
     //GiveChar(u8),
     //GiveRead((i32, Vec<u8))
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub enum WorkerResponse {
@@ -83,7 +82,6 @@ pub enum WorkerResponse {
     UpdateMipsState(MipsState),
     InstructionOk(MipsState),
     ProgramExited(MipsState),
-
     NeedInt(MipsState),
     //NeedFloat(f32),
     //NeedDouble(f64),
@@ -168,7 +166,6 @@ impl Agent for Worker {
                                 self.runtime = Some(RuntimeState::Running(runtime));
                                 self.link.respond(id, response)
                             }
-
                         }
                     }
                 } else {
@@ -182,21 +179,37 @@ impl Agent for Worker {
                     }
                 }
             }
-            
-            Self::Input::GiveInt(int) => {
 
-
+            Self::Input::GiveInt(mut mips_state, int) => {
                 // self.runtime = Some(RuntimeState::WaitingInt(guard));
-                match &self.runtime {
+                match self.runtime.take() {
                     Some(runtime_state) => {
-                        match &runtime_state {
+                        match runtime_state {
                             RuntimeState::WaitingInt(guard) => {
                                 //TODO - ask zac why this doesn't work AHH borrow checker pls
-                                self.runtime = Some(RuntimeState::Running(guard(int)));
+
+                                let runtime = guard(int);
+
+                                mips_state.stdout.push(format!("{}\n", int));
+                                mips_state.current_instr = Some(runtime.timeline().state().pc());
+                                mips_state.register_values = runtime
+                                    .timeline()
+                                    .state()
+                                    .registers()
+                                    .iter()
+                                    .cloned()
+                                    .collect();
+
+                                self.runtime = Some(RuntimeState::Running(runtime));
+
+                                self.link
+                                    .respond(id, Self::Output::UpdateMipsState(mips_state))
                             }
-                            _ => {error!("Error: please report this to developers, with steps to reproduce")}
+                            _ => {
+                                error!("Error: please report this to developers, with steps to reproduce")
+                            }
                         }
-                    },
+                    }
                     None => {
                         error!("Error: please report this to developers, with steps to reproduce")
                     }

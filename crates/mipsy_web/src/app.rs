@@ -195,24 +195,17 @@ impl Component for App {
                 match &self.state {
                     State::Running(curr) => match &curr.input_needed {
                         Some(item) => match item {
-                            
                             // for ReadInt - we only want to allow intgers
                             ReadSyscalls::ReadInt => {
-
                                 if self.is_nav_or_special_key(&event) {
                                     return true;
                                 };
 
                                 let key = event.key();
-                                match key.parse::<i32>() {
-                                    Ok(num) => {
-                                        info!("{} is a number", num);
-                                    }
-                                    Err(_) => {
-                                        Event::from(event).prevent_default();
-                                    }
+                                if key.parse::<i32>().is_err() {
+                                    Event::from(event).prevent_default();
                                 }
-                            } 
+                            }
                         },
                         None => {}
                     },
@@ -232,6 +225,26 @@ impl Component for App {
                 if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
                     //input.focus().unwrap();
                     info!("{}", input.value());
+                    match input.value().parse::<i32>() {
+                        Ok(num) => {
+                            info!("parsed i32 succesfully");
+                            match &mut self.state {
+                                State::Running(curr) => {
+                                    self.worker
+                                        .send(WorkerRequest::GiveInt(curr.mips_state.clone(), num));
+                                    curr.input_needed = None;
+                                    input.set_value("");
+                                    input.set_disabled(true);
+                                }
+                                State::NoFile => {
+                                    error!("Should not be possible to submit int with no file");
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("Cannot parse user input into i32");
+                        }
+                    }
                 };
                 true
                 // https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.HtmlInputElement.html#impl-From%3CHtmlInputElement%3E-2
@@ -342,8 +355,6 @@ impl Component for App {
         });
 
         let on_input_keydown = self.link.callback(|event: KeyboardEvent| {
-            info!("recieved {}", event.key());
-
             if event.key() == "Enter" {
                 return Msg::SubmitInput;
             };
@@ -479,22 +490,16 @@ impl App {
     // if the key is a known nav key
     // or some other key return true
     fn is_nav_or_special_key(&self, event: &KeyboardEvent) -> bool {
-   
-    
-        if event.alt_key()
-            || event.ctrl_key()
-            || event.meta_key()
-        {
+        if event.alt_key() || event.ctrl_key() || event.meta_key() {
             return true;
         }
-        
+
         match event.key().as_str() {
             "Backspace" => true,
             "-" => true,
             _ => false,
         }
     }
-
 
     fn render_running(&self, state: &RunningState) -> Html {
         let decompiled = &state.decompiled;
