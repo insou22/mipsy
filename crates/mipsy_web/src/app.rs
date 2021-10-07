@@ -2,7 +2,7 @@ use crate::{
     components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use mipsy_lib::{Register, Safe};
+use mipsy_lib::{Register, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
 use yew::{
@@ -47,6 +47,22 @@ pub struct MipsState {
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
     pub current_instr: Option<u32>,
+}
+
+impl MipsState {
+    pub fn update_registers(&mut self, runtime: &Runtime) {
+        self.register_values = runtime
+            .timeline()
+            .state()
+            .registers()
+            .iter()
+            .cloned()
+            .collect();
+    }
+
+    pub fn update_current_instr(&mut self, runtime: &Runtime) {
+        self.current_instr = Some(runtime.timeline().state().pc());
+    }
 }
 
 pub enum Msg {

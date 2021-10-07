@@ -181,29 +181,22 @@ impl Agent for Worker {
             }
 
             Self::Input::GiveInt(mut mips_state, int) => {
-                // self.runtime = Some(RuntimeState::WaitingInt(guard));
                 match self.runtime.take() {
                     Some(runtime_state) => {
                         match runtime_state {
                             RuntimeState::WaitingInt(guard) => {
-                                //TODO - ask zac why this doesn't work AHH borrow checker pls
-
                                 let runtime = guard(int);
 
                                 mips_state.stdout.push(format!("{}\n", int));
-                                mips_state.current_instr = Some(runtime.timeline().state().pc());
-                                mips_state.register_values = runtime
-                                    .timeline()
-                                    .state()
-                                    .registers()
-                                    .iter()
-                                    .cloned()
-                                    .collect();
+                                mips_state.update_registers(&runtime);
+                                mips_state.update_current_instr(&runtime);
 
                                 self.runtime = Some(RuntimeState::Running(runtime));
 
+                                // if running we want InstructionOk
+                                // if stepping we want UpdateMipsState
                                 self.link
-                                    .respond(id, Self::Output::UpdateMipsState(mips_state))
+                                    .respond(id, Self::Output::InstructionOk(mips_state))
                             }
                             _ => {
                                 error!("Error: please report this to developers, with steps to reproduce")
@@ -334,18 +327,13 @@ impl Agent for Worker {
                                             // we want to send the state of mipsy BEFORE executing
                                             // this instruction, but I can't access previous
                                             // runtime T_T_T_T_T__T_T
-                                            // do a clone for now and hope zac doesn't yell at me
-                                            mips_state.current_instr =
-                                                Some(old_runtime.timeline().state().pc());
-                                            mips_state.register_values = old_runtime
-                                                .timeline()
-                                                .state()
-                                                .registers()
-                                                .iter()
-                                                .cloned()
-                                                .collect();
+                                            // save the old runtime each time for now and hope zac doesn't yell at me
+                                            mips_state.update_registers(&old_runtime);
+                                            mips_state.update_current_instr(&old_runtime);
+
                                             self.link
                                                 .respond(id, WorkerResponse::NeedInt(mips_state));
+
                                             return;
                                         }
 
@@ -457,22 +445,8 @@ impl Agent for Worker {
                             };
                         }
 
-                        // runtime has been swallowed at this point, but the result is a guard
-                        // until we get a response from the main thread
-                        // I think the solution is to do a link.respond and end function inside the
-                        // guard match
-                        // BUT ALSO then, it's possible that the registers shown to the user while
-                        // they are waiting on syscall may be incorrect or outdated (since they are
-                        // only updated every 40 instructions);
-                        mips_state.current_instr = Some(runtime.timeline().state().pc());
-                        mips_state.register_values = runtime
-                            .timeline()
-                            .state()
-                            .registers()
-                            .iter()
-                            .cloned()
-                            .collect();
-
+                        mips_state.update_registers(&runtime);
+                        mips_state.update_current_instr(&runtime);
                         self.runtime = Some(RuntimeState::Running(runtime));
 
                         let response;
