@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use mipsy_lib::{KTEXT_BOT, decompile::Uninit};
 use crate::interactive::{error::{CommandError, CommandResult}, prompt};
 use colored::*;
@@ -30,7 +28,7 @@ where
     }
 }
 
-pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Uninit>, files: Option<&HashMap<String, String>>, highlight: bool) {
+pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Uninit>, files: Option<&[(String, String)]>, highlight: bool) {
     if let Err(parts) = parts {
         let last_line = get_last_line(binary, parts.addr);
 
@@ -132,7 +130,15 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
 
     let mut line_part = String::new();
     if let Some((file_name, line_num)) = parts.location.clone() {
-        if let Some(file) = files.and_then(|files| files.get(&*file_name)) {
+        let file = files
+            .and_then(|files| 
+                files.iter()
+                    .filter(|(tag, _)| tag == &*file_name)
+                    .map(|(_, file)| file)
+                    .next()
+            );
+
+        if let Some(file) = file {
             if let Some(line) = file.lines().nth((line_num - 1) as usize) {
                 let repeat_space = {
                     let chars = strip_ansi_escapes::strip(&decompiled_part).unwrap().len();
@@ -152,7 +158,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
     println!("{:80}{}", decompiled_part, line_part);
 }
 
-pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&HashMap<String, String>>) {
+pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&[(String, String)]>) {
     let parts = decompile_inst_into_parts(binary, iset, inst, addr);
     print_inst_parts(binary, &Ok(parts), files, false);
 }

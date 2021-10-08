@@ -4,7 +4,7 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{collections::HashMap, rc::Rc};
+use std::{ops::Deref, rc::Rc};
 
 use mipsy_codegen::instruction_set;
 use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::SteppedRuntime};
@@ -38,7 +38,7 @@ pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
-    pub(crate) program: Option<HashMap<String, String>>,
+    pub(crate) program: Option<Vec<(String, String)>>,
     pub(crate) binary:  Option<Binary>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
@@ -254,8 +254,10 @@ impl State {
 
                     let file = self.program.as_ref()
                         .expect("cannot get parser error without a file to compile")
-                        .get(&*file_tag)
-                        .map(|str| Rc::from(&**str))
+                        .iter()
+                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
+                        .next()
+                        .map(|(_, str)| Rc::from(&**str))
                         .expect("for file to throw a parser error, it should probably exist");
 
                     error.show_error(config, file);
@@ -269,8 +271,10 @@ impl State {
     
                     let file = self.program.as_ref()
                         .expect("cannot get compiler error without a file to compile")
-                        .get(&*file_tag)
-                        .map(|str| Rc::from(&**str))
+                        .iter()
+                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
+                        .next()
+                        .map(|(_, str)| Rc::from(&**str))
                         .expect("for file to throw a compiler error, it should probably exist");
     
                     error.show_error(config, file);

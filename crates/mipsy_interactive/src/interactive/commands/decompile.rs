@@ -37,7 +37,7 @@ pub(crate) fn decompile_command() -> Command {
             }
 
             for (_, inst) in decompiled {
-                util::print_inst_parts(binary, &inst, state.program.as_ref(), false);
+                util::print_inst_parts(binary, &inst, state.program.as_deref(), false);
             }
 
             println!();

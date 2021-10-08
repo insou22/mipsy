@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
+use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
@@ -98,7 +98,7 @@ fn main() {
 
                 (name, file_contents)
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<Vec<_>>();
     
     let args = opts.args.iter()
             .map(|arg| &**arg)
@@ -113,8 +113,10 @@ fn main() {
             let file_tag = error.file_tag();
 
             let file = files
-                .get(&*file_tag)
-                .map(|str| Rc::from(&**str))
+                .iter()
+                .filter(|(tag, _)| &**tag == &*file_tag)
+                .next()
+                .map(|(_, str)| Rc::from(&**str))
                 .expect("for file to throw a parser error, it should probably exist");
 
             error.show_error(&config, file);
@@ -134,8 +136,10 @@ fn main() {
             let file_tag = error.file_tag();
 
             let file = files
-                .get(&*file_tag)
-                .map(|str| Rc::from(&**str))
+                .iter()
+                .filter(|(tag, _)| &**tag == &*file_tag)
+                .next()
+                .map(|(_, str)| Rc::from(&**str))
                 .unwrap_or_else(|| Rc::from(""));
 
             error.show_error(&config, file);
@@ -304,7 +308,7 @@ fn read_string(_max_len: u32) -> String {
     }
 }
 
-fn compile(config: &MipsyConfig, files: &HashMap<String, String>, args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
+fn compile(config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
     let files = files.iter()
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();

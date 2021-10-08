@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
@@ -32,7 +30,7 @@ pub(crate) fn load_command() -> Command {
                 }
             };
 
-            let program: HashMap<_, _> = files.iter()
+            let program: Vec<_> = files.iter()
                     .map(|path| {
                         match std::fs::read_to_string(path) {
                             Ok(content) => Ok((path.to_string(), content)),

@@ -57,7 +57,7 @@ pub(crate) fn back_command() -> Command {
 
             prompt::success(text);
             if let Ok(inst) = runtime.next_inst() {
-                util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_ref());
+                util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());
             }
             println!();
 
