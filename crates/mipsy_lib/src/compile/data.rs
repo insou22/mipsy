@@ -49,7 +49,7 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
             chars
         }
         MpDirective::Byte(bytes) => {
-            let mut output = vec![];
+            let mut output = Vec::with_capacity(bytes.len());
 
             for byte in bytes {
                 let value = eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())?;
@@ -58,8 +58,14 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
 
             output
         }
+        MpDirective::ByteN(byte, n) => {
+            let value  = eval_constant_in_range(&byte, i8::MIN as _,  u8::MAX as _, binary, file_tag.clone())? as u8;
+            let amount = eval_constant_in_range(&n,   u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+            
+            vec![Safe::Valid(value); amount as usize]
+        }
         MpDirective::Half(halfs) => {
-            let mut output = vec![];
+            let mut output = Vec::with_capacity(halfs.len() * 2);
 
             for half in halfs {
                 let value = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())?;
@@ -68,12 +74,36 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
 
             output
         }
+        MpDirective::HalfN(half, n) => {
+            let value  = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())? as u16;
+            let amount = eval_constant_in_range(&n,    u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+            
+            let mut output = Vec::with_capacity(amount as usize * 2);
+
+            for _ in 0..amount {
+                output.append(&mut value.to_bytes().into_iter().map(Safe::Valid).collect());
+            }
+
+            output
+        }
         MpDirective::Word(words) => {
-            let mut output = vec![];
+            let mut output = Vec::with_capacity(words.len() * 4);
 
             for word in words {
                 let value = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())?;
                 output.append(&mut (value as u32).to_bytes().into_iter().map(Safe::Valid).collect());
+            }
+
+            output
+        }
+        MpDirective::WordN(word, n) => {
+            let value  = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+            let amount = eval_constant_in_range(&n,    u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+            
+            let mut output = Vec::with_capacity(amount as usize * 4);
+
+            for _ in 0..amount {
+                output.append(&mut value.to_bytes().into_iter().map(Safe::Valid).collect());
             }
 
             output
@@ -84,8 +114,26 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 .map(Safe::Valid)
                 .collect()
         }
+        MpDirective::FloatN(float, n) => {
+            let amount = eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+
+            (0..amount).into_iter()
+                .map(|_| float)
+                .flat_map(ToBytes::to_bytes)
+                .map(Safe::Valid)
+                .collect()
+        }
         MpDirective::Double(doubles) => {
             doubles.into_iter()
+                .flat_map(ToBytes::to_bytes)
+                .map(Safe::Valid)
+                .collect()
+        }
+        MpDirective::DoubleN(double, n) => {
+            let amount = eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+
+            (0..amount).into_iter()
+                .map(|_| double)
                 .flat_map(ToBytes::to_bytes)
                 .map(Safe::Valid)
                 .collect()

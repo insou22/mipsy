@@ -368,6 +368,7 @@ pub fn parse_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
     ))(i)
 }
 
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -439,3 +440,4 @@ mod test {
         // );
     }
 }
+*/

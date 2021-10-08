@@ -5,7 +5,7 @@ use crate::{Span, constant::{MpConstValueLoc, parse_constant_value}, misc::{
         parse_escaped_char,
         comment_multispace0,
         comment_multispace1,
-    }, number::{parse_f32, parse_f64, parse_u32}, parser::Position};
+    }, number::{parse_f32, parse_f64}, parser::Position};
 use nom_locate::position;
 use serde::{Serialize, Deserialize};
 use nom::{IResult, branch::alt, bytes::complete::{
@@ -28,8 +28,13 @@ pub enum MpDirective {
     Byte(Vec<MpConstValueLoc>),
     Half(Vec<MpConstValueLoc>),
     Word(Vec<MpConstValueLoc>),
+    ByteN(MpConstValueLoc, MpConstValueLoc),
+    HalfN(MpConstValueLoc, MpConstValueLoc),
+    WordN(MpConstValueLoc, MpConstValueLoc),
     Float(Vec<f32>),
+    FloatN(f32, MpConstValueLoc),
     Double(Vec<f64>),
+    DoubleN(f64, MpConstValueLoc),
     Align(MpConstValueLoc),
     Space(MpConstValueLoc),
     Globl(String),
@@ -40,20 +45,20 @@ impl Display for MpDirective {
         use MpDirective::*;
 
         write!(f, "{}", match self {
-            Ascii(_)  => "ascii",
-            Asciiz(_) => "asciiz",
-            Byte(_)   => "byte",
-            Half(_)   => "half",
-            Word(_)   => "word",
-            Float(_)  => "float",
-            Double(_) => "double",
-            Align(_)  => "align",
-            Space(_)  => "space",
-            Globl(_)  => "globl",
-            Text      => "text",
-            Data      => "data",
-            KText     => "ktext",
-            KData     => "kdata",
+            Ascii(_)                => "ascii",
+            Asciiz(_)               => "asciiz",
+            Byte(_)   | ByteN(..)   => "byte",
+            Half(_)   | HalfN(..)   => "half",
+            Word(_)   | WordN(..)   => "word",
+            Float(_)  | FloatN(..)  => "float",
+            Double(_) | DoubleN(..) => "double",
+            Align(_)                => "align",
+            Space(_)                => "space",
+            Globl(_)                => "globl",
+            Text                    => "text",
+            Data                    => "data",
+            KText                   => "ktext",
+            KData                   => "kdata",
         })
     }
 }
@@ -161,7 +166,7 @@ fn parse_asciiz(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     )(i)
 }
 
-fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Vec<T>>
+fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Result<Vec<T>, (T, MpConstValueLoc)>>
 {
     move |i| {
         let (
@@ -172,7 +177,7 @@ fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> I
                 list,
                 _,
             )
-        ): (Span<'a>, (_, _, Vec<T>, _)) 
+        ): (Span<'a>, (_, _, Result<Vec<T>, (T, MpConstValueLoc)>, _)) 
         = tuple((
             tag(tag_str),
             comment_multispace0,
@@ -183,35 +188,32 @@ fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> I
                         space0,
                         char(':'),
                         space0,
-                        parse_u32,
+                        parse_constant_value,
                     )),
                     |(value, _, _, _, n)| {
-                        let mut vec = Vec::with_capacity(n as usize);
-
-                        for _ in 0..n {
-                            vec.push(value.clone());
-                        }
-
-                        vec
+                        Err((value, n))
                     }
                 ),
-                separated_list1(
-                    alt((
-                        map(
-                            tuple((
-                                space0,
-                                char(','),
-                                space0,
-                            )),
-                            |_| ()
-                        ),
-                        map(
-                            space1,
-                            |_| (),
-                        ),
-                    )),
-                    parser,
-                ),
+                map(
+                    separated_list1(
+                        alt((
+                            map(
+                                tuple((
+                                    space0,
+                                    char(','),
+                                    space0,
+                                )),
+                                |_| ()
+                            ),
+                            map(
+                                space1,
+                                |_| (),
+                            ),
+                        )),
+                        parser,
+                    ),
+                    |list| Ok(list)
+                )
             )),
             opt(
                 char(',')
@@ -225,35 +227,50 @@ fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> I
 fn parse_byte(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".byte", parse_constant_value),
-        MpDirective::Byte,
+        |bytes| match bytes {
+            Ok(bytes)      => MpDirective::Byte(bytes),
+            Err((byte, n)) => MpDirective::ByteN(byte, n),
+        },
     )(i)
 }
 
 fn parse_half(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".half", parse_constant_value),
-        MpDirective::Half,
+        |halfs| match halfs {
+            Ok(halfs)      => MpDirective::Half(halfs),
+            Err((half, n)) => MpDirective::HalfN(half, n),
+        },
     )(i)
 }
 
 fn parse_word(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".word", parse_constant_value),
-        MpDirective::Word,
+        |words| match words {
+            Ok(words)      => MpDirective::Word(words),
+            Err((word, n)) => MpDirective::WordN(word, n),
+        },
     )(i)
 }
 
 fn parse_float(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".float", parse_f32),
-        MpDirective::Float,
+        |floats| match floats {
+            Ok(floats)      => MpDirective::Float(floats),
+            Err((float, n)) => MpDirective::FloatN(float, n),
+        },
     )(i)
 }
 
 fn parse_double(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_num_type(".double", parse_f64),
-        MpDirective::Double,
+        |doubles| match doubles {
+            Ok(doubles)      => MpDirective::Double(doubles),
+            Err((double, n)) => MpDirective::DoubleN(double, n),
+        },
     )(i)
 }
 
