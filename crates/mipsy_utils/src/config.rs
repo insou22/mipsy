@@ -1,4 +1,4 @@
-use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf};
+use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf, time::SystemTime};
 use serde::{Serialize, Deserialize};
 
 const MIPSY_DIR: &str = "mipsy";
@@ -11,7 +11,7 @@ pub struct MipsyConfig {
 }
 
 pub enum MipsyConfigError {
-    InvalidConfig,
+    InvalidConfig(PathBuf, MipsyConfig),
 }
 
 pub fn config_path() -> Option<PathBuf> {
@@ -24,7 +24,7 @@ pub fn read_config() -> Result<MipsyConfig, MipsyConfigError> {
     match try_deserialise() {
         Ok(config) => Ok(config),
         Err(NotUsingConfig) => Ok(MipsyConfig::default()),
-        Err(ConfigBroken) => Err(MipsyConfigError::InvalidConfig),
+        Err(ConfigBroken(to_path, config)) => Err(MipsyConfigError::InvalidConfig(to_path, config)),
     }
 }
 
@@ -40,7 +40,29 @@ impl Default for MipsyConfig {
 #[derive(Debug)]
 enum DeserialiseConfigError {
     NotUsingConfig,
-    ConfigBroken,
+    ConfigBroken(PathBuf, MipsyConfig),
+}
+
+fn write_default_config(path: &PathBuf) -> Result<MipsyConfig, DeserialiseConfigError> {
+    use DeserialiseConfigError::*;
+
+    let mut file = File::create(path).map_err(|_| NotUsingConfig)?;
+    let default_config = MipsyConfig::default();
+
+    let mut lines = serde_yaml::to_string(&default_config)
+        .expect("cannot fail to serialise default mipsy config")
+        .lines()
+        .skip(1)
+        .map(String::from)
+        .collect::<Vec<_>>();
+    lines.push(String::new());
+        
+    let yaml = lines.join("\n");
+
+    file.write_all(yaml.as_bytes())
+        .map_err(|_| NotUsingConfig)?;
+
+    Ok(default_config)
 }
 
 fn try_deserialise() -> Result<MipsyConfig, DeserialiseConfigError> {
@@ -53,21 +75,7 @@ fn try_deserialise() -> Result<MipsyConfig, DeserialiseConfigError> {
     let config_path = mipsy_dir.join(CONFIG_NAME);
 
     if !config_path.exists() {
-        let mut file = File::create(&config_path).map_err(|_| NotUsingConfig)?;
-        let default_config = MipsyConfig::default();
-
-        let mut lines = serde_yaml::to_string(&default_config)
-            .expect("cannot fail to serialise default mipsy config")
-            .lines()
-            .skip(1)
-            .map(String::from)
-            .collect::<Vec<_>>();
-        lines.push(String::new());
-            
-        let yaml = lines.join("\n");
-
-        file.write_all(yaml.as_bytes())
-            .map_err(|_| NotUsingConfig)?;
+        write_default_config(&config_path)?;
     }
 
     let mut file = File::open(&config_path).map_err(|_| NotUsingConfig)?;
@@ -75,7 +83,22 @@ fn try_deserialise() -> Result<MipsyConfig, DeserialiseConfigError> {
 
     file.read_to_string(&mut contents).map_err(|_| NotUsingConfig)?;
 
-    let config: MipsyConfig = serde_yaml::from_str(&contents).map_err(|_| ConfigBroken)?;
+    let config: Result<MipsyConfig, _> = serde_yaml::from_str(&contents);
+    
+    match config {
+        Ok(config) => Ok(config),
+        Err(_) => {
+            let epoch = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("can you please set your system clock to *some time* after the 1970's?")
+                .as_secs();
 
-    Ok(config)
+            let to_path = mipsy_dir.join(&format!("{}.{}", CONFIG_NAME, epoch));
+
+            fs::rename(&config_path, &to_path)
+                .expect("cannot rename broken config file");
+            
+            Err(ConfigBroken(to_path, write_default_config(&config_path)?))
+        }
+    }
 }

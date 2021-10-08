@@ -65,14 +65,21 @@ fn main() {
 
     let mut config = match read_config() {
         Ok(config) => config,
-        Err(MipsyConfigError::InvalidConfig) => {
+        Err(MipsyConfigError::InvalidConfig(to_path, config)) => {
             let config_path = match config_path() {
                 Some(path) => path.to_string_lossy().to_string(),
-                None => String::from("~/.config/mipsy/config.yaml"),
+                None => String::from("mipsy config"),
             };
 
-            prompt::error_nl(format!("your {} file failed to parse -- maybe try deleting it?", config_path));
-            return;
+            let warning = format!(
+                "your {} file failed to parse. it has been moved to {}, and you have been generated a new config",
+                config_path,
+                to_path.to_string_lossy()
+            );
+
+            prompt::warning_nl(warning);
+            
+            config
         }
     };
 
