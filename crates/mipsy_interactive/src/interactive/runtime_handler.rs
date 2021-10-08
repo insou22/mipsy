@@ -17,27 +17,62 @@ where
             Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
         };
 
-        loop {
-            let result: Result<T, _> = if line {
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input).unwrap();
-                
-                input.parse()
-                    .map_err(|_| ())
-            } else {
-                try_read!()
-                    .map_err(|_| ())
-            };
-    
-            match result {
-                Ok(n) => return n,
-                Err(_) => {
-                    (prompt)();
-                    std::io::stdout().flush().unwrap();
-                    continue;
-                },
-            };
-        }
+    loop {
+        let result: Result<T, _> = if line {
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).unwrap();
+            
+            input.parse()
+                .map_err(|_| ())
+        } else {
+            try_read!()
+                .map_err(|_| ())
+        };
+
+        match result {
+            Ok(n) => return n,
+            Err(_) => {
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
+}
+
+fn get_input_eof<T>(name: &str, verbose: bool) -> Option<T>
+where
+    T: FromStr + Display,
+    <T as FromStr>::Err: Debug,
+{
+    let prompt: Box<dyn Fn()> = 
+        if verbose {
+            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+        } else {
+            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+        };
+
+    loop {
+        let result: Result<T, _> = try_read!();
+
+        match result {
+            Ok(n) => return Some(n),
+            Err(text_io::Error::Parse(leftover, _)) => {
+                if leftover == "" {
+                    return None;
+                }
+
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+            Err(_) => {
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
 }
 
 pub(crate) fn sys1_print_int(verbose: bool, val: i32) {
@@ -94,7 +129,8 @@ pub(crate) fn sys5_read_int(verbose: bool, ) -> i32 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input("int", verbose, false)
+    get_input_eof("int", verbose)
+        .unwrap_or(0)
 }
 
 pub(crate) fn sys6_read_float(verbose: bool, ) -> f32 {
@@ -103,7 +139,8 @@ pub(crate) fn sys6_read_float(verbose: bool, ) -> f32 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input("float", verbose, false)
+    get_input_eof("float", verbose)
+        .unwrap_or(0.0)
 }
 
 pub(crate) fn sys7_read_double(verbose: bool, ) -> f64 {
@@ -112,7 +149,8 @@ pub(crate) fn sys7_read_double(verbose: bool, ) -> f64 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input("double", verbose, false)
+    get_input_eof("double", verbose)
+        .unwrap_or(0.0)
 }
 
 pub(crate) fn sys8_read_string(verbose: bool, max_len: u32) -> Vec<u8> {
@@ -175,7 +213,8 @@ pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input("character", verbose, false)
+    get_input_eof("character", verbose)
+        .unwrap_or(0)
 }
 
 pub(crate) fn sys13_open(_verbose: bool, _args: OpenArgs) -> i32 {

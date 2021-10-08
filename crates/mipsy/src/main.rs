@@ -60,6 +60,34 @@ where
     }
 }
 
+fn get_input_eof<T>(name: &str) -> Option<T>
+where
+    T: FromStr + Display,
+    <T as FromStr>::Err: Debug,
+{
+    loop {
+        let result: Result<T, _> = try_read!();
+
+        match result {
+            Ok(n) => return Some(n),
+            Err(text_io::Error::Parse(leftover, _)) => {
+                if leftover == "" {
+                    return None;
+                }
+
+                print!("[mipsy] bad input (expected {}), try again: ", name);
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+            Err(_) => {
+                print!("[mipsy] bad input (expected {}), try again: ", name);
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
+}
+
 fn main() {
     let opts: Opts = Opts::parse();
 
@@ -221,15 +249,15 @@ fn main() {
                                 runtime = new_runtime;
                             }
                             ReadInt(guard) => {
-                                let number = get_input("int", false);
+                                let number = get_input_eof("int").unwrap_or(0);
                                 runtime = guard(number);
                             }
                             ReadFloat(guard) => {
-                                let number = get_input("float", false);
+                                let number = get_input_eof("float").unwrap_or(0.0);
                                 runtime = guard(number);
                             }
                             ReadDouble(guard) => {
-                                let number = get_input("double", false);
+                                let number = get_input_eof("double").unwrap_or(0.0);
                                 runtime = guard(number);
                             }
                             ReadString(args, guard) => {
@@ -249,7 +277,7 @@ fn main() {
                                 runtime = new_runtime;
                             }
                             ReadChar(guard) => {
-                                let number = get_input("character", false);
+                                let number = get_input_eof("character").unwrap_or(0);
                                 runtime = guard(number);
                             }
                             Open(_, _) => todo!(),
