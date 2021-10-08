@@ -56,7 +56,7 @@ impl CompilerError {
         println!("{}", self.error.message());
 
         for tip in self.error.tips() {
-            println!("{} {}", tip_header(), tip);
+            print!("{} {}", tip_header(), tip);
         }
     }
 

@@ -275,7 +275,7 @@ impl State {
                         .filter(|(tag, _)| tag.as_str() == file_tag.deref())
                         .next()
                         .map(|(_, str)| Rc::from(&**str))
-                        .expect("for file to throw a compiler error, it should probably exist");
+                        .unwrap_or_else(|| Rc::from(""));
     
                     error.show_error(config, file);
                 }
