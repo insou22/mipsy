@@ -116,7 +116,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, config: &MipsyConfig, 
                         &mut binary.text
                     }
                     Segment::KText => {
-                        let alignment = (4 - binary.text.len() % 4) % 4;
+                        let alignment = (4 - binary.ktext.len() % 4) % 4;
                         binary.ktext.append(&mut vec![Safe::Uninitialised; alignment]);
                         
                         &mut binary.ktext

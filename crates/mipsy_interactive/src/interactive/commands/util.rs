@@ -29,6 +29,19 @@ where
 }
 
 pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Uninit>, files: Option<&[(String, String)]>, highlight: bool) {
+    let labels = match parts {
+        Ok(ok)      => &ok.labels,
+        Err(uninit) => &uninit.labels,
+    };
+
+    if !labels.is_empty() {
+        println!();
+    }
+
+    for label in labels.iter() {
+        prompt::banner_nl(label.yellow().bold());
+    }
+
     if let Err(parts) = parts {
         let last_line = get_last_line(binary, parts.addr);
 
@@ -62,14 +75,6 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
     }
 
     let name = parts.inst_name.as_ref().unwrap();
-
-    if !parts.labels.is_empty() {
-        println!();
-    }
-
-    for label in parts.labels.iter() {
-        prompt::banner_nl(label.yellow().bold());
-    }
 
     let last_line = get_last_line(binary, parts.addr);
 

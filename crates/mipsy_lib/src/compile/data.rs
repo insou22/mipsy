@@ -149,14 +149,8 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 Segment::KText => binary.ktext.len(),
             };
 
-            let num = num as usize;
-
-            let amount = (num - curr_size) % multiple;
-            if amount < num {
-                vec![Safe::Uninitialised; amount]
-            } else {
-                vec![]
-            }
+            let amount = (multiple - (curr_size % multiple)) % multiple;
+            vec![Safe::Uninitialised; amount]
         }
         MpDirective::Space(num) => {
             let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
@@ -212,6 +206,16 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
 
                 let bytes = eval_directive(&directive.0, binary, config, file_tag, &mut segment, true)?;
                 insert_safe_data(&segment, binary, &bytes);
+
+                match segment {
+                    Segment::Text => {
+                        text_len += bytes.len();
+                    }
+                    Segment::KText => {
+                        ktext_len += bytes.len();
+                    }
+                    _ => {}
+                }
             }
             MpItem::Instruction(instruction) => {
                 for arg in instruction.arguments_mut() {
@@ -240,16 +244,12 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
                 let inst_length = instruction_length(iset, instruction)
                     .into_compiler_mipsy_result(file_tag.clone(), line, instruction.col(), instruction.col_end())? * 4;
 
-                match segment {
+                let (bot, length) = match segment {
                     Segment::Text => {
-                        let alignment = (4 - text_len % 4) % 4;
-
-                        text_len += alignment + inst_length;
+                        (TEXT_BOT, &mut text_len)
                     }
                     Segment::KText => {
-                        let alignment = (4 - ktext_len % 4) % 4;
-
-                        ktext_len += alignment + inst_length;
+                        (KTEXT_BOT, &mut ktext_len)
                     }
                     _ => {
                         return Err(
@@ -264,7 +264,25 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
                             )
                         );
                     }
+                };
+
+                let alignment = (4 - *length % 4) % 4;
+
+                if alignment != 0 {
+                    let mut labels = vec![];
+
+                    for (label, &addr) in binary.labels.iter() {
+                        if addr as usize == (bot as usize + *length) {
+                            labels.push(label.to_string());
+                        }
+                    }
+
+                    for label in labels {
+                        binary.labels.insert(label, bot + (*length + alignment) as u32);
+                    }
                 }
+
+                *length += alignment + inst_length;
             }
             MpItem::Label(mplabel) => {
                 let label = mplabel.label();
