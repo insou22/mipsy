@@ -6,10 +6,9 @@ pub struct Props {
     #[prop_or_default]
     pub toggle_modal_onclick: Callback<MouseEvent>,
     pub should_display: bool,
-
 }
 
-pub struct Modal{
+pub struct Modal {
     pub props: Props,
 }
 
@@ -32,7 +31,7 @@ impl Component for Modal {
 
     fn view(&self) -> Html {
         let classes = if self.props.should_display {
-            "modal bg-th-primary border-black border-2 absolute top-1/4 h-1/3 w-3/4"
+            "modal bg-th-primary border-black border-2 absolute top-1/4 h-2/3 w-3/4"
         } else {
             "modal hidden"
         };
@@ -46,6 +45,7 @@ impl Component for Modal {
                         </div>
                     </div>
                     <section class="modal-content p-2 flex items-center flex-col">
+                        <div>
                         <h1 class="my-2">
                         <strong>{"Welcome to Mipsy Web"}</strong>
                         </h1>
@@ -68,6 +68,22 @@ impl Component for Modal {
                                 {"Github Issues page"}
                             </a>
                         </p>
+                        <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
+                        <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
+                        <ul class="list-disc">
+                            <li>{"Compilation Errors"}</li>
+                            <li>{"Runtime Errors"}</li>
+                            <li>{"Separate text and data segments"}</li>
+                            <li>{"Custom Settings + Theming"}</li>
+                            <li>{"Highlighted Register Changes between steps"}</li>
+                        </ul>
+
+                        <h2 class="mt-2"> <strong> {"Unsupported Features"} </strong> </h2>
+                        <p> {"The following features will not be supported in mipsy_web"}</p>
+                        <ul>
+                            <li>{"FileRead, Write and Open Syscalls"}</li>
+                        </ul>
+                        </div>
                     </section>
                     <footer class="modal-footer"></footer>
                 </div>
