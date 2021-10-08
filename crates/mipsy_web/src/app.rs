@@ -46,6 +46,7 @@ pub enum ReadSyscalls {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MipsState {
     pub stdout: Vec<String>,
+    pub mipsy_stdout: Vec<String>,
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
     pub current_instr: Option<u32>,
@@ -74,6 +75,8 @@ pub enum Msg {
     Reset,
     Kill,
     OpenModal,
+    ShowIoTab,
+    ShowMipsyTab,
     StepForward,
     StepBackward,
     SubmitInput,
@@ -98,6 +101,7 @@ pub struct App {
     state: State,
     worker: Box<dyn Bridge<Worker>>,
     display_modal: bool,
+    show_io: bool,
     input_ref: NodeRef,
 }
 
@@ -116,6 +120,7 @@ impl Component for App {
             tasks: vec![],
             worker,
             display_modal: false,
+            show_io: true,
             input_ref: NodeRef::default(),
         }
     }
@@ -176,6 +181,26 @@ impl Component for App {
             Msg::OpenModal => {
                 self.display_modal = !self.display_modal;
                 true
+            }
+
+            Msg::ShowIoTab => {
+                match &self.state {
+                    State::NoFile => false,
+                    State::Running(_) => {
+                        self.show_io = true;
+                        true
+                    },
+                }
+            }
+
+            Msg::ShowMipsyTab => {
+                match &self.state {
+                    State::NoFile => false,
+                    State::Running(_) => {
+                        self.show_io = false;
+                        true
+                    },
+                }
             }
 
             Msg::StepForward => {
@@ -346,6 +371,7 @@ impl Component for App {
                                     exit_status: None,
                                     register_values: vec![Safe::Uninitialised; 32],
                                     current_instr: None,
+                                    mipsy_stdout: Vec::new(),
                                 },
                                 input_needed: None,
                                 should_kill: false,
@@ -480,12 +506,25 @@ impl Component for App {
         let input_classes = match &self.state {
             State::Running(curr) => {
                 if curr.input_needed.is_none() {
-                    "block w-full cursor-not-allowed"
+                    if self.show_io {
+                        "block w-full cursor-not-allowed"
+                    } else {
+                        "display-none"
+                    }
                 } else {
                     "block w-full bg-th-highlighting"
                 }
             }
             State::NoFile => "block w-full",
+        };
+
+        let tab_button_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+
+        let show_io_tab = self.link.callback(|_| Msg::ShowIoTab);
+        let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);
+        let file_loaded = match &self.state {
+            State::NoFile => false,
+            _ => true,
         };
 
         html! {
@@ -499,6 +538,7 @@ impl Component for App {
                         exit_status=exit_status load_onchange=onchange
                         reset_onclick=reset_onclick run_onclick=run_onclick
                         kill_onclick=kill_onclick open_modal_onclick=toggle_modal_onclick
+                        file_loaded=file_loaded
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
@@ -513,15 +553,22 @@ impl Component for App {
                                 { self.render_running_registers() }
                             </div>
 
-
-                            <div id="output">
-                                <div style="height: 90%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                            <div id="output" class="min-w-full">
+                                
+                                <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
+                                    <button class={format!("{} border-l-2 ", tab_button_classes)} onclick={show_io_tab}>{"I/O"}</button>
+                                    <button class={tab_button_classes} onclick={show_mipsy_tab}>{"mips output"}</button>
+                                </div>
+                                <div 
+                                    style={if self.show_io {"height: 80%;"} else {"height: 90%;"}} 
+                                    class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600"
+                                >
                                     <h1> <strong> {"Output"} </strong> </h1>
-                                    <pre class="h-full whitespace-pre-wrap">
+                                    <pre class="whitespace-pre-wrap">
                                         {output_html_content}
                                     </pre>
                                 </div>
-                                <div style="height: 10%;" class="border-2 border-black">
+                                <div style="height: 10%;" class={if self.show_io {"border-x-2 border-b-2 border-black"} else {"display-hidden"}}>
                                     <input
                                         ref={self.input_ref.clone()}
                                         id="user_input"
@@ -631,8 +678,16 @@ impl App {
     }
 
     fn render_running_output(&self, state: &RunningState) -> Html {
+        info!("{}", self.show_io);
         html! {
-            {state.mips_state.stdout.join("")}
+            
+            {
+                if self.show_io {
+                    state.mips_state.stdout.join("") 
+                } else {
+                    state.mips_state.mipsy_stdout.join("")
+                }
+            }
         }
     }
 

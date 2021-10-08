@@ -18,6 +18,7 @@ pub struct Props {
     pub step_back_onclick: Callback<MouseEvent>,
     pub kill_onclick: Callback<MouseEvent>,
     pub open_modal_onclick: Callback<MouseEvent>,
+    pub file_loaded: bool,
 }
 
 struct Icon {
@@ -125,7 +126,8 @@ impl Component for NavBar {
                                 None => false,
                             }
                             None => false,
-                        };
+                        } || !self.props.file_loaded;
+                        
 
                         let mut button_classes = String::from("mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white");
                         
@@ -141,14 +143,21 @@ impl Component for NavBar {
                         }
                       }
                       else {
-                          let onclick = if item.callback.is_some() {
+                        let onclick = if item.callback.is_some() {
                               item.callback.clone().unwrap()
-                          } else {
+                        } else {
                               noop.clone()
-                          };
+                        };
+                        
+                        let mut button_classes = String::from("mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white");
+                        
+                        if !self.props.file_loaded {
+                            button_classes.push_str(" opacity-50 cursor-not-allowed"); 
+                        }
 
-                          html! {
-                              <button onclick={onclick} class="mr-2 flex place-items-center flex-row inline-block cursor-pointer text-sm px-2 py-2 border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+                        html! {
+
+                            <button disabled={!self.props.file_loaded} onclick={onclick} class={button_classes}>
                                 { item.html.clone() }
                                 { item.label.clone() }
                               </button>
