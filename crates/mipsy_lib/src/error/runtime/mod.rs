@@ -58,7 +58,6 @@ pub enum Error {
 
     IntegerOverflow,
     DivisionByZero,
-    SbrkNegative,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -323,10 +322,6 @@ impl Error {
 
                 error
             }
-
-            Error::SbrkNegative => {
-                todo!()
-            }
         }
     }
 
@@ -404,9 +399,6 @@ impl Error {
                 vec![tip]
             }
             Error::DivisionByZero => {
-                vec![]
-            }
-            Error::SbrkNegative => {
                 vec![]
             }
         }
