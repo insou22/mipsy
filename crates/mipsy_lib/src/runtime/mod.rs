@@ -187,12 +187,18 @@ impl Runtime {
                             max_len: len,
                         },
                         Box::new(move |mut string| {
-                            if string.len() >= len as usize {
-                                string.resize(len.max(0) as _, 0);
-                            }
-                            
-                            for (i, byte) in string.into_iter().enumerate() {
-                                self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
+                            if len > 0 {
+                                let max_bytes = (len - 1) as usize;
+
+                                if string.len() >= max_bytes {
+                                    string.resize(max_bytes, 0);
+                                }
+
+                                string.push(0);
+                                
+                                for (i, byte) in string.into_iter().enumerate() {
+                                    self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
+                                }
                             }
 
                             self
