@@ -183,23 +183,17 @@ impl Component for App {
             }
 
             Msg::ShowIoTab => {
-                match &self.state {
-                    State::NoFile => false,
-                    State::Running(_) => {
-                        self.show_io = true;
-                        true
-                    },
-                }
+								// only re-render upon change	
+								let prev_show = self.show_io;
+								self.show_io = true;
+								prev_show != true
             }
 
             Msg::ShowMipsyTab => {
-                match &self.state {
-                    State::NoFile => false,
-                    State::Running(_) => {
-                        self.show_io = false;
-                        true
-                    },
-                }
+								// only re-render upon change	
+								let prev_show = self.show_io;
+								self.show_io = false;
+								prev_show != false
             }
 
             Msg::StepForward => {
@@ -484,11 +478,6 @@ impl Component for App {
             &State::Running(ref state) => self.render_running(state),
         };
 
-        let output_html_content = match &self.state {
-                    &State::NoFile => "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney.".into(),
-                    &State::Running(ref state) => self.render_running_output(state),
-        };
-
         let exit_status = match &self.state {
             State::Running(curr) => Some(curr.mips_state.exit_status),
             _ => None,
@@ -532,10 +521,22 @@ impl Component for App {
             State::NoFile => false,
         };
         
-        let mipsy_tab_button_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
-        let io_tab_classes = format!("{} border-l-2 ", mipsy_tab_button_classes );
+        let (mipsy_tab_button_classes, io_tab_classes) = {
+					let mut default = (
+							String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2"),
+							String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 py-2")
+					);
+					
+					if self.show_io {
+						default.1	= format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
+ 					
+					} else {
+						default.0	= format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
+					};
+	
+					default	
 
-
+				};
 
         html! {
             <>
@@ -573,12 +574,12 @@ impl Component for App {
                                     style={if self.show_io {"height: 80%;"} else {"height: 90%;"}} 
                                     class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600"
                                 >
-                                    <h1> <strong> {"Output"} </strong> </h1>
+                                    <h1> <strong> {if self.show_io {"Output"} else {"Mipsy Output"}}</strong> </h1>
                                     <pre class="whitespace-pre-wrap">
-                                        {output_html_content}
+                                        {self.render_running_output()}
                                     </pre>
                                 </div>
-                                <div style="height: 10%;" class={if self.show_io {"border-x-2 border-b-2 border-black"} else {"hidden"}}>
+                                <div style="height: 10%;" class={if self.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
                                     <input
                                         ref={self.input_ref.clone()}
                                         id="user_input"
@@ -684,13 +685,22 @@ impl App {
         }
     }
 
-    fn render_running_output(&self, state: &RunningState) -> Html {
+    fn render_running_output(&self) -> Html {
         html! {
             {
                 if self.show_io {
-                    state.mips_state.stdout.join("") 
+										match &self.state {
+											State::Running(curr) => {curr.mips_state.stdout.join("")},
+											State::NoFile => {
+												"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
+													.into()
+											},	
+										}
                 } else {
-                    state.mips_state.mipsy_stdout.join("")
+										match &self.state {
+											State::Running(curr) => {curr.mips_state.mipsy_stdout.join("")},
+											State::NoFile => {"".into()},	
+										}
                 }
             }
         }
