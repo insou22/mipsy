@@ -106,6 +106,7 @@ pub struct App {
     display_modal: bool,
     show_io: bool,
     input_ref: NodeRef,
+    filename: Option<String>,
 }
 
 const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -125,6 +126,7 @@ impl Component for App {
             display_modal: false,
             show_io: true,
             input_ref: NodeRef::default(),
+            filename: None,
         }
     }
 
@@ -151,7 +153,8 @@ impl Component for App {
             Msg::FileRead(file_data) => {
                 info!("{:?}", file_data);
                 // TODO -- this should not be lossy
-
+                
+                self.filename = Some(file_data.name);
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
 
                 let input = WorkerRequest::CompileCode(file);
@@ -653,6 +656,14 @@ impl App {
         let decompiled = &state.decompiled;
         let runtime_instr = state.mips_state.current_instr.unwrap_or(0);
         html! {
+            <>
+            <h3>
+            <strong class="text-lg">
+            { 
+                self.filename.as_ref().unwrap_or(&"".to_string())
+            }
+            </strong>
+            </h3>
             <table>
                 <tbody>
                 {
@@ -689,6 +700,7 @@ impl App {
                 }
                 </tbody>
             </table>
+            </>
         }
     }
 
