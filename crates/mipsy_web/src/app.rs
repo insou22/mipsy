@@ -3,7 +3,7 @@ use crate::{
     components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use mipsy_lib::{Register, Runtime, Safe};
+use mipsy_lib::{MipsyError, Register, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
 use wasm_bindgen::UnwrapThrowExt;
@@ -382,8 +382,25 @@ impl Component for App {
                     }
                 }
 
-                WorkerResponse::CompilerError(_err) => {
-                    todo!();
+                WorkerResponse::CompilerError(err) => {
+                    match err {
+                        MipsyError::Parser(_error) => {
+                            //zkol TODO
+                            true
+                        },
+
+                        MipsyError::Compiler(_error) => {
+                            //zkol TODO
+                            //shreys - it looks like error.show_error is almost what we want
+                            //         but we have to roll our own.. >:(
+                            true
+                        },
+
+                        MipsyError::Runtime(_error) => {
+                            error!("Cannot get runtime error at compile time");
+                            unreachable!();
+                        }
+                    }
                 }
 
                 WorkerResponse::ProgramExited(mips_state) => {
@@ -548,6 +565,14 @@ impl Component for App {
 
 				};
 
+        let mipsy_output_tab_title = match &self.state {
+            State::NoFile => {
+                "Mipsy Output - (0)".to_string()
+            }
+            State::Running(curr) => {
+                format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
+            }
+        };
         html! {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
@@ -578,14 +603,18 @@ impl Component for App {
                                 
                                 <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
                                     <button class={io_tab_classes} onclick={show_io_tab}>{"I/O"}</button>
-                                    <button class={mipsy_tab_button_classes} onclick={show_mipsy_tab}>{"mipsy output"}</button>
+                                    <button class={mipsy_tab_button_classes} onclick={show_mipsy_tab}>{mipsy_output_tab_title}</button>
                                 </div>
                                 <div 
                                     style={if self.show_io {"height: 80%;"} else {"height: 90%;"}} 
                                     class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600"
                                 >
-                                    <h1> <strong> {if self.show_io {"Output"} else {"Mipsy Output"}}</strong> </h1>
-                                    <pre class="whitespace-pre-wrap">
+                                    <h1> 
+                                        <strong> 
+                                        {if self.show_io {"Output"} else {"Mipsy Output"}}
+                                        </strong>
+                                    </h1>
+                                    <pre class="text-sm whitespace-pre-wrap">
                                         {self.render_running_output()}
                                     </pre>
                                 </div>
@@ -717,7 +746,7 @@ impl App {
 										}
                 } else {
 										match &self.state {
-											State::Running(curr) => {curr.mips_state.mipsy_stdout.join("")},
+											State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
 											State::NoFile => {"".into()},	
 										}
                 }

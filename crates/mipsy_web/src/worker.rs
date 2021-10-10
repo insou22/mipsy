@@ -155,6 +155,7 @@ impl Agent for Worker {
                         RuntimeState::Running(runtime) => {
                             runtime.timeline_mut().reset();
                             mips_state.stdout.drain(..);
+                            mips_state.mipsy_stdout.drain(..);
                             mips_state.exit_status = None;
                             mips_state.current_instr = None;
                             mips_state.register_values = vec![Safe::Uninitialised; 32];
