@@ -53,6 +53,7 @@ pub struct MipsState {
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
     pub current_instr: Option<u32>,
+    pub is_stepping: bool, 
 }
 
 impl MipsState {
@@ -167,6 +168,7 @@ impl Component for App {
             Msg::Run => {
 								trace!("Run button clicked");
                 if let State::Running(curr) = &mut self.state {
+                    curr.mips_state.is_stepping = false;
                     let input =
                         WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                     self.worker.send(input);
@@ -209,6 +211,7 @@ impl Component for App {
             Msg::StepForward => {
 								trace!("Step forward button clicked");
                 if let State::Running(curr) = &mut self.state {
+                    curr.mips_state.is_stepping = true;
                     let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
                     self.worker.send(input);
                 } else {
@@ -221,6 +224,7 @@ impl Component for App {
             Msg::StepBackward => {
 								trace!("Step backward button clicked");
                 if let State::Running(curr) = &mut self.state {
+                    curr.mips_state.is_stepping = true;
                     let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                     self.worker.send(input);
                 } else {
@@ -333,6 +337,7 @@ impl Component for App {
                                     register_values: vec![Safe::Uninitialised; 32],
                                     current_instr: None,
                                     mipsy_stdout: Vec::new(),
+                                    is_stepping: true,
                                 },
                                 input_needed: None,
                                 should_kill: false,
@@ -428,7 +433,6 @@ impl Component for App {
         false
     }
     
-    // TODO - refactor this to seperate components 
     fn view(&self) -> Html {
         let onchange = self.link.batch_callback(|event| match event {
             ChangeData::Files(file_list) => {
@@ -478,22 +482,6 @@ impl Component for App {
         } else {
             "hidden"
         };
-
-        let input_classes = match &self.state {
-            State::Running(curr) => {
-                if curr.input_needed.is_none() {
-                    if self.show_io {
-                        "block w-full cursor-not-allowed"
-                    } else {
-                        "hidden"
-                    }
-                } else {
-                    "block w-full bg-th-highlighting"
-                }
-            }
-            State::NoFile => "block w-full",
-        };
-
 
         let show_io_tab = self.link.callback(|_| Msg::ShowIoTab);
         let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);

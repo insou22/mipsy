@@ -562,7 +562,14 @@ impl Worker {
 
         // if running we want InstructionOk
         // if stepping we want UpdateMipsState
-        self.link
-            .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
+        
+        if mips_state.is_stepping {
+            self.link
+                .respond(id, <Worker as Agent>::Output::UpdateMipsState(mips_state))
+        } else {
+            self.link
+                .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
+
+        }
     }
 }
