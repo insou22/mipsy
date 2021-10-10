@@ -16,7 +16,7 @@ use yew::{
     web_sys::{File, HtmlInputElement},
 };
 
-use log::{error, info, debug};
+use log::{error, info, trace};
 
 /*
 // useful for debugigng, set the instruction set to be constructed by crimes
@@ -165,7 +165,7 @@ impl Component for App {
             }
 
             Msg::Run => {
-								debug!("Run button clicked");
+								trace!("Run button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input =
                         WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
@@ -178,7 +178,7 @@ impl Component for App {
             }
 
             Msg::Kill => {
-								debug!("Kill button clicked");
+								trace!("Kill button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.should_kill = true;
                 };
@@ -191,18 +191,15 @@ impl Component for App {
             }
 
             Msg::ShowIoTab => {
-								debug!("Show IO Button clicked");
+								trace!("Show IO Button clicked");
 								// only re-render upon change	
 								let prev_show = self.show_io;
-                if prev_show != true {
-                    self.focus_input();
-                }
 								self.show_io = true;
 								prev_show != true
             }
 
             Msg::ShowMipsyTab => {
-								debug!("Show mipsy button clicked");
+								trace!("Show mipsy button clicked");
 								// only re-render upon change	
 								let prev_show = self.show_io;
 								self.show_io = false;
@@ -210,7 +207,7 @@ impl Component for App {
             }
 
             Msg::StepForward => {
-								debug!("Step forward button clicked");
+								trace!("Step forward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
                     self.worker.send(input);
@@ -222,7 +219,7 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
-								debug!("Step backward button clicked");
+								trace!("Step backward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                     self.worker.send(input);
@@ -234,7 +231,7 @@ impl Component for App {
             }
 
             Msg::Reset => {
-                debug!("Reset button clicked");
+                trace!("Reset button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
@@ -430,7 +427,8 @@ impl Component for App {
         // This component has no properties so we will always return "false".
         false
     }
-
+    
+    // TODO - refactor this to seperate components 
     fn view(&self) -> Html {
         let onchange = self.link.batch_callback(|event| match event {
             ChangeData::Files(file_list) => {
@@ -473,7 +471,7 @@ impl Component for App {
             _ => None,
         };
 
-        debug!("rendering");
+        trace!("rendering");
 
         let modal_overlay_classes = if self.display_modal {
             "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen"

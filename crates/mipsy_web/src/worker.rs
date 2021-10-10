@@ -211,7 +211,7 @@ impl Agent for Worker {
 
                                     Self::upload_syscall_value(self, mips_state, guard, float, id, format!("{}\n", float));
                                 } else {
-                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                    error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
                             RuntimeState::WaitingChar(guard) => {
@@ -219,7 +219,7 @@ impl Agent for Worker {
                                 if let ReadSyscallInputs::Char(char) = val {
                                     Self::upload_syscall_value(self, mips_state, guard, char, id, format!("{}\n", char as char));
                                 } else {
-                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                    error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
                             RuntimeState::WaitingString(guard) => {
@@ -228,7 +228,7 @@ impl Agent for Worker {
                                     let display = String::from_utf8_lossy(&string).into_owned();
                                     Self::upload_syscall_value(self, mips_state, guard, string, id, format!("{}\n", display));
                                 } else {
-                                    panic!("Error: please report this to developers, with steps to reproduce")
+                                    error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
 
