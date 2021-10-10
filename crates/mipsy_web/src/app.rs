@@ -1,6 +1,6 @@
 use crate::worker::ReadSyscallInputs;
 use crate::{
-    components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground},
+    components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground, outputarea::OutputArea},
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
 use mipsy_lib::{MipsyError, Register, Runtime, Safe};
@@ -344,7 +344,7 @@ impl Component for App {
 
                 WorkerResponse::CompilerError(err) => {
                     match err {
-                        MipsyError::Parser(_error) => {
+                        MipsyError::Parser(error) => {
                             //zkol TODO
                             true
                         },
@@ -508,24 +508,7 @@ impl Component for App {
 						},
             State::NoFile => false,
         };
-        
-        let (mipsy_tab_button_classes, io_tab_classes) = {
-					let mut default = (
-							String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2"),
-							String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 py-2")
-					);
-					
-					if self.show_io {
-						default.1	= format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
- 					
-					} else {
-						default.0	= format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
-					};
-	
-					default	
-
-				};
-
+ 
         let mipsy_output_tab_title = match &self.state {
             State::NoFile => {
                 "Mipsy Output - (0)".to_string()
@@ -534,6 +517,7 @@ impl Component for App {
                 format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
             }
         };
+       
         html! {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
@@ -559,63 +543,53 @@ impl Component for App {
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
-
-                            <div id="output" class="min-w-full">
-                                
-                                <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
-                                    <button class={io_tab_classes} onclick={show_io_tab}>{"I/O"}</button>
-                                    <button class={mipsy_tab_button_classes} onclick={show_mipsy_tab}>{mipsy_output_tab_title}</button>
-                                </div>
-                                <div 
-                                    style={if self.show_io {"height: 80%;"} else {"height: 90%;"}} 
-                                    class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600"
-                                >
-                                    <h1> 
-                                        <strong> 
-                                        {if self.show_io {"Output"} else {"Mipsy Output"}}
-                                        </strong>
-                                    </h1>
-                                    <pre class="text-sm whitespace-pre-wrap">
-                                        {self.render_running_output()}
-                                    </pre>
-                                </div>
-                                <div style="height: 10%;" class={if self.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
-                                    <input
-                                        ref={self.input_ref.clone()}
-                                        id="user_input"
-                                        type="text"
-                                        maxlength={
-                                            match &self.state {
-                                                State::Running(curr) => match &curr.input_needed {
-                                                    Some(item) => match item {
-                                                        ReadSyscalls::ReadChar   => "1",
-                                                        // should we have a limit for size?
-                                                        ReadSyscalls::ReadInt    => "",
-                                                        ReadSyscalls::ReadDouble => "",
-                                                        ReadSyscalls::ReadFloat  => "",
-                                                        ReadSyscalls::ReadString => "",
-                                                    },
-                                                    None => {""}
-                                                },
-                                                State::NoFile => {
-                                                    ""
-                                                },
-                                            }
+                            
+                            <OutputArea 
+                                show_io={self.show_io}
+                                show_io_tab={show_io_tab}
+                                show_mipsy_tab={show_mipsy_tab}
+                                is_disabled={
+                                    match &self.state {
+                                        State::Running(curr) => {
+                                            if curr.input_needed.is_none() { true } else { false }
+                                        },
+                                        State::NoFile => { true },
+                                    }
+                                }
+                                input_needed = {
+                                    match &self.state {
+                                        State::Running(curr) => {
+                                            curr.input_needed.is_some()
                                         }
-                                        disabled={
-                                               match &self.state {
-                                                    State::Running(curr) => {
-                                                        if curr.input_needed.is_none() { true } else { false }
-                                                    },
-                                                    State::NoFile => { true },
-                                                }
-
+                                        State::NoFile => {
+                                            false
                                         }
-                                        onkeydown={on_input_keydown}
-                                        style="padding-left: 3px; height: 100%;"
-                                        class={input_classes} placeholder="> ..."/>
-                                </div>
-                            </div>
+                                    }
+                                }
+                                input_ref={&self.input_ref}
+                                on_input_keydown={on_input_keydown.clone()}
+                                running_output={self.render_running_output()}
+                                mipsy_output_tab_title={mipsy_output_tab_title}
+                                input_maxlength={
+                                    match &self.state {
+                                        State::Running(curr) => match &curr.input_needed {
+                                            Some(item) => match item {
+                                                ReadSyscalls::ReadChar   => "1".to_string(),
+                                                // should we have a limit for size?
+                                                ReadSyscalls::ReadInt    => "".to_string(),
+                                                ReadSyscalls::ReadDouble => "".to_string(),
+                                                ReadSyscalls::ReadFloat  => "".to_string(),
+                                                ReadSyscalls::ReadString => "".to_string(),
+                                            },
+                                            None => {"".to_string()}
+                                        },
+                                        State::NoFile => {
+                                            "".to_string()
+                                        },
+                                    }
+                                }
+                            />
+                            
                         </div>
 
                     </div>
