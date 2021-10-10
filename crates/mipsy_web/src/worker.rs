@@ -241,7 +241,7 @@ impl Agent for Worker {
                         }
                     }
                     None => {
-                        error!("Error: please report this to developers, with steps to reproduce")
+                        error!("Error: please report this to developers, with steps to reproduce. Runtime is None when Giving Syscall Val")
                     }
                 }
             }
@@ -335,12 +335,13 @@ impl Agent for Worker {
                                         }
 
                                         PrintString(print_string_args, next_runtime) => {
-                                            info!("printing string {:?}", print_string_args.value);
+                                            
+																						let string_value = String::from_utf8_lossy(&print_string_args.value)
+                                                    										.to_string();
 
-                                            mips_state.stdout.push(
-                                                String::from_utf8_lossy(&print_string_args.value)
-                                                    .to_string(),
-                                            );
+																						info!("printing string {:?}", string_value);
+
+                                            mips_state.stdout.push(string_value);
 
                                             runtime = next_runtime;
                                         }

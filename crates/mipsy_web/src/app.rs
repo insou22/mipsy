@@ -171,7 +171,6 @@ impl Component for App {
             }
 
             Msg::Kill => {
-                error!("KILL BUTTONM PRESSED");
                 if let State::Running(curr) = &mut self.state {
                     curr.should_kill = true;
                 };
@@ -525,7 +524,13 @@ impl Component for App {
             State::NoFile => false,
             _ => true,
         };
-
+			
+				let waiting_syscall = match &self.state {
+            State::Running(curr) => {
+							curr.input_needed.is_some()
+						},
+            State::NoFile => false,
+        };
         
         let mipsy_tab_button_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
         let io_tab_classes = format!("{} border-l-2 ", mipsy_tab_button_classes );
@@ -543,7 +548,7 @@ impl Component for App {
                         exit_status=exit_status load_onchange=onchange
                         reset_onclick=reset_onclick run_onclick=run_onclick
                         kill_onclick=kill_onclick open_modal_onclick=toggle_modal_onclick
-                        file_loaded=file_loaded
+                        file_loaded=file_loaded waiting_syscall={waiting_syscall}
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
@@ -645,13 +650,12 @@ impl App {
                 {
                      for decompiled.as_str().split("\n").into_iter().map(|item| {
                         if item == "" {
+                            // this is &nbsp;
                             html! {
                                 <tr>{"\u{00a0}"}</tr>
                             }
                         }
                         else {
-
-
                             let should_highlight = if item.starts_with("0x") {
                                 let source_instr = u32::from_str_radix(&item[2..10], 16).unwrap_or(0);
                                 source_instr == runtime_instr
@@ -659,20 +663,18 @@ impl App {
                                 false
                             };
 
-                            if should_highlight {
-                                html! {
-                                    <tr class={"bg-th-highlighting"}>
-                                        {item}
-                                    </tr>
-                                }
-                            } else {
-
-                                html!{
-                                    <tr>
-                                        {item}
-                                    </tr>
-                                }
-                            }
+														html! {
+																<tr 
+																	class={
+																		if should_highlight {
+																			"bg-th-highlighting"
+																		} else {
+																			""
+																		}
+																	}>
+																		{item}
+																</tr>
+														}
 
                         }
                     })
@@ -683,9 +685,7 @@ impl App {
     }
 
     fn render_running_output(&self, state: &RunningState) -> Html {
-        info!("{}", self.show_io);
         html! {
-            
             {
                 if self.show_io {
                     state.mips_state.stdout.join("") 
