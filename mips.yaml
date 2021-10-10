@@ -866,6 +866,14 @@ pseudoinstructions:
         data: [$Rd, $Rs, $Rt]
     only_derive: true
     derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
       - Imm2Reg:
           register: Rt
           imm_types: [I16, U16, I32, U32]
@@ -883,6 +891,236 @@ pseudoinstructions:
         data: [$Rd, $Rs, $Rt]
     only_derive: true
     derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SLE
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLT
+        data: [$Rd, $Rs, $Rt]
+      - inst: BNE
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, $0, 1]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SLEU
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLTU
+        data: [$Rd, $Rs, $Rt]
+      - inst: BNE
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, $0, 1]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SGT
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLT
+        data: [$Rd, $Rt, $Rs]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SGTU
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLTU
+        data: [$Rd, $Rt, $Rs]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SGE
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLT
+        data: [$Rd, $Rt, $Rs]
+      - inst: ORI
+        data: [$At, $0, 1]
+      - inst: SUB
+        data: [$Rd, $At, $Rd]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SGEU
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SLTU
+        data: [$Rd, $Rt, $Rs]
+      - inst: ORI
+        data: [$At, $0, 1]
+      - inst: SUB
+        data: [$Rd, $At, $Rd]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SEQ
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: ORI
+        data: [$Rd, $0, 1]
+      - inst: BEQ
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, $0, 0]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: SNE
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: ORI
+        data: [$Rd, $0, 1]
+      - inst: BNE
+        data: [$Rs, $Rt, 2]
+      - inst: ORI
+        data: [$Rd, $0, 0]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
       - Imm2Reg:
           register: Rt
           imm_types: [I16, U16, I32, U32]
