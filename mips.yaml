@@ -1426,6 +1426,18 @@ pseudoinstructions:
           value: Rs
           default: $Rd
 
+  - name: NEGU
+    desc_short: Flip all the bits in $Rs, store result in $Rd
+    compile:
+      format: [Rd, Rs]
+    expand:
+      - inst: SUBU
+        data: [$Rd, $0, $Rs]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
   - name: NOT
     desc_short: $Rd = ! $Rs
     compile:
