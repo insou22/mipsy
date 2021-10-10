@@ -7,10 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
 
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/languages/mipsasm.min.js"></script>
+    <script>hljs.highlightAll();</script>
     <script>
         function split_setup() {
           console.log("setting up splits...");
-          Split(["#source_file", "#information"], {
+          Split(["#file_data", "#information"], {
             sizes: [70, 30],
             minSize: 330,
           });          
@@ -18,6 +23,10 @@
             direction: "vertical",
           });
         };
+        
+        function highlight() {
+          hljs.highlightAll();
+        }
 
         function alarm() {
             console.error("AHHHHHHHHHHH");

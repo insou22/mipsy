@@ -81,6 +81,8 @@ pub enum Msg {
     OpenModal,
     ShowIoTab,
     ShowMipsyTab,
+    ShowSourceTab,
+    ShowDecompiledTab,
     StepForward,
     StepBackward,
     SubmitInput,
@@ -95,6 +97,8 @@ pub enum State {
     Running(RunningState),
 }
 
+
+
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
@@ -108,6 +112,8 @@ pub struct App {
     show_io: bool,
     input_ref: NodeRef,
     filename: Option<String>,
+    file: Option<String>,
+    show_source: bool,
 }
 
 const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -128,6 +134,8 @@ impl Component for App {
             show_io: true,
             input_ref: NodeRef::default(),
             filename: None,
+            file: None,
+            show_source: false,
         }
     }
 
@@ -157,7 +165,7 @@ impl Component for App {
                 
                 self.filename = Some(file_data.name);
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
-
+                self.file = Some(file.clone());
                 let input = WorkerRequest::CompileCode(file);
                 info!("sending to worker");
                 self.worker.send(input);
@@ -206,7 +214,22 @@ impl Component for App {
 								let prev_show = self.show_io;
 								self.show_io = false;
 								prev_show != false
+            },
+            
+            Msg::ShowSourceTab => {
+								trace!("Show source button clicked");
+								// only re-render upon change	
+								self.show_source = true;
+								true
             }
+
+            Msg::ShowDecompiledTab => {
+								trace!("Show decompiled button clicked");
+								// only re-render upon change	
+								let prev_show = self.show_source;
+								self.show_source = false;
+                true
+            }, 
 
             Msg::StepForward => {
 								trace!("Step forward button clicked");
@@ -354,10 +377,16 @@ impl Component for App {
                             true
                         },
 
-                        MipsyError::Compiler(_error) => {
-                            //zkol TODO
-                            //shreys - it looks like error.show_error is almost what we want
-                            //         but we have to roll our own.. >:(
+                        MipsyError::Compiler(error) => {
+                            
+                            match &mut self.state {
+                                State::Running(curr) => {
+                                    curr.mips_state.mipsy_stdout.push(error.error().message())
+                                }
+                                State::NoFile => {
+                                    error!("Compiler errors are not supported.");
+                                }
+                            }
                             true
                         },
 
@@ -432,7 +461,11 @@ impl Component for App {
         // This component has no properties so we will always return "false".
         false
     }
-    
+   
+    fn rendered(&mut self, _first_render: bool) {
+       // unsafe{crate::highlight();}
+    }
+
     fn view(&self) -> Html {
         let onchange = self.link.batch_callback(|event| match event {
             ChangeData::Files(file_list) => {
@@ -485,6 +518,9 @@ impl Component for App {
 
         let show_io_tab = self.link.callback(|_| Msg::ShowIoTab);
         let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);
+        let show_source_tab = self.link.callback(|_| Msg::ShowSourceTab);
+        let show_decompiled_tab = self.link.callback(|_| Msg::ShowDecompiledTab);
+        
         let file_loaded = match &self.state {
             State::NoFile => false,
             _ => true,
@@ -505,7 +541,23 @@ impl Component for App {
                 format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
             }
         };
-       
+
+        let (decompiled_tab_classes, source_tab_classes) = {
+				    let mut default = (
+						    String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1"),
+						    String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 ")
+					  );
+					
+					  if self.show_source {
+						    default.1	= format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
+ 					
+					  } else {
+						    default.0	= format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
+					  };
+	
+					  default	
+				};
+
         html! {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
@@ -520,10 +572,24 @@ impl Component for App {
                         file_loaded=file_loaded waiting_syscall={waiting_syscall}
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
-                        <div id="source_file" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                            <pre class="text-xs whitespace-pre-wrap">
-                                { text_html_content }
-                            </pre>
+                        
+                        <div id="file_data">
+                            <div style="height: 3%;" class="flex overflow-hidden border-1 border-black">
+                                <button class={source_tab_classes} onclick={show_source_tab}>
+                                    {"source"}
+                                </button>
+                                <button
+                                    class={decompiled_tab_classes} 
+                                    onclick={show_decompiled_tab}
+                                >
+                                    {"decompiled"}
+                                </button>
+                            </div> 
+                            <div style="height: 97%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                                <pre class="text-xs whitespace-pre-wrap">
+                                    { text_html_content }
+                                </pre>
+                            </div>
                         </div>
 
 
@@ -605,8 +671,6 @@ impl App {
     }
 
     fn render_running(&self, state: &RunningState) -> Html {
-        let decompiled = &state.decompiled;
-        let runtime_instr = state.mips_state.current_instr.unwrap_or(0);
         html! {
             <>
             <h3>
@@ -619,40 +683,86 @@ impl App {
             <table>
                 <tbody>
                 {
-                     for decompiled.as_str().split("\n").into_iter().map(|item| {
-                        if item == "" {
-                            // this is &nbsp;
-                            html! {
-                                <tr>{"\u{00a0}"}</tr>
-                            }
-                        }
-                        else {
-                            let should_highlight = if item.starts_with("0x") {
-                                let source_instr = u32::from_str_radix(&item[2..10], 16).unwrap_or(0);
-                                source_instr == runtime_instr
-                            } else {
-                                false
-                            };
-
-														html! {
-																<tr 
-																	class={
-																		if should_highlight {
-																			"bg-th-highlighting"
-																		} else {
-																			""
-																		}
-																	}>
-																		{item}
-																</tr>
-														}
-
-                        }
-                    })
+                    if self.show_source {
+                        self.render_source_table()
+                    } else {
+                        self.render_decompiled_table(state) 
+                    }                 
                 }
                 </tbody>
             </table>
             </>
+        }
+    }
+
+    fn render_source_table(&self) -> Html {
+        info!("calling render source table");
+        html! {
+            {
+                for self.file.as_ref().unwrap_or(&"".to_string()).as_str().split("\n").into_iter().map(|item| {
+                    if item == "" {
+                        // this is &nbsp;
+                        html! {
+                            <tr>
+                                <pre>
+                                    <code class="language-mips" style="padding: 0 !important;">
+                                        {"\u{00a0}"}
+                                    </code>
+                                </pre>
+                            </tr>
+                        }
+                    }
+                    else {
+                        html! {
+                            <tr> 
+                                <pre>
+                                    <code class="language-mips" style="padding: 0 !important;">
+                                        {item}
+                                    </code>
+                                </pre>
+                            </tr>
+                        }
+                    }
+                }
+                )
+            }
+        }
+    }
+
+    fn render_decompiled_table(&self, state: &RunningState) -> Html {
+        let runtime_instr = state.mips_state.current_instr.unwrap_or(0);
+        let decompiled = &state.decompiled;
+        html! {
+            for decompiled.as_str().split("\n").into_iter().map(|item| {
+                if item == "" {
+                    // this is &nbsp;
+                    html! {
+                        <tr>{"\u{00a0}"}</tr>
+                    }
+                }
+                else {
+                    let should_highlight = if item.starts_with("0x") {
+                        // the actual hex address lives from 2-10, 01 are 0x
+                        let source_instr = u32::from_str_radix(&item[2..10], 16).unwrap_or(0);
+                        source_instr == runtime_instr
+                    } else {
+                        false
+                    };
+
+                    html! {
+                        <tr 
+                          class={
+                            if should_highlight {
+                              "bg-th-highlighting"
+                            } else {
+                              ""
+                            }
+                          }>
+                            {item}
+                        </tr>
+                    }
+                }
+            })
         }
     }
 

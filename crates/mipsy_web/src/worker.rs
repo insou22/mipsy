@@ -256,44 +256,62 @@ impl Agent for Worker {
                         // we want to keep looping forever if we're in a kernel section
                         // so that step only steps user space
                         let mut fast_forwarded = false;
-                        while runtime.timeline().state().pc() >= 0x80000000 {
-                            if step_size == -1 {
-                                runtime.timeline_mut().pop_last_state();
-                                mips_state.exit_status = None;
-                            } else {
-                                fast_forwarded = true;
-                                let stepped_runtime = runtime.step();
-                                match stepped_runtime {
-                                    Ok(Ok(next_runtime)) => runtime = next_runtime,
-                                    Ok(Err(guard)) => {
-                                        use RuntimeSyscallGuard::*;
-                                        match guard {
-                                            ExitStatus(exit_status_args, next_runtime) => {
-                                                info!("Exit");
+                        if runtime.timeline().state().pc() >= 0x80000000 { 
+                            info!("stepping: {}", runtime.timeline().state().pc());
+                            while runtime.timeline().state().pc() >= 0x80000000 {
+                                if step_size == -1 {
+                                    runtime.timeline_mut().pop_last_state();
+                                    mips_state.exit_status = None;
+                                } else {
+                                    fast_forwarded = true;
+                                    let stepped_runtime = runtime.step();
+                                    match stepped_runtime {
+                                        Ok(Ok(next_runtime)) => runtime = next_runtime,
+                                        Ok(Err(guard)) => {
+                                            use RuntimeSyscallGuard::*;
+                                            match guard {
+                                                ExitStatus(exit_status_args, next_runtime) => {
+                                                    info!("Exit in kernel");
 
-                                                mips_state.exit_status =
-                                                    Some(exit_status_args.exit_code);
-                                                runtime = next_runtime;
-                                            }
-                                            _ => {
-                                                error!("Some non-exit status syscall exists in the kernel");
-                                                return;
+                                                    mips_state.exit_status =
+                                                        Some(exit_status_args.exit_code);
+                                                    runtime = next_runtime;
+                                                }
+                                                _ => {
+                                                    error!("Some non-exit status syscall exists in the kernel");
+                                                    return;
+                                                }
                                             }
                                         }
-                                    }
-                                    Err((prev_runtime, err)) => {
-                                        runtime = prev_runtime;
-                                        mips_state.update_registers(&runtime);
-                                        mips_state.update_current_instr(&runtime);
-                                        self.runtime = Some(RuntimeState::Running(runtime));
-                                        mips_state.mipsy_stdout.push(format!("{:?}", err));
-                                        let response = Self::Output::UpdateMipsState(mips_state);
-                                        self.link.respond(id, response);
-                                        error!("error when fast forwarding: {:?}", err);
-                                        return;
+                                        Err((prev_runtime, err)) => {
+                                            runtime = prev_runtime;
+                                            mips_state.update_registers(&runtime);
+                                            mips_state.update_current_instr(&runtime);
+                                            self.runtime = Some(RuntimeState::Running(runtime));
+                                            mips_state.mipsy_stdout.push(format!("{:?}", err));
+                                            let response = Self::Output::UpdateMipsState(mips_state);
+                                            self.link.respond(id, response);
+                                            error!("error when fast forwarding: {:?}", err);
+                                            return;
+                                        }
                                     }
                                 }
+                                if mips_state.exit_status.is_some() {
+                                    break;
+                                };
                             }
+                            mips_state.update_registers(&runtime);
+                            mips_state.update_current_instr(&runtime);
+                            self.runtime = Some(RuntimeState::Running(runtime));
+                            if mips_state.is_stepping {
+                                let response = Self::Output::UpdateMipsState(mips_state);
+                                self.link.respond(id, response);
+                            } else {
+                                let response = Self::Output::InstructionOk(mips_state);
+                                self.link.respond(id, response);
+                            }
+
+                            return;
                         }
 
                         if fast_forwarded {

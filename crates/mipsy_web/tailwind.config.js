@@ -17,7 +17,7 @@ module.exports = {
                 // page background
                 'th-primary': '#fee2e2',
                 // bg-color code/register/output areas
-                'th-secondary': '#d1d5db',
+                'th-secondary': '#f0f0f0',
                 // used for step highlighting
                 'th-highlighting':'#34d399',
                 // selected tab
