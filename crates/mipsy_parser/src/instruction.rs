@@ -26,6 +26,8 @@ pub struct MpInstruction {
 pub enum MpArgument {
     Register(MpRegister),
     Number(MpNumber),
+    // LabelPlusConst(String, MpNumber),
+    // LabelPlusOffReg(String, MpImmediate, MpRegisterIdentifier),
 }
 
 impl MpInstruction {
@@ -57,8 +59,9 @@ impl MpInstruction {
 impl fmt::Display for MpArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Register(reg) => write!(f, "{}", reg),
-            Self::Number(num) => write!(f, "{}", num),
+            Self::Register(reg)                    => write!(f, "{}", reg),
+            Self::Number(num)                      => write!(f, "{}", num),
+            // Self::LabelPlusConst(label, the_const) => write!(f, "{} + {}", label, the_const),
         }
     }
 }

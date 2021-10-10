@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber, MpRegister};
+use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber};
 
 use crate::{Binary, MpProgram, MipsyResult, error::ToMipsyResult, inst::instruction::ToRegister};
 
@@ -22,14 +22,11 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
                         MpArgument::Register(register) => {
-                            let ident = match register {
-                                MpRegister::Normal(id) => id,
-                                MpRegister::Offset(_, id) => id,
-                            };
-
+                            let ident = register.get_identifier();
                             ident.to_register().into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
                         }
                         MpArgument::Number(_) => {}
+                        // MpArgument::LabelPlusConst(..) => {}
                     }
                 }
             }
@@ -79,6 +76,12 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
                                 MpNumber::Char(_) => {}
                             }
                         }
+                        // MpArgument::LabelPlusConst(label, _const) => {
+                        //     if binary.constants.get(label).is_none() {
+                        //         binary.get_label(label)
+                        //             .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                        //     }
+                        // }
                     }
                 }
             }

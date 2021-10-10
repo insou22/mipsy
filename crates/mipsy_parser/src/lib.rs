@@ -27,6 +27,7 @@ pub use number::{
 pub use register::{
     MpRegister,
     MpRegisterIdentifier,
+    MpOffsetOperator,
 };
 pub use constant::{
     MpConst,

@@ -3,15 +3,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
 use super::register::Register;
-use mipsy_parser::{
-    MpInstruction,
-    MpArgument,
-    MpRegister,
-    MpRegisterIdentifier,
-    MpNumber,
-    MpImmediate,
-    parse_argument,
-};
+use mipsy_parser::{MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister, MpRegisterIdentifier, parse_argument};
 
 #[derive(Debug, Clone)]
 pub struct InstSet {
@@ -476,6 +468,7 @@ impl ArgumentType {
                         | MpImmediate::I32(_)
                         | MpImmediate::LabelReference(_) => matches!(self, Self::Off32Rs | Self::Off32Rt),
                     }
+                    MpRegister::BinaryOpOffset(..) => matches!(self, Self::Off32Rs | Self::Off32Rt),
                 }
             }
             MpArgument::Number(number) => {
@@ -513,6 +506,7 @@ impl ArgumentType {
                     MpNumber::Float64(_) => matches!(self, Self::F64),
                 }
             }
+            // MpArgument::LabelPlusConst(..)
         }
     }
 }
@@ -586,6 +580,20 @@ impl PseudoSignature {
         let (lower, upper) = match arg {
             MpArgument::Register(reg) => match reg {
                 MpRegister::Offset(imm, _) => self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(imm.clone())), last)?,
+                MpRegister::BinaryOpOffset(i1, op, i2, _) => {
+                    let (lower1, upper1) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(i1.clone())), last)?;
+                    let (lower2, upper2) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(i2.clone())), last)?;
+                    
+                    let i1 = (((upper1 as u32) << 16) | lower1 as u32) as i32;
+                    let i2 = (((upper2 as u32) << 16) | lower2 as u32) as i32;
+
+                    let value = match op {
+                        MpOffsetOperator::Plus  => i1.wrapping_add(i2),
+                        MpOffsetOperator::Minus => i1.wrapping_sub(i2),
+                    } as u32;
+
+                    (value as u16, (value >> 16) as u16)
+                },
                 _                          => unreachable!(),
             }
             MpArgument::Number(num) => match num {
@@ -749,7 +757,7 @@ impl PseudoSignature {
                 }
                 ArgumentType::Off32Rs | ArgumentType::Off32Rt => {
                     let reg = match arg {
-                        MpArgument::Register(MpRegister::Normal(id)) | MpArgument::Register(MpRegister::Offset(_, id)) => {
+                        MpArgument::Register(MpRegister::Normal(id)) | MpArgument::Register(MpRegister::Offset(_, id) | MpRegister::BinaryOpOffset(_, _, _, id)) => {
                             MpArgument::Register(MpRegister::Normal(id.clone()))
                         }
                         _ => MpArgument::Register(MpRegister::Normal(MpRegisterIdentifier::Numbered(0))),

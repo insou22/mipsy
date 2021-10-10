@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use nom::IResult;
 use nom::bytes::complete::tag;
 use nom::character::complete::char;
@@ -67,6 +69,27 @@ pub enum MpConstValue {
     Neg  (Box<MpConstValueLoc>),
     Shl  (Box<MpConstValueLoc>, Box<MpConstValueLoc>),
     Shr  (Box<MpConstValueLoc>, Box<MpConstValueLoc>),
+}
+
+impl Display for MpConstValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MpConstValue::Value(x)   => write!(f, "{}", x),
+            MpConstValue::Const(x)   => write!(f, "{}", x),
+            MpConstValue::Minus(x)   => write!(f, "-{}", x.0),
+            MpConstValue::Mult(x, y) => write!(f, "{} * {}", x.0, y.0),
+            MpConstValue::Sum(x, y)  => write!(f, "{} + {}", x.0, y.0),
+            MpConstValue::Sub(x, y)  => write!(f, "{} - {}", x.0, y.0),
+            MpConstValue::Div(x, y)  => write!(f, "{} / {}", x.0, y.0),
+            MpConstValue::Mod(x, y)  => write!(f, "{} % {}", x.0, y.0),
+            MpConstValue::And(x, y)  => write!(f, "{} & {}", x.0, y.0),
+            MpConstValue::Or (x, y)  => write!(f, "{} | {}", x.0, y.0),
+            MpConstValue::Xor(x, y)  => write!(f, "{} ^ {}", x.0, y.0),
+            MpConstValue::Neg(x)     => write!(f, "~{}", x.0),
+            MpConstValue::Shl(x, y)  => write!(f, "{} << {}", x.0, y.0),
+            MpConstValue::Shr(x, y)  => write!(f, "{} >> {}", x.0, y.0),
+        }
+    }
 }
 
 pub fn parse_constant(i: Span<'_>) -> IResult<Span<'_>, MpConst> {

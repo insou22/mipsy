@@ -5,18 +5,13 @@ use crate::{
     number::{parse_immediate, MpImmediate},
     Span,
 };
-use nom::{
-    branch::alt,
-    character::complete::{alphanumeric1, char, digit1, space0},
-    combinator::opt,
-    sequence::tuple,
-    IResult,
-};
+use nom::{IResult, branch::alt, character::complete::{alphanumeric1, char, digit1, one_of, space0}, combinator::{map, opt}, sequence::tuple};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum MpRegister {
     Normal(MpRegisterIdentifier),
     Offset(MpImmediate, MpRegisterIdentifier),
+    BinaryOpOffset(MpImmediate, MpOffsetOperator, MpImmediate, MpRegisterIdentifier),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,11 +20,18 @@ pub enum MpRegisterIdentifier {
     Named(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MpOffsetOperator {
+    Plus,
+    Minus,
+}
+
 impl MpRegister {
-    fn get_identifier(&self) -> &MpRegisterIdentifier {
+    pub fn get_identifier(&self) -> &MpRegisterIdentifier {
         match self {
             Self::Normal(ident) => ident,
             Self::Offset(_, ident) => ident,
+            Self::BinaryOpOffset(_, _, _, ident) => ident,
         }
     }
 }
@@ -39,6 +41,7 @@ impl fmt::Display for MpRegister {
         match self {
             Self::Normal(id) => write!(f, "${}", id),
             Self::Offset(imm, id) => write!(f, "{}(${})", imm, id),
+            Self::BinaryOpOffset(i1, op, i2, id) => write!(f, "{} {} {}(${})", i1, op, i2, id),
         }
     }
 }
@@ -52,8 +55,17 @@ impl fmt::Display for MpRegisterIdentifier {
     }
 }
 
+impl fmt::Display for MpOffsetOperator {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Plus  => write!(f, "+"),
+            Self::Minus => write!(f, "-"),
+        }
+    }
+}
+
 pub fn parse_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
-    alt((parse_normal_register, parse_offset_register))(i)
+    alt((parse_normal_register, parse_offset_register, parse_offset_binary_op_register))(i)
 }
 
 pub fn parse_normal_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
@@ -88,5 +100,33 @@ pub fn parse_offset_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
             imm.unwrap_or(MpImmediate::I16(0)),
             reg.get_identifier().clone(),
         ),
+    ))
+}
+
+pub fn parse_offset_binary_op_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
+    let (remaining_data, (i1, _, op, _, i2, _, _, _, reg, ..)) = tuple((
+        parse_immediate,
+        space0,
+        map(
+            one_of("+-"),
+            |char| match char {
+                '+' => MpOffsetOperator::Plus,
+                '-' => MpOffsetOperator::Minus,
+                _ => unreachable!(),
+            },
+        ),
+        space0,
+        parse_immediate,
+        space0,
+        char('('),
+        space0,
+        parse_normal_register,
+        space0,
+        char(')'),
+    ))(i)?;
+
+    Ok((
+        remaining_data,
+        MpRegister::BinaryOpOffset(i1, op, i2, reg.get_identifier().clone()),
     ))
 }
