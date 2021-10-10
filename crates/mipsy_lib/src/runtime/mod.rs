@@ -94,6 +94,17 @@ impl Runtime {
         self.timeline().state().read_mem_word(state.pc())
     }
 
+    pub fn next_inst_may_guard(&self) -> MipsyResult<bool> {
+        let inst = self.next_inst()?;
+
+        let opcode =  inst >> 26;
+        let funct  =  inst  & 0x3F;
+
+        Ok(
+            opcode == 0 && (funct == 0xC || funct == 0xD)
+        )
+    }
+
     fn execute_in_current_state(mut self, inst: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
     {
         let opcode =  inst >> 26;
@@ -326,13 +337,13 @@ impl Runtime {
             0x0D => { Ok(Err(RuntimeSyscallGuard::Breakpoint(self))) },
 
             _ => {
-                try_owned_self!(self, self.execute_hardware_r(funct, rd, rs, rt, shamt));
+                try_owned_self!(self, self.execute_non_trapping_r(funct, rd, rs, rt, shamt));
                 Ok(SteppedRuntime::Ok(self))
             }
         }
     }
 
-    fn execute_hardware_r(&mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()> {
+    fn execute_non_trapping_r(&mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()> {
         let state = self.timeline.state_mut();
 
         match funct {
