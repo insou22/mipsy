@@ -26,8 +26,6 @@ pub fn start() {
     } else {
         worker::Worker::register();
     }
-
-    unsafe {
-        split_setup();
-    }
+    
+    split_setup();
 }

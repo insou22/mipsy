@@ -1,5 +1,5 @@
 use yew::prelude::*;
-use yew::{Children, Properties};
+use yew::Properties;
 
 #[derive(Properties, Clone)]
 pub struct Props {

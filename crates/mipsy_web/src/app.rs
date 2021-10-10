@@ -13,14 +13,17 @@ use yew::{
         reader::{FileData, ReaderTask},
         ReaderService,
     },
-    web_sys::{Element, File, HtmlInputElement},
+    web_sys::{File, HtmlInputElement},
 };
 
-use log::{error, info, warn};
+use log::{error, info, debug};
 
+/*
+// useful for debugigng, set the instruction set to be constructed by crimes
 fn crimes<T>() -> T {
     panic!()
 }
+*/
 
 #[derive(Clone)]
 pub struct RunningState {
@@ -43,7 +46,7 @@ pub enum ReadSyscalls {
     //Close(i32),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MipsState {
     pub stdout: Vec<String>,
     pub mipsy_stdout: Vec<String>,
@@ -159,6 +162,7 @@ impl Component for App {
             }
 
             Msg::Run => {
+								debug!("Run button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input =
                         WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
@@ -171,6 +175,7 @@ impl Component for App {
             }
 
             Msg::Kill => {
+								debug!("Kill button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.should_kill = true;
                 };
@@ -183,6 +188,7 @@ impl Component for App {
             }
 
             Msg::ShowIoTab => {
+								debug!("Show IO Button clicked");
 								// only re-render upon change	
 								let prev_show = self.show_io;
 								self.show_io = true;
@@ -190,6 +196,7 @@ impl Component for App {
             }
 
             Msg::ShowMipsyTab => {
+								debug!("Show mipsy button clicked");
 								// only re-render upon change	
 								let prev_show = self.show_io;
 								self.show_io = false;
@@ -197,6 +204,7 @@ impl Component for App {
             }
 
             Msg::StepForward => {
+								debug!("Step forward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
                     self.worker.send(input);
@@ -208,6 +216,7 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
+								debug!("Step backward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                     self.worker.send(input);
@@ -219,8 +228,8 @@ impl Component for App {
             }
 
             Msg::Reset => {
+                debug!("Reset button clicked");
                 if let State::Running(curr) = &mut self.state {
-                    info!("hello");
                     let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
                 }
@@ -237,7 +246,6 @@ impl Component for App {
                         Some(item) => match item {
                             // for ReadInt - we only want to allow intgers
                             ReadSyscalls::ReadInt => {
-                                info!("inside int");
                                 let key = event.key();
                                 if key.parse::<i32>().is_err() {
                                     Event::from(event).prevent_default();
@@ -245,7 +253,6 @@ impl Component for App {
                             }
 
                             ReadSyscalls::ReadDouble => {
-
                                 let key = event.key();
                                 if key.parse::<f64>().is_err() {
                                     Event::from(event).prevent_default();
@@ -260,7 +267,6 @@ impl Component for App {
                             }
 
                             ReadSyscalls::ReadChar => {
-                                info!("test");
                                 let key = event.key();
                                 if key.parse::<char>().is_err() {
                                     info!("{} failed to parse", key);
@@ -295,8 +301,8 @@ impl Component for App {
                                     Ok(num) => {
                                         Self::process_syscall_response(self, input, Int(num));    
                                     }
-                                    Err(e) => {
-                                        error!("Failed to parse input as an i32");
+                                    Err(_e) => {
+                                        error!("Failed to parse input {} as an i32", input.value());
                                     }
                                 }
                             }
@@ -308,7 +314,7 @@ impl Component for App {
                                     }
 
                                     Err(_e) => {
-                                        error!("Failed to parse input as an f32");
+                                        error!("Failed to parse input {} as an f32", input.value());
                                     }
                                 }
                             }
@@ -319,7 +325,7 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Double(num));    
                                     }
                                     Err(_e) => {
-                                        error!("Failed to parse input as an f64");
+                                        error!("Failed to parse input {} as an f64", input.value());
                                     }
                                 }
                             }
@@ -330,7 +336,7 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Char(char as u8))
                                     }
                                     Err(_e) => {
-                                        error!("Failed to parse input as a u8");
+                                        error!("Failed to parse input {} as a u8", input.value());
                                     }
                                 }
                             },
@@ -353,7 +359,6 @@ impl Component for App {
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
                     info!("recieved decompiled code from worker");
-                    info!("{}", &decompiled);
                     match self.state {
                         // Overwrite existing state,
                         State::NoFile | State::Running(_) => {
@@ -374,16 +379,18 @@ impl Component for App {
                     }
                 }
 
-                WorkerResponse::CompilerError(err) => {
+                WorkerResponse::CompilerError(_err) => {
                     todo!();
                 }
 
-                WorkerResponse::ProgramExited(mips_state) => match &mut self.state {
-                    State::Running(curr) => {
-                        curr.mips_state = mips_state;
-                        true
+                WorkerResponse::ProgramExited(mips_state) => {
+                    match &mut self.state {
+                        State::Running(curr) => {
+                            curr.mips_state = mips_state;
+                            true
+                        }
+                        State::NoFile => false,
                     }
-                    State::NoFile => false,
                 },
 
                 WorkerResponse::InstructionOk(mips_state) => {
@@ -483,7 +490,7 @@ impl Component for App {
             _ => None,
         };
 
-        info!("rendering");
+        debug!("rendering");
 
         let modal_overlay_classes = if self.display_modal {
             "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen"
@@ -790,7 +797,7 @@ impl App {
                 input.set_disabled(true);
             }
             State::NoFile => {
-                error!("Should not be possible to submit int with no file");
+                error!("Should not be possible to give syscall value with no file");
             }
         }
     }

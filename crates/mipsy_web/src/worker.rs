@@ -1,6 +1,4 @@
-use std::fmt::Display;
-
-use log::{error, info, warn, LevelFilter};
+use log::{error, info};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
@@ -46,18 +44,20 @@ pub struct Worker {
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
 
+
+// for now, the below are not implemented
 enum RuntimeState {
     Running(Runtime),
     WaitingInt(Guard<i32>),
     WaitingFloat(Guard<f32>),
-    WaitingDouble(Guard<f64>),
+    //WaitingDouble(Guard<f64>),
     WaitingString(Guard<Vec<u8>>),
     WaitingChar(Guard<u8>),
-    WaitingOpen(Guard<i32>),
-    WaitingRead(Guard<(i32, Vec<u8>)>),
-    WaitingWrite(Guard<i32>),
-    WaitingClose(Guard<i32>),
-    Stopped,
+    //WaitingOpen(Guard<i32>),
+    //WaitingRead(Guard<(i32, Vec<u8>)>),
+    //WaitingWrite(Guard<i32>),
+    //WaitingClose(Guard<i32>),
+    //Stopped,
 }
 
 type File = String;
@@ -151,7 +151,6 @@ impl Agent for Worker {
 
             Self::Input::ResetRuntime(mut mips_state) => {
                 if let Some(runtime_state) = &mut self.runtime {
-                    info!("inside if");
                     match runtime_state {
                         RuntimeState::Running(runtime) => {
                             runtime.timeline_mut().reset();
@@ -163,7 +162,6 @@ impl Agent for Worker {
                                 .respond(id, WorkerResponse::UpdateMipsState(mips_state));
                         }
                         _ => {
-                            info!("inside blanket");
                             // if we are not running, then just recompile the file (since we have
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
@@ -176,7 +174,6 @@ impl Agent for Worker {
                         }
                     }
                 } else {
-                    info!("Inside else");
                     if let Some(binary) = &self.binary {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
                         let response = Self::Output::DecompiledCode(decompiled);
@@ -200,13 +197,13 @@ impl Agent for Worker {
                                 }
                             }
 
-                            RuntimeState::WaitingDouble(guard) => {
+                            /*RuntimeState::WaitingDouble(guard) => {
                                 if let ReadSyscallInputs::Double(double) = val {
                                     Self::upload_syscall_value(self, mips_state, guard, double, id, format!("{}\n", double));
                                 } else {
                                     panic!("Error: please report this to developers, with steps to reproduce")
                                 }
-                            }
+                            }*/
 
                             RuntimeState::WaitingFloat(guard) => {
                                 if let ReadSyscallInputs::Float(float) = val {
@@ -278,14 +275,21 @@ impl Agent for Worker {
                                                 runtime = next_runtime;
                                             }
                                             _ => {
-                                                unreachable!()
+                                                error!("Some non-exit status syscall exists in the kernel");
+                                                return;
                                             }
                                         }
                                     }
                                     Err((prev_runtime, err)) => {
                                         runtime = prev_runtime;
-                                        error!("{:?}", err);
-                                        todo!("Send error to frontend iguess");
+                                        mips_state.update_registers(&runtime);
+                                        mips_state.update_current_instr(&runtime);
+                                        self.runtime = Some(RuntimeState::Running(runtime));
+                                        mips_state.mipsy_stdout.push(format!("{:?}", err));
+                                        let response = Self::Output::UpdateMipsState(mips_state);
+                                        self.link.respond(id, response);
+                                        error!("error when fast forwarding: {:?}", err);
+                                        return;
                                     }
                                 }
                             }
@@ -418,36 +422,36 @@ impl Agent for Worker {
                                             info!("sbrk");
 
                                             runtime = next_runtime;
-                                            todo!();
                                         }
 
                                         Exit(next_runtime) => {
                                             info!("exit syscall");
-
+                                    
                                             mips_state.exit_status = Some(0);
 
                                             runtime = next_runtime;
                                         }
 
                                         Open(_open_args, _fn_ptr) => {
-                                            info!("open");
+                                            error!("open syscall is not supported by mipsy_web.");
 
+                                            mips_state.mipsy_stdout.push("Open syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
 
-                                            todo!();
                                         }
 
                                         Write(_write_args, _fn_ptr) => {
-                                            info!("write");
+                                            error!("write syscall is not supported by mipsy_web ");
 
+                                            mips_state.mipsy_stdout.push("Write syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
 
-                                            todo!();
                                         }
 
                                         Close(_close_args, _fn_ptr) => {
                                             info!("Close");
 
+                                            mips_state.mipsy_stdout.push("Close syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
                                         }
 
@@ -466,7 +470,7 @@ impl Agent for Worker {
                                         }
 
                                         UnknownSyscall(_unknown_syscall_args, next_runtime) => {
-                                            info!("Unknown");
+                                            error!("Unknown Syscall :(");
 
                                             runtime = next_runtime;
                                         }
@@ -491,8 +495,14 @@ impl Agent for Worker {
                                 }
                                 Err((prev_runtime, err)) => {
                                     runtime = prev_runtime;
+                                    mips_state.update_registers(&runtime);
+                                    mips_state.update_current_instr(&runtime);
+                                    self.runtime = Some(RuntimeState::Running(runtime));
                                     error!("{:?}", err);
-                                    todo!("Send error to frontend iguess");
+                                    mips_state.mipsy_stdout.push(format!("{:?}", err));
+                                    let response = Self::Output::UpdateMipsState(mips_state);
+                                    self.link.respond(id, response);
+                                    return;
                                 }
                             }
 
