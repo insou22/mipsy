@@ -115,7 +115,7 @@ impl Component for NavBar {
           </div>
           <div class="w-full block flex-grow flex items-center w-auto">
             <div class="flex-grow flex flex-row">
-              <label for="load_file" class="mr-2 text-sm flex place-items-center flex-row inline-block cursor-pointer px-3 py-3 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+              <label tabindex=0 for="load_file" class="mr-2 text-sm flex place-items-center flex-row inline-block cursor-pointer px-3 py-3 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z" clip-rule="evenodd" />
                   <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
@@ -168,7 +168,7 @@ impl Component for NavBar {
                         };
                         
                         html! {
-                            <button title={title} disabled={is_disabled} onclick={onclick} class={button_classes}>
+                            <button tabindex=0 title={title} disabled={is_disabled} onclick={onclick} class={button_classes}>
                                 { item.html.clone() }
                                 { item.label.clone() }
                             </button>

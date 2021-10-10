@@ -194,6 +194,9 @@ impl Component for App {
 								debug!("Show IO Button clicked");
 								// only re-render upon change	
 								let prev_show = self.show_io;
+                if prev_show != true {
+                    self.focus_input();
+                }
 								self.show_io = true;
 								prev_show != true
             }
@@ -244,58 +247,12 @@ impl Component for App {
                     return true;
                 };
                 info!("processing {}", event.key());
-                match &self.state {
-                    State::Running(curr) => match &curr.input_needed {
-                        Some(item) => match item {
-                            // for ReadInt - we only want to allow intgers
-                            ReadSyscalls::ReadInt => {
-                                let key = event.key();
-                                if key.parse::<i32>().is_err() {
-                                    Event::from(event).prevent_default();
-                                }
-                            }
-
-                            ReadSyscalls::ReadDouble => {
-                                let key = event.key();
-                                if key.parse::<f64>().is_err() {
-                                    Event::from(event).prevent_default();
-                                }
-                            }
-
-                            ReadSyscalls::ReadFloat => {
-                                let key = event.key();
-                                if key.parse::<f32>().is_err() {
-                                    Event::from(event).prevent_default();
-                                }
-                            }
-
-                            ReadSyscalls::ReadChar => {
-                                let key = event.key();
-                                if key.parse::<char>().is_err() {
-                                    info!("{} failed to parse", key);
-                                    Event::from(event).prevent_default();
-                                }
-                            }
-
-                            ReadSyscalls::ReadString => {
-                                let key = event.key();
-                                if key.parse::<char>().is_err() {
-                                    Event::from(event).prevent_default();
-                                }
-                            }
-
-
-                        },
-                        None => {}
-                    },
-                    State::NoFile => {}
-                }
                 true
             }
 
             Msg::SubmitInput => {
                 if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
-                    if let State::Running(curr) = &self.state {
+                    if let State::Running(curr) = &mut self.state {
                         use ReadSyscallInputs::*;
                         use ReadSyscalls::*;
                         match &curr.input_needed.as_ref().unwrap_throw() {
@@ -305,7 +262,9 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Int(num));    
                                     }
                                     Err(_e) => {
-                                        error!("Failed to parse input {} as an i32", input.value());
+                                        let error_msg = format!("Failed to parse input '{}' as an i32", input.value());
+                                        error!("{}", error_msg);
+                                        curr.mips_state.mipsy_stdout.push(error_msg);
                                     }
                                 }
                             }
@@ -317,7 +276,9 @@ impl Component for App {
                                     }
 
                                     Err(_e) => {
-                                        error!("Failed to parse input {} as an f32", input.value());
+                                        let error_msg = format!("Failed to parse input '{}' as an f32", input.value());
+                                        error!("{}", error_msg);
+                                        curr.mips_state.mipsy_stdout.push(error_msg);
                                     }
                                 }
                             }
@@ -328,7 +289,7 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Double(num));    
                                     }
                                     Err(_e) => {
-                                        error!("Failed to parse input {} as an f64", input.value());
+                                        error!("Failed to parse input '{}' as an f64", input.value());
                                     }
                                 }
                             }
@@ -339,7 +300,9 @@ impl Component for App {
                                         Self::process_syscall_response(self, input, Char(char as u8))
                                     }
                                     Err(_e) => {
-                                        error!("Failed to parse input {} as a u8", input.value());
+                                        let error_msg = format!("Failed to parse input '{}' as an u8", input.value());
+                                        error!("{}", error_msg);
+                                        curr.mips_state.mipsy_stdout.push(error_msg);
                                     }
                                 }
                             },
@@ -813,17 +776,21 @@ impl App {
             State::Running(curr) => {
                 curr.mips_state = mips_state;
                 curr.input_needed = Some(required_type);
-
-                if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
-                    input.set_disabled(false);
-                    input.focus().unwrap();
-                };            
+                
+                self.focus_input();
                 true
             }
 
             State::NoFile => false,
         }
 
+    }
+    
+    fn focus_input(&self) {
+        if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
+            input.set_disabled(false);
+            input.focus().unwrap();
+        };  
     }
 
     fn process_syscall_response(&mut self, input: HtmlInputElement, required_type: ReadSyscallInputs) {
