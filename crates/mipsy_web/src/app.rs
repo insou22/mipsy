@@ -509,7 +509,7 @@ impl Component for App {
                     if self.show_io {
                         "block w-full cursor-not-allowed"
                     } else {
-                        "display-none"
+                        "hidden"
                     }
                 } else {
                     "block w-full bg-th-highlighting"
@@ -518,7 +518,6 @@ impl Component for App {
             State::NoFile => "block w-full",
         };
 
-        let tab_button_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
 
         let show_io_tab = self.link.callback(|_| Msg::ShowIoTab);
         let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);
@@ -526,6 +525,12 @@ impl Component for App {
             State::NoFile => false,
             _ => true,
         };
+
+        
+        let mipsy_tab_button_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+        let io_tab_classes = format!("{} border-l-2 ", mipsy_tab_button_classes );
+
+
 
         html! {
             <>
@@ -556,8 +561,8 @@ impl Component for App {
                             <div id="output" class="min-w-full">
                                 
                                 <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
-                                    <button class={format!("{} border-l-2 ", tab_button_classes)} onclick={show_io_tab}>{"I/O"}</button>
-                                    <button class={tab_button_classes} onclick={show_mipsy_tab}>{"mips output"}</button>
+                                    <button class={io_tab_classes} onclick={show_io_tab}>{"I/O"}</button>
+                                    <button class={mipsy_tab_button_classes} onclick={show_mipsy_tab}>{"mipsy output"}</button>
                                 </div>
                                 <div 
                                     style={if self.show_io {"height: 80%;"} else {"height: 90%;"}} 
@@ -568,7 +573,7 @@ impl Component for App {
                                         {output_html_content}
                                     </pre>
                                 </div>
-                                <div style="height: 10%;" class={if self.show_io {"border-x-2 border-b-2 border-black"} else {"display-hidden"}}>
+                                <div style="height: 10%;" class={if self.show_io {"border-x-2 border-b-2 border-black"} else {"hidden"}}>
                                     <input
                                         ref={self.input_ref.clone()}
                                         id="user_input"
