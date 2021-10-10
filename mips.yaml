@@ -1568,7 +1568,7 @@ pseudoinstructions:
       - inst: ADDIU
         data: [$sp, $sp, -4]
       - inst: SW
-        data: [$Rs, 4($sp)]
+        data: [$Rs, ($sp)]
 
   - name: POP
     desc_short: Pop the top of the stack into $Rd
@@ -1576,7 +1576,7 @@ pseudoinstructions:
       format: [Rd]
     expand:
       - inst: LW
-        data: [$Rd, 4($sp)]
+        data: [$Rd, ($sp)]
       - inst: ADDIU
         data: [$sp, $sp, 4]
 
