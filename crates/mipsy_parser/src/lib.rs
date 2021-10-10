@@ -23,6 +23,7 @@ pub use misc::{
 pub use number::{
     MpNumber,
     MpImmediate,
+    MpImmediateBinaryOp,
 };
 pub use register::{
     MpRegister,

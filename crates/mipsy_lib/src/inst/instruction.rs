@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
 use super::register::Register;
-use mipsy_parser::{MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister, MpRegisterIdentifier, parse_argument};
+use mipsy_parser::{MpArgument, MpImmediate, MpImmediateBinaryOp, MpInstruction, MpNumber, MpOffsetOperator, MpRegister, MpRegisterIdentifier, parse_argument};
 
 #[derive(Debug, Clone)]
 pub struct InstSet {
@@ -501,6 +501,13 @@ impl ArgumentType {
                             }
                         }
                     }
+                    MpNumber::BinaryOpImmediate(_imm1, _op, _imm2) => {
+                        match self {
+                            // TODO(zkol): this is brittle and based on faulty assumptions
+                            Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
+                            _ => false,
+                        }
+                    }
                     MpNumber::Char(_) => matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32),
                     MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
                     MpNumber::Float64(_) => matches!(self, Self::F64),
@@ -629,6 +636,20 @@ impl PseudoSignature {
                 }
                 &MpNumber::Char(chr) => {
                     (chr as u16, 0_u16)
+                }
+                MpNumber::BinaryOpImmediate(imm1, op, imm2) => {
+                    let (lower1, upper1) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(imm1.clone())), last)?;
+                    let (lower2, upper2) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(imm2.clone())), last)?;
+                    
+                    let i1 = (((upper1 as u32) << 16) | lower1 as u32) as i32;
+                    let i2 = (((upper2 as u32) << 16) | lower2 as u32) as i32;
+
+                    let value = match op {
+                        MpImmediateBinaryOp::Plus  => i1.wrapping_add(i2),
+                        MpImmediateBinaryOp::Minus => i1.wrapping_sub(i2),
+                    } as u32;
+
+                    ((value & 0xFFFF) as u16, (value >> 16) as u16)
                 }
                 _ => unreachable!(),
             }
