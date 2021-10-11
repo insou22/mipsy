@@ -1,6 +1,8 @@
 use crate::worker::ReadSyscallInputs;
 use crate::{
-    components::{modal::Modal, navbar::NavBar, pagebackground::PageBackground, outputarea::OutputArea},
+    components::{
+        modal::Modal, navbar::NavBar, outputarea::OutputArea, pagebackground::PageBackground,
+    },
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
 use mipsy_lib::{MipsyError, Register, Runtime, Safe};
@@ -53,7 +55,7 @@ pub struct MipsState {
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
     pub current_instr: Option<u32>,
-    pub is_stepping: bool, 
+    pub is_stepping: bool,
 }
 
 impl MipsState {
@@ -90,14 +92,12 @@ pub enum Msg {
     FromWorker(WorkerResponse),
 }
 
-#[derive(Clone)]
 pub enum State {
     NoFile,
+    CompilerError(MipsyError),
     // File is loaded, and compiled?
     Running(RunningState),
 }
-
-
 
 pub struct App {
     // `ComponentLink` is like a reference to a component.
@@ -162,7 +162,6 @@ impl Component for App {
             Msg::FileRead(file_data) => {
                 info!("{:?}", file_data);
                 // TODO -- this should not be lossy
-                
                 self.filename = Some(file_data.name);
                 let file = String::from_utf8_lossy(&file_data.content).to_string();
                 self.file = Some(file.clone());
@@ -174,7 +173,7 @@ impl Component for App {
             }
 
             Msg::Run => {
-								trace!("Run button clicked");
+                trace!("Run button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.mips_state.is_stepping = false;
                     let input =
@@ -188,7 +187,7 @@ impl Component for App {
             }
 
             Msg::Kill => {
-								trace!("Kill button clicked");
+                trace!("Kill button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.should_kill = true;
                 };
@@ -201,38 +200,37 @@ impl Component for App {
             }
 
             Msg::ShowIoTab => {
-								trace!("Show IO Button clicked");
-								// only re-render upon change	
-								let prev_show = self.show_io;
-								self.show_io = true;
-								prev_show != true
+                trace!("Show IO Button clicked");
+                // only re-render upon change
+                let prev_show = self.show_io;
+                self.show_io = true;
+                prev_show != true
             }
 
             Msg::ShowMipsyTab => {
-								trace!("Show mipsy button clicked");
-								// only re-render upon change	
-								let prev_show = self.show_io;
-								self.show_io = false;
-								prev_show != false
-            },
-            
+                trace!("Show mipsy button clicked");
+                // only re-render upon change
+                let prev_show = self.show_io;
+                self.show_io = false;
+                prev_show != false
+            }
             Msg::ShowSourceTab => {
-								trace!("Show source button clicked");
-								// only re-render upon change	
-								self.show_source = true;
-								true
+                trace!("Show source button clicked");
+                // only re-render upon change
+                self.show_source = true;
+                true
             }
 
             Msg::ShowDecompiledTab => {
-								trace!("Show decompiled button clicked");
-								// only re-render upon change	
-								let prev_show = self.show_source;
-								self.show_source = false;
+                trace!("Show decompiled button clicked");
+                // only re-render upon change
+                let prev_show = self.show_source;
+                self.show_source = false;
                 true
-            }, 
+            }
 
             Msg::StepForward => {
-								trace!("Step forward button clicked");
+                trace!("Step forward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.mips_state.is_stepping = true;
                     let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
@@ -245,7 +243,7 @@ impl Component for App {
             }
 
             Msg::StepBackward => {
-								trace!("Step backward button clicked");
+                trace!("Step backward button clicked");
                 if let State::Running(curr) = &mut self.state {
                     curr.mips_state.is_stepping = true;
                     let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
@@ -262,6 +260,8 @@ impl Component for App {
                 if let State::Running(curr) = &mut self.state {
                     let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                     self.worker.send(input);
+                } else {
+                    self.state = State::NoFile;
                 }
                 true
             }
@@ -280,63 +280,62 @@ impl Component for App {
                         use ReadSyscallInputs::*;
                         use ReadSyscalls::*;
                         match &curr.input_needed.as_ref().unwrap_throw() {
-                            ReadInt => {
-                                match input.value().parse::<i32>() {
-                                    Ok(num) => {
-                                        Self::process_syscall_response(self, input, Int(num));    
-                                    }
-                                    Err(_e) => {
-                                        let error_msg = format!("Failed to parse input '{}' as an i32", input.value());
-                                        error!("{}", error_msg);
-                                        curr.mips_state.mipsy_stdout.push(error_msg);
-                                    }
+                            ReadInt => match input.value().parse::<i32>() {
+                                Ok(num) => {
+                                    Self::process_syscall_response(self, input, Int(num));
                                 }
-                            }
-
-                            ReadFloat => {
-                                match input.value().parse::<f32>() {
-                                    Ok(num) => {
-                                        Self::process_syscall_response(self, input, Float(num));    
-                                    }
-
-                                    Err(_e) => {
-                                        let error_msg = format!("Failed to parse input '{}' as an f32", input.value());
-                                        error!("{}", error_msg);
-                                        curr.mips_state.mipsy_stdout.push(error_msg);
-                                    }
+                                Err(_e) => {
+                                    let error_msg = format!(
+                                        "Failed to parse input '{}' as an i32",
+                                        input.value()
+                                    );
+                                    error!("{}", error_msg);
+                                    curr.mips_state.mipsy_stdout.push(error_msg);
                                 }
-                            }
+                            },
 
-                            ReadDouble => {
-                                match input.value().parse::<f64>() {
-                                    Ok(num) => {
-                                        Self::process_syscall_response(self, input, Double(num));    
-                                    }
-                                    Err(_e) => {
-                                        error!("Failed to parse input '{}' as an f64", input.value());
-                                    }
+                            ReadFloat => match input.value().parse::<f32>() {
+                                Ok(num) => {
+                                    Self::process_syscall_response(self, input, Float(num));
                                 }
-                            }
 
-                            ReadChar => {
-                                match input.value().parse::<char>() {
-                                    Ok(char) => {
-                                        Self::process_syscall_response(self, input, Char(char as u8))
-                                    }
-                                    Err(_e) => {
-                                        let error_msg = format!("Failed to parse input '{}' as an u8", input.value());
-                                        error!("{}", error_msg);
-                                        curr.mips_state.mipsy_stdout.push(error_msg);
-                                    }
+                                Err(_e) => {
+                                    let error_msg = format!(
+                                        "Failed to parse input '{}' as an f32",
+                                        input.value()
+                                    );
+                                    error!("{}", error_msg);
+                                    curr.mips_state.mipsy_stdout.push(error_msg);
+                                }
+                            },
+
+                            ReadDouble => match input.value().parse::<f64>() {
+                                Ok(num) => {
+                                    Self::process_syscall_response(self, input, Double(num));
+                                }
+                                Err(_e) => {
+                                    error!("Failed to parse input '{}' as an f64", input.value());
+                                }
+                            },
+
+                            ReadChar => match input.value().parse::<char>() {
+                                Ok(char) => {
+                                    Self::process_syscall_response(self, input, Char(char as u8))
+                                }
+                                Err(_e) => {
+                                    let error_msg = format!(
+                                        "Failed to parse input '{}' as an u8",
+                                        input.value()
+                                    );
+                                    error!("{}", error_msg);
+                                    curr.mips_state.mipsy_stdout.push(error_msg);
                                 }
                             },
 
                             ReadString => {
-
                                 let string = input.value().as_bytes().to_vec();
 
                                 Self::process_syscall_response(self, input, String(string));
-                                
                             }
                         }
                     } else {
@@ -349,46 +348,41 @@ impl Component for App {
             Msg::FromWorker(worker_output) => match worker_output {
                 WorkerResponse::DecompiledCode(decompiled) => {
                     info!("recieved decompiled code from worker");
-                    match self.state {
-                        // Overwrite existing state,
-                        State::NoFile | State::Running(_) => {
-                            self.state = State::Running(RunningState {
-                                decompiled,
-                                mips_state: MipsState {
-                                    stdout: Vec::new(),
-                                    exit_status: None,
-                                    register_values: vec![Safe::Uninitialised; 32],
-                                    current_instr: None,
-                                    mipsy_stdout: Vec::new(),
-                                    is_stepping: true,
-                                },
-                                input_needed: None,
-                                should_kill: false,
-                            });
-                            true
-                        }
-                    }
+                    self.state = State::Running(RunningState {
+                        decompiled,
+                        mips_state: MipsState {
+                            stdout: Vec::new(),
+                            exit_status: None,
+                            register_values: vec![Safe::Uninitialised; 32],
+                            current_instr: None,
+                            mipsy_stdout: Vec::new(),
+                            is_stepping: true,
+                        },
+                        input_needed: None,
+                        should_kill: false,
+                    });
+                    true
                 }
 
                 WorkerResponse::CompilerError(err) => {
-                    match err {
-                        MipsyError::Parser(error) => {
+                    match &err {
+                        MipsyError::Parser(_error) => {
                             //zkol TODO
                             true
-                        },
+                        }
 
                         MipsyError::Compiler(error) => {
-                            
                             match &mut self.state {
                                 State::Running(curr) => {
                                     curr.mips_state.mipsy_stdout.push(error.error().message())
                                 }
-                                State::NoFile => {
+                                State::NoFile | State::CompilerError(_) => {
+                                    self.state = State::CompilerError(err);
                                     error!("Compiler errors are not supported.");
                                 }
                             }
                             true
-                        },
+                        }
 
                         MipsyError::Runtime(_error) => {
                             error!("Cannot get runtime error at compile time");
@@ -397,14 +391,12 @@ impl Component for App {
                     }
                 }
 
-                WorkerResponse::ProgramExited(mips_state) => {
-                    match &mut self.state {
-                        State::Running(curr) => {
-                            curr.mips_state = mips_state;
-                            true
-                        }
-                        State::NoFile => false,
+                WorkerResponse::ProgramExited(mips_state) => match &mut self.state {
+                    State::Running(curr) => {
+                        curr.mips_state = mips_state;
+                        true
                     }
+                    State::NoFile | State::CompilerError(_) => false,
                 },
 
                 WorkerResponse::InstructionOk(mips_state) => {
@@ -433,24 +425,24 @@ impl Component for App {
                         true
                     }
 
-                    State::NoFile => false,
+                    State::NoFile | State::CompilerError(_) => false,
                 },
 
                 WorkerResponse::NeedInt(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadInt)
-                }, 
+                }
                 WorkerResponse::NeedFloat(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadFloat)
-                },
+                }
                 WorkerResponse::NeedDouble(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadDouble)
-                },
+                }
                 WorkerResponse::NeedChar(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadChar)
-                },
+                }
                 WorkerResponse::NeedString(mips_state) => {
                     Self::process_syscall_request(self, mips_state, ReadSyscalls::ReadString)
-                } 
+                }
             },
         }
     }
@@ -461,9 +453,8 @@ impl Component for App {
         // This component has no properties so we will always return "false".
         false
     }
-   
     fn rendered(&mut self, _first_render: bool) {
-       // unsafe{crate::highlight();}
+        // unsafe{crate::highlight();}
     }
 
     fn view(&self) -> Html {
@@ -499,8 +490,9 @@ impl Component for App {
         let toggle_modal_onclick = self.link.callback(|_| Msg::OpenModal);
 
         let text_html_content = match &self.state {
-            &State::NoFile => "no file loaded".into(),
-            &State::Running(ref state) => self.render_running(state),
+            State::NoFile => "no file loaded".into(),
+            State::CompilerError(_error) => "File has syntax errors, check your file with mipsy and try again.\nMipsy Web does not yet support displaying compiler errors".into(),
+            State::Running(ref state) => self.render_running(state),
         };
 
         let exit_status = match &self.state {
@@ -520,44 +512,38 @@ impl Component for App {
         let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);
         let show_source_tab = self.link.callback(|_| Msg::ShowSourceTab);
         let show_decompiled_tab = self.link.callback(|_| Msg::ShowDecompiledTab);
-        
         let file_loaded = match &self.state {
-            State::NoFile => false,
-            _ => true,
+            State::NoFile | State::CompilerError(_) => false,
+            State::Running(_) => true,
         };
-			
-				let waiting_syscall = match &self.state {
-            State::Running(curr) => {
-							curr.input_needed.is_some()
-						},
-            State::NoFile => false,
+
+        let waiting_syscall = match &self.state {
+            State::Running(curr) => curr.input_needed.is_some(),
+            State::NoFile | State::CompilerError(_) => false,
         };
- 
+        // TODO - make this nicer when refactoring compiler errs
         let mipsy_output_tab_title = match &self.state {
-            State::NoFile => {
-                "Mipsy Output - (0)".to_string()
-            }
+            State::NoFile => "Mipsy Output - (0)".to_string(),
+            State::CompilerError(_) => "Mipsy Output - 1".to_string(),
             State::Running(curr) => {
                 format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
             }
         };
 
         let (decompiled_tab_classes, source_tab_classes) = {
-				    let mut default = (
+            let mut default = (
 						    String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1"),
 						    String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 ")
 					  );
-					
-					  if self.show_source {
-						    default.1	= format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
- 					
-					  } else {
-						    default.0	= format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
-					  };
-	
-					  default	
-				};
 
+            if self.show_source {
+                default.1 = format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
+            } else {
+                default.0 = format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
+            };
+
+            default
+        };
         html! {
             <>
                 <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
@@ -572,19 +558,18 @@ impl Component for App {
                         file_loaded=file_loaded waiting_syscall={waiting_syscall}
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
-                        
                         <div id="file_data">
                             <div style="height: 3%;" class="flex overflow-hidden border-1 border-black">
                                 <button class={source_tab_classes} onclick={show_source_tab}>
                                     {"source"}
                                 </button>
                                 <button
-                                    class={decompiled_tab_classes} 
+                                    class={decompiled_tab_classes}
                                     onclick={show_decompiled_tab}
                                 >
                                     {"decompiled"}
                                 </button>
-                            </div> 
+                            </div>
                             <div style="height: 97%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 <pre class="text-xs whitespace-pre-wrap">
                                     { text_html_content }
@@ -597,8 +582,8 @@ impl Component for App {
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 { self.render_running_registers() }
                             </div>
-                            
-                            <OutputArea 
+
+                            <OutputArea
                                 show_io={self.show_io}
                                 show_io_tab={show_io_tab}
                                 show_mipsy_tab={show_mipsy_tab}
@@ -607,7 +592,7 @@ impl Component for App {
                                         State::Running(curr) => {
                                             if curr.input_needed.is_none() { true } else { false }
                                         },
-                                        State::NoFile => { true },
+                                        State::NoFile | State::CompilerError(_) => { true },
                                     }
                                 }
                                 input_needed = {
@@ -615,7 +600,7 @@ impl Component for App {
                                         State::Running(curr) => {
                                             curr.input_needed.is_some()
                                         }
-                                        State::NoFile => {
+                                        State::NoFile | State::CompilerError(_)  => {
                                             false
                                         }
                                     }
@@ -637,13 +622,12 @@ impl Component for App {
                                             },
                                             None => {"".to_string()}
                                         },
-                                        State::NoFile => {
+                                        State::NoFile | State::CompilerError(_) => {
                                             "".to_string()
                                         },
                                     }
                                 }
                             />
-                            
                         </div>
 
                     </div>
@@ -675,7 +659,7 @@ impl App {
             <>
             <h3>
             <strong class="text-lg">
-            { 
+            {
                 self.filename.as_ref().unwrap_or(&"".to_string())
             }
             </strong>
@@ -686,8 +670,8 @@ impl App {
                     if self.show_source {
                         self.render_source_table()
                     } else {
-                        self.render_decompiled_table(state) 
-                    }                 
+                        self.render_decompiled_table(state)
+                    }
                 }
                 </tbody>
             </table>
@@ -714,7 +698,7 @@ impl App {
                     }
                     else {
                         html! {
-                            <tr> 
+                            <tr>
                                 <pre>
                                     <code class="language-mips" style="padding: 0 !important;">
                                         {item}
@@ -750,7 +734,7 @@ impl App {
                     };
 
                     html! {
-                        <tr 
+                        <tr
                           class={
                             if should_highlight {
                               "bg-th-highlighting"
@@ -770,18 +754,21 @@ impl App {
         html! {
             {
                 if self.show_io {
-										match &self.state {
-											State::Running(curr) => {curr.mips_state.stdout.join("")},
-											State::NoFile => {
-												"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
-													.into()
-											},	
-										}
+                    match &self.state {
+                        State::Running(curr) => {curr.mips_state.stdout.join("")},
+                        State::NoFile => {
+                            "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
+                                .into()
+                        },
+                        State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
+
+                    }
                 } else {
-										match &self.state {
-											State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
-											State::NoFile => {"".into()},	
-										}
+                    match &self.state {
+                        State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
+                        State::NoFile => {"".into()},
+                        State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
+                    }
                 }
             }
         }
@@ -840,30 +827,34 @@ impl App {
         }
     }
 
-    fn process_syscall_request(&mut self, mips_state: MipsState, required_type: ReadSyscalls) -> bool {
-    
+    fn process_syscall_request(
+        &mut self,
+        mips_state: MipsState,
+        required_type: ReadSyscalls,
+    ) -> bool {
         match &mut self.state {
             State::Running(curr) => {
                 curr.mips_state = mips_state;
                 curr.input_needed = Some(required_type);
-                
                 self.focus_input();
                 true
             }
 
-            State::NoFile => false,
+            State::NoFile | State::CompilerError(_) => false,
         }
-
     }
-    
     fn focus_input(&self) {
         if let Some(input) = self.input_ref.cast::<HtmlInputElement>() {
             input.set_disabled(false);
             input.focus().unwrap();
-        };  
+        };
     }
 
-    fn process_syscall_response(&mut self, input: HtmlInputElement, required_type: ReadSyscallInputs) {
+    fn process_syscall_response(
+        &mut self,
+        input: HtmlInputElement,
+        required_type: ReadSyscallInputs,
+    ) {
         match &mut self.state {
             State::Running(curr) => {
                 self.worker.send(WorkerRequest::GiveSyscallValue(
@@ -874,7 +865,7 @@ impl App {
                 input.set_value("");
                 input.set_disabled(true);
             }
-            State::NoFile => {
+            State::NoFile | State::CompilerError(_) => {
                 error!("Should not be possible to give syscall value with no file");
             }
         }
