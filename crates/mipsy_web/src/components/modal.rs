@@ -31,7 +31,7 @@ impl Component for Modal {
 
     fn view(&self) -> Html {
         let classes = if self.props.should_display {
-            "modal bg-th-primary border-black border-2 absolute top-1/4 h-2/3 w-3/4"
+            "modal overflow-auto bg-th-primary border-black border-2 absolute top-1/4 h-2/3 w-3/4"
         } else {
             "modal hidden"
         };
@@ -70,7 +70,7 @@ impl Component for Modal {
                         </p>
                         <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
                         <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
-                        <ul class="list-disc">
+                        <ul class="ml-4 list-disc">
                             <li>{"Compilation Errors"}</li>
                             <li>{"Runtime Errors"}</li>
                             <li>{"Separate text and data segments"}</li>
@@ -78,11 +78,22 @@ impl Component for Modal {
                             <li>{"Highlighted Register Changes between steps"}</li>
                         </ul>
 
-                        <h2 class="mt-2"> <strong> {"Unsupported Features"} </strong> </h2>
+                        <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>
                         <p> {"The following features will not be supported in mipsy_web"}</p>
                         <ul>
                             <li>{"FileRead, Write and Open Syscalls"}</li>
                         </ul>
+                        <div class="mt-4 text-xs">
+                        <p> {"Made with love by Shrey Somaiya for cs1521 at UNSW CSE"} </p>
+                        <p> {"with help from:"}</p>
+                        <ul class="ml-4 list-disc">
+                            <li>{"Zac Kologlu - partnering on development and major implementation decisions."}</li>
+                            <li>{"Dylan Brotherson"}</li>
+                            <li>{"Andrew Taylor"}</li>
+                            <li>{"Jashank Jeremy"}</li>
+                            <li>{"You, for testing this out!"}</li>
+                        </ul>
+                        </div>
                         </div>
                     </section>
                     <footer class="modal-footer"></footer>
