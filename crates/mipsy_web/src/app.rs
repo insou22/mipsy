@@ -524,7 +524,7 @@ impl Component for App {
         // TODO - make this nicer when refactoring compiler errs
         let mipsy_output_tab_title = match &self.state {
             State::NoFile => "Mipsy Output - (0)".to_string(),
-            State::CompilerError(_) => "Mipsy Output - 1".to_string(),
+            State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
             State::Running(curr) => {
                 format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
             }
@@ -559,7 +559,7 @@ impl Component for App {
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="file_data">
-                            <div style="height: 3%;" class="flex overflow-hidden border-1 border-black">
+                            <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
                                 <button class={source_tab_classes} onclick={show_source_tab}>
                                     {"source"}
                                 </button>
@@ -570,7 +570,7 @@ impl Component for App {
                                     {"decompiled"}
                                 </button>
                             </div>
-                            <div style="height: 97%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                            <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                                 <pre class="text-xs whitespace-pre-wrap">
                                     { text_html_content }
                                 </pre>

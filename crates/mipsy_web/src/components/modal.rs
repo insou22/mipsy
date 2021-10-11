@@ -40,7 +40,7 @@ impl Component for Modal {
             <div class={classes} id="modal1" style="left: 13%;">
                 <div class="modal-dialog">
                     <div class="absolute modal-header top-0 right-0 h-16 w-16">
-                        <div onclick={self.props.toggle_modal_onclick.clone()} class="cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
+                        <div onclick={self.props.toggle_modal_onclick.clone()} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
                         {"x"}
                         </div>
                     </div>
