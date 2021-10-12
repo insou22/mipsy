@@ -44,7 +44,6 @@ pub struct Worker {
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
 
-
 // for now, the below are not implemented
 enum RuntimeState {
     Running(Runtime),
@@ -131,8 +130,11 @@ impl Agent for Worker {
                     tab_size: 8,
                     spim: false,
                 };
-                let compiled =
-                    mipsy_lib::compile(&self.inst_set, vec![TaggedFile::new(None, f.as_str())], &config);
+                let compiled = mipsy_lib::compile(
+                    &self.inst_set,
+                    vec![TaggedFile::new(None, f.as_str())],
+                    &config,
+                );
 
                 match compiled {
                     Ok(binary) => {
@@ -192,7 +194,14 @@ impl Agent for Worker {
                         match runtime_state {
                             RuntimeState::WaitingInt(guard) => {
                                 if let ReadSyscallInputs::Int(int) = val {
-                                    Self::upload_syscall_value(self, mips_state, guard, int, id, format!("{}\n", int));
+                                    Self::upload_syscall_value(
+                                        self,
+                                        mips_state,
+                                        guard,
+                                        int,
+                                        id,
+                                        format!("{}\n", int),
+                                    );
                                 } else {
                                     panic!("Error: please report this to developers, with steps to reproduce")
                                 }
@@ -205,33 +214,49 @@ impl Agent for Worker {
                                     panic!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }*/
-
                             RuntimeState::WaitingFloat(guard) => {
                                 if let ReadSyscallInputs::Float(float) = val {
-
-                                    Self::upload_syscall_value(self, mips_state, guard, float, id, format!("{}\n", float));
+                                    Self::upload_syscall_value(
+                                        self,
+                                        mips_state,
+                                        guard,
+                                        float,
+                                        id,
+                                        format!("{}\n", float),
+                                    );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
                             RuntimeState::WaitingChar(guard) => {
-                                
                                 if let ReadSyscallInputs::Char(char) = val {
-                                    Self::upload_syscall_value(self, mips_state, guard, char, id, format!("{}\n", char as char));
+                                    Self::upload_syscall_value(
+                                        self,
+                                        mips_state,
+                                        guard,
+                                        char,
+                                        id,
+                                        format!("{}\n", char as char),
+                                    );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
                             RuntimeState::WaitingString(guard) => {
                                 if let ReadSyscallInputs::String(string) = val {
-                                    
                                     let display = String::from_utf8_lossy(&string).into_owned();
-                                    Self::upload_syscall_value(self, mips_state, guard, string, id, format!("{}\n", display));
+                                    Self::upload_syscall_value(
+                                        self,
+                                        mips_state,
+                                        guard,
+                                        string,
+                                        id,
+                                        format!("{}\n", display),
+                                    );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
                                 }
                             }
-
 
                             _ => {
                                 error!("Error: please report this to developers, with steps to reproduce")
@@ -256,7 +281,7 @@ impl Agent for Worker {
                         // we want to keep looping forever if we're in a kernel section
                         // so that step only steps user space
                         let mut fast_forwarded = false;
-                        if runtime.timeline().state().pc() >= 0x80000000 { 
+                        if runtime.timeline().state().pc() >= 0x80000000 {
                             info!("stepping: {}", runtime.timeline().state().pc());
                             while runtime.timeline().state().pc() >= 0x80000000 {
                                 if step_size == -1 {
@@ -289,7 +314,8 @@ impl Agent for Worker {
                                             mips_state.update_current_instr(&runtime);
                                             self.runtime = Some(RuntimeState::Running(runtime));
                                             mips_state.mipsy_stdout.push(format!("{:?}", err));
-                                            let response = Self::Output::UpdateMipsState(mips_state);
+                                            let response =
+                                                Self::Output::UpdateMipsState(mips_state);
                                             self.link.respond(id, response);
                                             error!("error when fast forwarding: {:?}", err);
                                             return;
@@ -320,7 +346,6 @@ impl Agent for Worker {
                         }
 
                         for _ in 1..=step_size {
-                            let old_runtime = runtime.clone();
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
                                 Ok(Ok(next_runtime)) => runtime = next_runtime,
@@ -358,11 +383,11 @@ impl Agent for Worker {
                                         }
 
                                         PrintString(print_string_args, next_runtime) => {
-                                            
-																						let string_value = String::from_utf8_lossy(&print_string_args.value)
-                                                    										.to_string();
+                                            let string_value =
+                                                String::from_utf8_lossy(&print_string_args.value)
+                                                    .to_string();
 
-																						info!("printing string {:?}", string_value);
+                                            info!("printing string {:?}", string_value);
 
                                             mips_state.stdout.push(string_value);
 
@@ -385,13 +410,6 @@ impl Agent for Worker {
                                             info!("reading int");
                                             self.runtime = Some(RuntimeState::WaitingInt(guard));
 
-                                            // we want to send the state of mipsy BEFORE executing
-                                            // this instruction, but I can't access previous
-                                            // runtime T_T_T_T_T__T_T
-                                            // save the old runtime each time for now and hope zac doesn't yell at me
-                                            mips_state.update_registers(&old_runtime);
-                                            mips_state.update_current_instr(&old_runtime);
-
                                             self.link
                                                 .respond(id, WorkerResponse::NeedInt(mips_state));
 
@@ -402,12 +420,9 @@ impl Agent for Worker {
                                             info!("reading float");
                                             self.runtime = Some(RuntimeState::WaitingFloat(guard));
 
-                                            mips_state.update_registers(&old_runtime);
-                                            mips_state.update_current_instr(&old_runtime);
-
                                             self.link
                                                 .respond(id, WorkerResponse::NeedFloat(mips_state));
-                                            
+
                                             return;
                                         }
 
@@ -415,12 +430,11 @@ impl Agent for Worker {
                                             info!("reading string");
                                             self.runtime = Some(RuntimeState::WaitingString(guard));
 
-                                            mips_state.update_registers(&old_runtime);
-                                            mips_state.update_current_instr(&old_runtime);
+                                            self.link.respond(
+                                                id,
+                                                WorkerResponse::NeedString(mips_state),
+                                            );
 
-                                            self.link
-                                                .respond(id, WorkerResponse::NeedString(mips_state));
-                                            
                                             return;
                                         }
 
@@ -428,12 +442,9 @@ impl Agent for Worker {
                                             info!("Reading char");
                                             self.runtime = Some(RuntimeState::WaitingChar(guard));
 
-                                            mips_state.update_registers(&old_runtime);
-                                            mips_state.update_current_instr(&old_runtime);
-
                                             self.link
                                                 .respond(id, WorkerResponse::NeedChar(mips_state));
-                                            
+
                                             return;
                                         }
 
@@ -445,7 +456,7 @@ impl Agent for Worker {
 
                                         Exit(next_runtime) => {
                                             info!("exit syscall");
-                                    
+
                                             mips_state.exit_status = Some(0);
 
                                             runtime = next_runtime;
@@ -454,23 +465,27 @@ impl Agent for Worker {
                                         Open(_open_args, _fn_ptr) => {
                                             error!("open syscall is not supported by mipsy_web.");
 
-                                            mips_state.mipsy_stdout.push("Open syscall not supported".to_string());
+                                            mips_state
+                                                .mipsy_stdout
+                                                .push("Open syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
-
                                         }
 
                                         Write(_write_args, _fn_ptr) => {
                                             error!("write syscall is not supported by mipsy_web ");
 
-                                            mips_state.mipsy_stdout.push("Write syscall not supported".to_string());
+                                            mips_state
+                                                .mipsy_stdout
+                                                .push("Write syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
-
                                         }
 
                                         Close(_close_args, _fn_ptr) => {
                                             info!("Close");
 
-                                            mips_state.mipsy_stdout.push("Close syscall not supported".to_string());
+                                            mips_state
+                                                .mipsy_stdout
+                                                .push("Close syscall not supported".to_string());
                                             runtime = _fn_ptr(42);
                                         }
 
@@ -528,7 +543,17 @@ impl Agent for Worker {
                             if mips_state.exit_status.is_some() {
                                 break;
                             };
+
+                            // the next instruction may early exit, if so - let's update the registers
+                            if let Ok(next_instr_is_read_syscall) = runtime.next_inst_may_guard() {
+                                if next_instr_is_read_syscall {
+                                    mips_state.update_registers(&runtime);
+                                    mips_state.update_current_instr(&runtime);
+                                }
+                            }
                         }
+                        mips_state.update_registers(&runtime);
+                        mips_state.update_current_instr(&runtime);
 
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
@@ -559,7 +584,6 @@ impl Agent for Worker {
     }
 }
 
-
 impl Worker {
     fn upload_syscall_value<T>(
         &mut self,
@@ -570,7 +594,7 @@ impl Worker {
         serialized: String,
     ) {
         mips_state.stdout.push(serialized);
-        
+
         let runtime = guard(val);
 
         mips_state.update_registers(&runtime);
@@ -580,14 +604,13 @@ impl Worker {
 
         // if running we want InstructionOk
         // if stepping we want UpdateMipsState
-        
+
         if mips_state.is_stepping {
             self.link
                 .respond(id, <Worker as Agent>::Output::UpdateMipsState(mips_state))
         } else {
             self.link
                 .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
-
         }
     }
 }
