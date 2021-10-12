@@ -272,23 +272,19 @@ impl Agent for Worker {
             Self::Input::Run(mut mips_state, step_size) => {
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
-                        if step_size == -1 {
-                            runtime.timeline_mut().pop_last_state();
-                            mips_state.exit_status = None;
-                        }
 
-                        // kernel instructions start with 0x80000000
-                        // we want to keep looping forever if we're in a kernel section
-                        // so that step only steps user space
-                        let mut fast_forwarded = false;
+                        
                         if runtime.timeline().state().pc() >= 0x80000000 {
-                            info!("stepping: {}", runtime.timeline().state().pc());
                             while runtime.timeline().state().pc() >= 0x80000000 {
+                                info!("stepping: {:08x}", runtime.timeline().state().pc());
                                 if step_size == -1 {
                                     runtime.timeline_mut().pop_last_state();
                                     mips_state.exit_status = None;
+                                    // avoid infinite loop of scrolling back
+                                    if runtime.timeline().state().pc() == 0x80000000 {
+                                        break;
+                                    } 
                                 } else {
-                                    fast_forwarded = true;
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => runtime = next_runtime,
@@ -340,11 +336,10 @@ impl Agent for Worker {
                             return;
                         }
 
-                        if fast_forwarded {
+                        if step_size == -1 {
                             runtime.timeline_mut().pop_last_state();
                             mips_state.exit_status = None;
                         }
-
                         for _ in 1..=step_size {
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
