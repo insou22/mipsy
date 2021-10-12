@@ -4,7 +4,7 @@ pub mod state;
 pub use self::state::State;
 
 use std::collections::HashMap;
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_TOP, Safe, TEXT_BOT, Uninitialised, error::runtime::Error};
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_TOP, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, Error}};
 use self::state::Timeline;
 
 pub const NUL:  u8  = 0;
@@ -597,19 +597,43 @@ impl Runtime {
             0x20 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
             
             // LH   $Rt, Im($Rs)
-            0x21 => { state.write_register_uninit(rt, state.read_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
+            0x21 => {
+                let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
+
+                if addr % 2 != 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
+                }
+
+                state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_sign()); 
+            },
             
             // Unused
             0x22 => {},
             
             // LW   $Rt, Im($Rs)
-            0x23 => { state.write_register_uninit(rt, state.read_mem_word_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
+            0x23 => {
+                let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
+
+                if addr % 4 != 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Word })));
+                }
+
+                state.write_register_uninit(rt, state.read_mem_word_uninit(addr).extend_sign());
+            },
             
             // LBU  $Rt, Im($Rs)
             0x24 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_zero()); },
             
             // LHU  $Rt, Im($Rs)
-            0x25 => { state.write_register_uninit(rt, state.read_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_zero()); },
+            0x25 => {
+                let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
+
+                if addr % 2 != 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
+                }
+
+                state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_zero());
+            },
             
             // Unused
             0x26 => {},
@@ -621,13 +645,29 @@ impl Runtime {
             0x28 => { state.write_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
             
             // SH   $Rt, Im($Rs)
-            0x29 => { state.write_mem_half_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
+            0x29 => {
+                let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
+
+                if addr % 2 != 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
+                }
+
+                state.write_mem_half_uninit(addr, state.read_register_uninit(rt).truncate());
+            },
             
             // Unused
             0x2A => {},
             
             // SW   $Rt, Im($Rs)
-            0x2B => { state.write_mem_word_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
+            0x2B => {
+                let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
+
+                if addr % 4 != 0 {
+                    return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Word })));
+                }
+
+                state.write_mem_word_uninit(addr, state.read_register_uninit(rt).truncate());
+            },
             
             // Unused
             0x2C => {},
