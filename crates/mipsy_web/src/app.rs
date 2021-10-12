@@ -333,7 +333,7 @@ impl Component for App {
                             },
 
                             ReadString => {
-                                let string = input.value().as_bytes().to_vec();
+                                let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
 
                                 Self::process_syscall_response(self, input, String(string));
                             }
