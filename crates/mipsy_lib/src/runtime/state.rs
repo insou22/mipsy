@@ -15,7 +15,6 @@ pub const WRITE_MARKER_HI: u32 = 32;
 /// state `a` will live for at least as long as state `b`.
 ///
 /// This follows the standard lifetime subtyping rules in Rust, i.e. `'a: 'b`.
-#[derive(Clone)]
 pub struct Timeline {
     timeline: VecDeque<State>,
 }
