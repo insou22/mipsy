@@ -277,8 +277,8 @@ fn main() {
                                 runtime = new_runtime;
                             }
                             ReadChar(guard) => {
-                                let number = get_input_eof("character").unwrap_or(0);
-                                runtime = guard(number);
+                                let number: char = get_input_eof("character").unwrap_or('\0');
+                                runtime = guard(number as u8);
                             }
                             Open(_, _) => todo!(),
                             Read(_, _) => todo!(),
