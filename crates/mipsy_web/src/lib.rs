@@ -15,6 +15,7 @@ use yew::prelude::*;
 extern "C" {
     fn split_setup();
 
+    pub fn highlight();
 }
 
 #[wasm_bindgen(start)]
@@ -26,8 +27,9 @@ pub fn start() {
     } else {
         worker::Worker::register();
     }
-
+    
     unsafe {
         split_setup();
+    
     }
 }
