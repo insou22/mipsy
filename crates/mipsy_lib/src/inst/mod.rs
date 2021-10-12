@@ -7,6 +7,8 @@ pub use instruction::{
     CompileSignature,
     ArgumentType,
     RuntimeSignature,
+    RuntimeMetadata,
+    ReadsRegisterType,
     InstMetadata,
     GenericSignature,
     PseudoSignature,

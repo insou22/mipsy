@@ -48,12 +48,12 @@ pub fn tip_header() -> String {
     format!("{}{}", header, colon)
 }
 
-pub fn inst_to_string(inst: u32, addr: u32, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, iset: &InstSet, highlight_curr_inst: bool) -> String {
+pub fn inst_to_string(inst: u32, addr: u32, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, iset: &InstSet, highlight_curr_inst: bool, show_labels: bool) -> String {
     let parts = decompile_inst_into_parts(binary, iset, inst, addr);
-    inst_parts_to_string(&parts, source_code, binary, highlight_curr_inst)
+    inst_parts_to_string(&parts, source_code, binary, highlight_curr_inst, show_labels)
 }
 
-pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, highlight_curr_inst: bool) -> String {
+pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>)], binary: &Binary, highlight_curr_inst: bool, show_labels: bool) -> String {
     let mut string = String::new();
     
     if parts.inst_name.is_none() {
@@ -62,14 +62,16 @@ pub fn inst_parts_to_string(parts: &Decompiled, source_code: &[(Rc<str>, Rc<str>
 
     let name = parts.inst_name.as_ref().unwrap();
 
-    if !parts.labels.is_empty() {
-        string.push('\n');
-    }
+    if show_labels {
+        if !parts.labels.is_empty() {
+            string.push('\n');
+        }
 
-    for label in parts.labels.iter() {
-        let label = label.yellow().bold();
-        let colon = ":".bold();
-        string.push_str(&format!("{}{}\n", label, colon));
+        for label in parts.labels.iter() {
+            let label = label.yellow().bold();
+            let colon = ":".bold();
+            string.push_str(&format!("{}{}\n", label, colon));
+        }
     }
 
     let last_line_num = get_last_line_number(binary, parts.addr);

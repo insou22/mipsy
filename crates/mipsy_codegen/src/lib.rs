@@ -159,7 +159,8 @@ pub fn instruction_set(input: TokenStream) -> TokenStream {
                 inst_type: instruction.runtime.inst_type.into(),
                 opcode: instruction.runtime.opcode,
                 funct: instruction.runtime.funct,
-                rt: instruction.runtime.rt
+                rt: instruction.runtime.rt,
+                reads: instruction.runtime.reads.into_iter().map(Into::into).collect(),
             },
         });
     }
@@ -276,6 +277,24 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
         }
     };
 
+    let reads = instruction.runtime.reads
+    .into_iter()
+    .map(|arg| {
+        use base::ReadsRegisterType;
+
+        let arg_type = match arg {
+            ReadsRegisterType::Rs      => quote! { Rs },
+            ReadsRegisterType::Rt      => quote! { Rt },
+            ReadsRegisterType::OffRs   => quote! { OffRs },
+            ReadsRegisterType::OffRt   => quote! { OffRt },
+        };
+
+        quote! {
+            ::mipsy_lib::inst::ReadsRegisterType::#arg_type
+        }
+    });
+
+
     let desc_short = {
         match instruction.desc_short {
             Some(desc) => quote! { ::std::option::Option::Some(::std::string::String::from(#desc)) },
@@ -300,6 +319,11 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
                 #relative_label,
             ),
             #runtime_signature,
+            ::mipsy_lib::inst::RuntimeMetadata::new(
+                vec![
+                    #(#reads),*
+                ],
+            ),
             ::mipsy_lib::inst::InstMetadata::new(
                 #desc_short,
                 #desc_long,

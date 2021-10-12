@@ -31,6 +31,7 @@ pub struct RuntimeYaml {
     pub opcode: Option<u8>,
     pub funct: Option<u8>,
     pub rt: Option<u8>,
+    pub reads: Vec<ReadsRegisterType>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -108,6 +109,14 @@ pub enum ArgumentType {
     Off32Rt,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReadsRegisterType {
+    Rs,
+    Rt,
+    OffRs,
+    OffRt,
+}
+
 impl Display for ArgumentType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -169,6 +178,17 @@ impl Into<super::base::InstructionExpansionYaml> for InstructionExpansionYaml {
         super::base::InstructionExpansionYaml {
             inst: self.inst,
             data: self.data,
+        }
+    }
+}
+
+impl Into<super::base::ReadsRegisterType> for ReadsRegisterType {
+    fn into(self) -> super::base::ReadsRegisterType {
+        match self {
+            ReadsRegisterType::Rs => super::base::ReadsRegisterType::Rs,
+            ReadsRegisterType::Rt => super::base::ReadsRegisterType::Rt,
+            ReadsRegisterType::OffRs => super::base::ReadsRegisterType::OffRs,
+            ReadsRegisterType::OffRt => super::base::ReadsRegisterType::OffRt,
         }
     }
 }

@@ -300,6 +300,8 @@ fn main() {
             }
             Err((old_runtime, MipsyError::Runtime(err))) => {
                 runtime = old_runtime;
+
+                println!();
                 err.show_error(
                     ErrorContext::Binary,
                     files.iter()

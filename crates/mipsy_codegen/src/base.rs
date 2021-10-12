@@ -29,6 +29,7 @@ pub struct RuntimeYaml {
     pub opcode: Option<u8>,
     pub funct: Option<u8>,
     pub rt: Option<u8>,
+    pub reads: Vec<ReadsRegisterType>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -73,4 +74,12 @@ pub enum ArgumentType {
     U32,
     Off32Rs,
     Off32Rt,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReadsRegisterType {
+    Rs,
+    Rt,
+    OffRs,
+    OffRt,
 }

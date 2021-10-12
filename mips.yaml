@@ -9,6 +9,7 @@ instructions:
     runtime:
       type: R
       funct: 0x00
+      reads: [Rt]
 
   - name: SRL
     desc_short: Shifts the value in $Rt right by Sa logically, storing the result in $Rd
@@ -17,6 +18,7 @@ instructions:
     runtime:
       type: R
       funct: 0x02
+      reads: [Rt]
 
   - name: SRA
     desc_short: Shifts the value in $Rt right by Sa arithmetically, storing the result in $Rd
@@ -25,6 +27,7 @@ instructions:
     runtime:
       type: R
       funct: 0x03
+      reads: [Rt]
 
   - name: SLLV
     desc_short: Shifts the value in $Rt left by the value in $Rs logically, storing the result in $Rd
@@ -33,6 +36,7 @@ instructions:
     runtime:
       type: R
       funct: 0x04
+      reads: [Rt, Rs]
 
   - name: SRLV
     desc_short: Shifts the value in $Rt right by the value in $Rs logically, storing the result in $Rd
@@ -41,6 +45,7 @@ instructions:
     runtime:
       type: R
       funct: 0x06
+      reads: [Rt, Rs]
 
   - name: SRAV
     desc_short: Shifts the value in $Rt right by the value in $Rs arithmetically, storing the result in $Rd
@@ -49,6 +54,7 @@ instructions:
     runtime:
       type: R
       funct: 0x07
+      reads: [Rt, Rs]
 
 
   - name: JR
@@ -58,6 +64,7 @@ instructions:
     runtime:
       type: R
       funct: 0x08
+      reads: [Rs]
 
   - name: JALR
     desc_short: Jump-and-links to the address stored in the register $Rs
@@ -66,6 +73,7 @@ instructions:
     runtime:
       type: R
       funct: 0x09
+      reads: [Rs]
 
 
   - name: SYSCALL
@@ -75,6 +83,7 @@ instructions:
     runtime:
       type: R
       funct: 0x0C
+      reads: []
 
   - name: BREAK
     desc_short: Causes a break interrupt
@@ -83,6 +92,7 @@ instructions:
     runtime:
       type: R
       funct: 0x0D
+      reads: []
 
 
   - name: MFHI
@@ -92,6 +102,7 @@ instructions:
     runtime:
       type: R
       funct: 0x10
+      reads: []
 
   - name: MTHI
     desc_short: Copies the value from $Rs to the HI register
@@ -100,6 +111,7 @@ instructions:
     runtime:
       type: R
       funct: 0x11
+      reads: [Rs]
 
   - name: MFLO
     desc_short: Copies the value from the LO register to $Rd
@@ -108,6 +120,7 @@ instructions:
     runtime:
       type: R
       funct: 0x12
+      reads: []
 
   - name: MTLO
     desc_short: Copies the value from $Rs to the LO register
@@ -116,6 +129,7 @@ instructions:
     runtime:
       type: R
       funct: 0x13
+      reads: [Rs]
 
   - name: MULT
     desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers
@@ -124,6 +138,7 @@ instructions:
     runtime:
       type: R
       funct: 0x18
+      reads: [Rs, Rt]
 
   - name: MULTU
     desc_short: Multiplies the values in $Rs and $Rt, storing the result in the HI and LO registers, unsigned
@@ -132,6 +147,7 @@ instructions:
     runtime:
       type: R
       funct: 0x19
+      reads: [Rs, Rt]
 
   - name: DIV
     desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO
@@ -140,6 +156,7 @@ instructions:
     runtime:
       type: R
       funct: 0x1A
+      reads: [Rs, Rt]
 
   - name: DIVU
     desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO, unsigned
@@ -148,6 +165,7 @@ instructions:
     runtime:
       type: R
       funct: 0x1B
+      reads: [Rs, Rt]
 
 
   - name: ADD
@@ -157,6 +175,7 @@ instructions:
     runtime:
       type: R
       funct: 0x20
+      reads: [Rs, Rt]
 
   - name: ADDU
     desc_short: todo
@@ -165,6 +184,7 @@ instructions:
     runtime:
       type: R
       funct: 0x21
+      reads: [Rs, Rt]
 
   - name: SUB
     desc_short: todo
@@ -173,6 +193,7 @@ instructions:
     runtime:
       type: R
       funct: 0x22
+      reads: [Rs, Rt]
 
   - name: SUBU
     desc_short: todo
@@ -181,6 +202,7 @@ instructions:
     runtime:
       type: R
       funct: 0x23
+      reads: [Rs, Rt]
 
   - name: AND
     desc_short: todo
@@ -189,6 +211,7 @@ instructions:
     runtime:
       type: R
       funct: 0x24
+      reads: [Rs, Rt]
 
   - name: OR
     desc_short: todo
@@ -197,6 +220,7 @@ instructions:
     runtime:
       type: R
       funct: 0x25
+      reads: [Rs, Rt]
 
   - name: XOR
     desc_short: todo
@@ -205,6 +229,7 @@ instructions:
     runtime:
       type: R
       funct: 0x26
+      reads: [Rs, Rt]
 
   - name: NOR
     desc_short: todo
@@ -213,6 +238,7 @@ instructions:
     runtime:
       type: R
       funct: 0x27
+      reads: [Rs, Rt]
 
 
   - name: SLT
@@ -222,6 +248,7 @@ instructions:
     runtime:
       type: R
       funct: 0x2A
+      reads: [Rs, Rt]
 
   - name: SLTU
     desc_short: Set $Rd to 1 if $Rs < $Rt, otherwise set $Rd to 0, unsigned
@@ -230,6 +257,7 @@ instructions:
     runtime:
       type: R
       funct: 0x2B
+      reads: [Rs, Rt]
       
   # I-Type instructions
 
@@ -242,6 +270,7 @@ instructions:
       type: I
       opcode: 0x01
       rt: 0x00
+      reads: [Rs]
 
   - name: BGEZ
     desc_short: Branch to the immediate address if the value in $Rs >= 0
@@ -252,6 +281,7 @@ instructions:
       type: I
       opcode: 0x01
       rt: 0x01
+      reads: [Rs]
 
   - name: BEQ
     desc_short: Branch to the immediate address if the values in $Rs == $Rt
@@ -261,6 +291,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x04
+      reads: [Rs, Rt]
 
   - name: BNE
     desc_short: Branch to the immediate address if the values in $Rs != $Rt
@@ -270,6 +301,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x05
+      reads: [Rs, Rt]
 
   - name: BLEZ
     desc_short: Branch to the immediate address if the value in $Rs <= 0
@@ -279,6 +311,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x06
+      reads: [Rs]
 
   - name: BGTZ
     desc_short: Branch to the immediate address if the value in $Rs > 0
@@ -288,6 +321,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x07
+      reads: [Rs]
 
 
   - name: ADDI
@@ -297,6 +331,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x08
+      reads: [Rs]
 
   - name: ADDIU
     desc_short: Adds an immediate value to the value in $Rs, stores result in $Rt, unsigned
@@ -305,6 +340,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x09
+      reads: [Rs]
 
 
   - name: SLTI
@@ -314,6 +350,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0A
+      reads: [Rs]
 
   - name: SLTIU
     desc_short: Sets $Rt to 1 if the value in $Rs is less than the immediate value, otherwise sets $Rt to 0, unsigned
@@ -322,6 +359,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0B
+      reads: [Rs]
 
 
   - name: ANDI
@@ -331,6 +369,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0C
+      reads: [Rs]
 
   - name: ORI
     desc_short: Bitwise or of the value in $Rs and the immediate value, stores the result in $Rt
@@ -339,6 +378,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0D
+      reads: [Rs]
 
   - name: XORI
     desc_short: Bitwise xor of the value in $Rs and the immediate value, stores the result in $Rt
@@ -347,6 +387,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0E
+      reads: [Rs]
 
   - name: LUI
     desc_short: Load the immediate value into the upper 16 bits of $Rt
@@ -355,6 +396,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x0F
+      reads: []
 
 
   - name: LB
@@ -364,6 +406,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x20
+      reads: [OffRs]
 
   - name: LH
     desc_short: Load two bytes at the immediate address + $Rs into $Rt
@@ -372,6 +415,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x21
+      reads: [OffRs]
 
   - name: LW
     desc_short: Load four bytes at the immediate address + $Rs into $Rt
@@ -380,6 +424,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x23
+      reads: [OffRs]
 
   - name: LBU
     desc_short: Load one byte at the immediate address + $Rs into $Rt, don't sign extend
@@ -388,6 +433,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x24
+      reads: [OffRs]
 
   - name: LHU
     desc_short: Load two bytes at the immediate address + $Rs into $Rt, don't sign extend
@@ -396,6 +442,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x25
+      reads: [OffRs]
 
   - name: SB
     desc_short: Store one byte from $Rt into the immediate address + $Rs
@@ -404,6 +451,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x28
+      reads: [Rt]
 
   - name: SH
     desc_short: Store two bytes from $Rt into the immediate address + $Rs
@@ -412,6 +460,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x29
+      reads: [Rt]
 
   - name: SW
     desc_short: Store four bytes from $Rt into the immediate address + $Rs
@@ -420,6 +469,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x2B
+      reads: [Rt]
 
   - name: LWC1
     desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register) 
@@ -428,6 +478,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x31
+      reads: [OffRs]
 
   - name: SWC1
     desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs 
@@ -436,6 +487,7 @@ instructions:
     runtime:
       type: I
       opcode: 0x39
+      reads: [Rt]
 
   # J-Type Instructions
   - name: J
@@ -445,6 +497,7 @@ instructions:
     runtime:
       type: J
       opcode: 0x02
+      reads: []
 
   - name: JAL
     desc_short: Jump-and-link to the immediate address 
@@ -453,6 +506,7 @@ instructions:
     runtime:
       type: J
       opcode: 0x03
+      reads: []
 
 
 pseudoinstructions:

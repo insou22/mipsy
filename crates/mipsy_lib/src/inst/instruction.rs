@@ -33,15 +33,17 @@ pub struct InstSignature {
     name: String,
     compile: CompileSignature,
     runtime: RuntimeSignature,
+    runtime_meta: RuntimeMetadata,
     meta: InstMetadata,
 }
 
 impl InstSignature {
-    pub fn new(name: String, compile: CompileSignature, runtime: RuntimeSignature, meta: InstMetadata) -> Self {
+    pub fn new(name: String, compile: CompileSignature, runtime: RuntimeSignature, runtime_meta: RuntimeMetadata, meta: InstMetadata) -> Self {
         Self {
             name,
             compile,
             runtime,
+            runtime_meta,
             meta,
         }
     }
@@ -56,6 +58,10 @@ impl InstSignature {
 
     pub fn runtime_signature(&self) -> &RuntimeSignature {
         &self.runtime
+    }
+
+    pub fn runtime_metadata(&self) -> &RuntimeMetadata {
+        &self.runtime_meta
     }
 
     pub fn metadata(&self) -> &InstMetadata {
@@ -107,14 +113,51 @@ pub enum ArgumentType {
     Off32Rt,
 }
 
-#[derive(Clone, Debug,  Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum RuntimeSignature {
     R { funct:  u8 },
     I { opcode: u8, rt: Option<u8> },
     J { opcode: u8 },
 }
 
-#[derive(Clone, Debug,  Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeMetadata {
+    reads: Vec<ReadsRegisterType>,
+}
+
+impl RuntimeMetadata {
+    pub fn new(reads: Vec<ReadsRegisterType>) -> Self {
+        Self {
+            reads,
+        }
+    }
+
+    pub fn reads(&self) -> &[ReadsRegisterType] {
+        &self.reads
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReadsRegisterType {
+    Rs,
+    Rt,
+    OffRs,
+    OffRt,
+}
+
+impl ReadsRegisterType {
+    pub fn eq_argument_type(&self, other: &ArgumentType) -> bool {
+        match (self, other) {
+            (Self::Rs,    ArgumentType::Rs) => true,
+            (Self::Rt,    ArgumentType::Rt) => true,
+            (Self::OffRs, ArgumentType::OffRs) => true,
+            (Self::OffRt, ArgumentType::OffRt) => true,
+            _ => false,
+        }
+    }   
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstMetadata {
     desc_short: Option<String>,
     desc_long:  Option<String>,

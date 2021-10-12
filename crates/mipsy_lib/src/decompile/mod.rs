@@ -1,5 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
+use crate::inst::RuntimeMetadata;
 use crate::{Binary, Safe};
 use crate::inst::instruction::{InstSet, CompileSignature, ArgumentType, RuntimeSignature};
 use crate::inst::register::Register;
@@ -8,6 +9,7 @@ pub struct Decompiled<'a> {
     pub opcode: u32,
     pub addr: u32,
     pub inst_sig: Option<&'a CompileSignature>,
+    pub runtime_meta: Option<&'a RuntimeMetadata>,
     pub inst_name: Option<String>,
     pub arguments: Vec<String>,
     pub labels: Vec<String>,
@@ -105,6 +107,7 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
         opcode: inst,
         addr: text_addr,
         inst_sig: None,
+        runtime_meta: None,
         inst_name: None,
         arguments: vec![],
         labels: vec![],
@@ -150,7 +153,8 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
         }
 
         inst = Some(native_inst);
-        parts.inst_sig = Some(&native_inst.compile_signature());
+        parts.inst_sig = Some(native_inst.compile_signature());
+        parts.runtime_meta = Some(native_inst.runtime_metadata());
         break;
     }
 
