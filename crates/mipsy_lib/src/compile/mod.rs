@@ -13,6 +13,7 @@ mod data;
 use data::populate_labels_and_data;
 
 mod text;
+use linked_hash_map::LinkedHashMap;
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use text::populate_text;
@@ -32,7 +33,7 @@ pub struct Binary {
     pub data:    Vec<Safe<u8>>,
     pub ktext:   Vec<Safe<u8>>,
     pub kdata:   Vec<Safe<u8>>,
-    pub labels:  HashMap<String, u32>,
+    pub labels:  LinkedHashMap<String, u32>,
     pub constants: HashMap<String, i64>,
     pub breakpoints:  Vec<u32>,
     pub globals: Vec<String>,
@@ -97,7 +98,7 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
         data: vec![],
         ktext: vec![],
         kdata: vec![],
-        labels: HashMap::new(),
+        labels: LinkedHashMap::new(),
         constants: HashMap::new(),
         breakpoints: vec![],
         globals: vec![],

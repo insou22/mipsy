@@ -11,7 +11,7 @@ path = "src/lib.rs"
 serde = { version = "1.0", features = ["derive", "rc"] }  # for data deserialization
 serde_yaml = "0.8"                                        #   - see mips.yaml
 strsim = "0.10"                                           # for error-reporting - string similarity
-case_insensitive_hashmap = "1.0.0"                        # mips labels
+linked-hash-map = "0.5.4"                                 # for labels
 colored = "2"                                             # for ansi colors
 strip-ansi-escapes = "0.1"                                # to strip color codes out for strlen calcs
 mipsy_parser = { version = "0.1", path = "../mipsy_parser" }
