@@ -28,6 +28,6 @@ This project is a work-in-progress, and is not currently intended to be used for
 
 1. Install the latest stable rust with rustup at https://www.rust-lang.org/tools/install
 2. `git clone https://github.com/insou22/mipsy.git && cd mipsy`
-3. `cargo build` will build a binary for your machine into `./target/debug/mipsy`
+3. `cargo build --package mipsy` will build a binary for your machine into `./target/debug/mipsy`
 4. Run Mipsy using `./target/debug/mipsy {mips_file}`
-5. (Optional): Build an optimized release version with `cargo build --release`, your binary will be in `./target/release/mipsy`
+5. (Optional): Build an optimized release version with `cargo build --release --package mipsy`, your binary will be in `./target/release/mipsy`
