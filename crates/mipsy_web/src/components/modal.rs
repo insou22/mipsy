@@ -32,7 +32,7 @@ impl Component for Modal {
 
     fn view(&self) -> Html {
         let classes = if self.props.should_display {
-            "modal overflow-auto bg-th-primary border-black border-2 absolute top-1/4 h-2/3 w-3/4"
+            "modal overflow-auto bg-th-primary border-black border-2 absolute top-28 h-2/3 w-3/4"
         } else {
             "modal hidden"
         };
