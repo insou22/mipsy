@@ -491,7 +491,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::reset_command());
     state.add_command(commands::breakpoint_command());
     state.add_command(commands::breakpoints_command());
-    state.add_command(commands::decompile_command());
+    state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());

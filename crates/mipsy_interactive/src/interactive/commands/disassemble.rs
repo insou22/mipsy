@@ -5,15 +5,15 @@ use colored::*;
 
 use mipsy_lib::decompile::{Decompiled, Uninit, decompile_into_parts};
 
-pub(crate) fn decompile_command() -> Command {
+pub(crate) fn disassemble_command() -> Command {
     command(
-        "decompile",
-        vec!["d", "dec"],
+        "disassemble",
+        vec!["d", "dis", "disasm", "dec", "decompile"],
         vec![],
         vec![],
-        "decompiles the currently loaded file",
+        "disassembles the currently loaded file",
         &format!(
-            "Decompiles the currently loaded file, similar to how `{}` displays instructions.",
+            "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
             "step".bold(),
         ),
         |state, _label, _args| {
