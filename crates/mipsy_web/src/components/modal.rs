@@ -1,5 +1,6 @@
 use yew::prelude::*;
 use yew::Properties;
+use git_version::git_version;
 
 #[derive(Properties, Clone)]
 pub struct Props {
@@ -46,54 +47,58 @@ impl Component for Modal {
                     </div>
                     <section class="modal-content p-2 flex items-center flex-col">
                         <div>
-                        <h1 class="my-2">
-                        <strong>{"Welcome to Mipsy Web"}</strong>
-                        </h1>
-                        <br />
-                        <p>
-                            {"mipsy_web is a MIPS emulator built using the mipsy platform."}
-                        </p>
-                        <p>
-                            {"mipsy_web, alongside the mipsy platform, is fully open source "}
-                            <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
-                        </p>
-                        <br />
-                        <p class="mt-2">
-                            {"mipsy_web is pre-alpha software, and will eventually be a full replacement for QtSpim"}
-                        </p>
-                        <br />
-                        <p class="mb-2">
-                            {"Please leave any relevant feedback, issues or concerns on the "}
-                            <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
-                                {"Github Issues page"}
-                            </a>
-                        </p>
-                        <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
-                        <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
-                        <ul class="ml-4 list-disc">
-                            <li>{"Compilation Errors"}</li>
-                            <li>{"Runtime Errors"}</li>
-                            <li>{"Separate text and data segments"}</li>
-                            <li>{"Custom Settings + Theming"}</li>
-                            <li>{"Highlighted Register Changes between steps"}</li>
-                        </ul>
+                            <h1 class="my-2">
+                            <strong>{"Welcome to Mipsy Web"}</strong>
+                            </h1>
+                            <br />
+                            <p>
+                                {"mipsy_web is a MIPS emulator built using the mipsy platform."}
+                            </p>
+                            <p>
+                                {"mipsy_web, alongside the mipsy platform, is fully open source "}
+                                <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
+                            </p>
+                            <br />
+                            <p class="mt-2">
+                                {"mipsy_web is pre-alpha software, and will eventually be a full replacement for QtSpim"}
+                            </p>
+                            <br />
+                            <p class="mb-2">
+                                {"Please leave any relevant feedback, issues or concerns on the "}
+                                <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
+                                    {"Github Issues page"}
+                                </a>
+                            </p>
+                            <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
+                            <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
+                            <ul class="ml-4 list-disc">
+                                <li>{"Compilation Errors"}</li>
+                                <li>{"Runtime Errors"}</li>
+                                <li>{"Separate text and data segments"}</li>
+                                <li>{"Custom Settings + Theming"}</li>
+                                <li>{"Highlighted Register Changes between steps"}</li>
+                            </ul>
 
-                        <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>
-                        <p> {"The following features will not be supported in mipsy_web"}</p>
-                        <ul>
-                            <li>{"FileRead, Write and Open Syscalls"}</li>
-                        </ul>
-                        <div class="mt-4 text-xs">
-                        <p> {"Made with love by Shrey Somaiya for cs1521 at UNSW CSE"} </p>
-                        <p> {"with help from:"}</p>
-                        <ul class="ml-4 list-disc">
-                            <li>{"Zac Kologlu - partnering on development and major implementation decisions."}</li>
-                            <li>{"Dylan Brotherson"}</li>
-                            <li>{"Andrew Taylor"}</li>
-                            <li>{"Jashank Jeremy"}</li>
-                            <li>{"You, for testing this out!"}</li>
-                        </ul>
-                        </div>
+                            <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>
+                            <p> {"The following features will not be supported in mipsy_web"}</p>
+                            <ul>
+                                <li>{"FileRead, Write and Open Syscalls"}</li>
+                            </ul>
+                            <div class="mt-4 text-xs">
+                                <p> {"Made with love by Shrey Somaiya for cs1521 at UNSW CSE"} </p>
+                                <p> {"with help from:"}</p>
+                                <ul class="ml-4 list-disc">
+                                    <li>{"Zac Kologlu - partnering on development and major implementation decisions."}</li>
+                                    <li>{"Dylan Brotherson"}</li>
+                                    <li>{"Andrew Taylor"}</li>
+                                    <li>{"Jashank Jeremy"}</li>
+                                    <li>{"You, for testing this out!"}</li>
+                                </ul>
+                                <p class="mt-3 ml-4">
+                                    {"Hash: "}
+                                    {git_version!()} 
+                                </p>
+                            </div>
                         </div>
                     </section>
                     <footer class="modal-footer"></footer>

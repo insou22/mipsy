@@ -19,6 +19,7 @@ js-sys = "0.3"
 serde = "1"
 log = "0.4.14"
 wasm-logger = "0.2.0"
+git-version = "0.3.5"
 
 [profile.release]
 # less code to include into binary
