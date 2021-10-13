@@ -304,7 +304,7 @@ fn parse_space(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
 fn parse_align(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(
         parse_u32_type(".align"),
-        MpDirective::Space,
+        MpDirective::Align,
     )(i)
 }
 

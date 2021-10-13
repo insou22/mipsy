@@ -192,15 +192,8 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
             let num = eval_constant_in_range(&num, u32::MIN as _, 31, binary, file_tag)? as u32;
 
             let multiple = 2usize.pow(num);
-            let curr_size = match segment {
-                Segment::Data  => binary.data.len(),
-                Segment::KData => binary.kdata.len(),
-                Segment::Text  => binary.text.len(),
-                Segment::KText => binary.ktext.len(),
-            };
 
-            let amount = (multiple - (curr_size % multiple)) % multiple;
-            vec![Safe::Uninitialised; amount]
+            align(binary, segment, multiple)
         }
         MpDirective::Space(num) => {
             let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
