@@ -223,8 +223,6 @@ impl Component for App {
 
             Msg::ShowDecompiledTab => {
                 trace!("Show decompiled button clicked");
-                // only re-render upon change
-                let prev_show = self.show_source;
                 self.show_source = false;
                 true
             }
