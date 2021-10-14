@@ -1,6 +1,6 @@
 #![recursion_limit = "1024"]
 #![allow(clippy::large_enum_variant)]
-
+#![allow(unused_unsafe)]
 use wasm_bindgen::prelude::*;
 use yew::App;
 pub mod app;

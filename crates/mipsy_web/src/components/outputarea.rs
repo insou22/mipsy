@@ -85,16 +85,18 @@ impl Component for OutputArea {
                 </div>
                 <div 
                     style={if self.props.show_io {"height: 80%;"} else {"height: 90%;"}} 
-                    class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600"
+                    class="py-2 w-full flex overflow-y-auto flex-wrap-reverse bg-th-secondary px-2 border-2 border-gray-600"
                 >
+                    <div class="w-full overflow-y-auto">
                     <h1> 
                         <strong> 
                             {if self.props.show_io {"Output"} else {"Mipsy Output"}}
                         </strong>
                     </h1>
-                    <pre class="text-sm whitespace-pre-wrap">
+                    <pre style="width:100%;" class="text-sm whitespace-pre-wrap">
                         {self.props.running_output.clone()}
                     </pre>
+                    </div>
                 </div>
                 <div style="height: 10%;" class={if self.props.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
                     <input

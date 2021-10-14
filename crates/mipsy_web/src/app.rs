@@ -168,7 +168,7 @@ impl Component for App {
                 let input = WorkerRequest::CompileCode(file);
                 info!("sending to worker");
                 self.worker.send(input);
-
+                self.show_source = false;
                 true
             }
 
@@ -223,8 +223,6 @@ impl Component for App {
 
             Msg::ShowDecompiledTab => {
                 trace!("Show decompiled button clicked");
-                // only re-render upon change
-                let prev_show = self.show_source;
                 self.show_source = false;
                 true
             }
@@ -333,7 +331,7 @@ impl Component for App {
                             },
 
                             ReadString => {
-                                let string = input.value().as_bytes().to_vec();
+                                let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
 
                                 Self::process_syscall_response(self, input, String(string));
                             }
@@ -454,7 +452,7 @@ impl Component for App {
         false
     }
     fn rendered(&mut self, _first_render: bool) {
-        // unsafe{crate::highlight();}
+        unsafe{crate::highlight();}
     }
 
     fn view(&self) -> Html {
@@ -681,16 +679,20 @@ impl App {
 
     fn render_source_table(&self) -> Html {
         info!("calling render source table");
+        let file_len = self.file.as_ref().unwrap_or(&"".to_string()).len().to_string().len();
+        info!("{}", file_len);
         html! {
+            // if we ever want to do specific things on specific lines...
             {
-                for self.file.as_ref().unwrap_or(&"".to_string()).as_str().split("\n").into_iter().map(|item| {
+                for self.file.as_ref().unwrap_or(&"".to_string()).as_str().split("\n").into_iter().enumerate().map(|(index, item)| {
                     if item == "" {
                         // this is &nbsp;
                         html! {
                             <tr>
                                 <pre>
                                     <code class="language-mips" style="padding: 0 !important;">
-                                        {"\u{00a0}"}
+                                    {format!("{:indent$} ",index, indent=file_len)}
+                                    {"\u{00a0}"}
                                     </code>
                                 </pre>
                             </tr>
@@ -701,6 +703,7 @@ impl App {
                             <tr>
                                 <pre>
                                     <code class="language-mips" style="padding: 0 !important;">
+                                        {format!("{:indent$} ",index, indent=file_len)}
                                         {item}
                                     </code>
                                 </pre>
