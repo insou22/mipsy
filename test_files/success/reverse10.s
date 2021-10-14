@@ -51,7 +51,7 @@ end1:
 .data
 
 numbers:                 # int numbers[10];
-     .word 0 0 0 0 0 0 0 0 0 0
+     .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 string0:
     .asciiz "Enter a number: "

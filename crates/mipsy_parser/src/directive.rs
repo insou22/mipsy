@@ -10,7 +10,7 @@ use nom_locate::position;
 use serde::{Serialize, Deserialize};
 use nom::{IResult, branch::alt, bytes::complete::{
         tag,
-    }, character::complete::{char, space0, space1}, combinator::{map, opt}, multi::{
+    }, character::complete::{char, space0}, combinator::{map, opt}, multi::{
         many_till,
         separated_list1
     }, sequence::tuple};
@@ -196,20 +196,14 @@ fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> I
                 ),
                 map(
                     separated_list1(
-                        alt((
-                            map(
-                                tuple((
-                                    space0,
-                                    char(','),
-                                    space0,
-                                )),
-                                |_| ()
-                            ),
-                            map(
-                                space1,
-                                |_| (),
-                            ),
-                        )),
+                        map(
+                            tuple((
+                                space0,
+                                char(','),
+                                space0,
+                            )),
+                            |_| ()
+                        ),
                         parser,
                     ),
                     |list| Ok(list)
