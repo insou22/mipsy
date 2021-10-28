@@ -1741,6 +1741,10 @@ pseudoinstructions:
       - DefaultValue:
           value: Rs
           default: $Rd
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: MUL
     desc_short: $Rd = $Rs * $Rt
