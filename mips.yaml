@@ -1073,7 +1073,7 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: SLT
-        data: [$Rd, $Rt, $Rs]
+        data: [$Rd, $Rs, $Rt]
       - inst: ORI
         data: [$At, $0, 1]
       - inst: SUB
@@ -1102,7 +1102,7 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: SLTU
-        data: [$Rd, $Rt, $Rs]
+        data: [$Rd, $Rs, $Rt]
       - inst: ORI
         data: [$At, $0, 1]
       - inst: SUB
