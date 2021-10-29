@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
         experimental: [false]
 
     steps:
@@ -40,6 +40,7 @@ jobs:
         cd spimsimulator-code/spim
         make PREFIX="$HOME"
         make test
+        make install
         echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Test
