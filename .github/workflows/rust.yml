@@ -25,7 +25,7 @@ jobs:
     - name: Install SPIM
       run: |
         svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
-        cd spimsimulator-code
+        cd spimsimulator-code/spim
         make PREFIX=..
         make test
 
