@@ -19,11 +19,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu-latest, macOS-latest ]
         experimental: [false]
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Check out repository code
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: cargo build --verbose --package mipsy
 
     - name: Install SPIM
       run: |
@@ -32,8 +36,5 @@ jobs:
         make PREFIX=..
         make test
 
-    - name: Build
-      run: cargo build --verbose
-
-#     - name: Test
-#       run: cargo test --verbose
+    - name: Test
+      run: bash ${{ github.workspace }}/scripts/compare.sh
