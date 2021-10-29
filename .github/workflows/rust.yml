@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
         experimental: [false]
 
     steps:
@@ -29,12 +29,19 @@ jobs:
     - name: Build
       run: cargo build --verbose --package mipsy
 
+    - name: Install bison
+      if: ${{ matrix.os == "windows-latest" }}
+      run: choco install winflexbison3
+
     - name: Install SPIM
       run: |
         svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
         cd spimsimulator-code/spim
-        make PREFIX=..
+        make PREFIX="$HOME"
         make test
+        echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Test
-      run: bash ${{ github.workspace }}/scripts/compare.sh
+      run: |
+        cd ${{ github.workspace }}
+        bash scripts/compare.sh
