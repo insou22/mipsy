@@ -1,0 +1,36 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+
+    name: Build and Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install SPIM
+      run: |
+        svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
+        cd spimsimulator-code
+        make PREFIX=..
+        make test
+
+    - name: Build
+      run: cargo build --verbose
+
+#     - name: Test
+#       run: cargo test --verbose
