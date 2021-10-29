@@ -39,8 +39,8 @@ jobs:
         svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
         cd spimsimulator-code/spim
         make PREFIX="$HOME"
-        make test
-        make install
+        make PREFIX="$HOME" test
+        make PREFIX="$HOME" install
         echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Test
