@@ -10,8 +10,8 @@ for test_file in test_files/success/*; do
         continue
     fi
 
-    mipsy_out=$( yes 3 | ./target/debug/mipsy   "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
-    spim_out=$(  yes 3 |                spim -f "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
+    mipsy_out=$( yes 3 2>/dev/null | ./target/debug/mipsy   "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
+    spim_out=$(  yes 3 2>/dev/null |                spim -f "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
 
     if diff <(echo "$mipsy_out") <(echo "$spim_out") >/dev/null; then
         echo "PASSED"
