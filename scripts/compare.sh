@@ -1,27 +1,28 @@
-#!/bin/zsh
+#! /usr/bin/env bash
 
-EXCEPTIONS_FILE="/home/zac/uni/teach/comp1521/20T2/work/spim-simulator/CPU/exceptions.s";
+texts_failed=0
 
 for test_file in test_files/success/*; do
-    printf "Checking $test_file... ";
+    echo "Checking \"$test_file\":"
 
-    if `echo $test_file | grep -q 'broken'`;
-    then
-        echo 'Skipping broken file';
-        continue;
+    if $(echo $test_file | grep -q 'broken'); then
+        echo 'Skipping broken file'
+        continue
     fi
 
-    mipsy_out=`echo "Loaded: $EXCEPTIONS_FILE" && 
-              yes 3 | ./target/debug/mipsy "$test_file" 2>&1`;
-    spim_out=`yes 3 | spim -f "$test_file" 2>&1`;
+    mipsy_out=$( yes 3 | ./target/debug/mipsy   "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
+    spim_out=$(  yes 3 |                spim -f "$test_file" 2>&1 | sed -E "/Loaded: .+/d")
 
-    if diff <(echo "$mipsy_out") <(echo "$spim_out") >/dev/null;
-    then
-        echo "passed!"
+    if diff <(echo "$mipsy_out") <(echo "$spim_out") >/dev/null; then
+        echo "PASSED"
     else
-        echo "FAILED";
-        echo "    mipsy_output: `echo $mipsy_out   | sed -E "s/Loaded: .+//"`";
-        echo "\n    spim_output:  `echo $spim_out  | sed -E "s/Loaded: .+//"`";
-        echo '';
+        echo "FAILED"
+        echo "    mipsy_output: $(echo $mipsy_out)"
+        echo ""
+        echo "    spim_output:  $(echo $spim_out)"
+        echo ""
+        texts_failed=$((texts_failed + 1))
     fi
 done
+
+exit $((texts_failed == 0 ? 0 : 1))
