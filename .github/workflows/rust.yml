@@ -30,7 +30,7 @@ jobs:
       run: cargo build --verbose --package mipsy
 
     - name: Install bison
-      if: ${{ matrix.os == "windows-latest" }}
+      if: matrix.os == "windows-latest"
       run: choco install winflexbison3
 
     - name: Install SPIM
