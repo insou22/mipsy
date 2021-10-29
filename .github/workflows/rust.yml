@@ -34,6 +34,7 @@ jobs:
       run: choco install winflexbison3
 
     - name: Install SPIM
+      shell: bash
       run: |
         svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
         cd spimsimulator-code/spim
@@ -42,6 +43,8 @@ jobs:
         echo "$HOME/bin" >> $GITHUB_PATH
 
     - name: Test
+      shell: bash
       run: |
+        echo "$HOME/bin" >> $GITHUB_PATH
         cd ${{ github.workspace }}
         bash scripts/compare.sh
