@@ -1321,6 +1321,10 @@ pseudoinstructions:
       - inst: SLTI
         data: [$Rt, $Rs, $I16]
     only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rt
 
   - name: SLTI
     compile:
@@ -1341,6 +1345,10 @@ pseudoinstructions:
       - inst: SLTIU
         data: [$Rt, $Rs, $I16]
     only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rt
 
   - name: SLTIU
     compile:
@@ -1361,6 +1369,10 @@ pseudoinstructions:
       - inst: ANDI
         data: [$Rt, $Rs, $U16]
     only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rt
 
   - name: ANDI
     compile:
@@ -1381,6 +1393,10 @@ pseudoinstructions:
       - inst: ORI
         data: [$Rt, $Rs, $U16]
     only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rt
 
   - name: ORI
     compile:
@@ -1401,6 +1417,10 @@ pseudoinstructions:
       - inst: XORI
         data: [$Rt, $Rs, $U16]
     only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rt
 
   - name: XORI
     compile:
