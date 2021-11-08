@@ -385,7 +385,7 @@ impl Runtime {
         
                     // JALR $Rs
                     0x09 => { 
-                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _); 
+                        state.write_register(rd, state.pc() as _); 
                         state.set_pc(state.read_register(rs)? as _);
                     },
                     

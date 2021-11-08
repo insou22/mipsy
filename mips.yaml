@@ -67,9 +67,9 @@ instructions:
       reads: [Rs]
 
   - name: JALR
-    desc_short: Jump-and-links to the address stored in the register $Rs
+    desc_short: Jump-and-links to the address stored in the register $Rs, storing the return address in $Rd ($31 if not specified)
     compile:
-      format: [Rs]
+      format: [Rd, Rs]
     runtime:
       type: R
       funct: 0x09
@@ -658,11 +658,18 @@ pseudoinstructions:
 
   - name: JALR
     compile:
+      format: [Rd, Rs]
+    expand:
+      - inst: JALR
+        data: [$Rd, $Rs]
+    only_derive: true
+
+  - name: JALR
+    compile:
       format: [Rs]
     expand:
       - inst: JALR
-        data: [$Rs]
-    only_derive: true
+        data: [$ra, $Rs]
 
   - name: SYSCALL
     compile:
