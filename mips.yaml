@@ -188,6 +188,26 @@ instructions:
       funct:  0x01
       reads: [Rs, Rt]
 
+  - name: MSUB
+    desc_short: todo
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      opcode: 0x1C
+      funct:  0x04
+      reads: [Rs, Rt]
+
+  - name: MSUBU
+    desc_short: todo
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      opcode: 0x1C
+      funct:  0x05
+      reads: [Rs, Rt]
+
 
   - name: ADD
     desc_short: todo

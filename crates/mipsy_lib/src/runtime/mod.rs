@@ -557,6 +557,30 @@ impl Runtime {
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     }
+                    
+                    // MSUB
+                    0x04 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
+                        let result = original - (rs_val as i64 * rt_val as i64) as u64;
+
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    }
+                    
+                    // MSUBU
+                    0x05 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
+                        let result = original - rs_val as u64 * rt_val as u64;
+
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    }
 
                     // Unimplemented
                     _ => {}
