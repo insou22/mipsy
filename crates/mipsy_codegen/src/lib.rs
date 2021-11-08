@@ -248,10 +248,13 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
 
         let inst_type = match instruction.runtime.inst_type {
             InstructionType::R => {
-                let funct = instruction.runtime.funct
-                        .expect(&format!("invalid mips.yaml: missing funct for {}", instruction.name));
+                let opcode = instruction.runtime.opcode
+                        .unwrap_or(0);
 
-                quote! { R { funct: #funct } }
+                let funct = instruction.runtime.funct
+                        .unwrap_or(0);
+
+                quote! { R { opcode: #opcode, funct: #funct } }
             }
             InstructionType::I => {
                 let opcode = instruction.runtime.opcode

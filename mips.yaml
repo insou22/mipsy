@@ -168,6 +168,27 @@ instructions:
       reads: [Rs, Rt]
 
 
+  - name: MADD
+    desc_short: todo
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      opcode: 0x1C
+      funct:  0x00
+      reads: [Rs, Rt]
+
+  - name: MADDU
+    desc_short: todo
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      opcode: 0x1C
+      funct:  0x01
+      reads: [Rs, Rt]
+
+
   - name: ADD
     desc_short: todo
     compile:

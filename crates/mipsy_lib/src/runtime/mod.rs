@@ -29,6 +29,10 @@ pub const SYS15_WRITE:       i32 = 15;
 pub const SYS16_CLOSE:       i32 = 16;
 pub const SYS17_EXIT_STATUS: i32 = 17;
 
+pub const SPECIAL:  u32 = 0b000000;
+pub const SPECIAL2: u32 = 0b011100;
+pub const SPECIAL3: u32 = 0b011111;
+
 macro_rules! try_owned_self {
     ($self:ident, $res:expr) => {
         match $res {
@@ -117,9 +121,9 @@ impl Runtime {
         let addr   =  inst & 0x3FFFFFF;
 
         match opcode {
-            0 => {
+            SPECIAL | SPECIAL2 | SPECIAL3 => {
                 // R-Type
-                self.execute_r(funct, rd, rs, rt, shamt)
+                self.execute_r(opcode, funct, rd, rs, rt, shamt)
             }
             0b000010 | 0b000011 => {
                 // J-Type
@@ -327,200 +331,241 @@ impl Runtime {
         )
     }
 
-    fn execute_r(mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
+    fn execute_r(mut self, special: u32, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
     {
-        match funct {
+        match (special, funct) {
             // SYSCALL
-            0x0C => { Ok(Err(self.syscall()?)) },
+            (SPECIAL, 0x0C) => {
+                Ok(Err(self.syscall()?))
+            }
 
             // BREAK
-            0x0D => { Ok(Err(RuntimeSyscallGuard::Breakpoint(self))) },
-
+            (SPECIAL, 0x0D) => {
+                Ok(Err(RuntimeSyscallGuard::Breakpoint(self)))
+            }
             _ => {
-                try_owned_self!(self, self.execute_non_trapping_r(funct, rd, rs, rt, shamt));
+                try_owned_self!(self, self.execute_non_trapping_r(special, funct, rd, rs, rt, shamt));
                 Ok(SteppedRuntime::Ok(self))
             }
         }
     }
 
-    fn execute_non_trapping_r(&mut self, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()> {
+    fn execute_non_trapping_r(&mut self, special: u32, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> MipsyResult<()> {
         let state = self.timeline.state_mut();
 
-        match funct {
-            // SLL  $Rd, $Rt, Sa
-            0x00 => { state.write_register(rd, (state.read_register(rt)? << shamt) as i32); },
+        match special {
+            SPECIAL => {
+                match funct {
+                    // SLL  $Rd, $Rt, Sa
+                    0x00 => { state.write_register(rd, (state.read_register(rt)? << shamt) as i32); },
+        
+                    // Unused
+                    0x01 => {},
+        
+                    // SRL  $Rd, $Rt, Sa
+                    0x02 => { state.write_register(rd, (state.read_register(rt)? >> shamt) as i32); },
+        
+                    // SRA  $Rd, $Rt, Sa
+                    0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
+        
+                    // SLLV $Rd, $Rt, $Rs
+                    0x04 => { state.write_register(rd, (state.read_register(rt)? << state.read_register(rs)?) as i32); },
+        
+                    // Unused
+                    0x05 => {},
+        
+                    // SRLV $Rd, $Rt, $Rs
+                    0x06 => { state.write_register(rd, (state.read_register(rt)? >> state.read_register(rs)?) as i32); },
+        
+                    // SRAV $Rd, $Rt, $Rs
+                    0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
+        
+                    // JR   $Rs
+                    0x08 => { state.set_pc(state.read_register(rs)? as u32); },
+        
+                    // JALR $Rs
+                    0x09 => { 
+                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _); 
+                        state.set_pc(state.read_register(rs)? as _);
+                    },
+                    
+                    // Unused
+                    0x0A => {},
+        
+                    // Unused
+                    0x0B => {},
+        
+                    // SYSCALL
+                    0x0C => unreachable!("covered above"),
+        
+                    // BREAK
+                    0x0D => unreachable!("covered above"),
+        
+                    // Unused
+                    0x0E => {},
+        
+                    // Unused
+                    0x0F => {},
+        
+                    // MFHI $Rd
+                    0x10 => { state.write_register(rd, state.read_hi()?); },
+        
+                    // MTHI $Rs
+                    0x11 => { state.write_hi(state.read_register(rs)?); },
+        
+                    // MFLO $Rd
+                    0x12 => { state.write_register(rd, state.read_lo()?); },
+        
+                    // MTLO $Rs
+                    0x13 => { state.write_lo(state.read_register(rs)?); },
+        
+                    // Unused
+                    0x14 => {},
+        
+                    // Unused
+                    0x15 => {},
+        
+                    // Unused
+                    0x16 => {},
+        
+                    // Unused
+                    0x17 => {},
+        
+                    // MULT $Rs, $Rt
+                    0x18 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let result = (rs_val as i64 * rt_val as i64) as u64;
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    },
+        
+                    // MULTU $Rs, $Rt
+                    0x19 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let result = rs_val as u64 * rt_val as u64;
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    },
+        
+                    // DIV  $Rs, $Rt
+                    0x1A => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        if rt_val == 0 {
+                            return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
+                        }
+        
+                        state.write_lo(rs_val / rt_val);
+                        state.write_hi(rs_val % rt_val);
+                    },
+        
+                    // DIVU $Rs, $Rt
+                    0x1B => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        if rt_val == 0 {
+                            return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
+                        }
+        
+                        state.write_lo(rs_val / rt_val);
+                        state.write_hi(rs_val % rt_val);
+                    },
+        
+                    // Unused
+                    0x1C => {},
+        
+                    // Unused
+                    0x1D => {},
+        
+                    // Unused
+                    0x1E => {},
+        
+                    // Unused
+                    0x1F => {},
+        
+                    // ADD  $Rd, $Rs, $Rt
+                    0x20 => { state.write_register(rd, checked_add(state.read_register(rs)?, state.read_register(rt)?)?); },
+        
+                    // ADDU $Rd, $Rs, $Rt
+                    0x21 => { state.write_register(rd, state.read_register(rs)?.wrapping_add(state.read_register(rt)?)); },
+        
+                    // SUB  $Rd, $Rs, $Rt
+                    0x22 => { state.write_register(rd, checked_sub(state.read_register(rs)?, state.read_register(rt)?)?); },
+        
+                    // SUBU $Rd, $Rs, $Rt
+                    0x23 => { state.write_register(rd, state.read_register(rs)?.wrapping_sub(state.read_register(rt)?)); },
+        
+                    // AND  $Rd, $Rs, $Rt
+                    0x24 => { state.write_register(rd, state.read_register(rs)? & state.read_register(rt)?); },
+        
+                    // OR   $Rd, $Rs, $Rt
+                    0x25 => { state.write_register(rd, state.read_register(rs)? | state.read_register(rt)?); },
+        
+                    // XOR  $Rd, $Rs, $Rt
+                    0x26 => { state.write_register(rd, state.read_register(rs)? ^ state.read_register(rt)?); },
+        
+                    // NOR  $Rd, $Rs, $Rt
+                    0x27 => { state.write_register(rd, ! (state.read_register(rs)? | state.read_register(rt)?)); },
+        
+                    // Unused
+                    0x28 => {},
+        
+                    // Unused
+                    0x29 => {},
+        
+                    // SLT  $Rd, $Rs, $Rt
+                    0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
+        
+                    // SLTU $Rd, $Rs, $Rt
+                    0x2B => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
+        
+                    // Unused
+                    0x2C..=0x3F => {},
+        
+                    // Doesn't fit in 6 bits
+                    _ => unreachable!(),
+                }        
+            }
+            SPECIAL2 => {
+                match funct {
+                    // MADD
+                    0x00 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
+                        let result = original + (rs_val as i64 * rt_val as i64) as u64;
 
-            // Unused
-            0x01 => {},
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    }
+                    
+                    // MADDU
+                    0x01 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+        
+                        let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
+                        let result = original + rs_val as u64 * rt_val as u64;
 
-            // SRL  $Rd, $Rt, Sa
-            0x02 => { state.write_register(rd, (state.read_register(rt)? >> shamt) as i32); },
+                        state.write_hi((result >> 32) as _);
+                        state.write_lo((result & 0xFFFF_FFFF) as _);
+                    }
 
-            // SRA  $Rd, $Rt, Sa
-            0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
-
-            // SLLV $Rd, $Rt, $Rs
-            0x04 => { state.write_register(rd, (state.read_register(rt)? << state.read_register(rs)?) as i32); },
-
-            // Unused
-            0x05 => {},
-
-            // SRLV $Rd, $Rt, $Rs
-            0x06 => { state.write_register(rd, (state.read_register(rt)? >> state.read_register(rs)?) as i32); },
-
-            // SRAV $Rd, $Rt, $Rs
-            0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
-
-            // JR   $Rs
-            0x08 => { state.set_pc(state.read_register(rs)? as u32); },
-
-            // JALR $Rs
-            0x09 => { 
-                state.write_register(Register::Ra.to_number() as u32, state.pc() as _); 
-                state.set_pc(state.read_register(rs)? as _);
-            },
+                    // Unimplemented
+                    _ => {}
+                }
+            }
+            SPECIAL3 => {
             
-            // Unused
-            0x0A => {},
-
-            // Unused
-            0x0B => {},
-
-            // SYSCALL
-            0x0C => unreachable!("covered above"),
-
-            // BREAK
-            0x0D => unreachable!("covered above"),
-
-            // Unused
-            0x0E => {},
-
-            // Unused
-            0x0F => {},
-
-            // MFHI $Rd
-            0x10 => { state.write_register(rd, state.read_hi()?); },
-
-            // MTHI $Rs
-            0x11 => { state.write_hi(state.read_register(rs)?); },
-
-            // MFLO $Rd
-            0x12 => { state.write_register(rd, state.read_lo()?); },
-
-            // MTLO $Rs
-            0x13 => { state.write_lo(state.read_register(rs)?); },
-
-            // Unused
-            0x14 => {},
-
-            // Unused
-            0x15 => {},
-
-            // Unused
-            0x16 => {},
-
-            // Unused
-            0x17 => {},
-
-            // MULT $Rs, $Rt
-            0x18 => {
-                let rs_val = state.read_register(rs)?;
-                let rt_val = state.read_register(rt)?;
-
-                let result = (rs_val as i64 * rt_val as i64) as u64;
-                state.write_hi((result >> 32) as _);
-                state.write_lo((result & 0xFFFF_FFFF) as _);
-            },
-
-            // MULTU $Rs, $Rt
-            0x19 => {
-                let rs_val = state.read_register(rs)?;
-                let rt_val = state.read_register(rt)?;
-
-                let result = rs_val as u64 * rt_val as u64;
-                state.write_hi((result >> 32) as _);
-                state.write_lo((result & 0xFFFF_FFFF) as _);
-            },
-
-            // DIV  $Rs, $Rt
-            0x1A => {
-                let rs_val = state.read_register(rs)?;
-                let rt_val = state.read_register(rt)?;
-
-                if rt_val == 0 {
-                    return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
-                }
-
-                state.write_lo(rs_val / rt_val);
-                state.write_hi(rs_val % rt_val);
-            },
-
-            // DIVU $Rs, $Rt
-            0x1B => {
-                let rs_val = state.read_register(rs)?;
-                let rt_val = state.read_register(rt)?;
-
-                if rt_val == 0 {
-                    return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
-                }
-
-                state.write_lo(rs_val / rt_val);
-                state.write_hi(rs_val % rt_val);
-            },
-
-            // Unused
-            0x1C => {},
-
-            // Unused
-            0x1D => {},
-
-            // Unused
-            0x1E => {},
-
-            // Unused
-            0x1F => {},
-
-            // ADD  $Rd, $Rs, $Rt
-            0x20 => { state.write_register(rd, checked_add(state.read_register(rs)?, state.read_register(rt)?)?); },
-
-            // ADDU $Rd, $Rs, $Rt
-            0x21 => { state.write_register(rd, state.read_register(rs)?.wrapping_add(state.read_register(rt)?)); },
-
-            // SUB  $Rd, $Rs, $Rt
-            0x22 => { state.write_register(rd, checked_sub(state.read_register(rs)?, state.read_register(rt)?)?); },
-
-            // SUBU $Rd, $Rs, $Rt
-            0x23 => { state.write_register(rd, state.read_register(rs)?.wrapping_sub(state.read_register(rt)?)); },
-
-            // AND  $Rd, $Rs, $Rt
-            0x24 => { state.write_register(rd, state.read_register(rs)? & state.read_register(rt)?); },
-
-            // OR   $Rd, $Rs, $Rt
-            0x25 => { state.write_register(rd, state.read_register(rs)? | state.read_register(rt)?); },
-
-            // XOR  $Rd, $Rs, $Rt
-            0x26 => { state.write_register(rd, state.read_register(rs)? ^ state.read_register(rt)?); },
-
-            // NOR  $Rd, $Rs, $Rt
-            0x27 => { state.write_register(rd, ! (state.read_register(rs)? | state.read_register(rt)?)); },
-
-            // Unused
-            0x28 => {},
-
-            // Unused
-            0x29 => {},
-
-            // SLT  $Rd, $Rs, $Rt
-            0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
-
-            // SLTU $Rd, $Rs, $Rt
-            0x2B => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
-
-            // Unused
-            0x2C..=0x3F => {},
-
-            // Doesn't fit in 6 bits
-            _ => unreachable!(),
+            }
+            _ => unreachable!("special can only be SPECIAL, SPECIAL2, or SPECIAL3"),
         }
 
         Ok(())
