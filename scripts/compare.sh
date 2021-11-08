@@ -3,7 +3,7 @@
 texts_failed=0
 
 for test_file in test_files/success/*; do
-    echo "Checking \"$test_file\":"
+    echo -n "Checking \"$test_file\"... "
 
     if $(echo $test_file | grep -q 'broken'); then
         echo 'Skipping broken file'
