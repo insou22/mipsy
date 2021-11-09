@@ -29,7 +29,9 @@ pub struct RuntimeYaml {
     pub opcode: Option<u8>,
     pub funct: Option<u8>,
     pub shamt: Option<u8>,
+    pub rs: Option<u8>,
     pub rt: Option<u8>,
+    pub rd: Option<u8>,
     pub reads: Vec<ReadsRegisterType>,
 }
 

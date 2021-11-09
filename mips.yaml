@@ -502,6 +502,15 @@ instructions:
       opcode: 0x21
       reads: [OffRs]
 
+  - name: LWL
+    desc_short: Load Word Left
+    compile:
+      format: [Rt, OffRs]
+    runtime:
+      type: I
+      opcode: 0x22
+      reads: [OffRs]
+
   - name: LW
     desc_short: Load four bytes at the immediate address + $Rs into $Rt
     compile:
@@ -527,6 +536,15 @@ instructions:
     runtime:
       type: I
       opcode: 0x25
+      reads: [OffRs]
+
+  - name: LWR
+    desc_short: Load Word Right
+    compile:
+      format: [Rt, OffRs]
+    runtime:
+      type: I
+      opcode: 0x26
       reads: [OffRs]
 
   - name: SB

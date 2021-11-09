@@ -115,7 +115,7 @@ pub enum ArgumentType {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum RuntimeSignature {
-    R { opcode: u8, funct: u8, shamt: Option<u8>, },
+    R { opcode: u8, funct: u8, shamt: Option<u8>, rs: Option<u8>, rt: Option<u8>, rd: Option<u8> },
     I { opcode: u8, rt: Option<u8> },
     J { opcode: u8 },
 }
@@ -302,12 +302,24 @@ impl InstSignature {
         let mut inst: u32 = 0;
 
         match self.runtime {
-            RuntimeSignature::R { opcode, funct, shamt } => {
+            RuntimeSignature::R { opcode, funct, shamt, rs, rt, rd } => {
                 inst |= (opcode as u32 & 0x3F) << 26;
                 inst |=  funct  as u32 & 0x3F;
                 
                 if let Some(shamt) = shamt {
-                    inst |= (shamt  as u32 & 0x1F) << 6;
+                    inst |= (shamt as u32 & 0x1F) << 6;
+                }
+                
+                if let Some(rs) = rs {
+                    inst |= (rs as u32 & 0x1F) << 21;
+                }
+                
+                if let Some(rt) = rt {
+                    inst |= (rt as u32 & 0x1F) << 16;
+                }
+                
+                if let Some(rd) = rd {
+                    inst |= (rd as u32 & 0x1F) << 11;
                 }
             }
             RuntimeSignature::I { opcode, rt } => {

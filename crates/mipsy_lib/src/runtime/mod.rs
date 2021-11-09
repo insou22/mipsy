@@ -706,8 +706,10 @@ impl Runtime {
                 state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_sign()); 
             },
             
-            // Unused
-            0x22 => {},
+            // LWL  $Rt, Im($Rs)
+            0x22 => {
+                todo!();
+            },
             
             // LW   $Rt, Im($Rs)
             0x23 => {
@@ -734,8 +736,10 @@ impl Runtime {
                 state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_zero());
             },
             
-            // Unused
-            0x26 => {},
+            // LWR  $Rt, Im($Rs)
+            0x26 => {
+                todo!();
+            },
             
             // Unused
             0x27 => {},
