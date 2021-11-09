@@ -76,6 +76,24 @@ instructions:
       reads: [Rs]
 
 
+  - name: MOVZ
+    desc_short: Move Conditional on Zero
+    compile:
+      format: [Rd, Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x0A
+      reads: [Rs, Rt]
+
+  - name: MOVN
+    desc_short: Move Conditional on Not Zero
+    compile:
+      format: [Rd, Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x0B
+      reads: [Rs, Rt]
+
   - name: SYSCALL
     desc_short: Causes a system-call interrupt
     compile:
@@ -732,6 +750,23 @@ pseudoinstructions:
     expand:
       - inst: JALR
         data: [$ra, $Rs]
+
+  - name: MOVZ
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: MOVZ
+        data: [$Rd, $Rs, $Rt]
+    only_derive: true
+
+  - name: MOVN
+    desc_short: Move Conditional on Not Zero
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: MOVN
+        data: [$Rd, $Rs, $Rt]
+    only_derive: true
 
   - name: SYSCALL
     compile:

@@ -389,11 +389,19 @@ impl Runtime {
                         state.set_pc(state.read_register(rs)? as _);
                     },
                     
-                    // Unused
-                    0x0A => {},
-        
-                    // Unused
-                    0x0B => {},
+                    // MOVZ $Rd, $Rs, $Rt
+                    0x0A => {
+                        if state.read_register(rt)? == 0 {
+                            state.write_register(rd, state.read_register(rs)?);
+                        }
+                    },
+
+                    // MOVN $Rd, $Rs, $Rt
+                    0x0B => {
+                        if state.read_register(rt)? != 0 {
+                            state.write_register(rd, state.read_register(rs)?);
+                        }
+                    },
         
                     // SYSCALL
                     0x0C => unreachable!("covered above"),
