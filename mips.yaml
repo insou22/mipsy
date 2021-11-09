@@ -102,7 +102,18 @@ instructions:
     runtime:
       type: R
       funct: 0x10
+      shamt: 0x00
       reads: []
+
+  - name: CLZ
+    desc_short: Count leading zeroes of $Rs, store in $Rd
+    compile:
+      format: [Rd, Rs]
+    runtime:
+      type: R
+      funct: 0x10
+      shamt: 0x01
+      reads: [Rs]
 
   - name: MTHI
     desc_short: Copies the value from $Rs to the HI register
@@ -111,6 +122,17 @@ instructions:
     runtime:
       type: R
       funct: 0x11
+      shamt: 0x00
+      reads: [Rs]
+
+  - name: CLO
+    desc_short: Count leading ones of $Rs, store in $Rd
+    compile:
+      format: [Rd, Rs]
+    runtime:
+      type: R
+      funct: 0x11
+      shamt: 0x01
       reads: [Rs]
 
   - name: MFLO
@@ -718,6 +740,18 @@ pseudoinstructions:
         data: [$Rd]
     only_derive: true
 
+  - name: CLZ
+    compile:
+      format: [Rd, Rs]
+    expand:
+      - inst: CLZ
+        data: [$Rd, $Rs]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
   - name: MTHI
     compile:
       format: [Rs]
@@ -725,6 +759,18 @@ pseudoinstructions:
       - inst: MTHI
         data: [$Rs]
     only_derive: true
+
+  - name: CLO
+    compile:
+      format: [Rd, Rs]
+    expand:
+      - inst: CLO
+        data: [$Rd, $Rs]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
 
   - name: MFLO
     compile:

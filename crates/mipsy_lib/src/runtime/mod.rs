@@ -407,11 +407,25 @@ impl Runtime {
                     // Unused
                     0x0F => {},
         
-                    // MFHI $Rd
-                    0x10 => { state.write_register(rd, state.read_hi()?); },
+                    0x10 => match shamt {
+                        // MFHI $Rd
+                        0x00 => { state.write_register(rd, state.read_hi()?); }
+
+                        // CLZ $Rd, $Rs
+                        0x01 => { state.write_register(rd, state.read_register(rs)?.leading_zeros() as i32); }
+
+                        _ => todo!(),
+                    }
         
-                    // MTHI $Rs
-                    0x11 => { state.write_hi(state.read_register(rs)?); },
+                    0x11 => match shamt {
+                        // MTHI $Rs
+                        0x00 => { state.write_hi(state.read_register(rs)?); }
+                        
+                        // CLO $Rd, $Rs
+                        0x01 => { state.write_register(rd, state.read_register(rs)?.leading_ones() as i32); }
+
+                        _ => todo!(),
+                    }
         
                     // MFLO $Rd
                     0x12 => { state.write_register(rd, state.read_lo()?); },

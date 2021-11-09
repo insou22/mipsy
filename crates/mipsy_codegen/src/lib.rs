@@ -159,6 +159,7 @@ pub fn instruction_set(input: TokenStream) -> TokenStream {
                 inst_type: instruction.runtime.inst_type.into(),
                 opcode: instruction.runtime.opcode,
                 funct: instruction.runtime.funct,
+                shamt: instruction.runtime.shamt,
                 rt: instruction.runtime.rt,
                 reads: instruction.runtime.reads.into_iter().map(Into::into).collect(),
             },
@@ -254,7 +255,12 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
                 let funct = instruction.runtime.funct
                         .unwrap_or(0);
 
-                quote! { R { opcode: #opcode, funct: #funct } }
+                let shamt = match instruction.runtime.shamt {
+                    Some(shamt) => quote! { ::std::option::Option::Some(#shamt) },
+                    None        => quote! { ::std::option::Option::None },
+                };
+
+                quote! { R { opcode: #opcode, funct: #funct, shamt: #shamt } }
             }
             InstructionType::I => {
                 let opcode = instruction.runtime.opcode

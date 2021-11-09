@@ -28,6 +28,7 @@ pub struct RuntimeYaml {
     pub inst_type: InstructionType,
     pub opcode: Option<u8>,
     pub funct: Option<u8>,
+    pub shamt: Option<u8>,
     pub rt: Option<u8>,
     pub reads: Vec<ReadsRegisterType>,
 }

@@ -133,9 +133,15 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
 
     for native_inst in iset.native_set() {
         match native_inst.runtime_signature() {
-            &RuntimeSignature::R { opcode: inst_opcode, funct: inst_funct } => {
+            &RuntimeSignature::R { opcode: inst_opcode, funct: inst_funct, shamt: inst_shamt } => {
                 if inst_opcode as u32 != opcode || inst_funct as u32 != funct {
                     continue;
+                }
+
+                if let Some(inst_shamt) = inst_shamt {
+                    if inst_shamt as u32 != shamt {
+                        continue;
+                    }
                 }
             }
 
