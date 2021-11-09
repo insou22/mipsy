@@ -324,6 +324,28 @@ instructions:
       rt: 0x01
       reads: [Rs]
 
+  - name: BLTZAL
+    desc_short: Branch-and-link to the immediate address if the value in $Rs < 0
+    compile:
+      format: [Rs, I16]
+      relative_label: true
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x10
+      reads: [Rs]
+
+  - name: BGEZAL
+    desc_short: Branch-and-link to the immediate address if the value in $Rs >= 0
+    compile:
+      format: [Rs, I16]
+      relative_label: true
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x11
+      reads: [Rs]
+
   - name: BEQ
     desc_short: Branch to the immediate address if the values in $Rs == $Rt
     compile:
@@ -1306,6 +1328,24 @@ pseudoinstructions:
         data: [$Rs, $I16]
     only_derive: true
 
+  - name: BLTZAL
+    compile:
+      format: [Rs, I16]
+      relative_label: true
+    expand:
+      - inst: BLTZAL
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: BGEZAL
+    compile:
+      format: [Rs, I16]
+      relative_label: true
+    expand:
+      - inst: BGEZAL
+        data: [$Rs, $I16]
+    only_derive: true
+
   - name: ADDI
     compile:
       format: [Rt, Rs, I16]
@@ -1963,6 +2003,14 @@ pseudoinstructions:
       relative_label: true
     expand:
       - inst: BGEZ
+        data: [$0, $I16]
+
+  - name: BAL
+    compile:
+      format: [I16]
+      relative_label: true
+    expand:
+      - inst: BGEZAL
         data: [$0, $I16]
 
   - name: BEQZ

@@ -613,6 +613,22 @@ impl Runtime {
                 // BGEZ $Rs, Im
                 0x01 => { if state.read_register(rs)? >= 0 { state.branch(imm); } },
 
+                // BLTZAL $Rs, Im
+                0x10 => {
+                    if state.read_register(rs)? < 0 {
+                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
+                        state.branch(imm);
+                    }
+                }
+
+                // BGEZAL $Rs, Im
+                0x11 => {
+                    if state.read_register(rs)? >= 0 {
+                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
+                        state.branch(imm);
+                    }
+                }
+
                 // Error
                 _ => todo!(),
             },
