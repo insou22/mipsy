@@ -627,7 +627,21 @@ impl Runtime {
                 }
             }
             SPECIAL3 => {
-            
+                match funct {
+                    0x20 => {
+                        match shamt {
+                            // SEB  $Rd, $Rt
+                            0x10 => { state.write_register(rd, (state.read_register(rt)? as u8 ).extend_sign()); },
+                            
+                            // SEH  $Rd, $Rt
+                            0x18 => { state.write_register(rd, (state.read_register(rt)? as u16).extend_sign()); },
+                        
+                            _ => todo!(),
+                        }
+                    }
+                    
+                    _ => todo!(),
+                }
             }
             _ => unreachable!("special can only be SPECIAL, SPECIAL2, or SPECIAL3"),
         }

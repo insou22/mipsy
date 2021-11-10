@@ -270,6 +270,31 @@ instructions:
       funct:  0x05
       reads: [Rs, Rt]
 
+  # SPECIAL3
+  - name: SEB
+    desc_short: Sign-Extend Byte
+    compile:
+      format: [Rd, Rt]
+    runtime:
+      type: R
+      opcode: 0x1F
+      funct:  0x20
+      rs:     0x00
+      shamt:  0x10
+      reads: [Rt]
+
+  - name: SEH
+    desc_short: Sign-Extend Halfword
+    compile:
+      format: [Rd, Rt]
+    runtime:
+      type: R
+      opcode: 0x1F
+      funct:  0x20
+      rs:     0x00
+      shamt:  0x18
+      reads: [Rt]
+
 
   - name: ADD
     desc_short: todo
@@ -930,6 +955,65 @@ pseudoinstructions:
       - inst: DIVU
         data: [$Rs, $Rt]
     only_derive: true
+
+
+  - name: MADD
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: MADD
+        data: [$Rs, $Rt]
+    only_derive: true
+
+  - name: MADDU
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: MADDU
+        data: [$Rs, $Rt]
+    only_derive: true
+
+  - name: MSUB
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: MSUB
+        data: [$Rs, $Rt]
+    only_derive: true
+
+  - name: MSUBU
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: MSUBU
+        data: [$Rs, $Rt]
+    only_derive: true
+
+  # SPECIAL3
+  - name: SEB
+    compile:
+      format: [Rd, Rt]
+    expand:
+      - inst: SEB
+        data: [$Rd, $Rt]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+
+  - name: SEH
+    compile:
+      format: [Rd, Rt]
+    expand:
+      - inst: SEH
+        data: [$Rd, $Rt]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+
 
   - name: ADD
     compile:
@@ -2227,6 +2311,30 @@ pseudoinstructions:
     derives:
       - DefaultValue:
           value: Rs
+          default: $Rd
+
+  - name: ZEB
+    desc_short: Zero-Extend Byte
+    compile:
+      format: [Rd, Rt]
+    expand:
+      - inst: ANDI
+        data: [$Rd, $Rt, 0xFF]
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+
+  - name: ZEH
+    desc_short: Zero-Extend Half
+    compile:
+      format: [Rd, Rt]
+    expand:
+      - inst: ANDI
+        data: [$Rd, $Rt, 0xFFFF]
+    derives:
+      - DefaultValue:
+          value: Rt
           default: $Rd
 
   - name: B
