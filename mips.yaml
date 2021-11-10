@@ -1,5 +1,7 @@
 instructions:
   # R-Type Instructions
+  
+  # SPECIAL
   - name: SLL
     desc_short: Shifts the value in $Rt left by Sa logically, storing the result in $Rd
     desc_long: >
@@ -230,6 +232,61 @@ instructions:
       reads: [Rs, Rt]
 
 
+  - name: TGE
+    desc_short: Trap if Greater or Equal
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x30
+      reads: [Rs, Rt]
+
+  - name: TGEU
+    desc_short: Trap if Greater or Equal Unsigned
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x31
+      reads: [Rs, Rt]
+
+  - name: TLT
+    desc_short: Trap if Less Than
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x32
+      reads: [Rs, Rt]
+
+  - name: TLTU
+    desc_short: Trap if Less Than Unsigned
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x33
+      reads: [Rs, Rt]
+
+  - name: TEQ
+    desc_short: Trap if Equal
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x34
+      reads: [Rs, Rt]
+
+  - name: TNE
+    desc_short: Trap if Not Equal
+    compile:
+      format: [Rs, Rt]
+    runtime:
+      type: R
+      funct: 0x36
+      reads: [Rs, Rt]
+
+  # SPECIAL2
   - name: MADD
     desc_short: todo
     compile:
@@ -691,6 +748,8 @@ instructions:
 
 pseudoinstructions:
 # R-Type Instructions
+  
+  # SPECIAL
   - name: SLL
     compile:
       format: [Rd, Rt, Shamt]
@@ -969,6 +1028,110 @@ pseudoinstructions:
     only_derive: true
 
 
+  - name: TGE
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TGE
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: TGEU
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TGEU
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: TLT
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TLT
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: TLTU
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TLTU
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: TEQ
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TEQ
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: TNE
+    compile:
+      format: [Rs, Rt]
+    expand:
+      - inst: TNE
+        data: [$Rs, $Rt]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+
+  # SPECIAL2
   - name: MADD
     compile:
       format: [Rs, Rt]

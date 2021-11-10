@@ -249,6 +249,11 @@ pub(crate) fn sys17_exit_status(verbose: bool, val: i32) {
     }
 }
 
+pub(crate) fn trap(_verbose: bool) {
+    // TODO(zkol): This should provide actual diagnostics
+    println!("{}\n", "[TRAP]".bright_red().bold());
+}
+
 pub(crate) fn sys_unknown(verbose: bool, syscall_number: i32) {
     if verbose {
         prompt::syscall_nl(

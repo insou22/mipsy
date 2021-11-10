@@ -333,6 +333,8 @@ impl Runtime {
 
     fn execute_r(mut self, special: u32, funct: u32, rd: u32, rs: u32, rt: u32, shamt: u32) -> Result<SteppedRuntime, (Runtime, MipsyError)>
     {
+        let state = self.timeline.state();
+
         match (special, funct) {
             // SYSCALL
             (SPECIAL, 0x0C) => {
@@ -343,6 +345,61 @@ impl Runtime {
             (SPECIAL, 0x0D) => {
                 Ok(Err(RuntimeSyscallGuard::Breakpoint(self)))
             }
+
+            // TGE  $Rs, $Rt
+            (SPECIAL, 0x30) => {
+                if try_owned_self!(self, state.read_register(rs)) >= try_owned_self!(self, state.read_register(rt)) {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TGEU $Rs, $Rt
+            (SPECIAL, 0x31) => {
+                if try_owned_self!(self, state.read_register(rs)) as u32 >= try_owned_self!(self, state.read_register(rt)) as u32 {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TLT  $Rs, $Rt
+            (SPECIAL, 0x32) => {
+                if try_owned_self!(self, state.read_register(rs)) < try_owned_self!(self, state.read_register(rt)) {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TLTU $Rs, $Rt
+            (SPECIAL, 0x33) => {
+                if (try_owned_self!(self, state.read_register(rs)) as u32) < try_owned_self!(self, state.read_register(rt)) as u32 {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TEQ  $Rs, $Rt
+            (SPECIAL, 0x34) => {
+                if try_owned_self!(self, state.read_register(rs)) == try_owned_self!(self, state.read_register(rt)) {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TNE  $Rs, $Rt
+            (SPECIAL, 0x36) => {
+                if try_owned_self!(self, state.read_register(rs)) != try_owned_self!(self, state.read_register(rt)) {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
             _ => {
                 try_owned_self!(self, self.execute_non_trapping_r(special, funct, rd, rs, rt, shamt));
                 Ok(SteppedRuntime::Ok(self))
@@ -937,6 +994,7 @@ pub enum RuntimeSyscallGuard {
 
     // other
     Breakpoint     (Runtime),
+    Trap           (Runtime),
     UnknownSyscall (UnknownSyscallArgs, Runtime)
 }
 

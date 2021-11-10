@@ -300,6 +300,7 @@ impl State {
 
     pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>) -> CommandResult<bool> {
         let mut breakpoint = false;
+        let mut trapped = false;
 
         match result {
             Ok(Ok(new_runtime)) => {
@@ -386,6 +387,11 @@ impl State {
                         self.runtime = Some(new_runtime);
                         breakpoint = true;
                     }
+                    Trap(new_runtime) => {
+                        self.runtime = Some(new_runtime);
+                        runtime_handler::trap(verbose);
+                        trapped = true;
+                    }
                     UnknownSyscall(args, new_runtime) => {
                         self.runtime = Some(new_runtime);
                         runtime_handler::sys_unknown(verbose, args.syscall_number);
@@ -413,6 +419,8 @@ impl State {
                     
                     runtime_handler::breakpoint(label.as_deref(), pc);
     
+                    true
+                } else if trapped {
                     true
                 } else {
                     false
