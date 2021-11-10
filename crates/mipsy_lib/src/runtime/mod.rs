@@ -630,6 +630,20 @@ impl Runtime {
                 match funct {
                     0x20 => {
                         match shamt {
+                            // WSBH $Rd, $Rt
+                            0x02 => {
+                                let rt_val = state.read_register(rt)? as u32;
+                                let bottom_half =  rt_val        as u16;
+                                let top_half    = (rt_val >> 16) as u16;
+
+                                let bottom_half_swapped = bottom_half.swap_bytes() as u32;
+                                let top_half_swapped    = top_half.swap_bytes()    as u32;
+
+                                let result = bottom_half_swapped | (top_half_swapped << 16);
+
+                                state.write_register(rd, result as i32);
+                            },
+
                             // SEB  $Rd, $Rt
                             0x10 => { state.write_register(rd, (state.read_register(rt)? as u8 ).extend_sign()); },
                             
@@ -639,7 +653,7 @@ impl Runtime {
                             _ => todo!(),
                         }
                     }
-                    
+
                     _ => todo!(),
                 }
             }

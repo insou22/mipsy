@@ -271,6 +271,18 @@ instructions:
       reads: [Rs, Rt]
 
   # SPECIAL3
+  - name: WSBH
+    desc_short: Word Swap Bytes Within Halfwords
+    compile:
+      format: [Rd, Rt]
+    runtime:
+      type: R
+      opcode: 0x1F
+      funct:  0x20
+      rs:     0x00
+      shamt:  0x02
+      reads: [Rt]
+
   - name: SEB
     desc_short: Sign-Extend Byte
     compile:
@@ -990,6 +1002,19 @@ pseudoinstructions:
     only_derive: true
 
   # SPECIAL3
+  - name: WSBH
+    desc_short: Word Swap Bytes Within Halfwords
+    compile:
+      format: [Rd, Rt]
+    expand:
+      - inst: WSBH
+        data: [$Rd, $Rt]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+
   - name: SEB
     compile:
       format: [Rd, Rt]
