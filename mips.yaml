@@ -480,6 +480,67 @@ instructions:
       rt: 0x01
       reads: [Rs]
 
+  - name: TGEI
+    desc_short: Trap if Greater or Equal Immediate
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x08
+      reads: [Rs]
+
+  - name: TGEIU
+    desc_short: Trap if Greater or Equal Immediate Unsigned
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x09
+      reads: [Rs]
+
+  - name: TLTI
+    desc_short: Trap if Less Than Immediate
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x0A
+      reads: [Rs]
+
+  - name: TLTIU
+    desc_short: Trap if Less Than Immediate Unsigned
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x0B
+      reads: [Rs]
+
+  - name: TEQI
+    desc_short: Trap if Equal Immediate
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x0C
+      reads: [Rs]
+
+  - name: TNEI
+    desc_short: Trap if Not Equal Immediate
+    compile:
+      format: [Rs, I16]
+    runtime:
+      type: I
+      opcode: 0x01
+      rt: 0x0E
+      reads: [Rs]
+
+
   - name: BLTZAL
     desc_short: Branch-and-link to the immediate address if the value in $Rs < 0
     compile:
@@ -1694,6 +1755,126 @@ pseudoinstructions:
       - inst: BGEZ
         data: [$Rs, $I16]
     only_derive: true
+
+  - name: TGEI
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TGEI
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TGEI
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TGE
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
+
+  - name: TGEIU
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TGEIU
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TGEIU
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TGEI
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
+
+  - name: TLTI
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TLTI
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TLTI
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TLT
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
+
+  - name: TLTIU
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TLTIU
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TLTIU
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TLTI
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
+
+  - name: TEQI
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TEQI
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TEQI
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TEQ
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
+
+  - name: TNEI
+    compile:
+      format: [Rs, I16]
+    expand:
+      - inst: TNEI
+        data: [$Rs, $I16]
+    only_derive: true
+
+  - name: TNEI
+    compile:
+      format: [Rs, Rx]
+    expand:
+      - inst: TNE
+        data: [$Rs, $Rx]
+    only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rx
+          imm_types: [U16, I32, U32]
 
   - name: BEQ
     compile:

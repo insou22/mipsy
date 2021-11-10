@@ -133,9 +133,7 @@ impl Runtime {
             }
             _ => {
                 // I-Type
-                try_owned_self!(self, self.execute_i(opcode, rs, rt, imm));
-
-                Ok(Ok(self))
+                self.execute_i(opcode, rs, rt, imm)
             }
         }
     }
@@ -721,7 +719,73 @@ impl Runtime {
     }
 
 
-    fn execute_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> MipsyResult<()> {
+    fn execute_i(mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
+        let state = self.timeline.state();
+
+        match (opcode, rt) {
+            // TGEI
+            (0x01, 0x08) => {
+                if try_owned_self!(self, state.read_register(rs)) >= imm.extend_sign() {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TGEIU
+            (0x01, 0x09) => {
+                if try_owned_self!(self, state.read_register(rs)) as u32 >= imm.extend_sign() as u32 {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TLTI
+            (0x01, 0x0A) => {
+                if try_owned_self!(self, state.read_register(rs)) < imm.extend_sign() {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TLTIU
+            (0x01, 0x0B) => {
+                if (try_owned_self!(self, state.read_register(rs)) as u32) < imm.extend_sign() as u32 {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TEQI
+            (0x01, 0x0C) => {
+                if try_owned_self!(self, state.read_register(rs)) == imm.extend_sign() {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            // TNEI
+            (0x01, 0x0E) => {
+                if try_owned_self!(self, state.read_register(rs)) != imm.extend_sign() {
+                    Ok(Err(RuntimeSyscallGuard::Trap(self)))
+                } else {
+                    Ok(Ok(self))
+                }
+            }
+
+            _ => {
+                try_owned_self!(self, self.execute_non_trapping_i(opcode, rs, rt, imm));
+                Ok(SteppedRuntime::Ok(self))
+            }
+        }
+    }
+
+
+    fn execute_non_trapping_i(&mut self, opcode: u32, rs: u32, rt: u32, imm: i16) -> MipsyResult<()> {
         let state = self.timeline.state_mut();
 
         let imm_zero_extend = imm as u16 as u32 as i32;
@@ -1131,6 +1195,30 @@ impl ExtendSign for u32 {
 
     fn extend_sign(self) -> Self::Output {
         self as i32
+    }
+}
+
+impl ExtendSign for i8 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
+        self as i32
+    }
+}
+
+impl ExtendSign for i16 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
+        self as i32
+    }
+}
+
+impl ExtendSign for i32 {
+    type Output = i32;
+
+    fn extend_sign(self) -> Self::Output {
+        self
     }
 }
 
