@@ -18,7 +18,7 @@ Features you will NOT find include:
 - Floating point support (yet -- planned for future)
 - ... more to be included here ...
 
-Features you (hopefully) will be pleased to find in Mipsy:
+Features you (hopefully) will be pleased to find in mipsy:
 - Helpful and explanatory compilation errors
 - Helpful and explanatory runtime errors
 - Runtime checks - uninitialized memory, registers, etc.
@@ -35,5 +35,5 @@ This project is a work-in-progress, but is in a reasonably usable state -- make 
 1. Install the latest stable rust toolchain with `rustup` at https://www.rust-lang.org/tools/install
 2. `git clone https://github.com/insou22/mipsy.git && cd mipsy`
 3. `cargo build --package mipsy` will build a binary for your machine into `./target/debug/mipsy`
-4. Run Mipsy using `./target/debug/mipsy [mips_file]`
+4. Run mipsy using `./target/debug/mipsy [mips_file]`
 5. (Optional): Build an optimized release version with `cargo build --release --package mipsy`. Your binary will be in `./target/release/mipsy`
