@@ -2095,6 +2095,90 @@ pseudoinstructions:
       - inst: ADDIU
         data: [$sp, $sp, 4]
 
+  - name: ROL
+    desc_short: Rotate Left
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SUBU
+        data: [$at, $0, $Rt]
+      - inst: ADDIU
+        data: [$at, $at, 32]
+      - inst: SRLV
+        data: [$at, $Rs, $at]
+      - inst: SLLV
+        data: [$Rd, $Rs, $Rt]
+      - inst: OR
+        data: [$Rd, $Rd, $at]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
+  - name: ROL
+    desc_short: Rotate Left
+    compile:
+      format: [Rd, Rs, Shamt]
+    expand:
+      - inst: ORI
+        data: [$at, $0, $Shamt]
+      - inst: SUBU
+        data: [$at, $0, $at]
+      - inst: ADDIU
+        data: [$at, $at, 32]
+      - inst: SRLV
+        data: [$at, $Rs, $at]
+      - inst: SLL
+        data: [$Rd, $Rs, $Shamt]
+      - inst: OR
+        data: [$Rd, $Rd, $at]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
+  - name: ROR
+    desc_short: Rotate Right
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: SUBU
+        data: [$at, $0, $Rt]
+      - inst: ADDIU
+        data: [$at, $at, 32]
+      - inst: SLLV
+        data: [$at, $Rs, $at]
+      - inst: SRLV
+        data: [$Rd, $Rs, $Rt]
+      - inst: OR
+        data: [$Rd, $Rd, $at]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
+  - name: ROR
+    desc_short: Rotate Right
+    compile:
+      format: [Rd, Rs, Shamt]
+    expand:
+      - inst: ORI
+        data: [$at, $0, $Shamt]
+      - inst: SUBU
+        data: [$at, $0, $at]
+      - inst: ADDIU
+        data: [$at, $at, 32]
+      - inst: SLLV
+        data: [$at, $Rs, $at]
+      - inst: SRL
+        data: [$Rd, $Rs, $Shamt]
+      - inst: OR
+        data: [$Rd, $Rd, $at]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+
   - name: B
     desc_short: Branch unconditionally
     compile:
