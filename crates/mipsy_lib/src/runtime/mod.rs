@@ -362,8 +362,17 @@ impl Runtime {
                     // Unused
                     0x01 => {},
         
-                    // SRL  $Rd, $Rt, Sa
-                    0x02 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> shamt) as i32); },
+                    0x02 => {
+                        match rs {
+                            // SRL  $Rd, $Rt, Sa
+                            0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> shamt) as i32); }
+                            
+                            // ROTR $Rd, $Rt, Sa
+                            0x01 => { state.write_register(rd, ((state.read_register(rt)? as u32).rotate_right(shamt)) as i32); }
+
+                            _ => todo!(),
+                        }
+                    },
         
                     // SRA  $Rd, $Rt, Sa
                     0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
@@ -374,8 +383,17 @@ impl Runtime {
                     // Unused
                     0x05 => {},
         
-                    // SRLV $Rd, $Rt, $Rs
-                    0x06 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> state.read_register(rs)?) as i32); },
+                    0x06 => {
+                        match shamt {
+                            // SRLV $Rd, $Rt, $Rs
+                            0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> state.read_register(rs)?) as i32); },
+                            
+                            // ROTRV $Rd, $Rt, $Rs
+                            0x01 => { state.write_register(rd, ((state.read_register(rt)? as u32).rotate_right(state.read_register(rs)? as u32)) as i32); },
+
+                            _ => todo!(),
+                        }
+                    }
         
                     // SRAV $Rd, $Rt, $Rs
                     0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },

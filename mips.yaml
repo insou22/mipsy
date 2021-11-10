@@ -18,6 +18,17 @@ instructions:
     runtime:
       type: R
       funct: 0x02
+      rs:    0x00
+      reads: [Rt]
+
+  - name: ROTR
+    desc_short: Rotates the value in $Rt right by Sa logically, storing the result in $Rd
+    compile:
+      format: [Rd, Rt, Shamt]
+    runtime:
+      type: R
+      funct: 0x02
+      rs:    0x01
       reads: [Rt]
 
   - name: SRA
@@ -45,6 +56,17 @@ instructions:
     runtime:
       type: R
       funct: 0x06
+      shamt: 0x00
+      reads: [Rt, Rs]
+
+  - name: ROTRV
+    desc_short: Rotates the value in $Rt right by the value in $Rs logically, storing the result in $Rd
+    compile:
+      format: [Rd, Rt, Rs]
+    runtime:
+      type: R
+      funct: 0x06
+      shamt: 0x01
       reads: [Rt, Rs]
 
   - name: SRAV
@@ -664,6 +686,18 @@ pseudoinstructions:
           imm_types: [I16, U16, I32, U32]
           sign_extend: true
 
+  - name: ROTR
+    compile:
+      format: [Rd, Rt, Shamt]
+    expand:
+      - inst: ROTR
+        data: [$Rd, $Rt, $Shamt]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+
   - name: SRA
     compile:
       format: [Rd, Rt, Shamt]
@@ -701,6 +735,22 @@ pseudoinstructions:
       format: [Rd, Rt, Rs]
     expand:
       - inst: SRLV
+        data: [$Rd, $Rt, $Rs]
+    only_derive: true
+    derives:
+      - DefaultValue:
+          value: Rt
+          default: $Rd
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: ROTRV
+    compile:
+      format: [Rd, Rt, Rs]
+    expand:
+      - inst: ROTRV
         data: [$Rd, $Rt, $Rs]
     only_derive: true
     derives:
