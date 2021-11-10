@@ -357,25 +357,25 @@ impl Runtime {
             SPECIAL => {
                 match funct {
                     // SLL  $Rd, $Rt, Sa
-                    0x00 => { state.write_register(rd, (state.read_register(rt)? << shamt) as i32); },
+                    0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) << shamt) as i32); },
         
                     // Unused
                     0x01 => {},
         
                     // SRL  $Rd, $Rt, Sa
-                    0x02 => { state.write_register(rd, (state.read_register(rt)? >> shamt) as i32); },
+                    0x02 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> shamt) as i32); },
         
                     // SRA  $Rd, $Rt, Sa
                     0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
         
                     // SLLV $Rd, $Rt, $Rs
-                    0x04 => { state.write_register(rd, (state.read_register(rt)? << state.read_register(rs)?) as i32); },
+                    0x04 => { state.write_register(rd, ((state.read_register(rt)? as u32) << state.read_register(rs)?) as i32); },
         
                     // Unused
                     0x05 => {},
         
                     // SRLV $Rd, $Rt, $Rs
-                    0x06 => { state.write_register(rd, (state.read_register(rt)? >> state.read_register(rs)?) as i32); },
+                    0x06 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> state.read_register(rs)?) as i32); },
         
                     // SRAV $Rd, $Rt, $Rs
                     0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
