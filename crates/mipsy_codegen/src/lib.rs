@@ -272,7 +272,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
                     None     => quote! { ::std::option::Option::None },
                 };
 
-                let rd = match instruction.runtime.rs {
+                let rd = match instruction.runtime.rd {
                     Some(rd) => quote! { ::std::option::Option::Some(#rd) },
                     None     => quote! { ::std::option::Option::None },
                 };
