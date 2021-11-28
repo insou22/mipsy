@@ -1576,7 +1576,6 @@ pseudoinstructions:
     expand:
       - inst: SLT
         data: [$Rd, $Rt, $Rs]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
@@ -1601,7 +1600,6 @@ pseudoinstructions:
     expand:
       - inst: SLTU
         data: [$Rd, $Rt, $Rs]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
@@ -1630,7 +1628,6 @@ pseudoinstructions:
         data: [$At, $0, 1]
       - inst: SUB
         data: [$Rd, $At, $Rd]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
@@ -1659,7 +1656,6 @@ pseudoinstructions:
         data: [$At, $0, 1]
       - inst: SUB
         data: [$Rd, $At, $Rd]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
@@ -1688,7 +1684,6 @@ pseudoinstructions:
         data: [$Rs, $Rt, 2]
       - inst: ORI
         data: [$Rd, $0, 0]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
@@ -1717,7 +1712,6 @@ pseudoinstructions:
         data: [$Rs, $Rt, 2]
       - inst: ORI
         data: [$Rd, $0, 0]
-    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
