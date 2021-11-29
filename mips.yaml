@@ -2086,7 +2086,7 @@ pseudoinstructions:
     compile:
       format: [Rt, Rs, Rx]
     expand:
-      - inst: ORI
+      - inst: OR
         data: [$Rt, $Rs, $Rx]
     only_derive: true
     derives:
