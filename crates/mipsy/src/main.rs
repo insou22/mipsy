@@ -88,6 +88,30 @@ where
     }
 }
 
+fn get_input_int(name: &str) -> Option<i32> {
+    loop {
+        let result: Result<i64, _> = try_read!();
+
+        match result {
+            Ok(n) => return Some(n as i32),
+            Err(text_io::Error::Parse(leftover, _)) => {
+                if leftover == "" {
+                    return None;
+                }
+
+                print!("[mipsy] bad input (expected {}), try again: ", name);
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+            Err(_) => {
+                print!("[mipsy] bad input (expected {}), try again: ", name);
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
+}
+
 fn main() {
     let opts: Opts = Opts::parse();
 
@@ -249,7 +273,7 @@ fn main() {
                                 runtime = new_runtime;
                             }
                             ReadInt(guard) => {
-                                let number = get_input_eof("int").unwrap_or(0);
+                                let number = get_input_int("int").unwrap_or(0);
                                 runtime = guard(number);
                             }
                             ReadFloat(guard) => {
