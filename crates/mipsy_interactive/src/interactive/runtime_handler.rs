@@ -75,6 +75,37 @@ where
     }
 }
 
+fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
+    let prompt: Box<dyn Fn()> = 
+        if verbose {
+            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+        } else {
+            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+        };
+
+    loop {
+        let result: Result<i64, _> = try_read!();
+
+        match result {
+            Ok(n) => return Some(n as i32),
+            Err(text_io::Error::Parse(leftover, _)) => {
+                if leftover == "" {
+                    return None;
+                }
+
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            }
+            Err(_) => {
+                (prompt)();
+                std::io::stdout().flush().unwrap();
+                continue;
+            },
+        };
+    }
+}
+
 pub(crate) fn sys1_print_int(verbose: bool, val: i32) {
     if verbose {
         prompt::syscall_nl(1, format!("print_int: {}", val.to_string().green()));
@@ -129,7 +160,7 @@ pub(crate) fn sys5_read_int(verbose: bool, ) -> i32 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input_eof("int", verbose)
+    get_input_int("int", verbose)
         .unwrap_or(0)
 }
 
