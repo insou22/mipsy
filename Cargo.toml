@@ -1,2 +1,12 @@
 [workspace]
 members = ["crates/*"]
+
+[profile.dev]
+opt-level = 1   # I would *love* to not have to do this,
+                # but alas, the instruction_set! macro
+                # generates code that uses ~80,000 local
+                # variables without optimisations.
+                # With basic optimisations, that comes down
+                # to approx. 7 locals.
+                # This makes the macro wasm-compatible,
+                # as wasm has a local-limit of 50,000.

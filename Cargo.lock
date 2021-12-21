@@ -417,6 +417,7 @@ dependencies = [
  "clap",
  "colored",
  "mipsy_codegen",
+ "mipsy_instructions",
  "mipsy_interactive",
  "mipsy_lib",
  "mipsy_parser",
@@ -440,12 +441,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mipsy_instructions"
+version = "0.1.0"
+dependencies = [
+ "mipsy_codegen",
+ "mipsy_lib",
+]
+
+[[package]]
 name = "mipsy_interactive"
 version = "0.1.0"
 dependencies = [
  "colored",
  "dirs",
  "mipsy_codegen",
+ "mipsy_instructions",
  "mipsy_lib",
  "mipsy_parser",
  "mipsy_utils",
@@ -501,6 +511,7 @@ dependencies = [
  "js-sys",
  "log",
  "mipsy_codegen",
+ "mipsy_instructions",
  "mipsy_lib",
  "mipsy_parser",
  "mipsy_utils",

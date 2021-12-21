@@ -108,7 +108,7 @@ impl Agent for Worker {
 
         Self {
             link,
-            inst_set: mipsy_codegen::instruction_set!("../../mips.yaml"),
+            inst_set: mipsy_instructions::inst_set(),
             runtime: None,
             binary: None,
         }

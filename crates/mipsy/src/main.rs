@@ -354,7 +354,7 @@ fn compile(config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> M
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
-    let iset    = instruction_set!("../../mips.yaml");
+    let iset    = mipsy_instructions::inst_set();
     let binary  = mipsy_lib::compile(&iset, files, &config)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 

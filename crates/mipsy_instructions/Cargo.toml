@@ -1,0 +1,11 @@
+[package]
+name = "mipsy_instructions"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mipsy_lib = { path = "../mipsy_lib" }
+mipsy_codegen = { path = "../mipsy_codegen" }
+
+[profile.dev]
+opt-level = 3

@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 yew = "0.18"
 mipsy_lib = { path = "../mipsy_lib" }
+mipsy_instructions = { path = "../mipsy_instructions" }
 mipsy_codegen = { path = "../mipsy_codegen" }
 mipsy_parser = { path = "../mipsy_parser" }
 mipsy_utils = { path = "../mipsy_utils" }
