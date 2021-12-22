@@ -2,36 +2,29 @@ use yew::prelude::*;
 use yew::Properties;
 use git_version::git_version;
 
-#[derive(Properties, Clone)]
+#[derive(Properties, Clone, PartialEq)]
 pub struct Props {
     #[prop_or_default]
     pub toggle_modal_onclick: Callback<MouseEvent>,
     pub should_display: bool,
 }
 
-pub struct Modal {
-    pub props: Props,
-}
+pub struct Modal {}
 
 impl Component for Modal {
     type Message = ();
     type Properties = Props;
 
-    fn create(props: Self::Properties, _: ComponentLink<Self>) -> Self {
-        Modal { props }
+    fn create(ctx: &Context<Self>) -> Self {
+        Modal { }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
+    fn update(&mut self, _ctx: &Context<Self>, _: Self::Message) -> bool {
         true
     }
 
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
-        true
-    }
-
-    fn view(&self) -> Html {
-        let classes = if self.props.should_display {
+    fn view(&self, ctx: &Context<Self> ) -> Html {
+        let classes = if ctx.props().should_display {
             "modal overflow-auto bg-th-primary border-black border-2 absolute top-28 w-3/4"
         } else {
             "modal hidden"
@@ -41,7 +34,7 @@ impl Component for Modal {
             <div class={classes} id="modal1" style="left: 13%;">
                 <div class="modal-dialog">
                     <div class="absolute modal-header top-0 right-0 h-16 w-16">
-                        <div onclick={self.props.toggle_modal_onclick.clone()} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
+                        <div onclick={ctx.props().toggle_modal_onclick.clone()} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
                         {"x"}
                         </div>
                     </div>
