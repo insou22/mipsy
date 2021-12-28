@@ -17,7 +17,7 @@ use nom::{IResult, branch::alt, bytes::complete::{
 
 pub type MpDirectiveLoc = (MpDirective, Position);
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MpDirective {
     Text,
     Data,

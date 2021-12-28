@@ -3,7 +3,7 @@ use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use std::{path::MAIN_SEPARATOR, rc::Rc};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ParserError {
     error: Error,
     file_tag: Rc<str>,
@@ -136,7 +136,7 @@ impl ParserError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Error {
     ParseFailure,
 }

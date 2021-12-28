@@ -6,7 +6,6 @@ mod runtime_handler;
 
 use std::{ops::Deref, rc::Rc};
 
-use mipsy_codegen::instruction_set;
 use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::SteppedRuntime};
 use helper::MyHelper;
 

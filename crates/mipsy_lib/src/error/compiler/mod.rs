@@ -8,7 +8,7 @@ use crate::inst::instruction::Signature;
 
 use super::util::{syntax_highlight_argument, tip_header};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct CompilerError {
     error:    Error,
     file_tag: Rc<str>,
@@ -128,7 +128,7 @@ impl CompilerError {
     }
 }
 
-#[derive(Debug,  Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     NumberedRegisterOutOfRange { reg_num: i32 },
     NamedRegisterOutOfRange    { reg_name: char, reg_index: i32 },
@@ -150,7 +150,7 @@ pub enum Error {
     InstructionInDataSegment,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum DirectiveType {
     Byte,
     Half,

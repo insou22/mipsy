@@ -14,14 +14,14 @@ pub type RuntimeError   = runtime::RuntimeError;
 pub type MipsyInternalResult<T> = Result<T, InternalError>;
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MipsyError {
     Parser  (parser::ParserError),
     Compiler(compiler::CompilerError),
     Runtime (runtime::RuntimeError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum InternalError {
     Parser  (parser::Error),
     Compiler(compiler::Error),

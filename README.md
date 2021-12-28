@@ -15,7 +15,7 @@ Features you will NOT find include:
 - Kernel mode
 - An extensive trap file
 - Conditional Branch Likely Instructions
-- Floating point support (yet -- planned for future)
+- **Floating point support** (yet -- planned for future)
 - ... more to be included here ...
 
 Features you (hopefully) will be pleased to find in mipsy:

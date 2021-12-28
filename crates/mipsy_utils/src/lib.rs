@@ -1,3 +1,6 @@
+//! Various utility functions used
+//! within the mipsy workspace
+
 mod config;
 
 pub use config::{

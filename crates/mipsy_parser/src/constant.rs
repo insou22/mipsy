@@ -51,9 +51,10 @@ impl MpConst {
     }
 }
 
-pub type MpConstValueLoc = (MpConstValue, Position);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct MpConstValueLoc(pub MpConstValue, pub Position);
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpConstValue {
     Value(u64),
     Const(String),
@@ -139,7 +140,7 @@ pub fn parse_or_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
             )),
             |(pos_start, value, values, pos_end)| {
                 values.into_iter().fold(value, |acc, value| {
-                    (MpConstValue::Or(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
+                    MpConstValueLoc(MpConstValue::Or(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
                 })
             }
         ),
@@ -168,7 +169,7 @@ pub fn parse_xor_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
             )),
             |(pos_start, value, values, pos_end)| {
                 values.into_iter().fold(value, |acc, value| {
-                    (MpConstValue::Xor(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
+                    MpConstValueLoc(MpConstValue::Xor(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
                 })
             }
         ),
@@ -197,7 +198,7 @@ pub fn parse_and_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
             )),
             |(pos_start, value, values, pos_end)| {
                 values.into_iter().fold(value, |acc, value| {
-                    (MpConstValue::And(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
+                    MpConstValueLoc(MpConstValue::And(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end))
                 })
             }
         ),
@@ -229,8 +230,8 @@ pub fn parse_shift_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
         |(pos_start, value, values, pos_end)| {
             values.into_iter().fold(value, |acc, (tag, value)| {
                 match *tag.fragment() {
-                    b"<<" => (MpConstValue::Shl(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
-                    b">>" => (MpConstValue::Shr(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    b"<<" => MpConstValueLoc(MpConstValue::Shl(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    b">>" => MpConstValueLoc(MpConstValue::Shr(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
                     _     => unreachable!(),
                 }
             })
@@ -262,8 +263,8 @@ pub fn parse_add_sub_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
         |(pos_start, value, values, pos_end)| {
             values.into_iter().fold(value, |acc, (tag, value)| {
                 match tag {
-                    '+' => (MpConstValue::Sum(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
-                    '-' => (MpConstValue::Sub(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    '+' => MpConstValueLoc(MpConstValue::Sum(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    '-' => MpConstValueLoc(MpConstValue::Sub(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
                     _   => unreachable!(),
                 }
             })
@@ -296,9 +297,9 @@ pub fn parse_mul_div_mod_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc
         |(pos_start, value, values, pos_end)| {
             values.into_iter().fold(value, |acc, (tag, value)| {
                 match tag {
-                    '*' => (MpConstValue::Mult(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
-                    '/' => (MpConstValue::Div (Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
-                    '%' => (MpConstValue::Mod (Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    '*' => MpConstValueLoc(MpConstValue::Mult(Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    '/' => MpConstValueLoc(MpConstValue::Div (Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
+                    '%' => MpConstValueLoc(MpConstValue::Mod (Box::new(acc), Box::new(value)), Position::from_positions(pos_start, pos_end)),
                     _   => unreachable!(),
                 }
             })
@@ -335,7 +336,7 @@ pub fn parse_minus_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
             parse_unary_op_value,
             position,
         )),
-        |(pos_start, _, _, value, pos_end)| (MpConstValue::Minus(Box::new(value)), Position::from_positions(pos_start, pos_end)),
+        |(pos_start, _, _, value, pos_end)| MpConstValueLoc(MpConstValue::Minus(Box::new(value)), Position::from_positions(pos_start, pos_end)),
     )(i)
 }
 
@@ -348,7 +349,7 @@ pub fn parse_neg_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
             parse_unary_op_value,
             position,
         )),
-        |(pos_start, _, _, value, pos_end)| (MpConstValue::Neg(Box::new(value)), Position::from_positions(pos_start, pos_end))
+        |(pos_start, _, _, value, pos_end)| MpConstValueLoc(MpConstValue::Neg(Box::new(value)), Position::from_positions(pos_start, pos_end))
     )(i)
 }
 
@@ -360,7 +361,7 @@ pub fn parse_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
                 parse_u32,
                 position,
             )),
-            |(pos_start, value, pos_end)| (MpConstValue::Value(value as u64), Position::from_positions(pos_start, pos_end)),
+            |(pos_start, value, pos_end)| MpConstValueLoc(MpConstValue::Value(value as u64), Position::from_positions(pos_start, pos_end)),
         ),
         map(
             tuple((
@@ -368,7 +369,7 @@ pub fn parse_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
                 parse_char,
                 position,
             )),
-            |(pos_start, value, pos_end)| (MpConstValue::Value(value as u64), Position::from_positions(pos_start, pos_end)),
+            |(pos_start, value, pos_end)| MpConstValueLoc(MpConstValue::Value(value as u64), Position::from_positions(pos_start, pos_end)),
         ),
         map(
             tuple((
@@ -376,7 +377,7 @@ pub fn parse_value(i: Span<'_>) -> IResult<Span<'_>, MpConstValueLoc> {
                 parse_ident,
                 position,
             )),
-            |(pos_start, value, pos_end)| (MpConstValue::Const(value), Position::from_positions(pos_start, pos_end)),
+            |(pos_start, value, pos_end)| MpConstValueLoc(MpConstValue::Const(value), Position::from_positions(pos_start, pos_end)),
         ),
         map(
             tuple((

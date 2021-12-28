@@ -1,3 +1,5 @@
+//! Home of the `instruction_set!` macro.
+
 mod meta;
 mod base;
 
@@ -138,6 +140,21 @@ fn expand_all_derives(of: meta::PseudoInstructionYaml) -> Vec<base::PseudoInstru
     all_derives
 }
 
+/// # The `instruction_set!` proc macro
+/// 
+/// This macro generates a `InstructionSet` struct from a YAML file.
+/// 
+/// It does this by parsing the YAML file and generating equivalent Rust code
+/// to build the `InstructionSet` struct at compile time.
+/// 
+/// This later gets optimised into something more akin to a `static` struct,
+/// hopefully of precomputed bytes.
+/// 
+/// It is recommended to only invoke this macro in a separate, unique crate,
+/// similarly to how mipsy_instructions performs this in the mipsy workspace.
+/// This is because the `instruction_set!` macro is a *rather slow* macro to
+/// execute, so we want to take advantage of incremental compilation to avoid
+/// it being executed every single build.
 #[proc_macro]
 pub fn instruction_set(input: TokenStream) -> TokenStream {
     let (path, contents) = read_mips_yaml(input);

@@ -64,8 +64,6 @@ where
     )
 }
 
-pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));
-
 pub mod parser;
 mod attribute;
 mod directive;

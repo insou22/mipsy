@@ -14,7 +14,7 @@ pub struct TaggedFile<'tag, 'file> {
     file_contents: &'file str,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Position {
     line: u32,
     line_end: u32,

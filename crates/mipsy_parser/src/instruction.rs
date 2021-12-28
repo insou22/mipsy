@@ -13,7 +13,7 @@ use nom::{IResult, branch::alt, character::complete::{
 use nom_locate::position;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct MpInstruction {
     pub(crate) name: String,
     pub(crate) arguments: Vec<(MpArgument, u32, u32)>,
@@ -22,7 +22,7 @@ pub struct MpInstruction {
     pub(crate) col_end: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MpArgument {
     Register(MpRegister),
     Number(MpNumber),
