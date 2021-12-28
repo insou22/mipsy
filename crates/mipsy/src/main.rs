@@ -2,7 +2,6 @@ use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
-use mipsy_codegen::instruction_set;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, Safe, error::runtime::ErrorContext};
 use mipsy_interactive::prompt;
 use clap::{Clap, AppSettings};
@@ -24,8 +23,6 @@ struct Opts {
     hex_pad_zero: bool,
     #[clap(long, about("Enable some SPIM compatibility options"))]
     spim: bool,
-    #[clap(long, short('v'))]
-    version: bool,
     files: Vec<String>,
     #[clap(last = true)]
     args:  Vec<String>,
