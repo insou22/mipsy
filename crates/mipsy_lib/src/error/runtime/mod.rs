@@ -5,7 +5,7 @@ use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, D
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RuntimeError {
     error: Error,
 }
@@ -40,14 +40,14 @@ impl RuntimeError {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum ErrorContext {
     Binary,
     Interactive,
     Repl,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Error {
     UnknownInstruction { addr: u32 },
     Uninitialised { value: Uninitialised },
@@ -57,7 +57,7 @@ pub enum Error {
     DivisionByZero,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Uninitialised {
     Byte { addr: u32 },
     Half { addr: u32 },
@@ -67,7 +67,7 @@ pub enum Uninitialised {
     Hi,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum AlignmentRequirement {
     Half,
     Word,

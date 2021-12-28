@@ -7,7 +7,7 @@ use crate::{
 use nom::{IResult, branch::alt, bytes::complete::{is_a, tag}, character::complete::{char, digit1, hex_digit1, oct_digit1, one_of, space0}, combinator::{map, map_res, opt}, number::complete::{double, float}, sequence::tuple};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MpNumber {
     Immediate(MpImmediate),
     BinaryOpImmediate(MpImmediate, MpImmediateBinaryOp, MpImmediate),
@@ -16,7 +16,7 @@ pub enum MpNumber {
     Char(char),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpImmediate {
     I16(i16),
     U16(u16),
@@ -25,7 +25,7 @@ pub enum MpImmediate {
     LabelReference(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpImmediateBinaryOp {
     Plus,
     Minus,

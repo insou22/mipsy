@@ -28,7 +28,7 @@ impl InstSet {
     }
 }
 
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct InstSignature {
     name: String,
     compile: CompileSignature,
@@ -69,7 +69,7 @@ impl InstSignature {
     }
 }
 
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct CompileSignature {
     format: Vec<ArgumentType>,
     relative_label: bool,
@@ -92,7 +92,7 @@ impl CompileSignature {
     }
 }
 
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum ArgumentType {
     Rd,
     Rs,
@@ -113,14 +113,14 @@ pub enum ArgumentType {
     Off32Rt,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum RuntimeSignature {
     R { opcode: u8, funct: u8, shamt: Option<u8>, rs: Option<u8>, rt: Option<u8>, rd: Option<u8> },
     I { opcode: u8, rt: Option<u8> },
     J { opcode: u8 },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RuntimeMetadata {
     reads: Vec<ReadsRegisterType>,
 }
@@ -137,7 +137,7 @@ impl RuntimeMetadata {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum ReadsRegisterType {
     Rs,
     Rt,
@@ -157,7 +157,7 @@ impl ReadsRegisterType {
     }   
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct InstMetadata {
     desc_short: Option<String>,
     desc_long:  Option<String>,
@@ -190,7 +190,7 @@ pub enum GenericSignature {
     Pseudo(PseudoSignature),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PseudoSignature {
     name: String,
     compile: CompileSignature,
@@ -219,7 +219,7 @@ impl PseudoSignature {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PseudoExpand {
     inst: String,
     data: Vec<String>,
@@ -242,13 +242,13 @@ impl PseudoExpand {
     }
 }
 
-#[derive(Debug, Clone,  Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Signature {
     Native(InstSignature),
     Pseudo(PseudoSignature),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub enum SignatureRef<'a> {
     Native(&'a InstSignature),
     Pseudo(&'a PseudoSignature),

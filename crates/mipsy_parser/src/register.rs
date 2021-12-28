@@ -7,20 +7,20 @@ use crate::{
 };
 use nom::{IResult, branch::alt, character::complete::{alphanumeric1, char, digit1, one_of, space0}, combinator::{map, opt}, sequence::tuple};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpRegister {
     Normal(MpRegisterIdentifier),
     Offset(MpImmediate, MpRegisterIdentifier),
     BinaryOpOffset(MpImmediate, MpOffsetOperator, MpImmediate, MpRegisterIdentifier),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpRegisterIdentifier {
     Numbered(u8),
     Named(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpOffsetOperator {
     Plus,
     Minus,
