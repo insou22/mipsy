@@ -290,6 +290,8 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
             WorkerResponse::InstructionOk(mips_state) => {
                 if let State::Running(curr) = &*app.state.borrow_mut() {
+                    info!("{:?}", mips_state);
+                    info!("HERE");
                     curr.borrow_mut().mips_state = mips_state;
                     // if the isntruction was ok, run another instruction
                     // unless the user has said it should be killed
@@ -309,6 +311,7 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
             WorkerResponse::UpdateMipsState(mips_state) => match &*app.state.borrow_mut() {
                 State::Running(curr) => {
                     curr.borrow_mut().mips_state = mips_state;
+                    info!("updating state");
                     true
                 }
 

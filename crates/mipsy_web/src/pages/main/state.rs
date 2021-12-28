@@ -28,7 +28,7 @@ impl MipsState {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct RunningState {
     pub decompiled: String,
     pub mips_state: MipsState,

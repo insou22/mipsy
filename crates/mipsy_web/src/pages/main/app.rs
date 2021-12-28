@@ -2,7 +2,7 @@ use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
         modal::Modal, navbar::NavBar, outputarea::OutputArea, pagebackground::PageBackground,
-        sourcecode::SourceCode, decompiled::DecompiledCode,
+        sourcecode::SourceCode, decompiled::DecompiledCode, registers::Registers,
     },
     pages::main::{
         state::{MipsState, RunningState},
@@ -15,8 +15,8 @@ use std::rc::Rc;
 use gloo_file::callbacks::FileReader;
 use gloo_file::File;
 use gloo_file::FileReadError;
-use log::{error, trace};
-use mipsy_lib::{MipsyError, Register, Safe};
+use log::{error, trace, info};
+use mipsy_lib::{Safe, MipsyError};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
@@ -48,6 +48,7 @@ pub enum Msg {
     FromWorker(WorkerResponse),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum State {
     NoFile,
     CompilerError(MipsyError),
@@ -92,7 +93,9 @@ impl Component for App {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        update::handle_update(self, ctx, msg)
+        let test = update::handle_update(self, ctx, msg);
+        info!("re-render: {:?}", test);
+        test
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
@@ -102,6 +105,8 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        
+        /*    CALLBACKS   */
         let load_onchange = ctx.link().batch_callback(|e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
 
@@ -135,7 +140,9 @@ impl Component for App {
         let show_mipsy_tab = ctx.link().callback(|_| Msg::ShowMipsyTab);
         let show_source_tab = ctx.link().callback(|_| Msg::ShowSourceTab);
         let show_decompiled_tab = ctx.link().callback(|_| Msg::ShowDecompiledTab);
+        
 
+        /* HELPER FNS */
         let text_html_content = match &*self.state.borrow() {
             State::NoFile => "no file loaded".into(),
             State::CompilerError(_error) => "File has syntax errors, check your file with mipsy and try again.\nMipsy Web does not yet support displaying compiler errors".into(),
@@ -188,12 +195,18 @@ impl Component for App {
 
             default
         };
+        info!("{:?}", *self.state.borrow());
+        info!("render");
+
+
         html! {
             <>
-                <div onclick={open_modal_onclick.clone()} class={modal_overlay_classes}>
-                </div>
+                <div onclick={open_modal_onclick.clone()} class={modal_overlay_classes}></div>
+                
                 <Modal should_display={self.display_modal} toggle_modal_onclick={open_modal_onclick.clone()} />
+                
                 <PageBackground>
+                    
                     <NavBar
                         {step_back_onclick}
                         {step_forward_onclick}
@@ -206,6 +219,7 @@ impl Component for App {
                         {exit_status}
                         {load_onchange}
                     />
+
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="file_data">
                             <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
@@ -229,7 +243,8 @@ impl Component for App {
 
                         <div id="information" class="split pr-2 ">
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                                { self.render_running_registers() }
+                                { "ILIKEPOTATOES" }
+                                <Registers state={self.state.clone()}/>
                             </div>
 
                             <OutputArea
@@ -347,60 +362,6 @@ impl App {
                     }
                 }
             }
-        }
-    }
-
-    fn render_running_registers(&self) -> Html {
-        let mut registers = vec![Safe::Uninitialised; 32];
-        let borrow = self.state.borrow();
-        if let State::Running(state) = &*borrow {
-            registers = state.borrow().mips_state.register_values.clone();
-        };
-
-        html! {
-            <table class="w-full border-collapse table-auto">
-                <thead>
-                    <tr>
-                        <th class="w-1/4">
-                        {"Register"}
-                        </th>
-                        <th class="w-3/4">
-                        {"Value"}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                {
-                    for registers.iter().enumerate().map(|(index, item)| {
-                        html! {
-                            <tr>
-                            {
-                                match item {
-                                    Safe::Valid(val) => {
-                                        html! {
-                                            <>
-                                                <td class="border-gray-500 border-b-2 pl-4">
-                                                    {"$"}
-                                                    {Register::from_u32(index as u32).unwrap().to_lower_str()}
-                                                </td>
-                                                <td class="pl-4 border-b-2 border-gray-500">
-                                                    <pre>
-                                                        {format!("0x{:08x}", val)}
-                                                    </pre>
-                                                </td>
-                                            </>
-                                        }
-                                    }
-
-                                    Safe::Uninitialised => {html!{}}
-                                }
-                            }
-                            </tr>
-                        }
-                    })
-                }
-                </tbody>
-            </table>
         }
     }
 

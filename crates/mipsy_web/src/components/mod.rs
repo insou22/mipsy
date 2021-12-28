@@ -4,3 +4,4 @@ pub mod modal;
 pub mod outputarea;
 pub mod sourcecode;
 pub mod decompiled;
+pub mod registers;
