@@ -1,37 +1,32 @@
 use yew::prelude::*;
 use yew::{Children, Properties};
 
-#[derive(Properties, Clone)]
+#[derive(Properties, Clone, PartialEq)]
 pub struct Props {
     #[prop_or_default]
     pub children: Children,
 }
 
 pub struct PageBackground {
-    pub props: Props,
 }
 
 impl Component for PageBackground {
     type Message = ();
     type Properties = Props;
 
-    fn create(props: Self::Properties, _: ComponentLink<Self>) -> Self {
-        PageBackground { props }
+    fn create(_ctx: &Context<Self>) -> Self {
+        PageBackground { }
     }
 
-    fn change(&mut self, props: Self::Properties) -> ShouldRender {
-        self.props = props;
+
+    fn update(&mut self, _: &Context<Self>, _: Self::Message) -> bool {
         true
     }
 
-    fn update(&mut self, _: Self::Message) -> ShouldRender {
-        true
-    }
-
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <div class="min-h-screen py-2 bg-th-primary">
-                { for self.props.children.iter() }
+                { for ctx.props().children.iter() }
             </div>
         }
     }

@@ -3,8 +3,7 @@ use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runti
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
-use yew::worker::{Agent, AgentLink, HandlerId, Public};
-
+use yew_agent::{Agent, AgentLink, HandlerId, Public, Bridged};
 use crate::app::MipsState;
 
 //            Worker Overview

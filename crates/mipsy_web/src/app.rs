@@ -5,19 +5,16 @@ use crate::{
     },
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use mipsy_lib::{MipsyError, Register, Runtime, Safe};
+use gloo_file::FileReadError;
+use mipsy_lib::{ MipsyError, Register, Runtime,  Safe};
 use serde::{Deserialize, Serialize};
 use std::u32;
 use wasm_bindgen::UnwrapThrowExt;
-use yew::{
-    prelude::*,
-    services::{
-        reader::{FileData, ReaderTask},
-        ReaderService,
-    },
-    web_sys::{File, HtmlInputElement},
-};
-
+use yew::prelude::*;
+use yew_agent::{Bridge, Bridged};
+use web_sys::HtmlInputElement;
+use gloo_file::File; 
+use gloo_file::callbacks::{read_as_text, FileReader};
 use log::{error, info, trace};
 
 /*
@@ -76,7 +73,7 @@ impl MipsState {
 
 pub enum Msg {
     FileChanged(File),
-    FileRead(FileData),
+    FileRead(String, Result<String, FileReadError>),
     Run,
     Reset,
     Kill,
@@ -102,10 +99,7 @@ pub enum State {
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
-    link: ComponentLink<Self>,
-
     // a tasks vec to keep track of any file uploads
-    tasks: Vec<ReaderTask>,
     state: State,
     worker: Box<dyn Bridge<Worker>>,
     display_modal: bool,
@@ -114,6 +108,7 @@ pub struct App {
     filename: Option<String>,
     file: Option<String>,
     show_source: bool,
+    tasks: Vec<FileReader>,
 }
 
 const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -122,13 +117,11 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_props: Self::Properties, link: ComponentLink<Self>) -> Self {
-        let worker = Worker::bridge(link.callback(Self::Message::FromWorker));
+    fn create(ctx: &Context<Self> ) -> Self {
+        let worker = Worker::bridge(ctx.link().callback(Self::Message::FromWorker));
         wasm_logger::init(wasm_logger::Config::default());
         Self {
-            link,
             state: State::NoFile,
-            tasks: vec![],
             worker,
             display_modal: false,
             show_io: true,
@@ -136,39 +129,49 @@ impl Component for App {
             filename: None,
             file: None,
             show_source: false,
+            tasks: vec![],
         }
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::FileChanged(file) => {
                 info!("file changed msg");
                 // FIXME -- check result
-                let result = ReaderService::read_file(
-                    file,
-                    self.link.callback(|file_data| Msg::FileRead(file_data)),
-                );
+                {
+                    let file_name = file.name();
+                    let link = ctx.link().clone();
+                    info!("file name: {}", file_name);
+                    self.tasks.push(
+                        read_as_text(
+                            &file,
+                            move |res| {
+                                link.send_message(Msg::FileRead(file_name, res))
+                            }
+                        )
+                    );
+                } 
 
-                match result {
-                    Ok(service) => self.tasks.push(service),
-
-                    Err(err) => {
-                        info!("{:?}", err);
-                    }
-                }
-                false
+               true 
             }
 
-            Msg::FileRead(file_data) => {
-                info!("{:?}", file_data);
-                // TODO -- this should not be lossy
-                self.filename = Some(file_data.name);
-                let file = String::from_utf8_lossy(&file_data.content).to_string();
-                self.file = Some(file.clone());
-                let input = WorkerRequest::CompileCode(file);
-                info!("sending to worker");
-                self.worker.send(input);
-                self.show_source = false;
+            Msg::FileRead(filename, res) => {
+                
+                info!("file Read msg");
+                match res {
+                    Ok(ref file) => {
+                        self.filename = Some(filename);
+                        self.file = Some(file.to_string());
+                        let input = WorkerRequest::CompileCode(file.to_string());
+                        info!("sending to worker");
+                        self.worker.send(input);
+                        self.show_source = false;
+                    }
+                    Err(_e) => {
+
+                    }
+                }
+
                 true
             }
 
@@ -445,29 +448,27 @@ impl Component for App {
         }
     }
 
-    fn change(&mut self, _props: Self::Properties) -> ShouldRender {
-        // Should only return "true" if new properties are different to
-        // previously received properties.
-        // This component has no properties so we will always return "false".
-        false
-    }
-    fn rendered(&mut self, _first_render: bool) {
+    fn rendered(&mut self, _ctx: &Context<Self>,_first_render: bool) {
         unsafe{crate::highlight();}
     }
 
-    fn view(&self) -> Html {
-        let onchange = self.link.batch_callback(|event| match event {
-            ChangeData::Files(file_list) => {
-                if let Some(file) = file_list.item(0) {
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let load_onchange = ctx.link().batch_callback(|e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+
+            if let Some(file_list) = input.files() {
+                if let Some(file_blob) = file_list.item(0) {
+                    let file = File::from(web_sys::File::from(file_blob));
                     Some(Msg::FileChanged(file))
                 } else {
                     None
                 }
+            } else {
+                None
             }
-            _ => None,
         });
 
-        let on_input_keydown = self.link.callback(|event: KeyboardEvent| {
+        let on_input_keydown = ctx.link().callback(|event: KeyboardEvent| {
             if event.key() == "Enter" {
                 return Msg::SubmitInput;
             };
@@ -475,17 +476,17 @@ impl Component for App {
             Msg::ProcessKeypress(event)
         });
 
-        let run_onclick = self.link.callback(|_| Msg::Run);
+        let run_onclick = ctx.link().callback(|_| Msg::Run);
 
-        let kill_onclick = self.link.callback(|_| Msg::Kill);
+        let kill_onclick = ctx.link().callback(|_| Msg::Kill);
 
-        let reset_onclick = self.link.callback(|_| Msg::Reset);
+        let reset_onclick = ctx.link().callback(|_| Msg::Reset);
 
-        let step_forward_onclick = self.link.callback(|_| Msg::StepForward);
+        let step_forward_onclick = ctx.link().callback(|_| Msg::StepForward);
 
-        let step_back_onclick = self.link.callback(|_| Msg::StepBackward);
+        let step_back_onclick = ctx.link().callback(|_| Msg::StepBackward);
 
-        let toggle_modal_onclick = self.link.callback(|_| Msg::OpenModal);
+        let open_modal_onclick = ctx.link().callback(|_| Msg::OpenModal);
 
         let text_html_content = match &self.state {
             State::NoFile => "no file loaded".into(),
@@ -506,10 +507,10 @@ impl Component for App {
             "hidden"
         };
 
-        let show_io_tab = self.link.callback(|_| Msg::ShowIoTab);
-        let show_mipsy_tab = self.link.callback(|_| Msg::ShowMipsyTab);
-        let show_source_tab = self.link.callback(|_| Msg::ShowSourceTab);
-        let show_decompiled_tab = self.link.callback(|_| Msg::ShowDecompiledTab);
+        let show_io_tab = ctx.link().callback(|_| Msg::ShowIoTab);
+        let show_mipsy_tab = ctx.link().callback(|_| Msg::ShowMipsyTab);
+        let show_source_tab = ctx.link().callback(|_| Msg::ShowSourceTab);
+        let show_decompiled_tab = ctx.link().callback(|_| Msg::ShowDecompiledTab);
         let file_loaded = match &self.state {
             State::NoFile | State::CompilerError(_) => false,
             State::Running(_) => true,
@@ -544,16 +545,21 @@ impl Component for App {
         };
         html! {
             <>
-                <div onclick={toggle_modal_onclick.clone()} class={modal_overlay_classes}>
+                <div onclick={open_modal_onclick.clone()} class={modal_overlay_classes}>
                 </div>
-                <Modal should_display={self.display_modal} toggle_modal_onclick={toggle_modal_onclick.clone()} />
+                <Modal should_display={self.display_modal} toggle_modal_onclick={open_modal_onclick.clone()} />
                 <PageBackground>
                     <NavBar
-                        step_back_onclick=step_back_onclick step_forward_onclick=step_forward_onclick
-                        exit_status=exit_status load_onchange=onchange
-                        reset_onclick=reset_onclick run_onclick=run_onclick
-                        kill_onclick=kill_onclick open_modal_onclick=toggle_modal_onclick
-                        file_loaded=file_loaded waiting_syscall={waiting_syscall}
+                        {step_back_onclick}
+                        {step_forward_onclick}
+                        {reset_onclick}
+                        {run_onclick}
+                        {kill_onclick}
+                        {open_modal_onclick}
+                        {file_loaded}
+                        {waiting_syscall}
+                        {exit_status}
+                        {load_onchange}
                     />
                     <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                         <div id="file_data">
@@ -582,9 +588,10 @@ impl Component for App {
                             </div>
 
                             <OutputArea
+                                {show_io_tab}
+                                {show_mipsy_tab}
+                                {mipsy_output_tab_title}
                                 show_io={self.show_io}
-                                show_io_tab={show_io_tab}
-                                show_mipsy_tab={show_mipsy_tab}
                                 is_disabled={
                                     match &self.state {
                                         State::Running(curr) => {
@@ -606,7 +613,6 @@ impl Component for App {
                                 input_ref={&self.input_ref}
                                 on_input_keydown={on_input_keydown.clone()}
                                 running_output={self.render_running_output()}
-                                mipsy_output_tab_title={mipsy_output_tab_title}
                                 input_maxlength={
                                     match &self.state {
                                         State::Running(curr) => match &curr.input_needed {
