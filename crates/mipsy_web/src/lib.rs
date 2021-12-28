@@ -2,11 +2,10 @@
 use yew_agent::Threaded;
 use wasm_bindgen::prelude::*;
 
-pub mod app;
 pub mod components;
 pub mod pages;
 pub mod worker;
-use app::App as Application;
+use pages::main::app::App as Application;
 
 #[wasm_bindgen]
 extern "C" {

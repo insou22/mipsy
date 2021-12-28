@@ -1,10 +1,10 @@
+use crate::pages::main::state::MipsState;
 use log::{error, info};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
-use yew_agent::{Agent, AgentLink, HandlerId, Public, Bridged};
-use crate::app::MipsState;
+use yew_agent::{Agent, AgentLink, HandlerId, Public};
 
 //            Worker Overview
 // ___________________________________________
@@ -271,8 +271,6 @@ impl Agent for Worker {
             Self::Input::Run(mut mips_state, step_size) => {
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
-
-                        
                         if runtime.timeline().state().pc() >= 0x80000000 {
                             while runtime.timeline().state().pc() >= 0x80000000 {
                                 info!("stepping: {:08x}", runtime.timeline().state().pc());
@@ -282,7 +280,7 @@ impl Agent for Worker {
                                     // avoid infinite loop of scrolling back
                                     if runtime.timeline().state().pc() == 0x80000000 {
                                         break;
-                                    } 
+                                    }
                                 } else {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
