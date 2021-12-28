@@ -20,7 +20,7 @@ struct Opts {
     compile: bool,
     #[clap(long, about("Just compile program and output hexcodes"))]
     hex: bool,
-    #[clap(long, about("With --hex: pad to 8 hex digits with zeroes"))]
+    #[clap(long, about("Implies --hex: pad to 8 hex digits with zeroes"))]
     hex_pad_zero: bool,
     #[clap(long, about("Enable some SPIM compatibility options"))]
     spim: bool,
@@ -221,7 +221,7 @@ fn main() {
         return;
     }
 
-    if opts.hex {
+    if opts.hex || opts.hex_pad_zero {
         for opcode in binary.text_words() {
             if let Safe::Valid(opcode) = opcode {
                 if opts.hex_pad_zero {
