@@ -4,20 +4,43 @@ use serde::{Serialize, Deserialize};
 const MIPSY_DIR: &str = "mipsy";
 const CONFIG_NAME: &str = "config.yaml";
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+/// # The user's mipsy congfiguration.
+/// 
+/// This usually comes from the `~/.config/mipsy/config.yaml` file.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct MipsyConfig {
     pub tab_size: u32,
     pub spim: bool,
 }
 
+/// # Errors arising from reading the mipsy configuration.
+/// 
+/// This is used to indicate that the configuration file
+/// could not be read, or that the configuration file
+/// is invalid.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MipsyConfigError {
     InvalidConfig(PathBuf, MipsyConfig),
 }
 
+/// # The path of the user's mipsy configuration, if it exists.
 pub fn config_path() -> Option<PathBuf> {
     Some(dirs::config_dir()?.join(MIPSY_DIR).join(CONFIG_NAME))
 }
 
+/// # Reads the user's mipsy configuration.
+/// 
+/// This reads the mipsy config file,
+/// and returns the configuration if it exists.
+/// 
+/// If the configuration file does not exist,
+/// it will be created with the default configuration.
+/// 
+/// # Errors
+/// 
+/// This function may return an error if the configuration
+/// file could not be read, or if the configuration file
+/// is invalid.
 pub fn read_config() -> Result<MipsyConfig, MipsyConfigError> {
     use DeserialiseConfigError::*;
 
