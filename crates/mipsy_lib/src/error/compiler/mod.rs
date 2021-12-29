@@ -70,13 +70,13 @@ impl CompilerError {
         let updated_line = {
             let mut updated_line = String::new();
             
-            for char in line.chars() {
+            for (idx, char) in line.char_indices() {
                 if char != '\t' {
                     updated_line.push(char);
                     continue;
                 }
 
-                let spaces_to_insert = config.tab_size - (updated_line.len() as u32 % config.tab_size);
+                let spaces_to_insert = config.tab_size - (idx as u32 % config.tab_size);
                 updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
             }
 
