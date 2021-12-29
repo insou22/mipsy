@@ -31,23 +31,23 @@ where
             if leftover.is_empty() {
                 Ok(t)
             } else {
-                parse_multispace(leftover, file_name)
+                Err(leftover_tokens_strip_multispace(leftover, file_name))
             }
         }
         Err(_) => {
-            parse_multispace(i, file_name)
+            Err(leftover_tokens_strip_multispace(i, file_name))
         }
     }
 }
 
-fn parse_multispace<T>(i: nom_locate::LocatedSpan<&[u8]>, file_name: Option<Rc<str>>) -> Result<T, ErrorLocation> {
+fn leftover_tokens_strip_multispace<'a>(i: Span<'a>, file_name: Option<Rc<str>>) -> ErrorLocation {
     match comment_multispace0(i) {
         Ok((leftover, _)) => {
-            Err(ErrorLocation {
+            ErrorLocation {
                 file_name,
                 line: leftover.location_line(),
                 col:  leftover.get_column(),
-            })
+            }
         }
         Err(err) => {
             eprintln!("ERROR: {}", err);

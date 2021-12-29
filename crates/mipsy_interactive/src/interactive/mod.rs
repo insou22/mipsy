@@ -482,9 +482,8 @@ fn editor() -> Editor<MyHelper> {
     let helper = MyHelper::new();
     rl.set_helper(Some(helper));
 
-    use {KeyCode as K, KeyEvent as E, Modifiers as M};
-    rl.bind_sequence(E(K::Left, M::CTRL),  Cmd::Move(Movement::BackwardWord(1, Word::Emacs)));
-    rl.bind_sequence(E(K::Right, M::CTRL), Cmd::Move(Movement::ForwardWord (1, At::BeforeEnd, Word::Emacs)));
+    rl.bind_sequence(KeyEvent(KeyCode::Left, Modifiers::CTRL),  Cmd::Move(Movement::BackwardWord(1, Word::Emacs)));
+    rl.bind_sequence(KeyEvent(KeyCode::Right, Modifiers::CTRL), Cmd::Move(Movement::ForwardWord (1, At::BeforeEnd, Word::Emacs)));
 
     rl
 }
