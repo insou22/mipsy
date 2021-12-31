@@ -3,29 +3,28 @@ use std::{cell::RefCell, rc::Rc};
 use yew::{function_component, html, Properties};
 use log::info;
 use mipsy_lib::{Safe, Register};
-#[derive(Properties)]
+
+#[derive(Properties, PartialEq)]
 pub struct RegisterProps {
-    pub state: Rc<RefCell<State>>,
+    pub state: State,
 }
 
+/*
 impl PartialEq for RegisterProps {
     fn eq(&self, other: &Self) -> bool {
-        info!("calling?");
-        info!("self: {:?}", self as *const Self);
-        info!("other: {:?}", other as *const Self);
-        info!("selfrc: {:?}", Rc::as_ptr(&self.state));
-        info!("otherrc: {:?}", Rc::as_ptr(&other.state));
         false
     }
 }
 
+*/
+
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
     let mut registers = vec![Safe::Uninitialised; 32];
-    let borrow = props.state.borrow();
-    if let State::Running(state) = &*borrow {
-        registers = state.borrow().mips_state.register_values.clone();
+    if let State::Running(state) = &props.state {
+        registers = state.mips_state.register_values.clone();
     };
+
     html! {
         <table class="w-full border-collapse table-auto">
             <thead>

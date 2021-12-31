@@ -50,9 +50,9 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::Run => {
             trace!("Run button clicked");
-            if let State::Running(curr) = &*app.state.borrow_mut() {
-                curr.borrow_mut().mips_state.is_stepping = false;
-                let input = WorkerRequest::Run(curr.borrow().mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+            if let State::Running(ref mut curr) = app.state {
+                curr.mips_state.is_stepping = false;
+                let input = WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                 app.worker.send(input);
             } else {
                 info!("No File loaded, cannot run");
@@ -63,8 +63,8 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::Kill => {
             trace!("Kill button clicked");
-            if let State::Running(curr) = &*app.state.borrow_mut(){
-                curr.borrow_mut().should_kill = true;
+            if let State::Running(ref mut curr) = app.state{
+                curr.should_kill = true;
             };
             true
         }
@@ -104,9 +104,9 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::StepForward => {
             trace!("Step forward button clicked");
-            if let State::Running(curr) = &*app.state.borrow_mut() {
-                curr.borrow_mut().mips_state.is_stepping = true;
-                let input = WorkerRequest::Run(curr.borrow().mips_state.clone(), 1);
+            if let State::Running(ref mut curr) = app.state {
+                curr.mips_state.is_stepping = true;
+                let input = WorkerRequest::Run(curr.mips_state.clone(), 1);
                 app.worker.send(input);
             } else {
                 info!("No File loaded, cannot step");
@@ -117,9 +117,9 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::StepBackward => {
             trace!("Step backward button clicked");
-            if let State::Running(curr) = &*app.state.borrow_mut() {
-                curr.borrow_mut().mips_state.is_stepping = true;
-                let input = WorkerRequest::Run(curr.borrow_mut().mips_state.clone(), -1);
+            if let State::Running(ref mut curr) = app.state {
+                curr.mips_state.is_stepping = true;
+                let input = WorkerRequest::Run(curr.mips_state.clone(), -1);
                 app.worker.send(input);
             } else {
                 info!("No File loaded, cannot step");
@@ -130,11 +130,11 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::Reset => {
             trace!("Reset button clicked");
-            if let State::Running(curr) = &*app.state.borrow_mut() {
-                let input = WorkerRequest::ResetRuntime(curr.borrow_mut().mips_state.clone());
+            if let State::Running(curr) = &app.state {
+                let input = WorkerRequest::ResetRuntime(curr.mips_state.clone());
                 app.worker.send(input);
             } else {
-                *app.state.borrow_mut() = State::NoFile;
+                app.state = State::NoFile;
             }
             true
         }
@@ -149,35 +149,24 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::SubmitInput => {
             if let Some(input) = app.input_ref.cast::<HtmlInputElement>() {
-                let mut borrow = app.state.borrow();
-                let ref_borrow = &*borrow; 
-                if let State::Running(curr) = ref_borrow {
+                if let State::Running(ref mut curr) = app.state {
                     use ReadSyscallInputs::*;
                     use ReadSyscalls::*;
-                    let curr_borrow = curr.borrow_mut();
-                    match curr_borrow.input_needed.as_ref().unwrap_throw() {
+                    match curr.input_needed.as_ref().unwrap_throw() {
                         ReadInt => match input.value().parse::<i32>() {
                             Ok(num) => {
-                                drop(curr_borrow);
-                                drop(curr);
-                                drop(ref_borrow);
-                                drop(borrow);
                                 App::process_syscall_response(app, input, Int(num));
                             }
                             Err(_e) => {
                                 let error_msg =
                                     format!("Failed to parse input '{}' as an i32", input.value());
                                 error!("{}", error_msg);
-                                curr.borrow_mut().mips_state.mipsy_stdout.push(error_msg);
+                                curr.mips_state.mipsy_stdout.push(error_msg);
                             }
                         },
 
                         ReadFloat => match input.value().parse::<f32>() {
                             Ok(num) => {
-                                drop(curr_borrow);
-                                drop(curr);
-                                drop(ref_borrow);
-                                drop(borrow);
                                 App::process_syscall_response(app, input, Float(num));
                             }
 
@@ -185,16 +174,12 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                                 let error_msg =
                                     format!("Failed to parse input '{}' as an f32", input.value());
                                 error!("{}", error_msg);
-                                curr.borrow_mut().mips_state.mipsy_stdout.push(error_msg);
+                                curr.mips_state.mipsy_stdout.push(error_msg);
                             }
                         },
 
                         ReadDouble => match input.value().parse::<f64>() {
                             Ok(num) => {
-                                drop(curr_borrow);
-                                drop(curr);
-                                drop(ref_borrow);
-                                drop(borrow);
                                 App::process_syscall_response(app, input, Double(num));
                             }
                             Err(_e) => {
@@ -204,26 +189,18 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
                         ReadChar => match input.value().parse::<char>() {
                             Ok(char) => {
-                                drop(curr_borrow);
-                                drop(curr);
-                                drop(ref_borrow);
-                                drop(borrow);
                                 App::process_syscall_response(app, input, Char(char as u8))
                             }
                             Err(_e) => {
                                 let error_msg =
                                     format!("Failed to parse input '{}' as an u8", input.value());
                                 error!("{}", error_msg);
-                                curr.borrow_mut().mips_state.mipsy_stdout.push(error_msg);
+                                curr.mips_state.mipsy_stdout.push(error_msg);
                             }
                         },
 
                         ReadString => {
                             let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
-                                drop(curr_borrow);
-                                drop(curr);
-                                drop(ref_borrow);
-                                drop(borrow);
                             App::process_syscall_response(app, input, String(string));
                         }
                     }
@@ -237,7 +214,7 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
         Msg::FromWorker(worker_output) => match worker_output {
             WorkerResponse::DecompiledCode(decompiled) => {
                 info!("recieved decompiled code from worker");
-                *app.state.borrow_mut() = State::Running(Rc::new(RefCell::new(RunningState {
+                app.state = State::Running(RunningState {
                     decompiled,
                     mips_state: MipsState {
                         stdout: Vec::new(),
@@ -249,7 +226,7 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                     },
                     input_needed: None,
                     should_kill: false,
-                })));
+                });
                 true
             }
 
@@ -261,12 +238,12 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                     }
 
                     MipsyError::Compiler(error) => {
-                        match &*app.state.borrow_mut() {
-                            State::Running(curr) => {
-                                curr.borrow_mut().mips_state.mipsy_stdout.push(error.error().message())
+                        match app.state {
+                            State::Running(ref mut curr) => {
+                                curr.mips_state.mipsy_stdout.push(error.error().message())
                             }
                             State::NoFile | State::CompilerError(_) => {
-                                *app.state.borrow_mut() = State::CompilerError(err);
+                                app.state = State::CompilerError(err);
                                 error!("Compiler errors are not supported.");
                             }
                         }
@@ -280,27 +257,27 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                 }
             }
 
-            WorkerResponse::ProgramExited(mips_state) => match &*app.state.borrow_mut() {
-                State::Running(curr) => {
-                    curr.borrow_mut().mips_state = mips_state;
+            WorkerResponse::ProgramExited(mips_state) => match app.state {
+                State::Running(ref mut curr) => {
+                    curr.mips_state = mips_state;
                     true
                 }
                 State::NoFile | State::CompilerError(_) => false,
             },
 
             WorkerResponse::InstructionOk(mips_state) => {
-                if let State::Running(curr) = &*app.state.borrow_mut() {
+                if let State::Running(ref mut curr) = app.state {
                     info!("{:?}", mips_state);
                     info!("HERE");
-                    curr.borrow_mut().mips_state = mips_state;
+                    curr.mips_state = mips_state;
                     // if the isntruction was ok, run another instruction
                     // unless the user has said it should be killed
-                    if !curr.borrow_mut().should_kill {
+                    if !curr.should_kill {
                         let input =
-                            WorkerRequest::Run(curr.borrow_mut().mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                            WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                         app.worker.send(input);
                     }
-                    curr.borrow_mut().should_kill = false;
+                    curr.should_kill = false;
                 } else {
                     info!("No File loaded, cannot run");
                     return false;
@@ -308,9 +285,9 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                 true
             }
 
-            WorkerResponse::UpdateMipsState(mips_state) => match &*app.state.borrow_mut() {
-                State::Running(curr) => {
-                    curr.borrow_mut().mips_state = mips_state;
+            WorkerResponse::UpdateMipsState(mips_state) => match app.state {
+                State::Running(ref mut curr) => {
+                    curr.mips_state = mips_state;
                     info!("updating state");
                     true
                 }

@@ -48,18 +48,18 @@ pub enum Msg {
     FromWorker(WorkerResponse),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum State {
     NoFile,
     CompilerError(MipsyError),
-    Running(Rc<RefCell<RunningState>>),
+    Running(RunningState),
 }
 
 pub struct App {
     // `ComponentLink` is like a reference to a component.
     // It can be used to send messages to the component
     // a tasks vec to keep track of any file uploads
-    pub state: Rc<RefCell<State>>,
+    pub state: State,
     pub worker: Box<dyn Bridge<Worker>>,
     pub display_modal: bool,
     pub show_io: bool,
@@ -80,7 +80,7 @@ impl Component for App {
         let worker = Worker::bridge(ctx.link().callback(Self::Message::FromWorker));
         wasm_logger::init(wasm_logger::Config::default());
         Self {
-            state: Rc::new(RefCell::new(State::NoFile)),
+            state: State::NoFile,
             worker,
             display_modal: false,
             show_io: true,
@@ -143,14 +143,14 @@ impl Component for App {
         
 
         /* HELPER FNS */
-        let text_html_content = match &*self.state.borrow() {
+        let text_html_content = match &self.state {
             State::NoFile => "no file loaded".into(),
             State::CompilerError(_error) => "File has syntax errors, check your file with mipsy and try again.\nMipsy Web does not yet support displaying compiler errors".into(),
             State::Running(state) => self.render_running(state.clone()),
         };
 
-        let exit_status = match &*self.state.borrow() {
-            State::Running(curr) => Some(curr.borrow().mips_state.exit_status),
+        let exit_status = match &self.state {
+            State::Running(curr) => Some(curr.mips_state.exit_status),
             _ => None,
         };
 
@@ -162,22 +162,22 @@ impl Component for App {
             "hidden"
         };
 
-        let file_loaded = match *self.state.borrow() {
+        let file_loaded = match &self.state {
             State::NoFile | State::CompilerError(_) => false,
             State::Running(_) => true,
         };
 
-        let waiting_syscall = match &*self.state.borrow() {
-            State::Running(curr) => curr.borrow().input_needed.is_some(),
+        let waiting_syscall = match &self.state {
+            State::Running(curr) => curr.input_needed.is_some(),
             State::NoFile | State::CompilerError(_) => false,
         };
 
         // TODO - make this nicer when refactoring compiler errs
-        let mipsy_output_tab_title = match &*self.state.borrow() {
+        let mipsy_output_tab_title = match &self.state {
             State::NoFile => "Mipsy Output - (0)".to_string(),
             State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
             State::Running(curr) => {
-                format!("Mipsy Output - ({})", curr.borrow().mips_state.mipsy_stdout.len())
+                format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
             }
         };
 
@@ -195,7 +195,7 @@ impl Component for App {
 
             default
         };
-        info!("{:?}", *self.state.borrow());
+
         info!("render");
 
 
@@ -253,17 +253,17 @@ impl Component for App {
                                 {mipsy_output_tab_title}
                                 show_io={self.show_io}
                                 is_disabled={
-                                    match &*self.state.borrow() {
+                                    match &self.state {
                                         State::Running(curr) => {
-                                            if curr.borrow().input_needed.is_none() { true } else { false }
+                                            if curr.input_needed.is_none() { true } else { false }
                                         },
                                         State::NoFile | State::CompilerError(_) => { true },
                                     }
                                 }
                                 input_needed = {
-                                    match &*self.state.borrow() {
+                                    match &self.state {
                                         State::Running(curr) => {
-                                            curr.borrow().input_needed.is_some()
+                                            curr.input_needed.is_some()
                                         }
                                         State::NoFile | State::CompilerError(_)  => {
                                             false
@@ -274,8 +274,8 @@ impl Component for App {
                                 on_input_keydown={on_input_keydown.clone()}
                                 running_output={self.render_running_output()}
                                 input_maxlength={
-                                    match &*self.state.borrow() {
-                                        State::Running(curr) => match &curr.borrow().input_needed {
+                                    match &self.state {
+                                        State::Running(curr) => match &curr.input_needed {
                                             Some(item) => match item {
                                                 ReadSyscalls::ReadChar   => "1".to_string(),
                                                 // should we have a limit for size?
@@ -318,7 +318,7 @@ impl App {
         }
     }
 
-    fn render_running(&self, state: Rc<RefCell<RunningState>>) -> Html {
+    fn render_running(&self, state: RunningState) -> Html {
         html! {
             <>
             <h3>
@@ -345,8 +345,8 @@ impl App {
         html! {
             {
                 if self.show_io {
-                    match &*self.state.borrow() {
-                        State::Running(curr) => {curr.borrow().mips_state.stdout.join("")},
+                    match &self.state {
+                        State::Running(curr) => {curr.mips_state.stdout.join("")},
                         State::NoFile => {
                             "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
                                 .into()
@@ -355,8 +355,8 @@ impl App {
 
                     }
                 } else {
-                    match &*self.state.borrow() {
-                        State::Running(curr) => {curr.borrow().mips_state.mipsy_stdout.join("\n")},
+                    match &self.state {
+                        State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
                         State::NoFile => {"".into()},
                         State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
                     }
@@ -370,10 +370,10 @@ impl App {
         mips_state: MipsState,
         required_type: ReadSyscalls,
     ) -> bool {
-        match &*self.state.borrow_mut() {
-            State::Running(curr) => {
-                curr.borrow_mut().mips_state = mips_state;
-                curr.borrow_mut().input_needed = Some(required_type);
+        match self.state {
+            State::Running(ref mut curr) => {
+                curr.mips_state = mips_state;
+                curr.input_needed = Some(required_type);
                 self.focus_input();
                 true
             }
@@ -393,13 +393,13 @@ impl App {
         input: HtmlInputElement,
         required_type: ReadSyscallInputs,
     ) {
-        match &*self.state.borrow_mut() {
-            State::Running(curr) => {
+        match self.state {
+            State::Running(ref mut curr) => {
                 self.worker.send(WorkerRequest::GiveSyscallValue(
-                    curr.borrow_mut().mips_state.clone(),
+                    curr.mips_state.clone(),
                     required_type,
                 ));
-                curr.borrow_mut().input_needed = None;
+                curr.input_needed = None;
                 input.set_value("");
                 input.set_disabled(true);
             }

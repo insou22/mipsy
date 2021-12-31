@@ -1,17 +1,16 @@
 use log::info;
 use yew::{function_component, html, Properties};
 use crate::pages::main::state::RunningState;
-use std::{rc::Rc, cell::RefCell};
 
 #[derive(Properties, PartialEq)]
 pub struct DecompiledProps {
-    pub state: Rc<RefCell<RunningState>>,
+    pub state: RunningState,
 }
 
 #[function_component(DecompiledCode)]
 pub fn render_decompiled(props: &DecompiledProps) -> Html {
-    let runtime_instr = props.state.borrow().mips_state.current_instr.unwrap_or(0);
-    let decompiled = &props.state.borrow().decompiled;
+    let runtime_instr = props.state.mips_state.current_instr.unwrap_or(0);
+    let decompiled = &props.state.decompiled;
     html! {
         for decompiled.as_str().split("\n").into_iter().map(|item| {
             if item == "" {
