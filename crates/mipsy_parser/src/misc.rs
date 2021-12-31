@@ -31,19 +31,22 @@ where
             if leftover.is_empty() {
                 Ok(t)
             } else {
-                match comment_multispace0(leftover) {
-                    Ok((leftover, _)) => {
-                        Err(ErrorLocation {
-                            file_name,
-                            line: leftover.location_line(),
-                            col:  leftover.get_column(),
-                        })
-                    }
-                    Err(err) => {
-                        eprintln!("ERROR: {}", err);
-                        panic!("this should never happen - please report an issue at https://github.com/insou22/mipsy")            
-                    }
-                }
+                Err(leftover_tokens_strip_multispace(leftover, file_name))
+            }
+        }
+        Err(_) => {
+            Err(leftover_tokens_strip_multispace(i, file_name))
+        }
+    }
+}
+
+fn leftover_tokens_strip_multispace<'a>(i: Span<'a>, file_name: Option<Rc<str>>) -> ErrorLocation {
+    match comment_multispace0(i) {
+        Ok((leftover, _)) => {
+            ErrorLocation {
+                file_name,
+                line: leftover.location_line(),
+                col:  leftover.get_column(),
             }
         }
         Err(err) => {
