@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}};
+use crate::{Binary, DATA_BOT, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -184,7 +184,11 @@ impl Error {
                                 ));
 
                                 for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
-                                    let inst = state.read_mem_word(addr).unwrap();
+                                    // try_find_pseudo_expansion_end may return the upper text
+                                    // limit address if the instruction is the last one in the program
+                                    let inst = state.read_mem_word(addr);
+                                    if inst.is_err() { break; }
+                                    let inst = inst.unwrap();
 
                                     let failed = addr == state.pc();
 
@@ -423,7 +427,11 @@ impl Error {
                                 ));
 
                                 for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
-                                    let inst = state.read_mem_word(addr).unwrap();
+                                    // try_find_pseudo_expansion_end may return the upper text
+                                    // limit address if the instruction is the last one in the program
+                                    let inst = state.read_mem_word(addr);
+                                    if inst.is_err() { break; }
+                                    let inst = inst.unwrap();
 
                                     let failed = addr == state.pc();
 
@@ -742,6 +750,17 @@ fn get_real_instruction_start<'inst_set>(state: &State, binary: &Binary, inst_se
 
 fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
     let mut addr = initial_addr + 4;
+
+    let &last_addr = program.line_numbers
+        .keys()
+        .max()
+        .unwrap();
+
+    if initial_addr == last_addr {
+        // Since there are no more instructions after this one to get an upper boundary from,
+        // return the highest possible address an instruction could have.
+        return DATA_BOT;
+    }
 
     loop {
         if program.line_numbers.get(&addr).is_some() {
