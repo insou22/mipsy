@@ -1,5 +1,4 @@
-use crate::pages::main::{app::State, state::RunningState};
-use std::{cell::RefCell, rc::Rc};
+use crate::pages::main::app::State;
 use yew::{function_component, html, Properties};
 use log::info;
 use mipsy_lib::{Safe, Register};
@@ -8,15 +7,6 @@ use mipsy_lib::{Safe, Register};
 pub struct RegisterProps {
     pub state: State,
 }
-
-/*
-impl PartialEq for RegisterProps {
-    fn eq(&self, other: &Self) -> bool {
-        false
-    }
-}
-
-*/
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {

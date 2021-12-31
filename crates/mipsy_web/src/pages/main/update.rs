@@ -1,3 +1,7 @@
+use crate::pages::main::{
+    app::{App, Msg, ReadSyscalls, State, NUM_INSTR_BEFORE_RESPONSE},
+    state::{MipsState, RunningState},
+};
 use crate::worker::ReadSyscallInputs;
 use crate::worker::{WorkerRequest, WorkerResponse};
 use gloo_file::callbacks::read_as_text;
@@ -6,16 +10,11 @@ use mipsy_lib::{MipsyError, Safe};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use std::ops::DerefMut;
-use std::rc::Rc;
-use std::cell::RefCell;
-use crate::pages::main::{
-    app::{App, Msg, ReadSyscalls, State, NUM_INSTR_BEFORE_RESPONSE},
-    state::{MipsState, RunningState},
-};
 
 pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>::Message) -> bool {
     match msg {
+        Msg::NoOp => false,
+
         Msg::FileChanged(file) => {
             info!("file changed msg");
             // FIXME -- check result
@@ -63,7 +62,7 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
 
         Msg::Kill => {
             trace!("Kill button clicked");
-            if let State::Running(ref mut curr) = app.state{
+            if let State::Running(ref mut curr) = app.state {
                 curr.should_kill = true;
             };
             true
@@ -188,9 +187,7 @@ pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>:
                         },
 
                         ReadChar => match input.value().parse::<char>() {
-                            Ok(char) => {
-                                App::process_syscall_response(app, input, Char(char as u8))
-                            }
+                            Ok(char) => App::process_syscall_response(app, input, Char(char as u8)),
                             Err(_e) => {
                                 let error_msg =
                                     format!("Failed to parse input '{}' as an u8", input.value());

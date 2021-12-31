@@ -1,8 +1,8 @@
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
-        modal::Modal, navbar::NavBar, outputarea::OutputArea, pagebackground::PageBackground,
-        sourcecode::SourceCode, decompiled::DecompiledCode, registers::Registers,
+        decompiled::DecompiledCode, modal::Modal, navbar::NavBar, outputarea::OutputArea,
+        pagebackground::PageBackground, registers::Registers, sourcecode::SourceCode,
     },
     pages::main::{
         state::{MipsState, RunningState},
@@ -10,13 +10,11 @@ use crate::{
     },
     worker::{Worker, WorkerRequest, WorkerResponse},
 };
-use std::cell::RefCell;
-use std::rc::Rc;
 use gloo_file::callbacks::FileReader;
 use gloo_file::File;
 use gloo_file::FileReadError;
-use log::{error, trace, info};
-use mipsy_lib::{Safe, MipsyError};
+use log::{error, info, trace};
+use mipsy_lib::MipsyError;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
@@ -46,6 +44,7 @@ pub enum Msg {
     SubmitInput,
     ProcessKeypress(KeyboardEvent),
     FromWorker(WorkerResponse),
+    NoOp,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -105,7 +104,6 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        
         /*    CALLBACKS   */
         let load_onchange = ctx.link().batch_callback(|e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -140,7 +138,7 @@ impl Component for App {
         let show_mipsy_tab = ctx.link().callback(|_| Msg::ShowMipsyTab);
         let show_source_tab = ctx.link().callback(|_| Msg::ShowSourceTab);
         let show_decompiled_tab = ctx.link().callback(|_| Msg::ShowDecompiledTab);
-        
+        let noop_onclick = ctx.link().callback(|_| Msg::NoOp);
 
         /* HELPER FNS */
         let text_html_content = match &self.state {
@@ -196,23 +194,28 @@ impl Component for App {
             default
         };
 
-        info!("render");
+        let input_needed = match &self.state {
+            State::Running(curr) => curr.input_needed.clone(),
+            State::NoFile | State::CompilerError(_) => None,
+        };
 
+        info!("render");
 
         html! {
             <>
                 <div onclick={open_modal_onclick.clone()} class={modal_overlay_classes}></div>
-                
+
                 <Modal should_display={self.display_modal} toggle_modal_onclick={open_modal_onclick.clone()} />
-                
+
                 <PageBackground>
-                    
+
                     <NavBar
                         {step_back_onclick}
                         {step_forward_onclick}
                         {reset_onclick}
                         {run_onclick}
                         {kill_onclick}
+                        {noop_onclick}
                         {open_modal_onclick}
                         {file_loaded}
                         {waiting_syscall}
@@ -243,7 +246,6 @@ impl Component for App {
 
                         <div id="information" class="split pr-2 ">
                             <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                                { "ILIKEPOTATOES" }
                                 <Registers state={self.state.clone()}/>
                             </div>
 
@@ -251,46 +253,11 @@ impl Component for App {
                                 {show_io_tab}
                                 {show_mipsy_tab}
                                 {mipsy_output_tab_title}
+                                {input_needed}
                                 show_io={self.show_io}
-                                is_disabled={
-                                    match &self.state {
-                                        State::Running(curr) => {
-                                            if curr.input_needed.is_none() { true } else { false }
-                                        },
-                                        State::NoFile | State::CompilerError(_) => { true },
-                                    }
-                                }
-                                input_needed = {
-                                    match &self.state {
-                                        State::Running(curr) => {
-                                            curr.input_needed.is_some()
-                                        }
-                                        State::NoFile | State::CompilerError(_)  => {
-                                            false
-                                        }
-                                    }
-                                }
                                 input_ref={&self.input_ref}
                                 on_input_keydown={on_input_keydown.clone()}
                                 running_output={self.render_running_output()}
-                                input_maxlength={
-                                    match &self.state {
-                                        State::Running(curr) => match &curr.input_needed {
-                                            Some(item) => match item {
-                                                ReadSyscalls::ReadChar   => "1".to_string(),
-                                                // should we have a limit for size?
-                                                ReadSyscalls::ReadInt    => "".to_string(),
-                                                ReadSyscalls::ReadDouble => "".to_string(),
-                                                ReadSyscalls::ReadFloat  => "".to_string(),
-                                                ReadSyscalls::ReadString => "".to_string(),
-                                            },
-                                            None => {"".to_string()}
-                                        },
-                                        State::NoFile | State::CompilerError(_) => {
-                                            "".to_string()
-                                        },
-                                    }
-                                }
                             />
                         </div>
 
@@ -321,22 +288,22 @@ impl App {
     fn render_running(&self, state: RunningState) -> Html {
         html! {
             <>
-            <h3>
-            <strong class="text-lg">
-            {
-                self.filename.as_ref().unwrap_or(&"".to_string())
-            }
-            </strong>
-            </h3>
-            <table>
-                <tbody>
-                    if self.show_source {
-                        <SourceCode file={self.file.clone()} />
-                    } else {
-                        <DecompiledCode {state} />
-                    }
-                </tbody>
-            </table>
+                <h3>
+                    <strong class="text-lg">
+                        {
+                            self.filename.as_ref().unwrap_or(&"".to_string())
+                        }
+                    </strong>
+                </h3>
+                <table>
+                    <tbody>
+                        if self.show_source {
+                            <SourceCode file={self.file.clone()} />
+                        } else {
+                            <DecompiledCode {state} />
+                        }
+                    </tbody>
+                </table>
             </>
         }
     }
