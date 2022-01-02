@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -745,6 +745,22 @@ fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
 
     loop {
         if program.line_numbers.get(&addr).is_some() {
+            return addr;
+        }
+
+        if addr >= (KDATA_BOT + program.kdata.len() as u32) {
+            return addr;
+        }
+        
+        if addr < KDATA_BOT && addr >= (KTEXT_BOT + program.ktext.len() as u32) {
+            return addr;
+        }
+        
+        if addr < KTEXT_BOT && addr >= (DATA_BOT + program.data.len() as u32) {
+            return addr;
+        }
+        
+        if addr < DATA_BOT && addr >= (TEXT_BOT + program.text.len() as u32) {
             return addr;
         }
 
