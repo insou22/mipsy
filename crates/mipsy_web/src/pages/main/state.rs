@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{Runtime, Safe};
+use mipsy_lib::{Runtime, Safe, MipsyError};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MipsState {
@@ -34,4 +34,11 @@ pub struct RunningState {
     pub mips_state: MipsState,
     pub should_kill: bool,
     pub input_needed: Option<ReadSyscalls>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum State {
+    NoFile,
+    CompilerError(MipsyError),
+    Running(RunningState),
 }

@@ -1,17 +1,17 @@
-use crate::pages::main::app::State;
-use yew::{function_component, html, Properties};
+use crate::pages::main::state::State;
+use yew::{function_component, html, Properties, UseStateHandle};
 use log::info;
 use mipsy_lib::{Safe, Register};
 
 #[derive(Properties, PartialEq)]
 pub struct RegisterProps {
-    pub state: State,
+    pub state: UseStateHandle<State>,
 }
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
     let mut registers = vec![Safe::Uninitialised; 32];
-    if let State::Running(state) = &props.state {
+    if let State::Running(state) = *props.state {
         registers = state.mips_state.register_values.clone();
     };
 

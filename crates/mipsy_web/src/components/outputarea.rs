@@ -4,10 +4,7 @@ use crate::pages::main::app::ReadSyscalls;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct OutputProps {
-    #[prop_or_default]
-    pub show_io_tab: Callback<MouseEvent>,
-    pub show_mipsy_tab: Callback<MouseEvent>,
-    pub show_io: bool,
+    pub show_io: UseStateHandle<bool>,
     pub mipsy_output_tab_title: String,
     pub input_ref: NodeRef,
     pub on_input_keydown: Callback<KeyboardEvent>,
@@ -43,7 +40,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
 						    String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 py-2")
 					  );
 
-        if props.show_io {
+        if *props.show_io {
             default.1 = format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
         } else {
             default.0 = format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
@@ -53,7 +50,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
     };
 
     let input_classes = if !syscall_input_needed{
-        if props.show_io {
+        if *props.show_io {
             "block w-full cursor-not-allowed"
         } else {
             "hidden"
@@ -62,25 +59,29 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         "block w-full bg-th-highlighting"
     };
 
+    let switch_tab = Callback::from(|_| {
+        props.show_io.set(!*props.show_io);
+    });
+
     html! {
         <div id="output" class="min-w-full">
             <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
-                <button class={io_tab_classes} onclick={props.show_io_tab.clone()}>{"I/O"}</button>
+                <button class={io_tab_classes} onclick={switch_tab}>{"I/O"}</button>
                 <button
                     class={mipsy_tab_button_classes}
-                    onclick={props.show_mipsy_tab.clone()}
+                    onclick={switch_tab}
                 >
                     {props.mipsy_output_tab_title.clone()}
                 </button>
             </div>
             <div
-                style={if props.show_io {"height: 80%;"} else {"height: 90%;"}}
+                style={if *props.show_io {"height: 80%;"} else {"height: 90%;"}}
                 class="py-2 w-full flex overflow-y-auto flex-wrap-reverse bg-th-secondary px-2 border-2 border-gray-600"
             >
                 <div class="w-full overflow-y-auto">
                 <h1>
                     <strong>
-                        {if props.show_io {"Output"} else {"Mipsy Output"}}
+                        {if *props.show_io {"Output"} else {"Mipsy Output"}}
                     </strong>
                 </h1>
                 <pre style="width:100%;" class="text-sm whitespace-pre-wrap">
@@ -88,7 +89,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
                 </pre>
                 </div>
             </div>
-            <div style="height: 10%;" class={if props.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
+            <div style="height: 10%;" class={if *props.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
                 <input
                     ref={props.input_ref.clone()}
                     id="user_input"

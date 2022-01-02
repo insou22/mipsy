@@ -4,14 +4,12 @@ use yew::Properties;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct ModalProps {
-    #[prop_or_default]
-    pub toggle_modal_onclick: Callback<MouseEvent>,
-    pub should_display: bool,
+    pub should_display: UseStateHandle<bool>,
 }
 
 #[function_component(Modal)]
 pub fn render_modal(props: &ModalProps) -> Html {
-    let classes = if props.should_display {
+    let classes = if *props.should_display {
         "modal overflow-auto bg-th-primary border-black border-2 absolute top-28 w-3/4"
     } else {
         "modal hidden"
@@ -21,7 +19,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
         <div class={classes} id="modal1" style="left: 13%;">
             <div class="modal-dialog">
                 <div class="absolute modal-header top-0 right-0 h-16 w-16">
-                    <div onclick={props.toggle_modal_onclick.clone()} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
+                    <div onclick={Callback::from(|_| props.should_display.set(!*props.should_display))} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
                     {"x"}
                     </div>
                 </div>

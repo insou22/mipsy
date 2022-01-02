@@ -1,4 +1,3 @@
-use log::info;
 use yew::{function_component, html, Properties};
 use crate::pages::main::state::RunningState;
 

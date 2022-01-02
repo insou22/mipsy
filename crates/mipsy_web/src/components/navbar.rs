@@ -1,20 +1,25 @@
+use crate::{
+    pages::main::{app::NUM_INSTR_BEFORE_RESPONSE, state::State},
+    worker::Worker,
+};
+use derivative::Derivative;
+use log::{info, trace};
 use yew::prelude::*;
 use yew::Html;
+use yew_agent::{Agent, UseBridgeHandle};
 
-#[derive(Properties, Debug, Clone, PartialEq)]
+#[derive(Properties, Derivative)]
+#[derivative(PartialEq)]
 pub struct NavBarProps {
     #[prop_or_default]
     pub load_onchange: Callback<Event>,
-    pub run_onclick: Callback<MouseEvent>,
-    pub reset_onclick: Callback<MouseEvent>,
-    pub exit_status: Option<Option<i32>>,
-    pub step_forward_onclick: Callback<MouseEvent>,
-    pub step_back_onclick: Callback<MouseEvent>,
-    pub kill_onclick: Callback<MouseEvent>,
-    pub open_modal_onclick: Callback<MouseEvent>,
+    pub display_modal: UseStateHandle<bool>,
     pub file_loaded: bool,
     pub waiting_syscall: bool,
-    pub noop_onclick: Callback<MouseEvent>,
+    pub state: UseStateHandle<State>,
+
+    #[derivative(PartialEq = "ignore")]
+    pub worker: UseBridgeHandle<Worker>,
 }
 
 struct Icon {
@@ -24,7 +29,7 @@ struct Icon {
     html: Html,
 }
 
-fn icons(props: NavBarProps) -> Vec<Icon> {
+fn icons(props: &NavBarProps) -> Vec<Icon> {
     let icons = vec![
         Icon {
             label: String::from("Run"),
@@ -34,7 +39,19 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Run program"),
-            callback: Some(props.run_onclick),
+            callback: Some(Callback::from(|_| {
+                trace!("Run button clicked");
+                if let State::Running(ref curr) = *props.state {
+                    curr.mips_state.is_stepping = false;
+                    let input = <Worker as Agent>::Input::Run(
+                        curr.mips_state.clone(),
+                        NUM_INSTR_BEFORE_RESPONSE,
+                    );
+                    props.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot run");
+                };
+            })),
         },
         Icon {
             label: String::from("Reset"),
@@ -44,7 +61,15 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Reset Runtime"),
-            callback: Some(props.reset_onclick),
+            callback: Some(Callback::from(|_| {
+                trace!("Reset button clicked");
+                if let State::Running(curr) = *props.state {
+                    let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                    props.worker.send(input);
+                } else {
+                    props.state.set(State::NoFile);
+                }
+            })),
         },
         Icon {
             label: String::from("Kill"),
@@ -54,7 +79,12 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Stop executing program"),
-            callback: Some(props.kill_onclick),
+            callback: Some(Callback::from(|_| {
+                trace!("Kill button clicked");
+                if let State::Running(curr) = *props.state {
+                    curr.should_kill = true;
+                };
+            })),
         },
         Icon {
             label: String::from("Step Back"),
@@ -64,7 +94,16 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Step backwards"),
-            callback: Some(props.step_back_onclick),
+            callback: Some(Callback::from(|_| {
+                trace!("Step Back button clicked");
+                if let State::Running(curr) = *props.state {
+                    curr.mips_state.is_stepping = true;
+                    let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), -1);
+                    props.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot step");
+                };
+            })),
         },
         Icon {
             label: String::from("Step Next"),
@@ -74,7 +113,16 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Step forwards"),
-            callback: Some(props.step_forward_onclick),
+            callback: Some(Callback::from(|_| {
+                trace!("Step Back button clicked");
+                if let State::Running(curr) = *props.state {
+                    curr.mips_state.is_stepping = true;
+                    let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), 1);
+                    props.worker.send(input);
+                } else {
+                    info!("No File loaded, cannot step");
+                };
+            })),
         },
     ];
 
@@ -84,85 +132,91 @@ fn icons(props: NavBarProps) -> Vec<Icon> {
 #[function_component(NavBar)]
 pub fn render_navbar(props: &NavBarProps) -> Html {
     let icons = icons(props.clone());
+    let exit_status = match *props.state {
+        State::Running(curr) => Some(curr.mips_state.exit_status),
+        _ => None,
+    };
 
     html! {
-            <nav class="flex items-center justify-between flex-wrap bg-th-primary p-4">
-              <div class="flex items-center flex-shrink-0 text-black mr-6">
-                <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
-              </div>
-              <div class="w-full block flex-grow flex items-center w-auto">
-                <div class="flex-grow flex flex-row">
-                  <label tabindex=0 for="load_file" class="mr-2 text-sm flex place-items-center flex-row inline-block cursor-pointer px-3 py-3 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z" clip-rule="evenodd" />
-                      <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
-                    </svg>
-                    {"Load"}
-                  </label>
-                  <input id="load_file" onchange={&props.load_onchange} type="file" accept=".s" class="hidden" />
-                    {
-                        for icons.iter().map(|item| {
+        <nav class="flex items-center justify-between flex-wrap bg-th-primary p-4">
+          <div class="flex items-center flex-shrink-0 text-black mr-6">
+            <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
+          </div>
+          <div class="w-full block flex-grow flex items-center w-auto">
+            <div class="flex-grow flex flex-row">
+              <label tabindex=0 for="load_file" class="mr-2 text-sm flex place-items-center flex-row inline-block cursor-pointer px-3 py-3 leading-none border rounded text-black border-black hover:border-transparent hover:text-teal-500 hover:bg-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z" clip-rule="evenodd" />
+                  <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
+                </svg>
+                {"Load"}
+              </label>
+              <input id="load_file" onchange={&props.load_onchange} type="file" accept=".s" class="hidden" />
+                {
+                    for icons.iter().map(|item| {
 
-                            // run or step buttons should be disabled
-                            // if we have exited
-                            let is_run_step_disabled = if item.label == "Run" || item.label == "Step Next" {
-                                if let Some(Some(_)) = &props.exit_status {
-                                    true
-                                } else {
-                                    false
-                                }
+                        // run or step buttons should be disabled
+                        // if we have exited
+                        let is_run_step_disabled = if item.label == "Run" || item.label == "Step Next" {
+                            if let Some(Some(_)) = &exit_status {
+                                true
                             } else {
                                 false
-                            };
-
-                            // if we are waiting on a syscall value, or if there is no file
-                            // then we hsouldn't be able to step
-                            let is_disabled = props.waiting_syscall || !props.file_loaded || is_run_step_disabled;
-
-                            let onclick = if item.callback.is_some() {
-                                  item.callback.clone().unwrap()
-                            } else {
-                                  props.noop_onclick.clone()
-                            };
-
-                            let mut button_classes = String::from("mr-2 flex place-items-center flex-row inline-block cursor-pointer \
-                                                                   text-sm px-2 py-2 border rounded text-black border-black \
-                                                                   hover:border-transparent hover:text-teal-500 hover:bg-white");
-
-                            let title = if is_disabled {
-                                // space at front is needed otherwise classes will combine
-                                button_classes.push_str(" opacity-50 cursor-not-allowed");
-                                if props.waiting_syscall {
-                                    String::from("enter syscall value")
-                                } else if !props.file_loaded {
-                                    String::from("please load file")
-                                } else {
-                                    String::from("cannot step past end of program")
-                                }
-
-                            } else {
-                                item.title.clone()
-                            };
-
-                            html! {
-                                <button tabindex=0 {title} disabled={is_disabled} {onclick} class={button_classes}>
-                                    { item.html.clone() }
-                                    { item.label.clone() }
-                                </button>
                             }
-                        })
-                    }
-                </div>
-                <button
-                    onclick={props.open_modal_onclick.clone()}
-                    class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
-                           text-sm px-2 py-2 border rounded text-black border-black \
-                           hover:border-transparent hover:text-teal-500 hover:bg-white"
-                >
-                    {"About Mipsy Web"}
-                </button>
-              </div>
-            </nav>
+                        } else {
+                            false
+                        };
+
+                        // if we are waiting on a syscall value, or if there is no file
+                        // then we hsouldn't be able to step
+                        let is_disabled = props.waiting_syscall || !props.file_loaded || is_run_step_disabled;
+
+                        let onclick = if item.callback.is_some() {
+                            item.callback.clone().unwrap()
+                        } else {
+                            Callback::from(|_| {})
+                        };
+
+                        let mut button_classes = String::from("mr-2 flex place-items-center flex-row inline-block cursor-pointer \
+                                                               text-sm px-2 py-2 border rounded text-black border-black \
+                                                               hover:border-transparent hover:text-teal-500 hover:bg-white");
+
+                        let title = if is_disabled {
+                            // space at front is needed otherwise classes will combine
+                            button_classes.push_str(" opacity-50 cursor-not-allowed");
+                            if props.waiting_syscall {
+                                String::from("enter syscall value")
+                            } else if !props.file_loaded {
+                                String::from("please load file")
+                            } else {
+                                String::from("cannot step past end of program")
+                            }
+
+                        } else {
+                            item.title.clone()
+                        };
+
+                        html! {
+                            <button tabindex=0 {title} disabled={is_disabled} {onclick} class={button_classes}>
+                                { item.html.clone() }
+                                { item.label.clone() }
+                            </button>
+                        }
+                    })
+                }
+            </div>
+            <button
+                onclick={Callback::from(|_| {
+                    props.display_modal.set(!*props.display_modal);
+                })}
+                class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
+                       text-sm px-2 py-2 border rounded text-black border-black \
+                       hover:border-transparent hover:text-teal-500 hover:bg-white"
+            >
+                {"About Mipsy Web"}
+            </button>
+          </div>
+        </nav>
 
     }
 }
