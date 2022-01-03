@@ -19,7 +19,12 @@ pub fn render_modal(props: &ModalProps) -> Html {
         <div class={classes} id="modal1" style="left: 13%;">
             <div class="modal-dialog">
                 <div class="absolute modal-header top-0 right-0 h-16 w-16">
-                    <div onclick={Callback::from(|_| props.should_display.set(!*props.should_display))} class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
+                    <div onclick={{
+                            let display_modal = props.should_display.clone();
+                            Callback::from(move |_| {
+                            display_modal.set(!*display_modal);
+                        })}} 
+                    class="text-center cursor-pointer text-6xl border-black border-2 hover:bg-red-700 border-none bg-transparent close-modal" aria-label="close">
                     {"x"}
                     </div>
                 </div>

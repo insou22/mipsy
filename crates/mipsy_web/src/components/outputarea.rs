@@ -1,6 +1,6 @@
+use crate::pages::main::app::ReadSyscalls;
 use yew::prelude::*;
 use yew::Properties;
-use crate::pages::main::app::ReadSyscalls;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct OutputProps {
@@ -14,8 +14,6 @@ pub struct OutputProps {
 
 #[function_component(OutputArea)]
 pub fn render_output_area(props: &OutputProps) -> Html {
-    
-
     let syscall_input_needed = match props.input_needed {
         Some(_) => true,
         None => false,
@@ -23,14 +21,13 @@ pub fn render_output_area(props: &OutputProps) -> Html {
 
     let input_maxlength = match &props.input_needed {
         Some(item) => match item {
-                ReadSyscalls::ReadChar => "1".to_string(),
-                // should we have a limit for size?
-                ReadSyscalls::ReadInt => "".to_string(),
-                ReadSyscalls::ReadDouble => "".to_string(),
-                ReadSyscalls::ReadFloat => "".to_string(),
-                ReadSyscalls::ReadString => "".to_string(),
-
-        }
+            ReadSyscalls::ReadChar => "1".to_string(),
+            // should we have a limit for size?
+            ReadSyscalls::ReadInt => "".to_string(),
+            ReadSyscalls::ReadDouble => "".to_string(),
+            ReadSyscalls::ReadFloat => "".to_string(),
+            ReadSyscalls::ReadString => "".to_string(),
+        },
         None => "".to_string(),
     };
 
@@ -49,7 +46,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         default
     };
 
-    let input_classes = if !syscall_input_needed{
+    let input_classes = if !syscall_input_needed {
         if *props.show_io {
             "block w-full cursor-not-allowed"
         } else {
@@ -59,17 +56,20 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         "block w-full bg-th-highlighting"
     };
 
-    let switch_tab = Callback::from(|_| {
-        props.show_io.set(!*props.show_io);
-    });
+    let switch_tab = {
+        let show_io = props.show_io.clone();
+        Callback::from(move |_| {
+            show_io.set(!*show_io);
+        })
+    };
 
     html! {
         <div id="output" class="min-w-full">
             <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
-                <button class={io_tab_classes} onclick={switch_tab}>{"I/O"}</button>
+                <button class={io_tab_classes} onclick={switch_tab.clone()}>{"I/O"}</button>
                 <button
                     class={mipsy_tab_button_classes}
-                    onclick={switch_tab}
+                    onclick={switch_tab.clone()}
                 >
                     {props.mipsy_output_tab_title.clone()}
                 </button>

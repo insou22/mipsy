@@ -223,7 +223,7 @@ pub fn render_app() -> Html {
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
-                    worker={worker.borrow().unwrap()}
+                    worker={worker.borrow().as_ref().unwrap().clone()}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">

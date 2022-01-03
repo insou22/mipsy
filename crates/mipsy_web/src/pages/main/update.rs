@@ -54,8 +54,9 @@ pub fn handle_response_from_worker(
 
                 MipsyError::Compiler(error) => {
                     match *state {
-                        State::Running(ref mut curr) => {
+                        State::Running(ref curr) => {
                             // TODO - replace with .set?
+                            todo!("set state");
                             curr.mips_state.mipsy_stdout.push(error.error().message());
                             state.set(State::Running(*curr));
                         }
@@ -75,7 +76,8 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::ProgramExited(mips_state) => match *state {
-            State::Running(ref mut curr) => {
+            State::Running(ref curr) => {
+                todo!("replace state");
                 curr.mips_state = mips_state;
                 state.set(State::Running(*curr));
                 true
@@ -84,9 +86,10 @@ pub fn handle_response_from_worker(
         },
 
         WorkerResponse::InstructionOk(mips_state) => {
-            if let State::Running(ref mut curr) = *state {
+            if let State::Running(ref curr) = *state {
                 info!("{:?}", mips_state);
                 info!("HERE");
+                todo!("replace state");
                 curr.mips_state = mips_state;
                 // if the isntruction was ok, run another instruction
                 // unless the user has said it should be killed
@@ -104,7 +107,8 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::UpdateMipsState(mips_state) => match *state {
-            State::Running(ref mut curr) => {
+            State::Running(ref curr) => {
+                todo!("replace state");
                 curr.mips_state = mips_state;
                 state.set(State::Running(*curr));
                 info!("updating state");
@@ -144,26 +148,27 @@ pub fn submit_input(
             match curr.input_needed.as_ref().unwrap_throw() {
                 ReadInt => match input.value().parse::<i32>() {
                     Ok(num) => {
-                        process_syscall_response(*state, *worker, input, Int(num));
+                        process_syscall_response(state.clone(), worker.clone(), input, Int(num));
                     }
                     Err(_e) => {
                         let error_msg =
                             format!("Failed to parse input '{}' as an i32", input.value());
                         error!("{}", error_msg);
+                        todo!("replace state");
                         curr.mips_state.mipsy_stdout.push(error_msg);
                     }
                 },
 
                 ReadFloat => match input.value().parse::<f32>() {
                     Ok(num) => {
-                        process_syscall_response(*state, *worker, input, Float(num));
+                        process_syscall_response(state.clone(), worker.clone(), input, Float(num));
                     }
 
                     Err(_e) => {
                         let error_msg =
                             format!("Failed to parse input '{}' as an f32", input.value());
                         error!("{}", error_msg);
-
+                        todo!("replace state");
                         // TODO - check how this works with setState?
                         curr.mips_state.mipsy_stdout.push(error_msg);
                     }
@@ -171,7 +176,7 @@ pub fn submit_input(
 
                 ReadDouble => match input.value().parse::<f64>() {
                     Ok(num) => {
-                        process_syscall_response(*state, *worker, input, Double(num));
+                        process_syscall_response(state.clone(), worker.clone(), input, Double(num));
                     }
                     Err(_e) => {
                         error!("Failed to parse input '{}' as an f64", input.value());
@@ -179,12 +184,12 @@ pub fn submit_input(
                 },
 
                 ReadChar => match input.value().parse::<char>() {
-                    Ok(char) => process_syscall_response(*state, *worker, input, Char(char as u8)),
+                    Ok(char) => process_syscall_response(state.clone(), worker.clone(), input, Char(char as u8)),
                     Err(_e) => {
                         let error_msg =
                             format!("Failed to parse input '{}' as an u8", input.value());
                         error!("{}", error_msg);
-
+                        todo!("replace state");
                         // TODO - check how this works with setState?
                         curr.mips_state.mipsy_stdout.push(error_msg);
                     }
@@ -192,7 +197,7 @@ pub fn submit_input(
 
                 ReadString => {
                     let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
-                    process_syscall_response(*state, *worker, input, String(string));
+                    process_syscall_response(state.clone(), worker.clone(), input, String(string));
                 }
             }
         } else {

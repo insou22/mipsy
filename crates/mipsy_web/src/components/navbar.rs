@@ -39,19 +39,24 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Run program"),
-            callback: Some(Callback::from(|_| {
-                trace!("Run button clicked");
-                if let State::Running(ref curr) = *props.state {
-                    curr.mips_state.is_stepping = false;
-                    let input = <Worker as Agent>::Input::Run(
-                        curr.mips_state.clone(),
-                        NUM_INSTR_BEFORE_RESPONSE,
-                    );
-                    props.worker.send(input);
-                } else {
-                    info!("No File loaded, cannot run");
-                };
-            })),
+            callback: Some({
+                let worker = props.worker.clone();
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Run button clicked");
+                    if let State::Running(ref curr) = *state {
+                        todo!("replace state");
+                        curr.mips_state.is_stepping = false;
+                        let input = <Worker as Agent>::Input::Run(
+                            curr.mips_state.clone(),
+                            NUM_INSTR_BEFORE_RESPONSE,
+                        );
+                        worker.send(input);
+                    } else {
+                        info!("No File loaded, cannot run");
+                    };
+                })
+            }),
         },
         Icon {
             label: String::from("Reset"),
@@ -61,15 +66,19 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Reset Runtime"),
-            callback: Some(Callback::from(|_| {
-                trace!("Reset button clicked");
-                if let State::Running(curr) = *props.state {
-                    let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
-                    props.worker.send(input);
-                } else {
-                    props.state.set(State::NoFile);
-                }
-            })),
+            callback: Some({
+                let worker = props.worker.clone();
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Reset button clicked");
+                    if let State::Running(curr) = &*state {
+                        let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                        worker.send(input);
+                    } else {
+                        state.set(State::NoFile);
+                    }
+                })
+            }),
         },
         Icon {
             label: String::from("Kill"),
@@ -79,12 +88,16 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Stop executing program"),
-            callback: Some(Callback::from(|_| {
-                trace!("Kill button clicked");
-                if let State::Running(curr) = *props.state {
-                    curr.should_kill = true;
-                };
-            })),
+            callback: Some({
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Kill button clicked");
+                    if let State::Running(curr) = &*state {
+                        todo!("replace state");
+                        curr.should_kill = true;
+                    }
+                })
+            }),
         },
         Icon {
             label: String::from("Step Back"),
@@ -94,16 +107,21 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Step backwards"),
-            callback: Some(Callback::from(|_| {
-                trace!("Step Back button clicked");
-                if let State::Running(curr) = *props.state {
-                    curr.mips_state.is_stepping = true;
-                    let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), -1);
-                    props.worker.send(input);
-                } else {
-                    info!("No File loaded, cannot step");
-                };
-            })),
+            callback: Some({
+                let worker = props.worker.clone();
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Step Back button clicked");
+                    if let State::Running(curr) = &*state {
+                        todo!("Replace state");
+                        curr.mips_state.is_stepping = true;
+                        let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), -1);
+                        worker.send(input);
+                    } else {
+                        info!("No File loaded, cannot step");
+                    };
+                })
+            }),
         },
         Icon {
             label: String::from("Step Next"),
@@ -113,16 +131,21 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 </svg>
             },
             title: String::from("Step forwards"),
-            callback: Some(Callback::from(|_| {
-                trace!("Step Back button clicked");
-                if let State::Running(curr) = *props.state {
-                    curr.mips_state.is_stepping = true;
-                    let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), 1);
-                    props.worker.send(input);
-                } else {
-                    info!("No File loaded, cannot step");
-                };
-            })),
+            callback: Some({
+                let worker = props.worker.clone();
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Step Back button clicked");
+                    if let State::Running(curr) = &*state {
+                        todo!("replace state");
+                        curr.mips_state.is_stepping = true;
+                        let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), 1);
+                        worker.send(input);
+                    } else {
+                        info!("No File loaded, cannot step");
+                    };
+                })
+            }),
         },
     ];
 
@@ -132,7 +155,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
 #[function_component(NavBar)]
 pub fn render_navbar(props: &NavBarProps) -> Html {
     let icons = icons(props.clone());
-    let exit_status = match *props.state {
+    let exit_status = match &*props.state {
         State::Running(curr) => Some(curr.mips_state.exit_status),
         _ => None,
     };
@@ -206,9 +229,12 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                 }
             </div>
             <button
-                onclick={Callback::from(|_| {
-                    props.display_modal.set(!*props.display_modal);
-                })}
+                onclick={{
+                    let display_modal = props.display_modal.clone();
+                    Callback::from(move |_| {
+                        display_modal.set(!*display_modal);
+                    })
+                }}
                 class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
                        text-sm px-2 py-2 border rounded text-black border-black \
                        hover:border-transparent hover:text-teal-500 hover:bg-white"
