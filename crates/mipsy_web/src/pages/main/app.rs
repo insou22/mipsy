@@ -64,7 +64,7 @@ pub fn render_app() -> Html {
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
     let force_rerender_toggle: UseStateHandle<bool> = use_state_eq(|| false);
-     
+
     let worker = Rc::new(RefCell::new(None));
 
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
@@ -74,55 +74,88 @@ pub fn render_app() -> Html {
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_source: UseStateHandle<bool> = use_state_eq(|| false);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
-    
+
     if worker.borrow().is_none() {
-        *worker.borrow_mut() = Some(use_bridge(|response| update::handle_response_from_worker(state, response, force_rerender_toggle, worker.clone(), input_ref)));
+        *worker.borrow_mut() = {
+            let state = state.clone();
+            let force_rerender_toggle = force_rerender_toggle.clone();
+            let input_ref = input_ref.clone();
+            let worker = worker.clone();
+            
+            Some(use_bridge(move |response| {
+                let state = state.clone();
+                let force_rerender_toggle = force_rerender_toggle.clone();
+                let input_ref = input_ref.clone();
+                let worker = worker.clone();
+                update::handle_response_from_worker(
+                    state,
+                    response,
+                    force_rerender_toggle,
+                    worker,
+                    input_ref,
+                )
+            }))
+        };
     }
     // TODO - figure out rendered fn
 
     /*    CALLBACKS   */
-    let load_onchange: Callback<Event> = Callback::from( |e: Event| {
-        let input: HtmlInputElement = e.target_unchecked_into();
+    let load_onchange: Callback<Event> = {
+        let worker = worker.clone();
+        let filename = filename.clone();
+        let file = file.clone();
+        let show_source = show_source.clone();
+        let tasks = tasks.clone();
+        Callback::from(move |e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
 
-        if let Some(file_list) = input.files() {
-            if let Some(file_blob) = file_list.item(0) {
-                let gloo_file = File::from(web_sys::File::from(file_blob));
-                
-                let file_name = gloo_file.name();
-                filename.set(Some(file_name));
+            if let Some(file_list) = input.files() {
+                if let Some(file_blob) = file_list.item(0) {
+                    let gloo_file = File::from(web_sys::File::from(file_blob));
 
-                // prep items for closure below
-                let file = file.clone();
-                let worker = worker.clone();
-                let show_source = show_source.clone();
+                    let file_name = gloo_file.name();
+                    filename.set(Some(file_name));
 
-                let mut tasks_new = *tasks.clone();
-                tasks_new.push(read_as_text(&gloo_file, move |res| match res {
-                    Ok(ref file_contents) => {
-                        file.set(Some(file_contents.to_string()));
-                        let input = WorkerRequest::CompileCode(file_contents.to_string());
-                        info!("sending to worker");
-                        worker.borrow().unwrap().send(input);
-                        show_source.set(false);
-                    }
+                    // prep items for closure below
+                    let file = file.clone();
+                    let worker = worker.clone();
+                    let show_source = show_source.clone();
 
-                    Err(_e) => {}
-                }));
+                    let mut tasks_new = vec![];
+                    tasks_new.push(read_as_text(&gloo_file, move |res| match res {
+                        Ok(ref file_contents) => {
+                            file.set(Some(file_contents.to_string()));
+                            let input = WorkerRequest::CompileCode(file_contents.to_string());
+                            info!("sending to worker");
+                            worker.borrow().as_ref().unwrap().send(input);
+                            show_source.set(false);
+                        }
+
+                        Err(_e) => {}
+                    }));
+
+                    tasks.set(tasks_new);
+                }
             }
-        }
-    });
+        })
+    };
 
-    let on_input_keydown: Callback<KeyboardEvent> = Callback::from(|event: KeyboardEvent| {
-        if event.key() == "Enter" {
-            update::submit_input(&worker.borrow().unwrap(), &input_ref, &state);
-        };
-    });
+    let on_input_keydown: Callback<KeyboardEvent> = {
+        let worker = worker.clone();
+        let state = state.clone();
+        let input_ref = input_ref.clone();
+        Callback::from(move |event: KeyboardEvent| {
+            if event.key() == "Enter" {
+                update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+            };
+        })
+    };
 
     /* HELPER FNS */
-    let text_html_content = match *state {
+    let text_html_content = match &*state {
         State::NoFile => "no file loaded".into(),
         State::CompilerError(_error) => "File has syntax errors, check your file with mipsy and try again.\nMipsy Web does not yet support displaying compiler errors".into(),
-        State::Running(state) => render_running(file, state, filename, show_source)
+        State::Running(curr) => render_running(file.clone(), curr.clone(), filename.clone(), show_source.clone())
     };
 
     trace!("rendering");
@@ -138,13 +171,13 @@ pub fn render_app() -> Html {
         State::Running(_) => true,
     };
 
-    let waiting_syscall = match *state {
+    let waiting_syscall = match &*state {
         State::Running(curr) => curr.input_needed.is_some(),
         State::NoFile | State::CompilerError(_) => false,
     };
 
     // TODO - make this nicer when refactoring compiler errs
-    let mipsy_output_tab_title = match *state {
+    let mipsy_output_tab_title = match &*state {
         State::NoFile => "Mipsy Output - (0)".to_string(),
         State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
         State::Running(curr) => {
@@ -172,15 +205,15 @@ pub fn render_app() -> Html {
         State::NoFile | State::CompilerError(_) => None,
     };
 
-
     html! {
         <>
-            <div onclick={Callback::from(move |_| {
+            <div onclick={{
                 let display_modal = display_modal.clone();
+                Callback::from(move |_| {
                 display_modal.set(!*display_modal);
-            })} class={modal_overlay_classes}></div>
+            })}} class={modal_overlay_classes}></div>
 
-            <Modal should_display={display_modal} />
+            <Modal should_display={display_modal.clone()} />
 
             <PageBackground>
 
@@ -196,17 +229,20 @@ pub fn render_app() -> Html {
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
                     <div id="file_data">
                         <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
-                        <button class={source_tab_classes} onclick={Callback::from(|_| {
-                            show_source.set(!*show_source);
-                        })}>
+                            <button class={source_tab_classes} onclick={{
+                                let show_source = show_source.clone();
+                                Callback::from(move |_| {
+                                    show_source.set(!*show_source);
+                                })
+                            }}>
                                 {"source"}
                             </button>
-                            <button
-                                class={decompiled_tab_classes}
-                                onclick={Callback::from(|_| {
+                            <button class={decompiled_tab_classes} onclick={{
+                                let show_source = show_source.clone();
+                                Callback::from(move |_| {
                                     show_source.set(!*show_source);
-                                })}
-                            >
+                                })
+                            }}>
                                 {"decompiled"}
                             </button>
                         </div>
@@ -220,16 +256,16 @@ pub fn render_app() -> Html {
 
                     <div id="information" class="split pr-2 ">
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                            <Registers {state} />
+                            <Registers state={state.clone()} />
                         </div>
 
                         <OutputArea
                             {mipsy_output_tab_title}
                             {input_needed}
-                            {show_io}
-                            input_ref={*input_ref}
+                            show_io={show_io.clone()}
+                            input_ref={(*input_ref).clone()}
                             on_input_keydown={on_input_keydown.clone()}
-                            running_output={render_running_output(show_io, state)}
+                            running_output={render_running_output(show_io.clone(), state.clone())}
                         />
                     </div>
 
@@ -273,7 +309,7 @@ fn render_running(
             <table>
                 <tbody>
                     if *show_source {
-                        <SourceCode file={*file.clone()} />
+                        <SourceCode file={(*file).clone()} />
                     } else {
                         <DecompiledCode {state} />
                     }
@@ -287,7 +323,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
     html! {
         {
             if *show_io {
-                match *state {
+                match &*state {
                     State::Running(curr) => {curr.mips_state.stdout.join("")},
                     State::NoFile => {
                         "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
@@ -297,7 +333,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
 
                 }
             } else {
-                match *state {
+                match &*state {
                     State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
                     State::NoFile => {"".into()},
                     State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
@@ -313,8 +349,9 @@ pub fn process_syscall_request(
     state: UseStateHandle<State>,
     input_ref: UseStateHandle<NodeRef>,
 ) -> bool {
-    match *state {
-        State::Running(ref mut curr) => {
+    match &*state {
+        State::Running(ref curr) => {
+            todo!("replace state");
             curr.mips_state = mips_state;
             curr.input_needed = Some(required_type);
             focus_input(input_ref);
@@ -339,11 +376,12 @@ pub fn process_syscall_response(
     required_type: ReadSyscallInputs,
 ) {
     match state.deref() {
-        State::Running(ref mut curr) => {
+        State::Running(ref curr) => {
             worker.send(WorkerRequest::GiveSyscallValue(
                 curr.mips_state.clone(),
                 required_type,
             ));
+            todo!("replace state");
             curr.input_needed = None;
             input.set_value("");
             input.set_disabled(true);
