@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::ops::Deref;
+use std::rc::Rc;
 
 use crate::worker::ReadSyscallInputs;
 use crate::{
@@ -62,9 +64,8 @@ pub fn render_app() -> Html {
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
     let force_rerender_toggle: UseStateHandle<bool> = use_state_eq(|| false);
-
-    let worker: UseBridgeHandle<Worker> =
-        use_bridge(|response| update::handle_response_from_worker(response, force_rerender_toggle));
+     
+    let worker = Rc::new(RefCell::new(None));
 
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| false);
@@ -73,7 +74,10 @@ pub fn render_app() -> Html {
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_source: UseStateHandle<bool> = use_state_eq(|| false);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
-
+    
+    if worker.borrow().is_none() {
+        *worker.borrow_mut() = Some(use_bridge(|response| update::handle_response_from_worker(state, response, force_rerender_toggle, worker.clone(), input_ref)));
+    }
     // TODO - figure out rendered fn
 
     /*    CALLBACKS   */
@@ -98,7 +102,7 @@ pub fn render_app() -> Html {
                         file.set(Some(file_contents.to_string()));
                         let input = WorkerRequest::CompileCode(file_contents.to_string());
                         info!("sending to worker");
-                        worker.send(input);
+                        worker.borrow().unwrap().send(input);
                         show_source.set(false);
                     }
 
@@ -110,7 +114,7 @@ pub fn render_app() -> Html {
 
     let on_input_keydown: Callback<KeyboardEvent> = Callback::from(|event: KeyboardEvent| {
         if event.key() == "Enter" {
-            update::submit_input(&worker, &input_ref, &state);
+            update::submit_input(&worker.borrow().unwrap(), &input_ref, &state);
         };
     });
 
@@ -163,16 +167,16 @@ pub fn render_app() -> Html {
         default
     };
 
-    let input_needed = match *state {
+    let input_needed = match &*state {
         State::Running(curr) => curr.input_needed.clone(),
         State::NoFile | State::CompilerError(_) => None,
     };
 
-    info!("render");
 
     html! {
         <>
-            <div onclick={Callback::from(|_| {
+            <div onclick={Callback::from(move |_| {
+                let display_modal = display_modal.clone();
                 display_modal.set(!*display_modal);
             })} class={modal_overlay_classes}></div>
 
@@ -182,11 +186,11 @@ pub fn render_app() -> Html {
 
                 <NavBar
                     {load_onchange}
-                    {display_modal}
+                    display_modal={display_modal.clone()}
                     {file_loaded}
                     {waiting_syscall}
-                    {state}
-                    {worker}
+                    state={state.clone()}
+                    worker={worker.borrow().unwrap()}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
@@ -307,7 +311,7 @@ pub fn process_syscall_request(
     mips_state: MipsState,
     required_type: ReadSyscalls,
     state: UseStateHandle<State>,
-    input_ref: UseStateHandle<&NodeRef>,
+    input_ref: UseStateHandle<NodeRef>,
 ) -> bool {
     match *state {
         State::Running(ref mut curr) => {
@@ -321,7 +325,7 @@ pub fn process_syscall_request(
     }
 }
 
-fn focus_input(input_ref: UseStateHandle<&NodeRef>) {
+fn focus_input(input_ref: UseStateHandle<NodeRef>) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
         input.set_disabled(false);
         input.focus().unwrap();

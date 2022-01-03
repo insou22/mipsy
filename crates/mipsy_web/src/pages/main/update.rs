@@ -2,7 +2,10 @@ use crate::worker::ReadSyscallInputs;
 use crate::worker::{WorkerRequest, WorkerResponse};
 use crate::{
     pages::main::{
-        app::{process_syscall_response, Msg, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE},
+        app::{
+            process_syscall_request, process_syscall_response, ReadSyscalls,
+            NUM_INSTR_BEFORE_RESPONSE,
+        },
         state::{MipsState, RunningState, State},
     },
     worker::Worker,
@@ -10,114 +13,123 @@ use crate::{
 use gloo_file::callbacks::read_as_text;
 use log::{error, info, trace};
 use mipsy_lib::{MipsyError, Safe};
+use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::UseBridgeHandle;
 
-pub fn handle_response_from_worker(response: WorkerResponse, rerender_hook: UseStateHandle<bool>) {
+pub fn handle_response_from_worker(
+    state: UseStateHandle<State>,
+    response: WorkerResponse,
+    rerender_hook: UseStateHandle<bool>,
+    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
+    input_ref: UseStateHandle<NodeRef>
+) {
     // TODO - hande response
     // TODO - fix compiler errors
     match response {
-            WorkerResponse::DecompiledCode(decompiled) => {
-                info!("recieved decompiled code from worker");
-                app.state = State::Running(RunningState {
-                    decompiled,
-                    mips_state: MipsState {
-                        stdout: Vec::new(),
-                        exit_status: None,
-                        register_values: vec![Safe::Uninitialised; 32],
-                        current_instr: None,
-                        mipsy_stdout: Vec::new(),
-                        is_stepping: true,
-                    },
-                    input_needed: None,
-                    should_kill: false,
-                });
-                true
-            }
+        WorkerResponse::DecompiledCode(decompiled) => {
+            info!("recieved decompiled code from worker");
+            state.set(State::Running(RunningState {
+                decompiled,
+                mips_state: MipsState {
+                    stdout: Vec::new(),
+                    exit_status: None,
+                    register_values: vec![Safe::Uninitialised; 32],
+                    current_instr: None,
+                    mipsy_stdout: Vec::new(),
+                    is_stepping: true,
+                },
+                input_needed: None,
+                should_kill: false,
+            }));
+            true
+        }
 
-            WorkerResponse::CompilerError(err) => {
-                match &err {
-                    MipsyError::Parser(_error) => {
-                        true
-                    }
+        WorkerResponse::CompilerError(err) => {
+            match &err {
+                MipsyError::Parser(_error) => true,
 
-                    MipsyError::Compiler(error) => {
-                        match app.state {
-                            State::Running(ref mut curr) => {
-                                curr.mips_state.mipsy_stdout.push(error.error().message())
-                            }
-                            State::NoFile | State::CompilerError(_) => {
-                                app.state = State::CompilerError(err);
-                                error!("Compiler errors are not supported.");
-                            }
+                MipsyError::Compiler(error) => {
+                    match *state {
+                        State::Running(ref mut curr) => {
+                            // TODO - replace with .set?
+                            curr.mips_state.mipsy_stdout.push(error.error().message());
+                            state.set(State::Running(*curr));
                         }
-                        true
+                        State::NoFile | State::CompilerError(_) => {
+                            state.set(State::CompilerError(err));
+                            error!("Compiler errors are not supported.");
+                        }
                     }
-
-                    MipsyError::Runtime(_error) => {
-                        error!("Cannot get runtime error at compile time");
-                        unreachable!();
-                    }
-                }
-            }
-
-            WorkerResponse::ProgramExited(mips_state) => match app.state {
-                State::Running(ref mut curr) => {
-                    curr.mips_state = mips_state;
                     true
                 }
-                State::NoFile | State::CompilerError(_) => false,
-            },
 
-            WorkerResponse::InstructionOk(mips_state) => {
-                if let State::Running(ref mut curr) = app.state {
-                    info!("{:?}", mips_state);
-                    info!("HERE");
-                    curr.mips_state = mips_state;
-                    // if the isntruction was ok, run another instruction
-                    // unless the user has said it should be killed
-                    if !curr.should_kill {
-                        let input =
-                            WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
-                        app.worker.send(input);
-                    }
-                    curr.should_kill = false;
-                } else {
-                    info!("No File loaded, cannot run");
-                    return false;
+                MipsyError::Runtime(_error) => {
+                    error!("Cannot get runtime error at compile time");
+                    unreachable!();
                 }
+            }
+        }
+
+        WorkerResponse::ProgramExited(mips_state) => match *state {
+            State::Running(ref mut curr) => {
+                curr.mips_state = mips_state;
+                state.set(State::Running(*curr));
+                true
+            }
+            State::NoFile | State::CompilerError(_) => false,
+        },
+
+        WorkerResponse::InstructionOk(mips_state) => {
+            if let State::Running(ref mut curr) = *state {
+                info!("{:?}", mips_state);
+                info!("HERE");
+                curr.mips_state = mips_state;
+                // if the isntruction was ok, run another instruction
+                // unless the user has said it should be killed
+                if !curr.should_kill {
+                    let input =
+                        WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                   worker.borrow().unwrap().send(input);
+                }
+                curr.should_kill = false;
+                state.set(State::Running(*curr));
+            } else {
+                info!("No File loaded, cannot run");
+            }
+            true
+        }
+
+        WorkerResponse::UpdateMipsState(mips_state) => match *state {
+            State::Running(ref mut curr) => {
+                curr.mips_state = mips_state;
+                state.set(State::Running(*curr));
+                info!("updating state");
                 true
             }
 
-            WorkerResponse::UpdateMipsState(mips_state) => match app.state {
-                State::Running(ref mut curr) => {
-                    curr.mips_state = mips_state;
-                    info!("updating state");
-                    true
-                }
+            State::NoFile | State::CompilerError(_) => false,
+        },
 
-                State::NoFile | State::CompilerError(_) => false,
-            },
-
-            WorkerResponse::NeedInt(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadInt)
-            }
-            WorkerResponse::NeedFloat(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadFloat)
-            }
-            WorkerResponse::NeedDouble(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadDouble)
-            }
-            WorkerResponse::NeedChar(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadChar)
-            }
-            WorkerResponse::NeedString(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadString)
-            }
-        };
-
+        WorkerResponse::NeedInt(mips_state) => {
+            process_syscall_request(mips_state, ReadSyscalls::ReadInt, state, input_ref)
+        }
+        WorkerResponse::NeedFloat(mips_state) => {
+            process_syscall_request(mips_state, ReadSyscalls::ReadFloat, state, input_ref)
+        }
+        WorkerResponse::NeedDouble(mips_state) => {
+            process_syscall_request(mips_state, ReadSyscalls::ReadDouble, state, input_ref)
+        }
+        WorkerResponse::NeedChar(mips_state) => {
+            process_syscall_request(mips_state, ReadSyscalls::ReadChar, state, input_ref)
+        }
+        WorkerResponse::NeedString(mips_state) => {
+            process_syscall_request(mips_state, ReadSyscalls::ReadString, state, input_ref)
+        }
+    };
 }
 
 pub fn submit_input(
@@ -144,7 +156,7 @@ pub fn submit_input(
 
                 ReadFloat => match input.value().parse::<f32>() {
                     Ok(num) => {
-                       process_syscall_response(*state, *worker, input, Float(num));
+                        process_syscall_response(*state, *worker, input, Float(num));
                     }
 
                     Err(_e) => {
@@ -188,190 +200,3 @@ pub fn submit_input(
         }
     };
 }
-/*
-pub fn handle_update(app: &mut App, ctx: &Context<App>, msg: <App as Component>::Message) -> bool {
-    match msg {
-        Msg::NoOp => false,
-
-        Msg::FileChanged(file) => {
-
-
-            true
-        }
-
-        Msg::FileRead(filename, res) => {
-
-
-            true
-        }
-
-        Msg::Run => {
-
-            true
-        }
-
-        Msg::Kill => {
-
-        }
-
-        Msg::OpenModal => {
-            app.display_modal = !app.display_modal;
-            true
-        }
-
-        Msg::ShowIoTab => {
-            trace!("Show IO Button clicked");
-            // only re-render upon change
-            let prev_show = app.show_io;
-            app.show_io = true;
-            prev_show != true
-        }
-
-        Msg::ShowMipsyTab => {
-            trace!("Show mipsy button clicked");
-            // only re-render upon change
-            let prev_show = app.show_io;
-            app.show_io = false;
-            prev_show != false
-        }
-        Msg::ShowSourceTab => {
-            trace!("Show source button clicked");
-            // only re-render upon change
-            app.show_source = true;
-            true
-        }
-
-        Msg::ShowDecompiledTab => {
-            trace!("Show decompiled button clicked");
-            app.show_source = false;
-            true
-        }
-
-        Msg::StepForward => {
-
-            true
-        }
-
-        Msg::StepBackward => {
-
-            true
-        }
-
-        Msg::Reset => {
-
-            true
-        }
-
-        Msg::ProcessKeypress(event) => {
-            if app.is_nav_or_special_key(&event) {
-                return true;
-            };
-            info!("processing {}", event.key());
-            true
-        }
-
-        Msg::SubmitInput => false,
-
-        Msg::FromWorker(worker_output) => match worker_output {
-            WorkerResponse::DecompiledCode(decompiled) => {
-                info!("recieved decompiled code from worker");
-                app.state = State::Running(RunningState {
-                    decompiled,
-                    mips_state: MipsState {
-                        stdout: Vec::new(),
-                        exit_status: None,
-                        register_values: vec![Safe::Uninitialised; 32],
-                        current_instr: None,
-                        mipsy_stdout: Vec::new(),
-                        is_stepping: true,
-                    },
-                    input_needed: None,
-                    should_kill: false,
-                });
-                true
-            }
-
-            WorkerResponse::CompilerError(err) => {
-                match &err {
-                    MipsyError::Parser(_error) => {
-                        //zkol TODO
-                        true
-                    }
-
-                    MipsyError::Compiler(error) => {
-                        match app.state {
-                            State::Running(ref mut curr) => {
-                                curr.mips_state.mipsy_stdout.push(error.error().message())
-                            }
-                            State::NoFile | State::CompilerError(_) => {
-                                app.state = State::CompilerError(err);
-                                error!("Compiler errors are not supported.");
-                            }
-                        }
-                        true
-                    }
-
-                    MipsyError::Runtime(_error) => {
-                        error!("Cannot get runtime error at compile time");
-                        unreachable!();
-                    }
-                }
-            }
-
-            WorkerResponse::ProgramExited(mips_state) => match app.state {
-                State::Running(ref mut curr) => {
-                    curr.mips_state = mips_state;
-                    true
-                }
-                State::NoFile | State::CompilerError(_) => false,
-            },
-
-            WorkerResponse::InstructionOk(mips_state) => {
-                if let State::Running(ref mut curr) = app.state {
-                    info!("{:?}", mips_state);
-                    info!("HERE");
-                    curr.mips_state = mips_state;
-                    // if the isntruction was ok, run another instruction
-                    // unless the user has said it should be killed
-                    if !curr.should_kill {
-                        let input =
-                            WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
-                        app.worker.send(input);
-                    }
-                    curr.should_kill = false;
-                } else {
-                    info!("No File loaded, cannot run");
-                    return false;
-                }
-                true
-            }
-
-            WorkerResponse::UpdateMipsState(mips_state) => match app.state {
-                State::Running(ref mut curr) => {
-                    curr.mips_state = mips_state;
-                    info!("updating state");
-                    true
-                }
-
-                State::NoFile | State::CompilerError(_) => false,
-            },
-
-            WorkerResponse::NeedInt(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadInt)
-            }
-            WorkerResponse::NeedFloat(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadFloat)
-            }
-            WorkerResponse::NeedDouble(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadDouble)
-            }
-            WorkerResponse::NeedChar(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadChar)
-            }
-            WorkerResponse::NeedString(mips_state) => {
-                process_syscall_request(app, mips_state, ReadSyscalls::ReadString)
-            }
-        },
-    }
-}
-*/
