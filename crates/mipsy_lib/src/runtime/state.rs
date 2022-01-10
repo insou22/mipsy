@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 
-use crate::{MipsyResult, Safe, Uninitialised};
+use crate::{MipsyResult, Safe, Uninitialised, TEXT_BOT, compile::TEXT_TOP, GLOBAL_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, KTEXT_BOT, MipsyError, error::runtime::{RuntimeError, self}};
 use super::{PAGE_SIZE, SafeToUninitResult, unsafe_cow::UnsafeCow};
 
 pub const WRITE_MARKER_LO: u32 = 32;
@@ -170,7 +170,43 @@ impl State {
         self.write_marker |= 1u64 << WRITE_MARKER_LO;
     }
 
+    #[must_use]
+    pub fn check_segfault(&self, address: u32) -> MipsyResult<()> {
+        let segfault = match address {
+            // TODO(zkol): Update this when exclusive range matching is stabilised
+            _ if address < TEXT_BOT => {
+                true
+            }
+            _ if address >= TEXT_BOT && address <= TEXT_TOP => {
+                false
+            }
+            _ if address >= GLOBAL_BOT && address < HEAP_BOT => {
+                false
+            }
+            _ if address >= HEAP_BOT && address < STACK_BOT => {
+                let heap_offset = address - HEAP_BOT;
+
+                heap_offset >= self.heap_size()
+            }
+            _ if address >= STACK_BOT && address <= STACK_TOP => {
+                false
+            }
+            _ if address >= KTEXT_BOT => {
+                self.pc() < KTEXT_BOT
+            }
+            _ => unreachable!(),
+        };
+
+        if segfault {
+            Err(MipsyError::Runtime(RuntimeError::new(runtime::Error::SegmentationFault { addr: address })))
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn read_mem_byte(&self, address: u32) -> MipsyResult<u8> {
+        self.check_segfault(address)?;
+
         self.get_page(address)
             .and_then(|page| {
                 let offset = Self::offset_in_page(address);
@@ -204,18 +240,25 @@ impl State {
         result.ok().to_result(Uninitialised::Word { addr: address })
     }
 
-    pub fn read_mem_byte_uninit(&self, address: u32) -> Safe<u8> {
-        self.get_page(address)
-            .and_then(|page| {
-                let offset = Self::offset_in_page(address);
-    
-                page[offset as usize].as_option().copied()
-            })
-            .map(Safe::Valid)
-            .unwrap_or(Safe::Uninitialised)
+    pub fn read_mem_byte_uninit(&self, address: u32) -> MipsyResult<Safe<u8>> {
+        self.check_segfault(address)?;
+
+        Ok(
+            self.get_page(address)
+                .and_then(|page| {
+                    let offset = Self::offset_in_page(address);
+        
+                    page[offset as usize].as_option().copied()
+                })
+                .map(Safe::Valid)
+                .unwrap_or(Safe::Uninitialised)
+        )
     }
 
-    pub fn read_mem_half_uninit(&self, address: u32) -> Safe<u16> {
+    pub fn read_mem_half_uninit(&self, address: u32) -> MipsyResult<Safe<u16>> {
+        self.check_segfault(address)?;
+        self.check_segfault(address + 2)?;
+
         let result: MipsyResult<_> = (|| {
             let byte1 = self.read_mem_byte(address)?;
             let byte2 = self.read_mem_byte(address + 1)?;
@@ -223,11 +266,18 @@ impl State {
             Ok(u16::from_le_bytes([byte1, byte2]))
         })();
 
-        result.map(Safe::Valid)
-            .unwrap_or(Safe::Uninitialised)
+        Ok(
+            result.map(Safe::Valid)
+                .unwrap_or(Safe::Uninitialised)
+        )
     }
 
-    pub fn read_mem_word_uninit(&self, address: u32) -> Safe<u32> {
+    pub fn read_mem_word_uninit(&self, address: u32) -> MipsyResult<Safe<u32>> {
+        self.check_segfault(address)?;
+        self.check_segfault(address + 1)?;
+        self.check_segfault(address + 2)?;
+        self.check_segfault(address + 3)?;
+
         let result: MipsyResult<_> = (|| {
             let byte1 = self.read_mem_byte(address)?;
             let byte2 = self.read_mem_byte(address + 1)?;
@@ -237,60 +287,84 @@ impl State {
             Ok(u32::from_le_bytes([byte1, byte2, byte3, byte4]))
         })();
 
-        result.map(Safe::Valid)
-            .unwrap_or(Safe::Uninitialised)
+        Ok(
+            result.map(Safe::Valid)
+                .unwrap_or(Safe::Uninitialised)
+        )
     }
 
-    pub fn write_mem_byte(&mut self, address: u32, byte: u8) {
+    #[must_use]
+    pub fn write_mem_byte(&mut self, address: u32, byte: u8) -> MipsyResult<()> {
+        self.check_segfault(address)?;
+
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);
 
         page[offset as usize] = Safe::Valid(byte);
+
+        Ok(())
     }
 
-    pub fn write_mem_half(&mut self, address: u32, half: u16) {
+    #[must_use]
+    pub fn write_mem_half(&mut self, address: u32, half: u16) -> MipsyResult<()> {
         let [b1, b2] = half.to_le_bytes();
         
-        self.write_mem_byte(address, b1);
-        self.write_mem_byte(address + 1, b2);
+        self.write_mem_byte(address, b1)?;
+        self.write_mem_byte(address + 1, b2)?;
+
+        Ok(())
     }
 
-    pub fn write_mem_word(&mut self, address: u32, word: u32) {
+    #[must_use]
+    pub fn write_mem_word(&mut self, address: u32, word: u32) -> MipsyResult<()> {
         let [b1, b2, b3, b4] = word.to_le_bytes();
         
-        self.write_mem_byte(address, b1);
-        self.write_mem_byte(address + 1, b2);
-        self.write_mem_byte(address + 2, b3);
-        self.write_mem_byte(address + 3, b4);
+        self.write_mem_byte(address, b1)?;
+        self.write_mem_byte(address + 1, b2)?;
+        self.write_mem_byte(address + 2, b3)?;
+        self.write_mem_byte(address + 3, b4)?;
+
+        Ok(())
     }
 
-    pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) {
+    #[must_use]
+    pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) -> MipsyResult<()> {
+        self.check_segfault(address)?;
+
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);
 
         page[offset as usize] = byte;
+
+        Ok(())
     }
 
-    pub fn write_mem_half_uninit(&mut self, address: u32, half: Safe<u16>) {
+    #[must_use]
+    pub fn write_mem_half_uninit(&mut self, address: u32, half: Safe<u16>) -> MipsyResult<()> {
         match half {
-            Safe::Valid(half) => self.write_mem_half(address, half),
+            Safe::Valid(half) => self.write_mem_half(address, half)?,
             Safe::Uninitialised => {
-                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
-                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised)?;
             }
         }
+
+        Ok(())
     }
 
-    pub fn write_mem_word_uninit(&mut self, address: u32, word: Safe<u32>) {
+    #[must_use]
+    pub fn write_mem_word_uninit(&mut self, address: u32, word: Safe<u32>) -> MipsyResult<()> {
         match word {
-            Safe::Valid(word) => self.write_mem_word(address, word),
+            Safe::Valid(word) => self.write_mem_word(address, word)?,
             Safe::Uninitialised => {
-                self.write_mem_byte_uninit(address,     Safe::Uninitialised);
-                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised);
-                self.write_mem_byte_uninit(address + 2, Safe::Uninitialised);
-                self.write_mem_byte_uninit(address + 3, Safe::Uninitialised);
+                self.write_mem_byte_uninit(address,     Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address + 1, Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address + 2, Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address + 3, Safe::Uninitialised)?;
             }
         }
+
+        Ok(())
     }
 
     pub fn read_mem_string(&self, address: u32) -> MipsyResult<Vec<u8>> {

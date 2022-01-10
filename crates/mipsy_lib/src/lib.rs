@@ -31,8 +31,12 @@ pub use runtime::{
 };
 pub use compile::{
     TEXT_BOT,
+    GLOBAL_BOT,
+    GLOBAL_PTR,
     DATA_BOT,
     HEAP_BOT,
+    STACK_BOT,
+    STACK_PTR,
     STACK_TOP,
     KTEXT_BOT,
     KDATA_BOT,

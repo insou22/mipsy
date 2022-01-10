@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber};
 
-use crate::{Binary, MpProgram, MipsyResult, error::ToMipsyResult, inst::instruction::ToRegister};
+use crate::{Binary, MpProgram, MipsyResult, error::{ToMipsyResult, compiler}, inst::instruction::ToRegister, HEAP_BOT, DATA_BOT, MipsyError, CompilerError};
 
 pub enum Warning {
 
@@ -80,6 +80,20 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
             MpItem::Directive(_) => {}
             MpItem::Constant(_) => {}
         }
+    }
+
+    if binary.data.len() > (HEAP_BOT - DATA_BOT) as usize {
+        return Err(
+            MipsyError::Compiler(
+                CompilerError::new(
+                    compiler::Error::TooMuchData {
+                        data_size: binary.data.len() as u32
+                    },
+                    // this all doesn't end up being used
+                    Rc::from(""), 0, 0, 0
+                )
+            )
+        );
     }
 
     // TODO

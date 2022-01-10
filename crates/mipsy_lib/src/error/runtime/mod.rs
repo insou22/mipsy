@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +55,8 @@ pub enum Error {
 
     IntegerOverflow,
     DivisionByZero,
+
+    SegmentationFault { addr: u32 }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -592,6 +594,96 @@ impl Error {
 
                 error
             }
+        
+            Error::SegmentationFault { addr } => {
+                let addr = *addr;
+
+                let mut error = String::new();
+
+                error.push_str("segmentation fault\n");
+
+                let state = runtime.timeline().state();
+                let inst = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
+
+                if let ErrorContext::Binary | ErrorContext::Interactive = context {
+                    error.push_str("\nthe instruction that failed was:\n");
+                    error.push_str(&inst_parts_to_string(
+                        &decompiled,
+                        &source_code,
+                        binary,
+                        false,
+                        false,
+                    ));
+                    error.push('\n');
+                }
+
+                if decompiled.location.is_none() {
+                    if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
+
+                        let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                        let mut file = None;
+                        
+                        for (src_tag, src_file) in &source_code {
+                            if &*file_tag == &**src_tag {
+                                file = Some(src_file);
+                                break;
+                            }
+                        }
+
+                        if let Some(file) = file {
+                            if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                error.push_str(&format!(
+                                    "{}\n{} this instruction was generated from your pseudo-instruction:\n",
+                                    ">".red(),
+                                    "|".red(),
+                                ));
+                                
+                                error.push_str(&format!(
+                                    "{} {} {}\n",
+                                    "|".red(),
+                                    line_num.to_string().yellow().bold(),
+                                    line.bold(),
+                                ));
+
+                                error.push_str(&format!(
+                                    "{} which was expanded into the following {} native instructions:\n",
+                                    "|".red(),
+                                    (state.pc() + 4 - real_inst_parts.addr) / 4,
+                                ));
+
+                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    let inst = state.read_mem_word(addr).unwrap();
+
+                                    let failed = addr == state.pc();
+
+                                    error.push_str(&format!(
+                                        "{} {} {}{}\n",
+                                        "|".red(),
+                                        if failed { ">".green() } else { ">".bright_black() },
+                                        inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                        if failed {
+                                            "  <-- this instruction failed"
+                                                .bright_blue()
+                                                .to_string()
+                                        } else {
+                                            String::new()
+                                        },
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                error.push_str("\n");
+
+                error.push_str("this happened because you tried to read from\n");
+                error.push_str(&format!("the address `{}{}`, which is not a valid address\n", "0x".bold(), format!("{:08x}", addr).bold()));
+
+                error
+
+            }
         }
     }
 
@@ -704,6 +796,36 @@ impl Error {
             }
             Error::DivisionByZero => {
                 vec![]
+            }
+            Error::SegmentationFault { addr } => {
+                let addr = *addr;
+
+                let null_text_middle = TEXT_BOT / 2;
+                let heap_stack_middle = (HEAP_BOT / 2) + (STACK_BOT / 2);
+
+                match addr {
+                    0 => {
+                        vec![format!("the address is NULL")]
+                    }
+                    _ if addr < null_text_middle => {
+                        // nothing really to say here
+                        vec![]
+                    }
+                    _ if addr < TEXT_BOT => {
+                        vec![format!("the address sits below the `{}` segment (`{}{}`)", ".text".bold(), "0x".bold(), format!("{:08x}", TEXT_BOT).bold())]
+                    }
+                    _ if addr >= HEAP_BOT && addr < heap_stack_middle => {
+                        vec![format!("the end of the heap is currently `{}{}`", "0x".bold(), format!("{:08x}", HEAP_BOT + runtime.timeline().state().heap_size()).bold())]
+                    }
+                    _ if addr >= heap_stack_middle && addr < STACK_BOT => {
+                        vec![format!("the minimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_BOT).bold())]
+                    }
+                    _ if addr > STACK_TOP => {
+                        vec![format!("the maxmimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_TOP).bold())]
+                    }
+                    // hopefully unreachable
+                    _ => vec![]
+                }
             }
         }
     }

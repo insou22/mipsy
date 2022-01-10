@@ -21,12 +21,17 @@ pub use text::compile1;
 
 static KERN_FILE: &str = include_str!("../../../../kern.s");
 
-pub const TEXT_BOT:  u32 = 0x00400000;
-pub const DATA_BOT:  u32 = 0x10010000;
-pub const HEAP_BOT:  u32 = 0x10040000;
-pub const STACK_TOP: u32 = 0x7FFFFF00;
-pub const KTEXT_BOT: u32 = 0x80000000;
-pub const KDATA_BOT: u32 = 0x90000000;
+pub const TEXT_BOT:   u32 = 0x00400000;
+pub const TEXT_TOP:   u32 = 0x0FFFFFFF;
+pub const GLOBAL_BOT: u32 = 0x10000000;
+pub const GLOBAL_PTR: u32 = 0x10008000;
+pub const DATA_BOT:   u32 = 0x10010000;
+pub const HEAP_BOT:   u32 = 0x10040000;
+pub const STACK_BOT:  u32 = 0x7FFF0000;
+pub const STACK_PTR:  u32 = 0x7FFFFFFC;
+pub const STACK_TOP:  u32 = 0x7FFFFFFF;
+pub const KTEXT_BOT:  u32 = 0x80000000;
+pub const KDATA_BOT:  u32 = 0x90000000;
 
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
