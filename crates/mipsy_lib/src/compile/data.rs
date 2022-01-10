@@ -75,118 +75,107 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
             chars
         }
         MpDirective::Byte(bytes) => {
-            let mut output = Vec::with_capacity(bytes.len());
-
-            for byte in bytes {
-                let value = eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())?;
-                output.push(Safe::Valid(value as u8));
-            }
-
-            output
-        }
-        MpDirective::ByteN(byte, n) => {
-            let value  = eval_constant_in_range(&byte, i8::MIN as _,  u8::MAX as _, binary, file_tag.clone())? as u8;
-            let amount = eval_constant_in_range(&n,   u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-            
-            vec![Safe::Valid(value); amount as usize]
+            bytes.into_iter()
+                .map(|(byte, n)| Ok((
+                    eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())? as u8,
+                    if let Some(n) = n {
+                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                    } else {
+                        1
+                    }
+                )))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flat_map(|(byte, n)| (0..n).map(move |_| Safe::Valid(byte)))
+                .collect::<Vec<_>>()
         }
         MpDirective::Half(halfs) => {
-            let mut output = align(binary, segment, 2);
+            let alignment = align(binary, segment, 2);
 
-            for half in halfs {
-                let value = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())?;
-                output.append(&mut (value as u16).to_bytes().into_iter().map(Safe::Valid).collect());
-            }
+            let halfs = halfs.into_iter()
+                .map(|(half, n)| Ok((
+                    eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())? as u16,
+                    if let Some(n) = n {
+                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                    } else {
+                        1
+                    }
+                )))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flat_map(|(half, n)| (0..n).map(move |_| half))
+                .flat_map(|half| half.to_bytes())
+                .map(Safe::Valid);
 
-            output
-        }
-        MpDirective::HalfN(half, n) => {
-            let value  = eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())? as u16;
-            let amount = eval_constant_in_range(&n,    u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-            
-            let mut output = align(binary, segment, 2);
-
-            for _ in 0..amount {
-                output.append(&mut value.to_bytes().into_iter().map(Safe::Valid).collect());
-            }
-
-            output
+            alignment.into_iter()
+                .chain(halfs)
+                .collect()
         }
         MpDirective::Word(words) => {
-            let mut output = align(binary, segment, 4);
+            let alignment = align(binary, segment, 2);
 
-            for word in words {
-                let value = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())?;
-                output.append(&mut (value as u32).to_bytes().into_iter().map(Safe::Valid).collect());
-            }
+            let words = words.into_iter()
+                .map(|(word, n)| Ok((
+                    eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32,
+                    if let Some(n) = n {
+                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                    } else {
+                        1
+                    }
+                )))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flat_map(|(word, n)| (0..n).map(move |_| word))
+                .flat_map(|word| word.to_bytes())
+                .map(Safe::Valid);
 
-            output
-        }
-        MpDirective::WordN(word, n) => {
-            let value  = eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-            let amount = eval_constant_in_range(&n,    u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-            
-            let mut output = align(binary, segment, 4);
-
-            for _ in 0..amount {
-                output.append(&mut value.to_bytes().into_iter().map(Safe::Valid).collect());
-            }
-
-            output
+            alignment.into_iter()
+                .chain(words)
+                .collect()
         }
         MpDirective::Float(floats) => {
-            let mut output = align(binary, segment, 4);
+            let alignment = align(binary, segment, 2);
 
-            let mut floats = floats.into_iter()
-                .flat_map(ToBytes::to_bytes)
-                .map(Safe::Valid)
-                .collect();
+            let floats = floats.into_iter()
+                .map(|(float, n)| Ok((
+                    float,
+                    if let Some(n) = n {
+                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                    } else {
+                        1
+                    }
+                )))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flat_map(|(float, n)| (0..n).map(|_| *float))
+                .flat_map(|float| float.to_bytes())
+                .map(Safe::Valid);
 
-            output.append(&mut floats);
-
-            output
-        }
-        MpDirective::FloatN(float, n) => {
-            let mut output = align(binary, segment, 4);
-
-            let amount = eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-
-            let mut floats = (0..amount).into_iter()
-                .map(|_| float)
-                .flat_map(ToBytes::to_bytes)
-                .map(Safe::Valid)
-                .collect();
-
-            output.append(&mut floats);
-
-            output
+            alignment.into_iter()
+                .chain(floats)
+                .collect()
         }
         MpDirective::Double(doubles) => {
-            let mut output = align(binary, segment, 8);
+            let alignment = align(binary, segment, 2);
 
-            let mut doubles = doubles.into_iter()
-                .flat_map(ToBytes::to_bytes)
-                .map(Safe::Valid)
-                .collect();
+            let doubles = doubles.into_iter()
+                .map(|(double, n)| Ok((
+                    double,
+                    if let Some(n) = n {
+                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                    } else {
+                        1
+                    }
+                )))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .flat_map(|(double, n)| (0..n).map(|_| *double))
+                .flat_map(|double| double.to_bytes())
+                .map(Safe::Valid);
 
-            output.append(&mut doubles);
-
-            output
-        }
-        MpDirective::DoubleN(double, n) => {
-            let mut output = align(binary, segment, 8);
-
-            let amount = eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
-
-            let mut doubles = (0..amount).into_iter()
-                .map(|_| double)
-                .flat_map(ToBytes::to_bytes)
-                .map(Safe::Valid)
-                .collect();
-
-            output.append(&mut doubles);
-
-            output
+            alignment.into_iter()
+                .chain(doubles)
+                .collect()
         }
         MpDirective::Align(num) => {
             let num = eval_constant_in_range(&num, u32::MIN as _, 31, binary, file_tag)? as u32;

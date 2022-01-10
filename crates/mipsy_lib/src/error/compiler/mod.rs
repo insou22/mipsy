@@ -425,21 +425,21 @@ impl Error {
 
             Error::ConstantValueDoesNotFit { directive_type, value: _, range_low: _, range_high: _ } => {
                 let directive = format!(".{}", directive_type).bold();
-                let tip = format!("required by `{}` directive", directive);
+                let tip = format!("required by `{}` directive\n", directive);
 
                 vec![tip]
             }
 
             Error::DataInTextSegment { directive_type } => {
                 let data = ".data".bold();
-                let tip = format!("you may want to insert a `{}` directive before your `{}{}`", data, ".".bold(), directive_type.to_string().bold());
+                let tip = format!("you may want to insert a `{}` directive before your `{}{}`\n", data, ".".bold(), directive_type.to_string().bold());
 
                 vec![tip]
             }
 
             Error::InstructionInDataSegment => {
                 let data = ".text".bold();
-                let tip = format!("you may want to insert a `{}` directive before your instruction", data);
+                let tip = format!("you may want to insert a `{}` directive before your instruction\n", data);
 
                 vec![tip]
             }
