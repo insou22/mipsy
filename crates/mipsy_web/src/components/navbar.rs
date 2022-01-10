@@ -1,3 +1,4 @@
+use crate::pages::main::state::{MipsState, RunningState};
 use crate::{
     pages::main::{app::NUM_INSTR_BEFORE_RESPONSE, state::State},
     worker::Worker,
@@ -7,7 +8,6 @@ use log::{info, trace};
 use yew::prelude::*;
 use yew::Html;
 use yew_agent::{Agent, UseBridgeHandle};
-
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
 pub struct NavBarProps {
@@ -45,8 +45,13 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Run button clicked");
                     if let State::Running(ref curr) = *state {
-                        todo!("replace state");
-                        curr.mips_state.is_stepping = false;
+                        state.set(State::Running(RunningState {
+                            mips_state: MipsState {
+                                is_stepping: false,
+                                ..curr.mips_state.clone()
+                            },
+                            ..curr.clone()
+                        }));
                         let input = <Worker as Agent>::Input::Run(
                             curr.mips_state.clone(),
                             NUM_INSTR_BEFORE_RESPONSE,
@@ -93,8 +98,10 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Kill button clicked");
                     if let State::Running(curr) = &*state {
-                        todo!("replace state");
-                        curr.should_kill = true;
+                        state.set(State::Running(RunningState {
+                            should_kill: true,
+                            ..curr.clone()
+                        }));
                     }
                 })
             }),
@@ -113,8 +120,13 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Running(curr) = &*state {
-                        todo!("Replace state");
-                        curr.mips_state.is_stepping = true;
+                        state.set(State::Running(RunningState {
+                            mips_state: MipsState {
+                                is_stepping: true,
+                                ..curr.mips_state.clone()
+                            },
+                            ..curr.clone()
+                        }));
                         let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), -1);
                         worker.send(input);
                     } else {
@@ -137,8 +149,13 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Running(curr) = &*state {
-                        todo!("replace state");
-                        curr.mips_state.is_stepping = true;
+                        state.set(State::Running(RunningState {
+                            mips_state: MipsState {
+                                is_stepping: true,
+                                ..curr.mips_state.clone()
+                            },
+                            ..curr.clone()
+                        }));
                         let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), 1);
                         worker.send(input);
                     } else {

@@ -25,7 +25,7 @@ pub fn handle_response_from_worker(
     response: WorkerResponse,
     rerender_hook: UseStateHandle<bool>,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
-    input_ref: UseStateHandle<NodeRef>
+    input_ref: UseStateHandle<NodeRef>,
 ) {
     // TODO - hande response
     // TODO - fix compiler errors
@@ -48,38 +48,43 @@ pub fn handle_response_from_worker(
             true
         }
 
-        WorkerResponse::CompilerError(err) => {
-            match &err {
-                MipsyError::Parser(_error) => true,
+        WorkerResponse::CompilerError(err) => match &err {
+            MipsyError::Parser(_error) => true,
 
-                MipsyError::Compiler(error) => {
-                    match *state {
-                        State::Running(ref curr) => {
-                            // TODO - replace with .set?
-                            todo!("set state");
-                            curr.mips_state.mipsy_stdout.push(error.error().message());
-                            state.set(State::Running(*curr));
-                        }
-                        State::NoFile | State::CompilerError(_) => {
-                            state.set(State::CompilerError(err));
-                            error!("Compiler errors are not supported.");
-                        }
+            MipsyError::Compiler(error) => {
+                match *state {
+                    State::Running(ref curr) => {
+                        let mut new_vec = curr.mips_state.mipsy_stdout.clone();
+                        new_vec.push(error.error().message());
+                        let new_mips_state = MipsState {
+                            mipsy_stdout: new_vec,
+                            ..curr.mips_state.clone()
+                        };
+                        state.set(State::Running(RunningState {
+                            mips_state: new_mips_state,
+                            ..curr.clone()
+                        }))
                     }
-                    true
+                    State::NoFile | State::CompilerError(_) => {
+                        state.set(State::CompilerError(err));
+                        error!("Compiler errors are not supported.");
+                    }
                 }
-
-                MipsyError::Runtime(_error) => {
-                    error!("Cannot get runtime error at compile time");
-                    unreachable!();
-                }
+                true
             }
-        }
+
+            MipsyError::Runtime(_error) => {
+                error!("Cannot get runtime error at compile time");
+                unreachable!();
+            }
+        },
 
         WorkerResponse::ProgramExited(mips_state) => match *state {
             State::Running(ref curr) => {
-                todo!("replace state");
-                curr.mips_state = mips_state;
-                state.set(State::Running(*curr));
+                state.set(State::Running(RunningState {
+                    mips_state,
+                    ..curr.clone()
+                }));
                 true
             }
             State::NoFile | State::CompilerError(_) => false,
@@ -89,17 +94,23 @@ pub fn handle_response_from_worker(
             if let State::Running(ref curr) = *state {
                 info!("{:?}", mips_state);
                 info!("HERE");
-                todo!("replace state");
-                curr.mips_state = mips_state;
+                state.set(State::Running(RunningState {
+                    mips_state,
+                    ..curr.clone()
+                }));
+
                 // if the isntruction was ok, run another instruction
                 // unless the user has said it should be killed
                 if !curr.should_kill {
                     let input =
                         WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
-                   worker.borrow().unwrap().send(input);
+                    worker.borrow().as_ref().unwrap().send(input);
                 }
-                curr.should_kill = false;
-                state.set(State::Running(*curr));
+
+                state.set(State::Running(RunningState {
+                    should_kill: false,
+                    ..curr.clone()
+                }));
             } else {
                 info!("No File loaded, cannot run");
             }
@@ -108,9 +119,10 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::UpdateMipsState(mips_state) => match *state {
             State::Running(ref curr) => {
-                todo!("replace state");
-                curr.mips_state = mips_state;
-                state.set(State::Running(*curr));
+                state.set(State::Running(RunningState {
+                    mips_state,
+                    ..curr.clone()
+                }));
                 info!("updating state");
                 true
             }
@@ -154,8 +166,16 @@ pub fn submit_input(
                         let error_msg =
                             format!("Failed to parse input '{}' as an i32", input.value());
                         error!("{}", error_msg);
-                        todo!("replace state");
-                        curr.mips_state.mipsy_stdout.push(error_msg);
+                        let mut new_vec = curr.mips_state.mipsy_stdout.clone();
+                        new_vec.push(error_msg);
+                        let new_mips_state = MipsState {
+                            mipsy_stdout: new_vec,
+                            ..curr.mips_state.clone()
+                        };
+                        state.set(State::Running(RunningState {
+                            mips_state: new_mips_state,
+                            ..curr.clone()
+                        }))
                     }
                 },
 
@@ -168,9 +188,16 @@ pub fn submit_input(
                         let error_msg =
                             format!("Failed to parse input '{}' as an f32", input.value());
                         error!("{}", error_msg);
-                        todo!("replace state");
-                        // TODO - check how this works with setState?
-                        curr.mips_state.mipsy_stdout.push(error_msg);
+                        let mut new_vec = curr.mips_state.mipsy_stdout.clone();
+                        new_vec.push(error_msg);
+                        let new_mips_state = MipsState {
+                            mipsy_stdout: new_vec,
+                            ..curr.mips_state.clone()
+                        };
+                        state.set(State::Running(RunningState {
+                            mips_state: new_mips_state,
+                            ..curr.clone()
+                        }))
                     }
                 },
 
@@ -184,14 +211,26 @@ pub fn submit_input(
                 },
 
                 ReadChar => match input.value().parse::<char>() {
-                    Ok(char) => process_syscall_response(state.clone(), worker.clone(), input, Char(char as u8)),
+                    Ok(char) => process_syscall_response(
+                        state.clone(),
+                        worker.clone(),
+                        input,
+                        Char(char as u8),
+                    ),
                     Err(_e) => {
                         let error_msg =
                             format!("Failed to parse input '{}' as an u8", input.value());
                         error!("{}", error_msg);
-                        todo!("replace state");
-                        // TODO - check how this works with setState?
-                        curr.mips_state.mipsy_stdout.push(error_msg);
+                        let mut new_vec = curr.mips_state.mipsy_stdout.clone();
+                        new_vec.push(error_msg);
+                        let new_mips_state = MipsState {
+                            mipsy_stdout: new_vec,
+                            ..curr.mips_state.clone()
+                        };
+                        state.set(State::Running(RunningState {
+                            mips_state: new_mips_state,
+                            ..curr.clone()
+                        }))
                     }
                 },
 

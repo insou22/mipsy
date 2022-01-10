@@ -81,7 +81,7 @@ pub fn render_app() -> Html {
             let force_rerender_toggle = force_rerender_toggle.clone();
             let input_ref = input_ref.clone();
             let worker = worker.clone();
-            
+
             Some(use_bridge(move |response| {
                 let state = state.clone();
                 let force_rerender_toggle = force_rerender_toggle.clone();
@@ -351,9 +351,11 @@ pub fn process_syscall_request(
 ) -> bool {
     match &*state {
         State::Running(ref curr) => {
-            todo!("replace state");
-            curr.mips_state = mips_state;
-            curr.input_needed = Some(required_type);
+            state.set(State::Running(RunningState {
+                mips_state,
+                input_needed: Some(required_type),
+                ..curr.clone()
+            }));
             focus_input(input_ref);
             true
         }
@@ -381,8 +383,12 @@ pub fn process_syscall_response(
                 curr.mips_state.clone(),
                 required_type,
             ));
-            todo!("replace state");
-            curr.input_needed = None;
+
+            state.set(State::Running(RunningState {
+                input_needed: None,
+                ..curr.clone()
+            }));
+
             input.set_value("");
             input.set_disabled(true);
         }

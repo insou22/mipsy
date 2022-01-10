@@ -501,22 +501,22 @@ impl Agent for Worker {
                                             runtime = next_runtime;
                                         }
 
-                                        _ => todo!(), /*
+                                        _ => unreachable!(), /*
 
-                                                      Sbrk       (SbrkArgs, Runtime),
-                                                      Exit       (Runtime),
-                                                      PrintChar  (PrintCharArgs, Runtime),
-                                                      ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
-                                                      Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
-                                                      Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      ExitStatus (ExitStatusArgs, Runtime),
+                                                             Sbrk       (SbrkArgs, Runtime),
+                                                             Exit       (Runtime),
+                                                             PrintChar  (PrintCharArgs, Runtime),
+                                                             ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
+                                                             Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
+                                                             Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             ExitStatus (ExitStatusArgs, Runtime),
 
-                                                      // other
-                                                      Breakpoint     (Runtime),
-                                                      UnknownSyscall (UnknownSyscallArgs, Runtime)
-                                                      */
+                                                             // other
+                                                             Breakpoint     (Runtime),
+                                                             UnknownSyscall (UnknownSyscallArgs, Runtime)
+                                                             */
                                     }
                                 }
                                 Err((prev_runtime, err)) => {
