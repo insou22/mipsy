@@ -16,11 +16,10 @@ use crate::{
 };
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
-use gloo_file::FileReadError;
 use log::{error, info, trace};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use yew_agent::{use_bridge, Bridge, Bridged, UseBridgeHandle};
+use yew_agent::{use_bridge, UseBridgeHandle};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
@@ -29,25 +28,6 @@ pub enum ReadSyscalls {
     ReadDouble,
     ReadString,
     ReadChar,
-}
-
-pub enum Msg {
-    FileChanged(File),
-    FileRead(String, Result<String, FileReadError>),
-    Run,
-    Reset,
-    Kill,
-    OpenModal,
-    ShowIoTab,
-    ShowMipsyTab,
-    ShowSourceTab,
-    ShowDecompiledTab,
-    StepForward,
-    StepBackward,
-    SubmitInput,
-    ProcessKeypress(KeyboardEvent),
-    FromWorker(WorkerResponse),
-    NoOp,
 }
 
 pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
@@ -68,7 +48,7 @@ pub fn render_app() -> Html {
     let worker = Rc::new(RefCell::new(None));
 
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
-    let show_io: UseStateHandle<bool> = use_state_eq(|| false);
+    let show_io: UseStateHandle<bool> = use_state_eq(|| true);
     let input_ref: UseStateHandle<NodeRef> = use_state_eq(|| NodeRef::default());
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
@@ -205,6 +185,7 @@ pub fn render_app() -> Html {
         State::NoFile | State::CompilerError(_) => None,
     };
 
+    let rendered_running = render_running_output(show_io.clone(), state.clone());
     html! {
         <>
             <div onclick={{
@@ -265,7 +246,7 @@ pub fn render_app() -> Html {
                             show_io={show_io.clone()}
                             input_ref={(*input_ref).clone()}
                             on_input_keydown={on_input_keydown.clone()}
-                            running_output={render_running_output(show_io.clone(), state.clone())}
+                            running_output={rendered_running}
                         />
                     </div>
 
@@ -320,24 +301,28 @@ fn render_running(
 }
 
 fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<State>) -> Html {
-    html! {
-        {
-            if *show_io {
-                match &*state {
-                    State::Running(curr) => {curr.mips_state.stdout.join("")},
-                    State::NoFile => {
-                        "mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."
-                            .into()
-                    },
-                    State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
-
-                }
-            } else {
-                match &*state {
-                    State::Running(curr) => {curr.mips_state.mipsy_stdout.join("\n")},
-                    State::NoFile => {"".into()},
-                    State::CompilerError(_) => "File has syntax errors, check your file with mipsy and try again".into()
-                }
+    info!("CALLED");
+    if *show_io {
+        match &*state {
+            State::Running(curr) => {
+                trace!("rendering running output");
+                trace!("{:?}", curr.mips_state.mipsy_stdout);
+                html! {curr.mips_state.stdout.join("")}
+            }
+            State::NoFile => {
+                html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
+            }
+            State::CompilerError(_) => {
+                html! {"File has syntax errors, check your file with mipsy and try again"}
+            }
+        }
+    } else {
+        info!("here");
+        match &*state {
+            State::Running(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
+            State::NoFile => html! {""},
+            State::CompilerError(_) => {
+                html! {"File has syntax errors, check your file with mipsy and try again"}
             }
         }
     }

@@ -5,9 +5,11 @@ use crate::{
 };
 use derivative::Derivative;
 use log::{info, trace};
+use std::ops::Deref;
 use yew::prelude::*;
 use yew::Html;
 use yew_agent::{Agent, UseBridgeHandle};
+
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
 pub struct NavBarProps {
@@ -52,10 +54,15 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             },
                             ..curr.clone()
                         }));
+
                         let input = <Worker as Agent>::Input::Run(
-                            curr.mips_state.clone(),
+                            MipsState {
+                                is_stepping: false,
+                                ..curr.mips_state.clone()
+                            },
                             NUM_INSTR_BEFORE_RESPONSE,
                         );
+
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot run");

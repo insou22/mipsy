@@ -95,20 +95,20 @@ pub fn handle_response_from_worker(
                 info!("{:?}", mips_state);
                 info!("HERE");
                 state.set(State::Running(RunningState {
-                    mips_state,
+                    mips_state: mips_state.clone(),
                     ..curr.clone()
                 }));
 
                 // if the isntruction was ok, run another instruction
                 // unless the user has said it should be killed
                 if !curr.should_kill {
-                    let input =
-                        WorkerRequest::Run(curr.mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                    let input = WorkerRequest::Run(mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
                     worker.borrow().as_ref().unwrap().send(input);
                 }
 
                 state.set(State::Running(RunningState {
                     should_kill: false,
+                    mips_state,
                     ..curr.clone()
                 }));
             } else {
