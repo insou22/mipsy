@@ -55,6 +55,17 @@ pub fn render_app() -> Html {
     let show_source: UseStateHandle<bool> = use_state_eq(|| false);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
 
+    use_effect_with_deps(
+        move |_| {
+            //do stuff here for first render/mounted
+            unsafe {
+                crate::highlight();
+            };
+            move || {} //do stuff when your componet is unmounted
+        },
+        show_source.clone(), // empty toople dependecy is what enables this
+    );
+
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
             let state = state.clone();
