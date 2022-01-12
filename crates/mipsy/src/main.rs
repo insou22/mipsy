@@ -2,7 +2,7 @@ use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, Runtime, Safe, error::runtime::ErrorContext};
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::get_kernel, error::runtime::ErrorContext};
 use mipsy_interactive::prompt;
 use clap::{Clap, AppSettings};
 use mipsy_parser::TaggedFile;
@@ -15,6 +15,8 @@ use text_io::try_read;
 struct Opts {
     #[clap(long, about("Just output compilation errors, if any"))]
     check: bool,
+    #[clap(long, about("Implies --check: Ignore missing main label"))]
+    check_no_main: bool,
     #[clap(long, about("Just compile program instead of executing"))]
     compile: bool,
     #[clap(long, about("Just compile program and output hexcodes"))]
@@ -160,7 +162,13 @@ fn main() {
             .map(|arg| &**arg)
             .collect::<Vec<_>>();
 
-    let (iset, binary, mut runtime) = match compile(&config, &files, &args) {
+    let compiled = if opts.check_no_main {
+        compile_with_kernel(&config, &files, &args, &mut MpProgram::new(vec![], vec![]))
+    } else {
+        compile(&config, &files, &args)
+    };
+
+    let (iset, binary, mut runtime) = match compiled {
         Ok((iset, binary, runtime)) => (iset, binary, runtime),
 
         Err(MipsyError::Parser(error)) => {
@@ -207,7 +215,7 @@ fn main() {
         Err(MipsyError::Runtime(_)) => unreachable!(),
     };
 
-    if opts.check {
+    if opts.check || opts.check_no_main {
         return;
     }
 
@@ -371,12 +379,16 @@ fn read_string(_max_len: u32) -> String {
 }
 
 fn compile(config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    compile_with_kernel(config, files, args, &mut get_kernel())
+}
+
+fn compile_with_kernel(config: &MipsyConfig, files: &[(String, String)], args: &[&str], kernel: &mut MpProgram) -> MipsyResult<(InstSet, Binary, Runtime)> {
     let files = files.iter()
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
     let iset    = mipsy_instructions::inst_set();
-    let binary  = mipsy_lib::compile(&iset, files, &config)?;
+    let binary  = mipsy_lib::compile_with_kernel(&iset, files, kernel, &config)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))

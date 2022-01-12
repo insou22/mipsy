@@ -93,6 +93,10 @@ impl Binary {
 }
 
 pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
+    compile_with_kernel(program, &mut get_kernel(), config, iset)
+}
+
+pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -110,8 +114,7 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
         line_numbers: HashMap::new(),
     };
     
-    let mut kernel = get_kernel();
-    populate_labels_and_data(&mut binary, config, iset, &mut kernel)?;
+    populate_labels_and_data(&mut binary, config, iset, kernel)?;
 
     populate_labels_and_data(&mut binary, config, iset, program)?;
 
@@ -127,7 +130,7 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
     Ok(binary)
 }
 
-fn get_kernel() -> MpProgram {
+pub fn get_kernel() -> MpProgram {
     // kernel file has tabsize of 8
     mipsy_parser::parse_mips(vec![TaggedFile::new(None, KERN_FILE)], 8)
         .expect("Kernel file should always build")

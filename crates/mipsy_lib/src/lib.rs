@@ -44,6 +44,10 @@ pub use compile::{
 pub use util::Safe;
 
 pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, config: &MipsyConfig) -> MipsyResult<Binary> {
+    compile_with_kernel(iset, files, &mut compile::get_kernel(), config)
+}
+
+pub fn compile_with_kernel(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, kernel: &mut MpProgram, config: &MipsyConfig) -> MipsyResult<Binary> {
     let mut parsed = mipsy_parser::parse_mips(files, config.tab_size)
         .map_err(|err| 
             error::MipsyError::Parser(
@@ -56,7 +60,7 @@ pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, config: &MipsyCon
             )
         )?;
 
-    let compiled = compile::compile(&mut parsed, config, iset)?;
+    let compiled = compile::compile_with_kernel(&mut parsed, kernel, config, iset)?;
 
     Ok(compiled)
 }
