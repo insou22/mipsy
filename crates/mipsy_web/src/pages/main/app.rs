@@ -224,7 +224,7 @@ pub fn render_app() -> Html {
                             <button class={source_tab_classes} onclick={{
                                 let show_source = show_source.clone();
                                 Callback::from(move |_| {
-                                    show_source.set(!*show_source);
+                                    show_source.set(true);
                                 })
                             }}>
                                 {"source"}
@@ -232,7 +232,7 @@ pub fn render_app() -> Html {
                             <button class={decompiled_tab_classes} onclick={{
                                 let show_source = show_source.clone();
                                 Callback::from(move |_| {
-                                    show_source.set(!*show_source);
+                                    show_source.set(false);
                                 })
                             }}>
                                 {"decompiled"}

@@ -127,14 +127,17 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Running(curr) = &*state {
+                        let new_mips_state = MipsState {
+                            is_stepping: true,
+                            ..curr.mips_state.clone()
+                        };
+
                         state.set(State::Running(RunningState {
-                            mips_state: MipsState {
-                                is_stepping: true,
-                                ..curr.mips_state.clone()
-                            },
+                            mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
-                        let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), -1);
+
+                        let input = <Worker as Agent>::Input::Run(new_mips_state, -1);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");
@@ -156,14 +159,17 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Running(curr) = &*state {
+                        let new_mips_state = MipsState {
+                            is_stepping: true,
+                            ..curr.mips_state.clone()
+                        };
+
                         state.set(State::Running(RunningState {
-                            mips_state: MipsState {
-                                is_stepping: true,
-                                ..curr.mips_state.clone()
-                            },
+                            mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
-                        let input = <Worker as Agent>::Input::Run(curr.mips_state.clone(), 1);
+
+                        let input = <Worker as Agent>::Input::Run(new_mips_state, 1);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");

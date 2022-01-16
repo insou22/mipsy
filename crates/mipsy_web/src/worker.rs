@@ -206,13 +206,6 @@ impl Agent for Worker {
                                 }
                             }
 
-                            /*RuntimeState::WaitingDouble(guard) => {
-                                if let ReadSyscallInputs::Double(double) = val {
-                                    Self::upload_syscall_value(self, mips_state, guard, double, id, format!("{}\n", double));
-                                } else {
-                                    panic!("Error: please report this to developers, with steps to reproduce")
-                                }
-                            }*/
                             RuntimeState::WaitingFloat(guard) => {
                                 if let ReadSyscallInputs::Float(float) = val {
                                     Self::upload_syscall_value(
@@ -273,8 +266,9 @@ impl Agent for Worker {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
                         if runtime.timeline().state().pc() >= 0x80000000 {
                             while runtime.timeline().state().pc() >= 0x80000000 {
-                                info!("stepping: {:08x}", runtime.timeline().state().pc());
+                                // info!("stepping: {:08x}", runtime.timeline().state().pc());
                                 if step_size == -1 {
+                                    info!("stepping back: {:08x}", runtime.timeline().state().pc());
                                     runtime.timeline_mut().pop_last_state();
                                     mips_state.exit_status = None;
                                     // avoid infinite loop of scrolling back

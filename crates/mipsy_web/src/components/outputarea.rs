@@ -56,20 +56,27 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         "block w-full bg-th-highlighting"
     };
 
-    let switch_tab = {
+    let switch_to_io = {
         let show_io = props.show_io.clone();
         Callback::from(move |_| {
-            show_io.set(!*show_io);
+            show_io.set(true);
+        })
+    };
+    
+    let switch_to_errors= {
+        let show_io = props.show_io.clone();
+        Callback::from(move |_| {
+            show_io.set(false);
         })
     };
 
     html! {
         <div id="output" class="min-w-full">
             <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
-                <button class={io_tab_classes} onclick={switch_tab.clone()}>{"I/O"}</button>
+                <button class={io_tab_classes} onclick={switch_to_io.clone()}>{"I/O"}</button>
                 <button
                     class={mipsy_tab_button_classes}
-                    onclick={switch_tab.clone()}
+                    onclick={switch_to_errors.clone()}
                 >
                     {props.mipsy_output_tab_title.clone()}
                 </button>
