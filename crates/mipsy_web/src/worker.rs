@@ -1,10 +1,10 @@
+use crate::pages::main::state::MipsState;
 use log::{error, info};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
-use yew_agent::{Agent, AgentLink, HandlerId, Public, Bridged};
-use crate::app::MipsState;
+use yew_agent::{Agent, AgentLink, HandlerId, Public};
 
 //            Worker Overview
 // ___________________________________________
@@ -206,13 +206,6 @@ impl Agent for Worker {
                                 }
                             }
 
-                            /*RuntimeState::WaitingDouble(guard) => {
-                                if let ReadSyscallInputs::Double(double) = val {
-                                    Self::upload_syscall_value(self, mips_state, guard, double, id, format!("{}\n", double));
-                                } else {
-                                    panic!("Error: please report this to developers, with steps to reproduce")
-                                }
-                            }*/
                             RuntimeState::WaitingFloat(guard) => {
                                 if let ReadSyscallInputs::Float(float) = val {
                                     Self::upload_syscall_value(
@@ -271,18 +264,17 @@ impl Agent for Worker {
             Self::Input::Run(mut mips_state, step_size) => {
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
-
-                        
                         if runtime.timeline().state().pc() >= 0x80000000 {
                             while runtime.timeline().state().pc() >= 0x80000000 {
-                                info!("stepping: {:08x}", runtime.timeline().state().pc());
+                                // info!("stepping: {:08x}", runtime.timeline().state().pc());
                                 if step_size == -1 {
+                                    info!("stepping back: {:08x}", runtime.timeline().state().pc());
                                     runtime.timeline_mut().pop_last_state();
                                     mips_state.exit_status = None;
                                     // avoid infinite loop of scrolling back
                                     if runtime.timeline().state().pc() == 0x80000000 {
                                         break;
-                                    } 
+                                    }
                                 } else {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
@@ -503,22 +495,22 @@ impl Agent for Worker {
                                             runtime = next_runtime;
                                         }
 
-                                        _ => todo!(), /*
+                                        _ => unreachable!(), /*
 
-                                                      Sbrk       (SbrkArgs, Runtime),
-                                                      Exit       (Runtime),
-                                                      PrintChar  (PrintCharArgs, Runtime),
-                                                      ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
-                                                      Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
-                                                      Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                      ExitStatus (ExitStatusArgs, Runtime),
+                                                             Sbrk       (SbrkArgs, Runtime),
+                                                             Exit       (Runtime),
+                                                             PrintChar  (PrintCharArgs, Runtime),
+                                                             ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
+                                                             Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
+                                                             Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                             ExitStatus (ExitStatusArgs, Runtime),
 
-                                                      // other
-                                                      Breakpoint     (Runtime),
-                                                      UnknownSyscall (UnknownSyscallArgs, Runtime)
-                                                      */
+                                                             // other
+                                                             Breakpoint     (Runtime),
+                                                             UnknownSyscall (UnknownSyscallArgs, Runtime)
+                                                             */
                                     }
                                 }
                                 Err((prev_runtime, err)) => {
