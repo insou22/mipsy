@@ -11,7 +11,7 @@ pub struct RegisterProps {
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
     let mut registers = vec![Safe::Uninitialised; 32];
-    if let State::Running(state) = &*props.state {
+    if let State::Compiled(state) = &*props.state {
         registers = state.mips_state.register_values.clone();
     };
 

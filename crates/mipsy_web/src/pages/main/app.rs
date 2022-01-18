@@ -20,7 +20,7 @@ use log::{error, info, trace};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
-
+use gloo_console::log;
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -32,12 +32,6 @@ pub enum ReadSyscalls {
 
 pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
-/*fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        unsafe {
-            crate::highlight();
-        }
-}
-*/
 
 #[function_component(App)]
 pub fn render_app() -> Html {
@@ -63,23 +57,32 @@ pub fn render_app() -> Html {
             };
             move || {} //do stuff when your componet is unmounted
         },
-        show_source.clone(), // empty toople dependecy is what enables this
+        (filename.clone(), show_source.clone(), state.clone(), file.clone()), // empty toople dependecy is what enables this
     );
 
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
             let state = state.clone();
+            let show_source = show_source.clone();
+            let show_io = show_io.clone();
+            let file = file.clone();
             let force_rerender_toggle = force_rerender_toggle.clone();
             let input_ref = input_ref.clone();
             let worker = worker.clone();
 
             Some(use_bridge(move |response| {
                 let state = state.clone();
+                let show_source = show_source.clone();
+                let show_io = show_io.clone();
+                let file = file.clone();
                 let force_rerender_toggle = force_rerender_toggle.clone();
                 let input_ref = input_ref.clone();
                 let worker = worker.clone();
                 update::handle_response_from_worker(
                     state,
+                    show_source,
+                    show_io,
+                    file,
                     response,
                     force_rerender_toggle,
                     worker,
@@ -88,7 +91,6 @@ pub fn render_app() -> Html {
             }))
         };
     }
-    // TODO - figure out rendered fn
 
     /*    CALLBACKS   */
     let load_onchange: Callback<Event> = {
@@ -115,9 +117,9 @@ pub fn render_app() -> Html {
                     let mut tasks_new = vec![];
                     tasks_new.push(read_as_text(&gloo_file, move |res| match res {
                         Ok(ref file_contents) => {
-                            file.set(Some(file_contents.to_string()));
+                            // file.set(Some(file_contents.to_string()));
                             let input = WorkerRequest::CompileCode(file_contents.to_string());
-                            info!("sending to worker");
+                            log!("sending to worker");
                             worker.borrow().as_ref().unwrap().send(input);
                             show_source.set(false);
                         }
@@ -145,8 +147,7 @@ pub fn render_app() -> Html {
     /* HELPER FNS */
     let text_html_content = match &*state {
         State::NoFile => "no file loaded".into(),
-        State::CompilerError(_error) => "File has syntax errors, check your file with mipsy and try again.\nMipsy Web does not yet support displaying compiler errors".into(),
-        State::Running(curr) => render_running(file.clone(), curr.clone(), filename.clone(), show_source.clone())
+        State::Compiled(_) | &State::CompilerError(_) => render_running(file.clone(), state.clone(), filename.clone(), show_source.clone())
     };
 
     trace!("rendering");
@@ -159,11 +160,11 @@ pub fn render_app() -> Html {
 
     let file_loaded = match *state {
         State::NoFile | State::CompilerError(_) => false,
-        State::Running(_) => true,
+        State::Compiled(_) => true,
     };
 
     let waiting_syscall = match &*state {
-        State::Running(curr) => curr.input_needed.is_some(),
+        State::Compiled(curr) => curr.input_needed.is_some(),
         State::NoFile | State::CompilerError(_) => false,
     };
 
@@ -171,7 +172,7 @@ pub fn render_app() -> Html {
     let mipsy_output_tab_title = match &*state {
         State::NoFile => "Mipsy Output - (0)".to_string(),
         State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
-        State::Running(curr) => {
+        State::Compiled(curr) => {
             format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
         }
     };
@@ -192,7 +193,7 @@ pub fn render_app() -> Html {
     };
 
     let input_needed = match &*state {
-        State::Running(curr) => curr.input_needed.clone(),
+        State::Compiled(curr) => curr.input_needed.clone(),
         State::NoFile | State::CompilerError(_) => None,
     };
 
@@ -285,7 +286,7 @@ pub fn is_nav_or_special_key(event: &KeyboardEvent) -> bool {
 
 fn render_running(
     file: UseStateHandle<Option<String>>,
-    state: RunningState,
+    state: UseStateHandle<State>,
     filename: UseStateHandle<Option<String>>,
     show_source: UseStateHandle<bool>,
 ) -> Html {
@@ -301,9 +302,22 @@ fn render_running(
             <table>
                 <tbody>
                     if *show_source {
-                        <SourceCode file={(*file).clone()} />
+                        <SourceCode state={state.clone()} file={(*file).clone()} />
                     } else {
-                        <DecompiledCode {state} />
+                        {
+                            match &*state {
+                                State::Compiled(curr) => {
+                                    html! {
+                                        <DecompiledCode
+                                            state={curr.clone()}
+                                        />
+                                    }
+                                },
+                                _ => html! {
+                                    <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
+                                },
+                            }
+                        }
                     }
                 </tbody>
             </table>
@@ -315,7 +329,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
     info!("CALLED");
     if *show_io {
         match &*state {
-            State::Running(curr) => {
+            State::Compiled(curr) => {
                 trace!("rendering running output");
                 trace!("{:?}", curr.mips_state.mipsy_stdout);
                 html! {curr.mips_state.stdout.join("")}
@@ -324,16 +338,16 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
                 html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
             }
             State::CompilerError(_) => {
-                html! {"File has syntax errors, check your file with mipsy and try again"}
+                html! {"File has compiler errors!"}
             }
         }
     } else {
         info!("here");
         match &*state {
-            State::Running(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
+            State::Compiled(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
             State::NoFile => html! {""},
-            State::CompilerError(_) => {
-                html! {"File has syntax errors, check your file with mipsy and try again"}
+            State::CompilerError(curr) => {
+                html! {curr.mipsy_stdout.join("")}
             }
         }
     }
@@ -344,19 +358,14 @@ pub fn process_syscall_request(
     required_type: ReadSyscalls,
     state: UseStateHandle<State>,
     input_ref: UseStateHandle<NodeRef>,
-) -> bool {
-    match &*state {
-        State::Running(ref curr) => {
-            state.set(State::Running(RunningState {
-                mips_state,
-                input_needed: Some(required_type),
-                ..curr.clone()
-            }));
-            focus_input(input_ref);
-            true
-        }
-
-        State::NoFile | State::CompilerError(_) => false,
+) -> () {
+    if let State::Compiled(ref curr) = &*state {
+        state.set(State::Compiled(RunningState {
+            mips_state,
+            input_needed: Some(required_type),
+            ..curr.clone()
+        }));
+        focus_input(input_ref);
     }
 }
 
@@ -374,13 +383,13 @@ pub fn process_syscall_response(
     required_type: ReadSyscallInputs,
 ) {
     match state.deref() {
-        State::Running(ref curr) => {
+        State::Compiled(ref curr) => {
             worker.send(WorkerRequest::GiveSyscallValue(
                 curr.mips_state.clone(),
                 required_type,
             ));
 
-            state.set(State::Running(RunningState {
+            state.set(State::Compiled(RunningState {
                 input_needed: None,
                 ..curr.clone()
             }));

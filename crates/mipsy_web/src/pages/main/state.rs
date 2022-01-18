@@ -12,6 +12,12 @@ pub struct MipsState {
     pub is_stepping: bool,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompilerErrorState {
+    pub error: MipsyError,
+    pub mipsy_stdout: Vec<String>,
+}
+
 impl MipsState {
     pub fn update_registers(&mut self, runtime: &Runtime) {
         self.register_values = runtime
@@ -39,6 +45,7 @@ pub struct RunningState {
 #[derive(Debug, PartialEq, Clone)]
 pub enum State {
     NoFile,
-    CompilerError(MipsyError),
-    Running(RunningState),
+    CompilerError(CompilerErrorState),
+    Compiled(RunningState),
 }
+

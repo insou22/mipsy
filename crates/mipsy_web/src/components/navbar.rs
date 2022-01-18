@@ -46,8 +46,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     trace!("Run button clicked");
-                    if let State::Running(ref curr) = *state {
-                        state.set(State::Running(RunningState {
+                    if let State::Compiled(ref curr) = *state {
+                        state.set(State::Compiled(RunningState {
                             mips_state: MipsState {
                                 is_stepping: false,
                                 ..curr.mips_state.clone()
@@ -83,7 +83,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     trace!("Reset button clicked");
-                    if let State::Running(curr) = &*state {
+                    if let State::Compiled(curr) = &*state {
                         let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
                         worker.send(input);
                     } else {
@@ -104,8 +104,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     trace!("Kill button clicked");
-                    if let State::Running(curr) = &*state {
-                        state.set(State::Running(RunningState {
+                    if let State::Compiled(curr) = &*state {
+                        state.set(State::Compiled(RunningState {
                             should_kill: true,
                             ..curr.clone()
                         }));
@@ -126,13 +126,13 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
-                    if let State::Running(curr) = &*state {
+                    if let State::Compiled(curr) = &*state {
                         let new_mips_state = MipsState {
                             is_stepping: true,
                             ..curr.mips_state.clone()
                         };
 
-                        state.set(State::Running(RunningState {
+                        state.set(State::Compiled(RunningState {
                             mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
@@ -158,13 +158,13 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
-                    if let State::Running(curr) = &*state {
+                    if let State::Compiled(curr) = &*state {
                         let new_mips_state = MipsState {
                             is_stepping: true,
                             ..curr.mips_state.clone()
                         };
 
-                        state.set(State::Running(RunningState {
+                        state.set(State::Compiled(RunningState {
                             mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
@@ -186,7 +186,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
 pub fn render_navbar(props: &NavBarProps) -> Html {
     let icons = icons(props.clone());
     let exit_status = match &*props.state {
-        State::Running(curr) => Some(curr.mips_state.exit_status),
+        State::Compiled(curr) => Some(curr.mips_state.exit_status),
         _ => None,
     };
 
