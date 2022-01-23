@@ -3,7 +3,7 @@
   <h1>Mipsy Web</h1>
 
   <p>
-    <strong>A browser interface for debugging MIPS programs with mipsy as a backend </strong>
+    <strong>A web-assembly browser interface for debugging MIPS-32 programs with mipsy_lib as a backend </strong>
   </p>
 
 </div>
