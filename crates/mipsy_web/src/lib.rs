@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 pub mod components;
 pub mod pages;
 pub mod worker;
+pub mod utils;
 use pages::main::app::App as Application;
 
 #[wasm_bindgen]

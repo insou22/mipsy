@@ -585,6 +585,7 @@ version = "0.1.0"
 dependencies = [
  "derivative",
  "git-version",
+ "gloo-console",
  "gloo-file",
  "js-sys",
  "log",

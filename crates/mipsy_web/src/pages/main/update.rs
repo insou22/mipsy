@@ -9,9 +9,10 @@ use crate::{
         state::{MipsState, RunningState, State},
     },
     worker::Worker,
+    utils::generate_highlighted_line,
 };
-use gloo_file::callbacks::read_as_text;
-use log::{error, info, trace};
+use log::{error, info};
+
 use mipsy_lib::{MipsyError, Safe};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -19,21 +20,24 @@ use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::UseBridgeHandle;
+use gloo_console::log;
+use super::state::CompilerErrorState;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
+    show_source: UseStateHandle<bool>,
+    show_io: UseStateHandle<bool>,
+    file: UseStateHandle<Option<String>>,
     response: WorkerResponse,
     rerender_hook: UseStateHandle<bool>,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
 ) {
-    // TODO - hande response
-    // TODO - fix compiler errors
     match response {
-        WorkerResponse::DecompiledCode(decompiled) => {
-            info!("recieved decompiled code from worker");
-            state.set(State::Running(RunningState {
-                decompiled,
+        WorkerResponse::DecompiledCode(response_struct) => {
+            log!("recieved decompiled code from worker");
+            state.set(State::Compiled(RunningState {
+                decompiled: response_struct.decompiled,
                 mips_state: MipsState {
                     stdout: Vec::new(),
                     exit_status: None,
@@ -45,56 +49,54 @@ pub fn handle_response_from_worker(
                 input_needed: None,
                 should_kill: false,
             }));
-            true
+
+            if response_struct.file.is_some() {
+                file.set(Some(response_struct.file.unwrap()));
+            }
         }
 
-        WorkerResponse::CompilerError(err) => match &err {
-            MipsyError::Parser(_error) => true,
+        WorkerResponse::CompilerError(response_struct) => {
+            log!("recieved compiler error from worker");
+            let mut mipsy_stdout = vec![];
+            
+            file.set(Some(response_struct.file.clone()));
 
-            MipsyError::Compiler(error) => {
-                match *state {
-                    State::Running(ref curr) => {
-                        let mut new_vec = curr.mips_state.mipsy_stdout.clone();
-                        new_vec.push(error.error().message());
-                        let new_mips_state = MipsState {
-                            mipsy_stdout: new_vec,
-                            ..curr.mips_state.clone()
-                        };
-                        state.set(State::Running(RunningState {
-                            mips_state: new_mips_state,
-                            ..curr.clone()
-                        }))
-                    }
-                    State::NoFile | State::CompilerError(_) => {
-                        state.set(State::CompilerError(err));
-                        error!("Compiler errors are not supported.");
-                    }
+            match response_struct.error {
+                MipsyError::Compiler(ref compiler_err) => {
+                    mipsy_stdout.push(format!("{}\n{}\n{}", generate_highlighted_line(response_struct.file, compiler_err), compiler_err.error().message(), compiler_err.error().tips().join("\n")));
+                    show_source.set(true);
+                    show_io.set(false);
                 }
-                true
-            }
+                MipsyError::Parser(_) => {
+                    mipsy_stdout.push("Parser error".into());
+                }
+                _ => {
+                    mipsy_stdout.push("Runtime errors not yet supported".into());
+                }
+            };
 
-            MipsyError::Runtime(_error) => {
-                error!("Cannot get runtime error at compile time");
-                unreachable!();
-            }
-        },
+            let state_struct = CompilerErrorState {
+                error: response_struct.error.clone(),
+                mipsy_stdout,
+            };
 
-        WorkerResponse::ProgramExited(mips_state) => match *state {
-            State::Running(ref curr) => {
-                state.set(State::Running(RunningState {
+            state.set(State::CompilerError(state_struct));
+        }
+
+        WorkerResponse::ProgramExited(mips_state) => {
+            if let State::Compiled(ref curr) = *state {
+                state.set(State::Compiled(RunningState {
                     mips_state,
                     ..curr.clone()
                 }));
-                true
             }
-            State::NoFile | State::CompilerError(_) => false,
-        },
+        }
 
         WorkerResponse::InstructionOk(mips_state) => {
-            if let State::Running(ref curr) = *state {
+            if let State::Compiled(ref curr) = *state {
                 info!("{:?}", mips_state);
                 info!("HERE");
-                state.set(State::Running(RunningState {
+                state.set(State::Compiled(RunningState {
                     mips_state: mips_state.clone(),
                     ..curr.clone()
                 }));
@@ -106,7 +108,7 @@ pub fn handle_response_from_worker(
                     worker.borrow().as_ref().unwrap().send(input);
                 }
 
-                state.set(State::Running(RunningState {
+                state.set(State::Compiled(RunningState {
                     should_kill: false,
                     mips_state,
                     ..curr.clone()
@@ -114,21 +116,17 @@ pub fn handle_response_from_worker(
             } else {
                 info!("No File loaded, cannot run");
             }
-            true
         }
 
-        WorkerResponse::UpdateMipsState(mips_state) => match *state {
-            State::Running(ref curr) => {
-                state.set(State::Running(RunningState {
+        WorkerResponse::UpdateMipsState(mips_state) => {
+            if let State::Compiled(ref curr) = *state {
+                state.set(State::Compiled(RunningState {
                     mips_state,
                     ..curr.clone()
                 }));
                 info!("updating state");
-                true
             }
-
-            State::NoFile | State::CompilerError(_) => false,
-        },
+        }
 
         WorkerResponse::NeedInt(mips_state) => {
             process_syscall_request(mips_state, ReadSyscalls::ReadInt, state, input_ref)
@@ -154,7 +152,7 @@ pub fn submit_input(
     state: &UseStateHandle<State>,
 ) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
-        if let State::Running(curr) = &**state {
+        if let State::Compiled(curr) = &**state {
             use ReadSyscallInputs::*;
             use ReadSyscalls::*;
             match curr.input_needed.as_ref().unwrap_throw() {
@@ -172,7 +170,7 @@ pub fn submit_input(
                             mipsy_stdout: new_vec,
                             ..curr.mips_state.clone()
                         };
-                        state.set(State::Running(RunningState {
+                        state.set(State::Compiled(RunningState {
                             mips_state: new_mips_state,
                             ..curr.clone()
                         }))
@@ -194,7 +192,7 @@ pub fn submit_input(
                             mipsy_stdout: new_vec,
                             ..curr.mips_state.clone()
                         };
-                        state.set(State::Running(RunningState {
+                        state.set(State::Compiled(RunningState {
                             mips_state: new_mips_state,
                             ..curr.clone()
                         }))
@@ -227,7 +225,7 @@ pub fn submit_input(
                             mipsy_stdout: new_vec,
                             ..curr.mips_state.clone()
                         };
-                        state.set(State::Running(RunningState {
+                        state.set(State::Compiled(RunningState {
                             mips_state: new_mips_state,
                             ..curr.clone()
                         }))

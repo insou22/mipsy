@@ -5,6 +5,7 @@ use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
+use gloo_console::log;
 
 //            Worker Overview
 // ___________________________________________
@@ -81,9 +82,21 @@ pub enum WorkerRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct DecompiledResponse {
+    pub decompiled: String,
+    pub file: Option<String>, 
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct CompilerErrorResponse {
+    pub error: MipsyError,
+    pub file: String, 
+}
+
+#[derive(Serialize, Deserialize)]
 pub enum WorkerResponse {
-    DecompiledCode(String),
-    CompilerError(MipsyError),
+    DecompiledCode(DecompiledResponse),
+    CompilerError(CompilerErrorResponse),
     UpdateMipsState(MipsState),
     InstructionOk(MipsState),
     ProgramExited(MipsState),
@@ -102,7 +115,6 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
-        info!("CREATING WORKER");
         wasm_logger::init(wasm_logger::Config::default());
 
         Self {
@@ -124,6 +136,7 @@ impl Agent for Worker {
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
             Self::Input::CompileCode(f) => {
+
                 // TODO(shreys): this is a hack to get the file to compile
                 let config = MipsyConfig {
                     tab_size: 8,
@@ -138,7 +151,10 @@ impl Agent for Worker {
                 match compiled {
                     Ok(binary) => {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                        let response = Self::Output::DecompiledCode(decompiled);
+                        let response = Self::Output::DecompiledCode(DecompiledResponse {
+                            decompiled,
+                            file: Some(f)
+                        });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
                         self.runtime = Some(RuntimeState::Running(runtime));
@@ -146,7 +162,14 @@ impl Agent for Worker {
                         self.link.respond(id, response)
                     }
 
-                    Err(err) => self.link.respond(id, Self::Output::CompilerError(err)),
+                    Err(err) => {
+                        self.binary = None;
+                        self.runtime = None;
+                        self.link.respond(id, Self::Output::CompilerError(CompilerErrorResponse {
+                            error: err,
+                            file: f
+                        }))
+                    }
                 }
             }
 
@@ -168,7 +191,7 @@ impl Agent for Worker {
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
                                 let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                                let response = Self::Output::DecompiledCode(decompiled);
+                                let response = Self::Output::DecompiledCode(DecompiledResponse {decompiled, file: None});
                                 let runtime = mipsy_lib::runtime(&binary, &[]);
                                 self.runtime = Some(RuntimeState::Running(runtime));
                                 self.link.respond(id, response)
@@ -178,7 +201,7 @@ impl Agent for Worker {
                 } else {
                     if let Some(binary) = &self.binary {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                        let response = Self::Output::DecompiledCode(decompiled);
+                        let response = Self::Output::DecompiledCode(DecompiledResponse {decompiled, file: None});
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.runtime = Some(RuntimeState::Running(runtime));
                         self.link.respond(id, response)
