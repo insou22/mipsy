@@ -49,7 +49,7 @@ Rust is able to compile to WASM, and run applications on the browser.
 We chose Rust for this problem, as it is a language that enforces aspects of safety and performance. Additionally, since we want to use `mipsy_lib` for the backend, having `mipsy_web` written in rust allows us to easily use it. Furthermore, Rust has crates that allow us to write modern frontend code (see, Yew) and then compile to WASM.
 
 #### Yew
-[Yew](yew.rs/) is a Rust framework for bulding web applications.
+[Yew](https://yew.rs/) is a Rust framework for bulding web applications.
 It behaves very similar to React, with functional components, lifecycle hooks and a virtual DOM.
 
 #### Web Workers
