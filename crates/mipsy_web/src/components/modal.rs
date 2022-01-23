@@ -55,7 +55,6 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
                         <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
                         <ul class="ml-4 list-disc">
-                            <li>{"Compilation Errors"}</li>
                             <li>{"Runtime Errors"}</li>
                             <li>{"Separate text and data segments"}</li>
                             <li>{"Custom Settings + Theming"}</li>

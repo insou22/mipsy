@@ -19,7 +19,7 @@ pub fn render_source_code(props: &SourceCodeProps) -> Html {
         .unwrap_or(&"".to_string())
         .len()
         .to_string()
-        .len();
+        .len() + 1;
     
     let err_line_num = if let State::CompilerError(comp_err_state) = &*props.state {
         if let MipsyError::Compiler(err) = &comp_err_state.error {
