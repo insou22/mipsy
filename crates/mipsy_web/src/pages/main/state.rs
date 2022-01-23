@@ -48,4 +48,3 @@ pub enum State {
     CompilerError(CompilerErrorState),
     Compiled(RunningState),
 }
-

@@ -21,12 +21,17 @@ pub use text::compile1;
 
 static KERN_FILE: &str = include_str!("../../../../kern.s");
 
-pub const TEXT_BOT:  u32 = 0x00400000;
-pub const DATA_BOT:  u32 = 0x10010000;
-pub const HEAP_BOT:  u32 = 0x10040000;
-pub const STACK_TOP: u32 = 0x7FFFFF00;
-pub const KTEXT_BOT: u32 = 0x80000000;
-pub const KDATA_BOT: u32 = 0x90000000;
+pub const TEXT_BOT:   u32 = 0x00400000;
+pub const TEXT_TOP:   u32 = 0x0FFFFFFF;
+pub const GLOBAL_BOT: u32 = 0x10000000;
+pub const GLOBAL_PTR: u32 = 0x10008000;
+pub const DATA_BOT:   u32 = 0x10010000;
+pub const HEAP_BOT:   u32 = 0x10040000;
+pub const STACK_BOT:  u32 = 0x7FFF0000;
+pub const STACK_PTR:  u32 = 0x7FFFFFFC;
+pub const STACK_TOP:  u32 = 0x7FFFFFFF;
+pub const KTEXT_BOT:  u32 = 0x80000000;
+pub const KDATA_BOT:  u32 = 0x90000000;
 
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
@@ -88,6 +93,10 @@ impl Binary {
 }
 
 pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
+    compile_with_kernel(program, &mut get_kernel(), config, iset)
+}
+
+pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -105,8 +114,7 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
         line_numbers: HashMap::new(),
     };
     
-    let mut kernel = get_kernel();
-    populate_labels_and_data(&mut binary, config, iset, &mut kernel)?;
+    populate_labels_and_data(&mut binary, config, iset, kernel)?;
 
     populate_labels_and_data(&mut binary, config, iset, program)?;
 
@@ -122,7 +130,7 @@ pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) ->
     Ok(binary)
 }
 
-fn get_kernel() -> MpProgram {
+pub fn get_kernel() -> MpProgram {
     // kernel file has tabsize of 8
     mipsy_parser::parse_mips(vec![TaggedFile::new(None, KERN_FILE)], 8)
         .expect("Kernel file should always build")

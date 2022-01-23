@@ -4,7 +4,7 @@ pub mod state;
 pub use self::state::State;
 
 use std::collections::HashMap;
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_TOP, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, Error}};
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
 pub const NUL:  u8  = 0;
@@ -210,7 +210,8 @@ impl Runtime {
                                 string.push(0);
                                 
                                 for (i, byte) in string.into_iter().enumerate() {
-                                    self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
+                                    // if there's a segmentation fault, we just don't end up writing the data
+                                    let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
                                 }
                             }
 
@@ -279,7 +280,8 @@ impl Runtime {
                             let len = (len as usize).min(bytes.len());
 
                             bytes[..len].iter().enumerate().for_each(|(i, byte)| {
-                                self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
+                                // if there's a segmentation fault, we just don't end up writing the data
+                                let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
                             });
                             self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
                             
@@ -868,7 +870,7 @@ impl Runtime {
             0x10..=0x1F => {},
             
             // LB   $Rt, Im($Rs)
-            0x20 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_sign()); },
+            0x20 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)?.extend_sign()); },
             
             // LH   $Rt, Im($Rs)
             0x21 => {
@@ -878,7 +880,7 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
                 }
 
-                state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_sign()); 
+                state.write_register_uninit(rt, state.read_mem_half_uninit(addr)?.extend_sign()); 
             },
             
             // LWL  $Rt, Im($Rs)
@@ -894,11 +896,11 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Word })));
                 }
 
-                state.write_register_uninit(rt, state.read_mem_word_uninit(addr).extend_sign());
+                state.write_register_uninit(rt, state.read_mem_word_uninit(addr)?.extend_sign());
             },
             
             // LBU  $Rt, Im($Rs)
-            0x24 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _).extend_zero()); },
+            0x24 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)?.extend_zero()); },
             
             // LHU  $Rt, Im($Rs)
             0x25 => {
@@ -908,7 +910,7 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
                 }
 
-                state.write_register_uninit(rt, state.read_mem_half_uninit(addr).extend_zero());
+                state.write_register_uninit(rt, state.read_mem_half_uninit(addr)?.extend_zero());
             },
             
             // LWR  $Rt, Im($Rs)
@@ -920,7 +922,7 @@ impl Runtime {
             0x27 => {},
             
             // SB   $Rt, Im($Rs)
-            0x28 => { state.write_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate()); },
+            0x28 => { state.write_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate())?; },
             
             // SH   $Rt, Im($Rs)
             0x29 => {
@@ -930,7 +932,7 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
                 }
 
-                state.write_mem_half_uninit(addr, state.read_register_uninit(rt).truncate());
+                state.write_mem_half_uninit(addr, state.read_register_uninit(rt).truncate())?;
             },
             
             // Unused
@@ -944,7 +946,7 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Word })));
                 }
 
-                state.write_mem_word_uninit(addr, state.read_register_uninit(rt).truncate());
+                state.write_mem_word_uninit(addr, state.read_register_uninit(rt).truncate())?;
             },
             
             // Unused
@@ -1178,7 +1180,7 @@ impl ExtendSign for u8 {
     type Output = i32;
 
     fn extend_sign(self) -> Self::Output {
-        self as i8 as i32
+        self as i8 as _
     }
 }
 
@@ -1186,7 +1188,7 @@ impl ExtendSign for u16 {
     type Output = i32;
 
     fn extend_sign(self) -> Self::Output {
-        self as i16 as i32
+        self as i16 as _
     }
 }
 
@@ -1194,7 +1196,7 @@ impl ExtendSign for u32 {
     type Output = i32;
 
     fn extend_sign(self) -> Self::Output {
-        self as i32
+        self as _
     }
 }
 
@@ -1202,7 +1204,7 @@ impl ExtendSign for i8 {
     type Output = i32;
 
     fn extend_sign(self) -> Self::Output {
-        self as i32
+        self as _
     }
 }
 
@@ -1210,7 +1212,7 @@ impl ExtendSign for i16 {
     type Output = i32;
 
     fn extend_sign(self) -> Self::Output {
-        self as i32
+        self as _
     }
 }
 
@@ -1226,7 +1228,7 @@ impl ExtendZero for u8 {
     type Output = i32;
 
     fn extend_zero(self) -> Self::Output {
-        self as u8 as i32
+        self as u8 as _
     }
 }
 
@@ -1234,7 +1236,7 @@ impl ExtendZero for u16 {
     type Output = i32;
 
     fn extend_zero(self) -> Self::Output {
-        self as u16 as i32
+        self as u16 as _
     }
 }
 
@@ -1242,7 +1244,7 @@ impl ExtendZero for u32 {
     type Output = i32;
 
     fn extend_zero(self) -> Self::Output {
-        self as i32
+        self as _
     }
 }
 
@@ -1372,14 +1374,14 @@ impl Runtime {
 
         let mut text_addr = TEXT_BOT;
         for &byte in &program.text {
-            initial_state.write_mem_byte_uninit(text_addr, byte);
+            initial_state.write_mem_byte_uninit(text_addr, byte).unwrap();
             text_addr += 1;
         }
 
         let mut data_addr = DATA_BOT;
         for &byte in &program.data {
             match byte {
-                Safe::Valid(byte) => initial_state.write_mem_byte(data_addr, byte),
+                Safe::Valid(byte) => initial_state.write_mem_byte(data_addr, byte).unwrap(),
                 Safe::Uninitialised => {}
             }
 
@@ -1388,14 +1390,14 @@ impl Runtime {
 
         let mut ktext_addr = KTEXT_BOT;
         for &byte in &program.ktext {
-            initial_state.write_mem_byte_uninit(ktext_addr, byte);
+            initial_state.write_mem_byte_uninit(ktext_addr, byte).unwrap();
             ktext_addr += 1;
         }
 
         let mut kdata_addr = KDATA_BOT;
         for &byte in &program.kdata {
             match byte {
-                Safe::Valid(byte) => initial_state.write_mem_byte(kdata_addr, byte),
+                Safe::Valid(byte) => initial_state.write_mem_byte(kdata_addr, byte).unwrap(),
                 Safe::Uninitialised => {}
             }
 
@@ -1403,9 +1405,9 @@ impl Runtime {
         }
 
         initial_state.registers[Register::Zero.to_number() as usize] = Safe::Valid(0);
-        initial_state.write_register(Register::Sp.to_number()   as _, STACK_TOP as _);
-        initial_state.write_register(Register::Fp.to_number()   as _, STACK_TOP as _);
-        initial_state.write_register(Register::Gp.to_number()   as _, HEAP_BOT  as _);
+        initial_state.write_register(Register::Sp.to_number() as _, STACK_PTR  as _);
+        initial_state.write_register(Register::Fp.to_number() as _, STACK_PTR  as _);
+        initial_state.write_register(Register::Gp.to_number() as _, GLOBAL_PTR as _);
 
         Self::include_args(&mut initial_state, args);
 
@@ -1427,7 +1429,7 @@ impl Runtime {
             as u32;
 
         // allocate total_strings_len on the stack
-        let strings_stack_addr = STACK_TOP - total_strings_len;
+        let strings_stack_addr = STACK_PTR - total_strings_len;
 
         // and then 4-byte align it
         let strings_stack_addr = strings_stack_addr - (strings_stack_addr % 4);
@@ -1446,22 +1448,22 @@ impl Runtime {
             let mut star_addr   = char_star_star_addr;
 
             for &arg in args {
-                state.write_mem_word(star_addr, string_addr);
+                state.write_mem_word(star_addr, string_addr).unwrap();
 
                 for byte in arg.bytes() {
-                    state.write_mem_byte(string_addr, byte);
+                    state.write_mem_byte(string_addr, byte).unwrap();
 
                     string_addr += 1;
                 }
 
                 // null terminator
-                state.write_mem_byte(string_addr, NUL);
+                state.write_mem_byte(string_addr, NUL).unwrap();
                 string_addr += 1;
 
                 star_addr += 4;
             }
 
-            state.write_mem_word(star_addr, NULL);
+            state.write_mem_word(star_addr, NULL).unwrap();
         }
     }
 }

@@ -48,6 +48,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     trace!("Run button clicked");
                     if let State::Compiled(ref curr) = *state {
                         state.set(State::Compiled(RunningState {
+
                             mips_state: MipsState {
                                 is_stepping: false,
                                 ..curr.mips_state.clone()

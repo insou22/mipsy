@@ -21,6 +21,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 use gloo_console::log;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -58,6 +59,7 @@ pub fn render_app() -> Html {
             move || {} //do stuff when your componet is unmounted
         },
         (filename.clone(), show_source.clone(), state.clone(), file.clone()), // empty toople dependecy is what enables this
+
     );
 
     if worker.borrow().is_none() {
@@ -120,6 +122,7 @@ pub fn render_app() -> Html {
                             // file.set(Some(file_contents.to_string()));
                             let input = WorkerRequest::CompileCode(file_contents.to_string());
                             log!("sending to worker");
+
                             worker.borrow().as_ref().unwrap().send(input);
                             show_source.set(false);
                         }
@@ -366,6 +369,7 @@ pub fn process_syscall_request(
             ..curr.clone()
         }));
         focus_input(input_ref);
+
     }
 }
 
@@ -384,12 +388,14 @@ pub fn process_syscall_response(
 ) {
     match state.deref() {
         State::Compiled(ref curr) => {
+
             worker.send(WorkerRequest::GiveSyscallValue(
                 curr.mips_state.clone(),
                 required_type,
             ));
 
             state.set(State::Compiled(RunningState {
+
                 input_needed: None,
                 ..curr.clone()
             }));

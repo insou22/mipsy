@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 use colored::Colorize;
 use mipsy_parser::{MpDirective, MpInstruction};
 use mipsy_utils::MipsyConfig;
-use crate::inst::instruction::Signature;
+use crate::{inst::instruction::Signature, DATA_BOT, HEAP_BOT};
 
 use super::util::{syntax_highlight_argument, tip_header};
 
@@ -70,13 +70,13 @@ impl CompilerError {
         let updated_line = {
             let mut updated_line = String::new();
             
-            for (idx, char) in line.char_indices() {
+            for char in line.chars() {
                 if char != '\t' {
                     updated_line.push(char);
                     continue;
                 }
 
-                let spaces_to_insert = config.tab_size - (idx as u32 % config.tab_size);
+                let spaces_to_insert = config.tab_size - (updated_line.len() as u32 % config.tab_size);
                 updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
             }
 
@@ -148,6 +148,8 @@ pub enum Error {
 
     DataInTextSegment { directive_type: MpDirective },
     InstructionInDataSegment,
+
+    TooMuchData { data_size: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -256,6 +258,14 @@ impl Error {
                 let message_1 = "cannot put instruction into data segment".bright_red().bold();
 
                 format!("{}", message_1)
+            }
+
+            Error::TooMuchData { .. } => {
+                let message_1 = "too much data to fit in the".bright_red().bold();
+                let message_2 = ".data".bold();
+                let message_3 = "segment".bright_red().bold();
+
+                format!("{} `{}` {}", message_1, message_2, message_3)
             }
         }
     }
@@ -425,23 +435,38 @@ impl Error {
 
             Error::ConstantValueDoesNotFit { directive_type, value: _, range_low: _, range_high: _ } => {
                 let directive = format!(".{}", directive_type).bold();
-                let tip = format!("required by `{}` directive", directive);
+                let tip = format!("required by `{}` directive\n", directive);
 
                 vec![tip]
             }
 
             Error::DataInTextSegment { directive_type } => {
                 let data = ".data".bold();
-                let tip = format!("you may want to insert a `{}` directive before your `{}{}`", data, ".".bold(), directive_type.to_string().bold());
+                let tip = format!("you may want to insert a `{}` directive before your `{}{}`\n", data, ".".bold(), directive_type.to_string().bold());
 
                 vec![tip]
             }
 
             Error::InstructionInDataSegment => {
-                let data = ".text".bold();
-                let tip = format!("you may want to insert a `{}` directive before your instruction", data);
+                let text = ".text".bold();
+                let tip = format!("you may want to insert a `{}` directive before your instruction\n", text);
 
                 vec![tip]
+            }
+
+            Error::TooMuchData { data_size } => {
+                let tip1 = format!(
+                    "you have {} bytes of data, but the max is {} bytes\n",
+                    data_size.to_string().bold(),
+                    (HEAP_BOT - DATA_BOT).to_string().bold(),
+                );
+
+                let tip2 = format!(
+                    "reduce the amount of data by at least {} byte(s)\n",
+                    (data_size - (HEAP_BOT - DATA_BOT)).to_string().bold(),
+                );
+
+                vec![tip1, tip2]
             }
         }
     }
@@ -450,6 +475,12 @@ impl Error {
         match self {
             // only highlight the error-ing line if the requested label is not `main`
             Self::UnresolvedLabel { label, .. } => label != "main",
+
+            // In theory we could highlight the piece of data that pushed us over the
+            // limit, but then it would make it harder to get the total bytes that
+            // we currently are trying to store in .data, which seems like a more
+            // useful diagnostic at this point
+            Self::TooMuchData { .. } => false,
 
             // otherwise highlight the line causing the error
             _ => true,

@@ -10,11 +10,13 @@ use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext},
 use helper::MyHelper;
 
 use rustyline::{
-    Editor,
-    KeyPress,
-    Cmd,
-    Movement,
     At,
+    Cmd,
+    Editor,
+    KeyCode,
+    KeyEvent,
+    Modifiers,
+    Movement,
     Word,
     error::ReadlineError,
 };
@@ -480,8 +482,8 @@ fn editor() -> Editor<MyHelper> {
     let helper = MyHelper::new();
     rl.set_helper(Some(helper));
 
-    rl.bind_sequence(KeyPress::ControlLeft,  Cmd::Move(Movement::BackwardWord(1, Word::Emacs)));
-    rl.bind_sequence(KeyPress::ControlRight, Cmd::Move(Movement::ForwardWord (1, At::BeforeEnd, Word::Emacs)));
+    rl.bind_sequence(KeyEvent(KeyCode::Left, Modifiers::CTRL),  Cmd::Move(Movement::BackwardWord(1, Word::Emacs)));
+    rl.bind_sequence(KeyEvent(KeyCode::Right, Modifiers::CTRL), Cmd::Move(Movement::ForwardWord (1, At::BeforeEnd, Word::Emacs)));
 
     rl
 }

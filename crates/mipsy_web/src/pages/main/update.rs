@@ -12,6 +12,7 @@ use crate::{
     utils::generate_highlighted_line,
 };
 use log::{error, info};
+
 use mipsy_lib::{MipsyError, Safe};
 use std::cell::RefCell;
 use std::rc::Rc;
