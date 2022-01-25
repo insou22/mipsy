@@ -54,11 +54,11 @@ impl Binary {
 
             let mut similar = self.labels.keys()
                     .map(|label| label.to_ascii_lowercase())
-                    .map(|label| (strsim::levenshtein(&label, &label_lower), label))
-                    .filter(|&(sim, _)| sim <= 2)
+                    .map(|label| (strsim::jaro_winkler(&label, &label_lower), label))
+                    .filter(|&(sim, _)| sim >= 0.9)
                     .collect::<Vec<_>>();
 
-            similar.sort_by_key(|&(sim, _)| sim);
+            similar.sort_by(|&(sim1, _), (sim2, _)| sim1.partial_cmp(sim2).unwrap());
 
             let similar = similar.into_iter()
                     .map(|(_, label)| label)
