@@ -5,7 +5,6 @@ use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
-use gloo_console::log;
 
 //            Worker Overview
 // ___________________________________________

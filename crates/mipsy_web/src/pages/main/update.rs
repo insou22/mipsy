@@ -29,7 +29,6 @@ pub fn handle_response_from_worker(
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
     response: WorkerResponse,
-    rerender_hook: UseStateHandle<bool>,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
 ) {
