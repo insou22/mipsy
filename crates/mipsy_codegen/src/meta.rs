@@ -122,7 +122,24 @@ pub enum ReadsRegisterType {
 
 impl Display for ArgumentType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self) // Equivalent to previous implementation
+        match self {
+            ArgumentType::Rd => write!(f, "Rd"),
+            ArgumentType::Rs => write!(f, "Rs"),
+            ArgumentType::Rt => write!(f, "Rt"),
+            ArgumentType::Shamt => write!(f, "Shamt"),
+            ArgumentType::I16 => write!(f, "I16"),
+            ArgumentType::U16 => write!(f, "U16"),
+            ArgumentType::J => write!(f, "J"),
+            ArgumentType::OffRs => write!(f, "OffRs"),
+            ArgumentType::OffRt => write!(f, "OffRt"),
+            ArgumentType::F32 => write!(f, "F32"),
+            ArgumentType::F64 => write!(f, "F64"),
+            ArgumentType::Rx => write!(f, "Rx"),
+            ArgumentType::I32 => write!(f, "I32"),
+            ArgumentType::U32 => write!(f, "U32"),
+            ArgumentType::Off32Rs => write!(f, "Off32Rs"),
+            ArgumentType::Off32Rt => write!(f, "Off32Rt"),
+        }
     }
 }
 
