@@ -562,9 +562,6 @@ impl Agent for Worker {
                         }
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
-
-                        mips_state.update_registers(&runtime);
-                        mips_state.update_current_instr(&runtime);
                         self.runtime = Some(RuntimeState::Running(runtime));
 
                         let response;

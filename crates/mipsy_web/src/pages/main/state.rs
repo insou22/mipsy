@@ -8,6 +8,7 @@ pub struct MipsState {
     pub mipsy_stdout: Vec<String>,
     pub exit_status: Option<i32>,
     pub register_values: Vec<Safe<i32>>,
+    pub previous_registers: Vec<Safe<i32>>,
     pub current_instr: Option<u32>,
     pub is_stepping: bool,
 }
@@ -19,7 +20,8 @@ pub struct CompilerErrorState {
 }
 
 impl MipsState {
-    pub fn update_registers(&mut self, runtime: &Runtime) {
+    pub fn update_registers(&mut self, runtime: &Runtime) {    
+        self.previous_registers = self.register_values.clone();
         self.register_values = runtime
             .timeline()
             .state()

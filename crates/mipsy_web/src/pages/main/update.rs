@@ -41,6 +41,7 @@ pub fn handle_response_from_worker(
                     stdout: Vec::new(),
                     exit_status: None,
                     register_values: vec![Safe::Uninitialised; 32],
+                    previous_registers: vec![Safe::Uninitialised; 32],
                     current_instr: None,
                     mipsy_stdout: Vec::new(),
                     is_stepping: true,
