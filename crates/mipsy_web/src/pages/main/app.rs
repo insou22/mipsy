@@ -12,7 +12,7 @@ use crate::{
         state::{MipsState, RunningState, State},
         update,
     },
-    worker::{Worker, WorkerRequest, WorkerResponse},
+    worker::{Worker, WorkerRequest},
 };
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
@@ -38,7 +38,6 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 pub fn render_app() -> Html {
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
-    let force_rerender_toggle: UseStateHandle<bool> = use_state_eq(|| false);
 
     let worker = Rc::new(RefCell::new(None));
 
@@ -68,7 +67,6 @@ pub fn render_app() -> Html {
             let show_source = show_source.clone();
             let show_io = show_io.clone();
             let file = file.clone();
-            let force_rerender_toggle = force_rerender_toggle.clone();
             let input_ref = input_ref.clone();
             let worker = worker.clone();
 
@@ -77,7 +75,6 @@ pub fn render_app() -> Html {
                 let show_source = show_source.clone();
                 let show_io = show_io.clone();
                 let file = file.clone();
-                let force_rerender_toggle = force_rerender_toggle.clone();
                 let input_ref = input_ref.clone();
                 let worker = worker.clone();
                 update::handle_response_from_worker(
@@ -86,7 +83,6 @@ pub fn render_app() -> Html {
                     show_io,
                     file,
                     response,
-                    force_rerender_toggle,
                     worker,
                     input_ref,
                 )
@@ -98,7 +94,6 @@ pub fn render_app() -> Html {
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
         let filename = filename.clone();
-        let file = file.clone();
         let show_source = show_source.clone();
         let tasks = tasks.clone();
         Callback::from(move |e: Event| {
@@ -112,7 +107,6 @@ pub fn render_app() -> Html {
                     filename.set(Some(file_name));
 
                     // prep items for closure below
-                    let file = file.clone();
                     let worker = worker.clone();
                     let show_source = show_source.clone();
 
