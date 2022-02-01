@@ -5,7 +5,6 @@ use crate::{
 };
 use derivative::Derivative;
 use log::{info, trace};
-use std::ops::Deref;
 use yew::prelude::*;
 use yew::Html;
 use yew_agent::{Agent, UseBridgeHandle};

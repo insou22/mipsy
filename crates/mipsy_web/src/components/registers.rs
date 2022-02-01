@@ -1,6 +1,5 @@
 use crate::pages::main::state::State;
 use yew::{function_component, html, Properties, UseStateHandle};
-use log::info;
 use mipsy_lib::{Safe, Register};
 
 #[derive(Properties, PartialEq)]

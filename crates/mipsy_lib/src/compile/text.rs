@@ -27,7 +27,7 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInt
         for real_inst in all_instns {
             if real_inst.name() == inst.name() {
                 matching_names.push(real_inst);
-            } else if strsim::levenshtein(real_inst.name(), inst.name()) == 1 {
+            } else if strsim::jaro_winkler(real_inst.name(), inst.name()) >= 0.92 {
                 close_names.push(real_inst);
             }
         }
