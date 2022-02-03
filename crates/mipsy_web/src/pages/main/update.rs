@@ -8,11 +8,13 @@ use crate::{
         },
         state::{MipsState, RunningState, State},
     },
-    worker::Worker,
     utils::generate_highlighted_line,
+    worker::Worker,
 };
 use log::{error, info};
 
+use super::state::CompilerErrorState;
+use gloo_console::log;
 use mipsy_lib::{MipsyError, Safe};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,8 +22,6 @@ use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::UseBridgeHandle;
-use gloo_console::log;
-use super::state::CompilerErrorState;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
@@ -58,12 +58,17 @@ pub fn handle_response_from_worker(
         WorkerResponse::CompilerError(response_struct) => {
             log!("recieved compiler error from worker");
             let mut mipsy_stdout = vec![];
-            
+
             file.set(Some(response_struct.file.clone()));
 
             match response_struct.error {
                 MipsyError::Compiler(ref compiler_err) => {
-                    mipsy_stdout.push(format!("{}\n{}\n{}", generate_highlighted_line(response_struct.file, compiler_err), compiler_err.error().message(), compiler_err.error().tips().join("\n")));
+                    mipsy_stdout.push(format!(
+                        "{}\n{}\n{}",
+                        generate_highlighted_line(response_struct.file, compiler_err),
+                        compiler_err.error().message(),
+                        compiler_err.error().tips().join("\n")
+                    ));
                     show_source.set(true);
                     show_io.set(false);
                 }
@@ -231,6 +236,40 @@ pub fn submit_input(
                         }))
                     }
                 },
+
+                ReadString => {
+                    let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
+                    process_syscall_response(state.clone(), worker.clone(), input, String(string));
+                }
+            }
+        } else {
+            error!("Should not be able to submit with no file");
+        }
+    };
+}
+
+// same default values for EOF as crates/mipsy/src/main.rs
+pub fn submit_eof(worker: &UseBridgeHandle<Worker>, input_ref: &UseStateHandle<NodeRef>, state: &UseStateHandle<State>) {
+    if let Some(input) = input_ref.cast::<HtmlInputElement>() {
+        if let State::Compiled(curr) = &**state {
+            use ReadSyscallInputs::*;
+            use ReadSyscalls::*;
+            match curr.input_needed.as_ref().unwrap_throw() {
+                ReadInt => {
+                    process_syscall_response(state.clone(), worker.clone(), input, Int(0));
+                }
+
+                ReadFloat => {
+                    process_syscall_response(state.clone(), worker.clone(), input, Double(0.0));
+                }
+
+                ReadDouble => {
+                    process_syscall_response(state.clone(), worker.clone(), input, Double(0.0));
+                }
+
+                ReadChar => {
+                    process_syscall_response(state.clone(), worker.clone(), input, Char('\0' as u8))
+                }
 
                 ReadString => {
                     let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();

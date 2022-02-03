@@ -61,6 +61,7 @@ pub fn render_app() -> Html {
 
     );
 
+    // if we have not yet setup the worker bridge, do so now
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
             let state = state.clone();
@@ -137,6 +138,10 @@ pub fn render_app() -> Html {
         Callback::from(move |event: KeyboardEvent| {
             if event.key() == "Enter" {
                 update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+            };
+            if event.key() == "d" && event.ctrl_key() {
+                event.prevent_default();
+                update::submit_eof(worker.borrow().as_ref().unwrap(), &input_ref, &state);
             };
         })
     };
