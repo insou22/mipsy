@@ -18,7 +18,7 @@ extern "C" {
 #[wasm_bindgen(start)]
 pub fn start() {
     use js_sys::{global, Reflect};
-   
+    wasm_logger::init(wasm_logger::Config::default());
     unsafe {
         if Reflect::has(&global(), &JsValue::from_str("window")).unwrap() {
             yew::start_app::<Application>();
