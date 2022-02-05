@@ -60,6 +60,10 @@ impl Timeline {
         self.timeline.get(n)
     }
 
+    pub fn prev_state(&self) -> Option<&State> {
+        self.nth_state(self.timeline_len() - 2)
+    }
+
     pub fn push_next_state(&mut self) -> &mut State {
         let last_state = self.timeline.back().expect("timelint cannot be empty");
         let next_state = last_state.clone();

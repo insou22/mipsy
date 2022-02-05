@@ -31,10 +31,10 @@ impl RuntimeError {
             "{}{} {}",
             "error".bright_red().bold(),
             ":".bold(),
-            self.error.message(context, source_code, inst_set, binary, runtime)
+            self.error.message(context, &source_code, inst_set, binary, runtime)
         );
 
-        for tip in self.error.tips(inst_set, binary, runtime) {
+        for tip in self.error.tips(&source_code, inst_set, binary, runtime) {
             println!("{} {}", tip_header(), tip);
         }
     }
@@ -79,7 +79,7 @@ impl Error {
     pub fn message(
         &self,
         context: ErrorContext,
-        source_code: Vec<(Rc<str>, Rc<str>)>,
+        source_code: &[(Rc<str>, Rc<str>)],
         inst_set: &InstSet,
         binary: &Binary,
         runtime: &Runtime,
@@ -157,7 +157,7 @@ impl Error {
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
                         
-                        for (src_tag, src_file) in &source_code {
+                        for (src_tag, src_file) in source_code {
                             if &*file_tag == &**src_tag {
                                 file = Some(src_file);
                                 break;
@@ -289,7 +289,7 @@ impl Error {
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
                             let mut file = None;
                             
-                            for (src_tag, src_file) in &source_code {
+                            for (src_tag, src_file) in source_code {
                                 if &*file_tag == &**src_tag {
                                     file = Some(src_file);
                                     break;
@@ -396,7 +396,7 @@ impl Error {
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
                         
-                        for (src_tag, src_file) in &source_code {
+                        for (src_tag, src_file) in source_code {
                             if &*file_tag == &**src_tag {
                                 file = Some(src_file);
                                 break;
@@ -624,7 +624,7 @@ impl Error {
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
                         
-                        for (src_tag, src_file) in &source_code {
+                        for (src_tag, src_file) in source_code {
                             if &*file_tag == &**src_tag {
                                 file = Some(src_file);
                                 break;
@@ -687,10 +687,56 @@ impl Error {
         }
     }
 
-    pub fn tips(&self, inst_set: &InstSet, binary: &Binary, runtime: &Runtime) -> Vec<String> {
+    pub fn tips(&self, source_code: &[(Rc<str>, Rc<str>)], inst_set: &InstSet, binary: &Binary, runtime: &Runtime) -> Vec<String> {
         match self {
-            Error::UnknownInstruction { .. } => {
-                vec![]
+            Error::UnknownInstruction { addr } => {
+                if let Some(prev_state) = runtime.timeline().prev_state() {
+                    // we got here in standard sequence,
+                    //   usually describing a missing return
+
+                    if prev_state.pc() + 4 == *addr {
+                        let jr     = "jr".bold();
+                        let dollar = "$".yellow();
+                        let ra     = "ra".bold();
+
+                        let did_you_forget = format!("did you forget to use `{jr} {dollar}{ra}`?");
+
+                        if let Ok(inst) = prev_state.read_mem_word(prev_state.pc()) {
+                            let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, prev_state.pc());
+                            let inst_str = inst_parts_to_string(&decompiled, &source_code, binary, false, true);
+
+                            vec![
+                                format!("the last instruction to execute was:\n{inst_str}\n"),
+                                did_you_forget,
+                            ]
+                        } else {
+                            // how the hell did we get here?
+                            // maybe we can analytic these cases in future..
+                            vec![
+                                did_you_forget,
+                            ]
+                        }
+                    } else if let Ok(inst) = prev_state.read_mem_word(prev_state.pc()) {
+                        // we got here from some kind of botched jump,
+                        //   how peculiar!
+
+                        let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, prev_state.pc());
+                        let inst_str = inst_parts_to_string(&decompiled, &source_code, binary, false, true);
+
+                        let back = "back".bold();
+
+                        vec![
+                            format!("try using the `{back}` command - the instruction that brought you here was:\n{inst_str}"),
+                        ]
+                    } else {
+                        // how the hell did we get here?
+                        // maybe we can analytic these cases in future...
+                        vec![]
+                    }
+                } else {
+                    // there's literally no instructions
+                    vec![]
+                }                
             }
             Error::Uninitialised { .. } => {
                 vec![]

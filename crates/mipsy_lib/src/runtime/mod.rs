@@ -56,8 +56,7 @@ impl Runtime {
     }
 
     pub fn step(mut self) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
-        let state = self.timeline.push_next_state();
-
+        let state = self.timeline.state();
         let inst = match state.read_mem_word(state.pc()) {
             Ok(inst) => inst,
             Err(_) => {
@@ -67,6 +66,7 @@ impl Runtime {
             }
         };
 
+        let state = self.timeline.push_next_state();
         state.set_pc(state.pc() + 4);
 
         match self.execute_in_current_state(inst) {
