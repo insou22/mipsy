@@ -186,7 +186,7 @@ pub fn render_app() -> Html {
     let (decompiled_tab_classes, source_tab_classes, data_tab_classes) = {
         let mut default = (
             String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1"),
-            String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 "),
+            String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 "),
             String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 ")
         );
 
