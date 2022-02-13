@@ -1,6 +1,13 @@
-use serde::{Deserialize, Serialize};
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{Runtime, Safe, MipsyError};
+use mipsy_lib::{MipsyError, Runtime, Safe};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq)]
+pub enum DisplayedTab {
+    Source,
+    Decompiled,
+    Data,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MipsState {
@@ -20,7 +27,7 @@ pub struct CompilerErrorState {
 }
 
 impl MipsState {
-    pub fn update_registers(&mut self, runtime: &Runtime) {    
+    pub fn update_registers(&mut self, runtime: &Runtime) {
         self.previous_registers = self.register_values.clone();
         self.register_values = runtime
             .timeline()
