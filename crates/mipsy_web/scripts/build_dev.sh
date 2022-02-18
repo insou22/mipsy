@@ -6,7 +6,8 @@ then
 fi
 
 wasm-pack build --target no-modules --out-name wasm --out-dir ./static --no-typescript --dev
-cp index.html static/
+cp _static/index.html static/
+cp -r _static/package static/
 
 if [ ! -f "dist/tailwind.css" -a ! -f "static/tailwind.css" ];
 then

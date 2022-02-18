@@ -6,7 +6,7 @@
     <link href="tailwind.css" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
-
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="package/min/vs/editor/editor.main.css">
     <!-- Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
@@ -56,5 +56,25 @@
   </head>
 
   <body>
+  <div id="yew_app"></div>
+  <div id="monaco_editor" style="height:400px">
+  <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
+
+  <script src="package/min/vs/loader.js"></script>
+  <script src="package/min/vs/editor/editor.main.nls.js"></script>
+  <script src="package/min/vs/editor/editor.main.js"></script>
+
+  <script>
+    // CREATE AN EDITOR
+    var h_div = document.getElementById('monaco_editor');
+    var editor = monaco.editor.create(h_div, {
+        value: [
+            'function x() {',
+            '\tconsole.log("Hello world!");',
+            '}'
+        ].join('\n'),
+        language: 'javascript'
+    });
+  </script>
   </body>
 </html>
