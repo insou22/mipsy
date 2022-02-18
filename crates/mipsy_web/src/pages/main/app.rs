@@ -48,18 +48,36 @@ pub fn render_app() -> Html {
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_source: UseStateHandle<bool> = use_state_eq(|| false);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
+    
+    {
+        let file = file.clone();
+        use_effect_with_deps(
+            move |_| {
+                //do stuff here for first render/mounted
+                unsafe {
+                    crate::highlight();
 
-    use_effect_with_deps(
-        move |_| {
-            //do stuff here for first render/mounted
-            unsafe {
-                crate::highlight();
-            };
-            move || {} //do stuff when your componet is unmounted
-        },
-        (filename.clone(), show_source.clone(), state.clone(), file.clone()), // empty toople dependecy is what enables this
-
-    );
+                    let document = web_sys::window().unwrap().document().unwrap();
+                    let element = document.get_element_by_id("monaco_editor");
+                    match element {
+                        Some(_e) => {
+                            if let Some(file) = &*file {
+                                log!("file: {}", file);
+                                crate::init_editor_with_value(file.as_str())
+                            } else {
+                                crate::init_editor_with_value("");
+                            }
+                        }
+                        None => {
+                            log!("Could not find element with id 'monaco_editor'");
+                        }
+                    }
+                };
+                move || {} //do stuff when your componet is unmounted
+            },
+            (filename.clone(), show_source.clone(), state.clone()), // empty toople dependecy is what enables this
+        );
+    }
 
     // if we have not yet setup the worker bridge, do so now
     if worker.borrow().is_none() {
@@ -242,9 +260,7 @@ pub fn render_app() -> Html {
                             </button>
                         </div>
                         <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                            <pre class="text-xs whitespace-pre-wrap">
                                 { text_html_content }
-                            </pre>
                         </div>
                     </div>
 
@@ -301,28 +317,30 @@ fn render_running(
                     }
                 </strong>
             </h3>
-            <table>
-                <tbody>
-                    if *show_source {
-                        <SourceCode state={state.clone()} file={(*file).clone()} />
-                    } else {
-                        {
-                            match &*state {
-                                State::Compiled(curr) => {
-                                    html! {
-                                        <DecompiledCode
-                                            state={curr.clone()}
-                                        />
-                                    }
-                                },
-                                _ => html! {
-                                    <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
-                                },
+            if *show_source {
+                <SourceCode state={state.clone()} file={(*file).clone()} />
+            } else {
+                <pre class="text-xs whitespace-pre-wrap">
+                    <table>
+                        <tbody>
+                            {
+                                match &*state {
+                                    State::Compiled(curr) => {
+                                        html! {
+                                            <DecompiledCode
+                                                state={curr.clone()}
+                                            />
+                                        }
+                                    },
+                                    _ => html! {
+                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
+                                    },
+                                }
                             }
-                        }
-                    }
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </pre>
+            }
         </>
     }
 }

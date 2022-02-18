@@ -17,7 +17,6 @@
           console.log("setting up splits...");
           Split(["#file_data", "#information"], {
             sizes: [70, 30],
-            minSize: 330,
           });          
           Split(["#regs", "#output"], {
             direction: "vertical",
@@ -32,11 +31,31 @@
             console.error("AHHHHHHHHHHH");
         };
     </script>
-    
+    <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
+
+    <script src="package/min/vs/loader.js"></script>
+    <script src="package/min/vs/editor/editor.main.nls.js"></script>
+    <script src="package/min/vs/editor/editor.main.js"></script>
+
+    <script>
+      function init_editor_with_value(value="") {
+        var h_div = document.getElementById('monaco_editor');
+        var editor = monaco.editor.create(h_div, {
+            value,
+            automaticLayout: true,
+            minimap: { enabled: false },
+            glyphMargin: false,
+        });
+      }
+    </script>
     <script src="wasm.js"></script>
-	<script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>
+    <script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>
 
     <style>
+      #monaco_editor {
+        height: 95%;
+      }
+
       .gutter {
         background-color: #eee;
         background-repeat: no-repeat;
@@ -56,25 +75,6 @@
   </head>
 
   <body>
-  <div id="yew_app"></div>
-  <div id="monaco_editor" style="height:400px">
-  <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
-
-  <script src="package/min/vs/loader.js"></script>
-  <script src="package/min/vs/editor/editor.main.nls.js"></script>
-  <script src="package/min/vs/editor/editor.main.js"></script>
-
-  <script>
-    // CREATE AN EDITOR
-    var h_div = document.getElementById('monaco_editor');
-    var editor = monaco.editor.create(h_div, {
-        value: [
-            'function x() {',
-            '\tconsole.log("Hello world!");',
-            '}'
-        ].join('\n'),
-        language: 'javascript'
-    });
-  </script>
+    <div id="yew_app"></div>
   </body>
 </html>
