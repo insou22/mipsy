@@ -2410,6 +2410,14 @@ pseudoinstructions:
       - inst: ADDU
         data: [$Rd, $0, $Rs]
 
+  - name: COPY
+    desc_short: Copy the value from $Rs into $Rd
+    compile:
+      format: [Rd, Rs]
+    expand:
+      - inst: ADDU
+        data: [$Rd, $0, $Rs]
+
   - name: NEG
     desc_short: Flip all the bits in $Rs, store result in $Rd
     compile:
@@ -2558,6 +2566,60 @@ pseudoinstructions:
           imm_types: [U16, U32]
           sign_extend: true
 
+  - name: MOD
+    desc_short: Store the remainder of $Rs / $Rt into $Rd
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: DIV
+        data: [$Rs, $Rt]
+      - inst: MFHI
+        data: [$Rd]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [I16, U16, I32, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+
+  - name: MODU
+    desc_short: Store the remainder of $Rs / $Rt (unsigned) into $Rd
+    compile:
+      format: [Rd, Rs, Rt]
+    expand:
+      - inst: DIVU
+        data: [$Rs, $Rt]
+      - inst: MFHI
+        data: [$Rd]
+    derives:
+      - DefaultValue:
+          value: Rs
+          default: $Rd
+          derives:
+            - Imm2Reg:
+                register: Rt
+                imm_types: [U16, U32]
+                sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [U16, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rs
+          imm_types: [U16, U32]
+          sign_extend: true
+
   - name: ABS
     desc_short: $Rs = |$Rt|
     compile:
@@ -2591,6 +2653,30 @@ pseudoinstructions:
         data: [$Rd, ($sp)]
       - inst: ADDIU
         data: [$sp, $sp, 4]
+
+  # Work in progress:
+  #
+  # - name: BEGIN
+  #   desc_short: Begin a new stack frame
+  #   compile:
+  #     format: []
+  #   expand:
+  #     - inst: ADDIU
+  #       data: [$sp, $sp, -4]
+  #     - inst: SW
+  #       data: [$fp, ($sp)]
+  #     - inst: ADDU
+  #       data: [$fp, $0, $sp]
+
+  # - name: END
+  #   desc_short: End the current stack frame
+  #   compile:
+  #     format: []
+  #   expand:
+  #     - inst: LW
+  #       data: [$fp, ($fp)]
+  #     - inst: ADDU
+  #       data: [$sp, $0, $fp]
 
   - name: ROL
     desc_short: Rotate Left
