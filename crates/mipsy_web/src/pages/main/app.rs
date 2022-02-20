@@ -389,7 +389,14 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
             State::Compiled(curr) => {
                 trace!("rendering running output");
                 trace!("{:?}", curr.mips_state.mipsy_stdout);
-                html! {curr.mips_state.stdout.join("")}
+                match curr.mips_state.exit_status.as_ref() {
+                    Some(_) => {
+                        html! {curr.mips_state.stdout.join("")}
+                    }
+                    None => {
+                        html! {curr.mips_state.stdout.join("") + "▌"}
+                    }
+                }
             }
             State::NoFile => {
                 html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
