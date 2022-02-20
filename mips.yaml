@@ -2654,29 +2654,27 @@ pseudoinstructions:
       - inst: ADDIU
         data: [$sp, $sp, 4]
 
-  # Work in progress:
-  #
-  # - name: BEGIN
-  #   desc_short: Begin a new stack frame
-  #   compile:
-  #     format: []
-  #   expand:
-  #     - inst: ADDIU
-  #       data: [$sp, $sp, -4]
-  #     - inst: SW
-  #       data: [$fp, ($sp)]
-  #     - inst: ADDU
-  #       data: [$fp, $0, $sp]
+  - name: BEGIN
+    desc_short: Begin a new stack frame
+    compile:
+      format: []
+    expand:
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$fp, ($sp)]
+      - inst: ADDU
+        data: [$fp, $0, $sp]
 
-  # - name: END
-  #   desc_short: End the current stack frame
-  #   compile:
-  #     format: []
-  #   expand:
-  #     - inst: LW
-  #       data: [$fp, ($fp)]
-  #     - inst: ADDU
-  #       data: [$sp, $0, $fp]
+  - name: END
+    desc_short: End the current stack frame
+    compile:
+      format: []
+    expand:
+      - inst: ADDIU
+        data: [$sp, $fp, 4]
+      - inst: LW
+        data: [$fp, ($fp)]
 
   - name: ROL
     desc_short: Rotate Left
