@@ -1,4 +1,3 @@
-mod unsafe_cow;
 pub mod state;
 
 pub use self::state::State;
@@ -9,7 +8,7 @@ use self::state::Timeline;
 
 pub const NUL:  u8  = 0;
 pub const NULL: u32 = 0;
-pub const PAGE_SIZE: u32 = 64;
+pub const PAGE_SIZE: usize = 64;
 
 pub const SYS1_PRINT_INT:    i32 = 1;
 pub const SYS2_PRINT_FLOAT:  i32 = 2;
