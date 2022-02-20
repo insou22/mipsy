@@ -18,9 +18,10 @@ pub struct NavBarProps {
     pub file_loaded: bool,
     pub waiting_syscall: bool,
     pub state: UseStateHandle<State>,
-
     #[derivative(PartialEq = "ignore")]
     pub worker: UseBridgeHandle<Worker>,
+    pub filename: UseStateHandle<Option<String>>,
+    pub file: UseStateHandle<Option<String>>,
 }
 
 struct Icon {
@@ -174,6 +175,26 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     } else {
                         info!("No File loaded, cannot step");
                     };
+                })
+            }),
+        },
+        Icon {
+            label: String::from("Download"),
+            html: html! {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 20 20" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+            },
+            title: String::from("Download the current saved file"),
+            callback: Some({
+                let state = props.state.clone();
+                let filename = props.filename.clone();
+                let file = props.file.clone();
+                Callback::from(move |_| {
+                    trace!("Download button clicked");
+                    if let State::Compiled(curr) = &*state {
+                        crate::trigger_download_file(filename.as_deref().unwrap_or(""), file.as_deref().unwrap_or(""));
+                    }
                 })
             }),
         },

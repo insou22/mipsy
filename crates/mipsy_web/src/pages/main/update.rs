@@ -6,7 +6,7 @@ use crate::{
             process_syscall_request, process_syscall_response, ReadSyscalls,
             NUM_INSTR_BEFORE_RESPONSE,
         },
-        state::{MipsState, RunningState, State},
+        state::{DisplayedTab, MipsState, RunningState, State},
     },
     utils::generate_highlighted_line,
     worker::Worker,
@@ -25,7 +25,7 @@ use yew_agent::UseBridgeHandle;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
-    show_source: UseStateHandle<bool>,
+    show_tab: UseStateHandle<DisplayedTab>,
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
     response: WorkerResponse,
@@ -49,9 +49,9 @@ pub fn handle_response_from_worker(
                 input_needed: None,
                 should_kill: false,
             }));
-
             if response_struct.file.is_some() {
                 file.set(Some(response_struct.file.unwrap()));
+                show_tab.set(DisplayedTab::Source);
             }
         }
 
@@ -69,7 +69,7 @@ pub fn handle_response_from_worker(
                         compiler_err.error().message(),
                         compiler_err.error().tips().join("\n")
                     ));
-                    show_source.set(true);
+                    show_tab.set(DisplayedTab::Source);
                     show_io.set(false);
                 }
                 MipsyError::Parser(_) => {
@@ -99,8 +99,6 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::InstructionOk(mips_state) => {
             if let State::Compiled(ref curr) = *state {
-                info!("{:?}", mips_state);
-                info!("HERE");
                 state.set(State::Compiled(RunningState {
                     mips_state: mips_state.clone(),
                     ..curr.clone()
@@ -249,7 +247,11 @@ pub fn submit_input(
 }
 
 // same default values for EOF as crates/mipsy/src/main.rs
-pub fn submit_eof(worker: &UseBridgeHandle<Worker>, input_ref: &UseStateHandle<NodeRef>, state: &UseStateHandle<State>) {
+pub fn submit_eof(
+    worker: &UseBridgeHandle<Worker>,
+    input_ref: &UseStateHandle<NodeRef>,
+    state: &UseStateHandle<State>,
+) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
         if let State::Compiled(curr) = &**state {
             use ReadSyscallInputs::*;

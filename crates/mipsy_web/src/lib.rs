@@ -13,15 +13,28 @@ extern "C" {
     fn split_setup();
 
     pub fn highlight();
+    
+    pub fn init_editor();
+
+    pub fn set_editor_value(value: &str);
+
+    pub fn get_editor_value() -> String;
+
+    pub fn trigger_download_file(filename: &str, content: &str);
+
 }
 
 #[wasm_bindgen(start)]
 pub fn start() {
     use js_sys::{global, Reflect};
     wasm_logger::init(wasm_logger::Config::default());
+    
+    
     unsafe {
         if Reflect::has(&global(), &JsValue::from_str("window")).unwrap() {
-            yew::start_app::<Application>();
+            let document = web_sys::window().unwrap().document().unwrap();
+            let entry_point = document.get_element_by_id("yew_app").unwrap();
+            yew::start_app_in_element::<Application>(entry_point);
         } else {
             worker::Worker::register();
         }
