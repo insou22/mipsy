@@ -99,8 +99,6 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::InstructionOk(mips_state) => {
             if let State::Compiled(ref curr) = *state {
-                info!("{:?}", mips_state);
-                info!("HERE");
                 state.set(State::Compiled(RunningState {
                     mips_state: mips_state.clone(),
                     ..curr.clone()

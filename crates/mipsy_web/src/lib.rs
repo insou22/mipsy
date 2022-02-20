@@ -13,8 +13,14 @@ extern "C" {
     fn split_setup();
 
     pub fn highlight();
+    
+    pub fn init_editor();
 
-    pub fn init_editor_with_value(value: &str);
+    pub fn set_editor_value(value: &str);
+
+    pub fn get_editor_value() -> String;
+
+
 }
 
 #[wasm_bindgen(start)]

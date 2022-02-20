@@ -14,13 +14,13 @@ use crate::{
     },
     worker::{Worker, WorkerRequest},
 };
+use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
-use web_sys::HtmlInputElement;
+use web_sys::{Element,HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
-use gloo_console::log;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
@@ -32,7 +32,6 @@ pub enum ReadSyscalls {
 }
 
 pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
-
 
 #[function_component(App)]
 pub fn render_app() -> Html {
@@ -48,7 +47,7 @@ pub fn render_app() -> Html {
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_source: UseStateHandle<bool> = use_state_eq(|| false);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
-    
+    let is_saved: UseStateHandle<bool> = use_state_eq(|| true);
     {
         let file = file.clone();
         use_effect_with_deps(
@@ -56,16 +55,18 @@ pub fn render_app() -> Html {
                 //do stuff here for first render/mounted
                 unsafe {
                     crate::highlight();
-
                     let document = web_sys::window().unwrap().document().unwrap();
-                    let element = document.get_element_by_id("monaco_editor");
+                    let element: Option<Element> = document.get_element_by_id("monaco_editor");
                     match element {
-                        Some(_e) => {
+                        Some(e) => {
+                            if e.child_element_count() == 0 {
+                                crate::init_editor();
+                            }
+
                             if let Some(file) = &*file {
-                                log!("file: {}", file);
-                                crate::init_editor_with_value(file.as_str())
+                                crate::set_editor_value(file.as_str())
                             } else {
-                                crate::init_editor_with_value("");
+                                crate::set_editor_value("");
                             }
                         }
                         None => {
@@ -149,6 +150,29 @@ pub fn render_app() -> Html {
         })
     };
 
+    let save_keydown: Callback<KeyboardEvent> = {
+        let file = file.clone();
+        let worker = worker.clone();
+        let is_saved = is_saved.clone();
+        Callback::from(move |e: KeyboardEvent| {
+            if !e.ctrl_key() {
+                is_saved.set(false);
+            }
+            if e.key() == "s" && e.ctrl_key() {
+                e.prevent_default();
+                log!("ctrl+s");
+                is_saved.set(true);
+                let updated_content = crate::get_editor_value();
+                if let Some(_file_contents) = &*file {
+                    let clone = updated_content.clone();
+                    file.set(Some(updated_content));
+                    worker.borrow().as_ref().unwrap().send(WorkerRequest::CompileCode(clone));
+                }
+
+            };
+        })
+    };
+
     let on_input_keydown: Callback<KeyboardEvent> = {
         let worker = worker.clone();
         let state = state.clone();
@@ -167,7 +191,14 @@ pub fn render_app() -> Html {
     /* HELPER FNS */
     let text_html_content = match &*state {
         State::NoFile => "no file loaded".into(),
-        State::Compiled(_) | &State::CompilerError(_) => render_running(file.clone(), state.clone(), filename.clone(), show_source.clone())
+        State::Compiled(_) | &State::CompilerError(_) => render_running(
+            file.clone(),
+            state.clone(),
+            filename.clone(),
+            show_source.clone(),
+            save_keydown.clone(),
+            is_saved.clone(),
+        ),
     };
 
     trace!("rendering");
@@ -307,18 +338,25 @@ fn render_running(
     state: UseStateHandle<State>,
     filename: UseStateHandle<Option<String>>,
     show_source: UseStateHandle<bool>,
+    save_keydown: Callback<KeyboardEvent>,
+    is_saved: UseStateHandle<bool>,
 ) -> Html {
+    let display_filename = if *is_saved {
+        format!("{}", &*filename.as_deref().unwrap_or(""))
+    } else {
+        format!("{}*", &*filename.as_deref().unwrap_or(""))
+    };
     html! {
         <>
             <h3>
                 <strong class="text-lg">
                     {
-                        filename.as_ref().unwrap_or(&"".to_string())
+                        display_filename
                     }
                 </strong>
             </h3>
             if *show_source {
-                <SourceCode state={state.clone()} file={(*file).clone()} />
+                <SourceCode save_keydown={save_keydown.clone()} file={(*file).clone()} />
             } else {
                 <pre class="text-xs whitespace-pre-wrap">
                     <table>
@@ -346,7 +384,6 @@ fn render_running(
 }
 
 fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<State>) -> Html {
-    info!("CALLED");
     if *show_io {
         match &*state {
             State::Compiled(curr) => {
@@ -386,7 +423,6 @@ pub fn process_syscall_request(
             ..curr.clone()
         }));
         focus_input(input_ref);
-
     }
 }
 
@@ -405,14 +441,12 @@ pub fn process_syscall_response(
 ) {
     match state.deref() {
         State::Compiled(ref curr) => {
-
             worker.send(WorkerRequest::GiveSyscallValue(
                 curr.mips_state.clone(),
                 required_type,
             ));
 
             state.set(State::Compiled(RunningState {
-
                 input_needed: None,
                 ..curr.clone()
             }));

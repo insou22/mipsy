@@ -38,16 +38,30 @@
     <script src="package/min/vs/editor/editor.main.js"></script>
 
     <script>
-      function init_editor_with_value(value="") {
-        var h_div = document.getElementById('monaco_editor');
+      function init_editor() {
+        var h_div = document.getElementById("monaco_editor");
         var editor = monaco.editor.create(h_div, {
-            value,
-            automaticLayout: true,
-            minimap: { enabled: false },
-            glyphMargin: false,
-            language: 'mips'
+          value: "",
+          language: "mips",
+          automaticLayout: true,
+          scrollBeyondLastLine: false,
+          minimap: {
+            enabled: false,
+          },
         });
+
+        window.editor = editor;
+        console.log("editor initialized");
       }
+      
+      function set_editor_value(value="") {
+        window.editor.setValue(value);
+      }
+
+      function get_editor_value() {
+        return window.editor.getValue();
+      }
+
     </script>
     <script src="wasm.js"></script>
     <script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>

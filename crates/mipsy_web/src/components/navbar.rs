@@ -177,6 +177,31 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 })
             }),
         },
+        /*Icon {
+            label: String::from("Download"),
+            html: html! {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+            },
+            title: String::from("Download the current file"),
+            callback: Some({
+                let state = props.state.clone();
+                Callback::from(move |_| {
+                    trace!("Download button clicked");
+                    if let State::Compiled(curr) = &*state {
+                        let file_name = format!("{}.{}", curr.file_name, "mips");
+                        let file_content = curr.mips_state.to_string();
+                        let blob = Blob::new(file_content, "text/plain");
+                        let url = URL::create_object_url(&blob);
+                        let link = document().create_element("a")?;
+                        link.set_attribute("href", &url)?;
+                        link.set_attribute("download", &file_name)?;
+                        link.click();
+                    }
+                })
+            }),
+        },*/
     ];
 
     icons
