@@ -401,7 +401,7 @@ fn render_running(
                                 }
                             },
                             DisplayedTab::Data => {
-                                html!{<p>{"Data"}</p>}
+                                html!{<p>{"DATA: Coming soon!"}</p>}
                             },
                         }
                     }
