@@ -62,6 +62,19 @@
         return window.editor.getValue();
       }
 
+      function trigger_download_file(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+      }
+
     </script>
     <script src="wasm.js"></script>
     <script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>

@@ -49,9 +49,9 @@ pub fn handle_response_from_worker(
                 input_needed: None,
                 should_kill: false,
             }));
-
             if response_struct.file.is_some() {
                 file.set(Some(response_struct.file.unwrap()));
+                show_tab.set(DisplayedTab::Source);
             }
         }
 

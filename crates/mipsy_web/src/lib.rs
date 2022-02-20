@@ -20,6 +20,7 @@ extern "C" {
 
     pub fn get_editor_value() -> String;
 
+    pub fn trigger_download_file(filename: &str, content: &str);
 
 }
 

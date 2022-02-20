@@ -132,7 +132,6 @@ pub fn render_app() -> Html {
                             log!("sending to worker");
 
                             worker.borrow().as_ref().unwrap().send(input);
-                            show_tab.set(DisplayedTab::Decompiled);
                         }
 
                         Err(_e) => {}
@@ -276,6 +275,8 @@ pub fn render_app() -> Html {
                     {waiting_syscall}
                     state={state.clone()}
                     worker={worker.borrow().as_ref().unwrap().clone()}
+                    filename={filename.clone()}
+                    file={file.clone()}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
