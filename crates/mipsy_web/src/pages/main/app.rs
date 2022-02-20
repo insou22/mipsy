@@ -77,7 +77,7 @@ pub fn render_app() -> Html {
                 };
                 move || {} //do stuff when your componet is unmounted
             },
-            (filename.clone(), show_source.clone(), state.clone()), // empty toople dependecy is what enables this
+            (filename.clone(), show_tab.clone(), state.clone()), // empty toople dependecy is what enables this
         );
     }
     // if we have not yet setup the worker bridge, do so now
@@ -372,8 +372,6 @@ fn render_running(
                     }
                 </strong>
             </h3>
-            <table>
-                <tbody>
                     {
                         match *show_tab {
                             DisplayedTab::Source => {
@@ -385,9 +383,15 @@ fn render_running(
                                 match &*state {
                                     State::Compiled(curr) => {
                                         html! {
-                                            <DecompiledCode
-                                                state={curr.clone()}
-                                            />
+                                            <pre class="text-xs whitespace-pre-wrap">
+                                                <table>
+                                                    <tbody>
+                                                        <DecompiledCode
+                                                            state={curr.clone()}
+                                                        />
+                                                    </tbody>
+                                                </table>
+                                            </pre>
                                         }
                                     },
                                     _ => html! {
@@ -400,8 +404,6 @@ fn render_running(
                             },
                         }
                     }
-                </tbody>
-            </table>
         </>
     }
 }
