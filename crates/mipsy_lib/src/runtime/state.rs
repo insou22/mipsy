@@ -1,7 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{collections::{HashMap, VecDeque}, rc::Rc};
 
 use crate::{MipsyResult, Safe, Uninitialised, TEXT_BOT, compile::TEXT_TOP, GLOBAL_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, KTEXT_BOT, MipsyError, error::runtime::{RuntimeError, self}};
-use super::{PAGE_SIZE, SafeToUninitResult, unsafe_cow::UnsafeCow};
+use super::{PAGE_SIZE, SafeToUninitResult};
 
 pub const WRITE_MARKER_LO: u32 = 32;
 pub const WRITE_MARKER_HI: u32 = 32;
@@ -85,7 +85,7 @@ impl Timeline {
 }
 
 pub struct State {
-    pub(super) pages: HashMap<u32, UnsafeCow<[Safe<u8>]>>,
+    pub(super) pages: HashMap<u32, Rc<[Safe<u8>; PAGE_SIZE]>>,
     pub(super) pc: u32,
     pub(super) registers: [Safe<i32>; 32],
     pub(super) write_marker: u64,
@@ -408,56 +408,41 @@ impl State {
     }
 
     fn get_page_index(address: u32) -> u32 {
-        address / PAGE_SIZE
+        address / (PAGE_SIZE as u32)
     }
 
     fn offset_in_page(address: u32) -> u32 {
-        address % PAGE_SIZE
+        address % (PAGE_SIZE as u32)
     }
 
     fn page_base_addr(page: u32) -> u32 {
-        page * PAGE_SIZE
+        page * (PAGE_SIZE as u32)
     }
 
     fn addr_to_page_base_addr(address: u32) -> u32 {
         Self::page_base_addr(Self::get_page_index(address))
     }
 
-    pub fn get_page(&self, address: u32) -> Option<&[Safe<u8>]> {
+    pub fn get_page(&self, address: u32) -> Option<&[Safe<u8>; PAGE_SIZE]> {
         let base_addr = Self::addr_to_page_base_addr(address);
 
-        self.pages.get(&base_addr).map(|page| {
-            // SAFETY: This page will either be owned, or
-            //   borrowed from a previous state in the timeline,
-            //   which must exist, as Timeline holds an invariant
-            //   that each appended state must exist for at least
-            //   as long as any further appended states, which is
-            //   isomorphic to rust's lifetime subtyping rules.
-            unsafe { page.unsafe_borrow() }
-        })
+        self.pages.get(&base_addr).map(|page| &**page)
     }
 
-    pub fn get_mut_page_or_new(&mut self, address: u32) -> &mut [Safe<u8>] {
+    pub fn get_mut_page_or_new(&mut self, address: u32) -> &mut [Safe<u8>; PAGE_SIZE] {
         let base_addr = Self::addr_to_page_base_addr(address);
 
-        self.pages.entry(base_addr)
-            .or_insert_with(|| UnsafeCow::new_boxed(Box::new([Default::default(); PAGE_SIZE as usize])));
+        let page = self.pages.entry(base_addr)
+            .or_insert_with(|| Rc::new([Default::default(); PAGE_SIZE]));
 
-        // need to get the page again to appease the borrow checker
-        let page = self.pages.get_mut(&base_addr).expect("just inserted");
-
-        // SAFETY: Same argument as Self::get_page,
-        //   and mutability is safe because
-        //   the reference's lifetime is tied
-        //   to our &mut self.
-        unsafe { page.unsafe_borrow_mut_slice() }
+        Rc::make_mut(page)
     }
 }
 
 impl Clone for State {
     fn clone(&self) -> Self {
         let cow_pages = self.pages.iter()
-                .map(|(&addr, val)| (addr, val.to_borrowed()))
+                .map(|(&addr, val)| (addr, val.clone()))
                 .collect::<HashMap<_, _>>();
 
         Self {

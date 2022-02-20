@@ -83,13 +83,13 @@ pub enum WorkerRequest {
 #[derive(Serialize, Deserialize)]
 pub struct DecompiledResponse {
     pub decompiled: String,
-    pub file: Option<String>, 
+    pub file: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CompilerErrorResponse {
     pub error: MipsyError,
-    pub file: String, 
+    pub file: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -135,7 +135,6 @@ impl Agent for Worker {
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
             Self::Input::CompileCode(f) => {
-
                 // TODO(shreys): this is a hack to get the file to compile
                 let config = MipsyConfig {
                     tab_size: 8,
@@ -152,7 +151,7 @@ impl Agent for Worker {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
-                            file: Some(f)
+                            file: Some(f),
                         });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
@@ -164,10 +163,13 @@ impl Agent for Worker {
                     Err(err) => {
                         self.binary = None;
                         self.runtime = None;
-                        self.link.respond(id, Self::Output::CompilerError(CompilerErrorResponse {
-                            error: err,
-                            file: f
-                        }))
+                        self.link.respond(
+                            id,
+                            Self::Output::CompilerError(CompilerErrorResponse {
+                                error: err,
+                                file: f,
+                            }),
+                        )
                     }
                 }
             }
@@ -190,7 +192,10 @@ impl Agent for Worker {
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
                                 let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                                let response = Self::Output::DecompiledCode(DecompiledResponse {decompiled, file: None});
+                                let response = Self::Output::DecompiledCode(DecompiledResponse {
+                                    decompiled,
+                                    file: None,
+                                });
                                 let runtime = mipsy_lib::runtime(&binary, &[]);
                                 self.runtime = Some(RuntimeState::Running(runtime));
                                 self.link.respond(id, response)
@@ -200,7 +205,10 @@ impl Agent for Worker {
                 } else {
                     if let Some(binary) = &self.binary {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
-                        let response = Self::Output::DecompiledCode(DecompiledResponse {decompiled, file: None});
+                        let response = Self::Output::DecompiledCode(DecompiledResponse {
+                            decompiled,
+                            file: None,
+                        });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.runtime = Some(RuntimeState::Running(runtime));
                         self.link.respond(id, response)
@@ -286,6 +294,8 @@ impl Agent for Worker {
             Self::Input::Run(mut mips_state, step_size) => {
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
+                        // fast forward the kernel segment
+                        // or, fast rewind the kernel segment if we are rewinding
                         if runtime.timeline().state().pc() >= 0x80000000 {
                             while runtime.timeline().state().pc() >= 0x80000000 {
                                 // info!("stepping: {:08x}", runtime.timeline().state().pc());
@@ -349,14 +359,20 @@ impl Agent for Worker {
                             return;
                         }
 
+                        // prevent us from stepping too far in kernel and exiting
                         if step_size == -1 {
                             runtime.timeline_mut().pop_last_state();
                             mips_state.exit_status = None;
                         }
+
+                        // now let's us step the right number of times
                         for _ in 1..=step_size {
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
+                                // instruction ran okay
                                 Ok(Ok(next_runtime)) => runtime = next_runtime,
+
+                                // instruction ran but we need to handle a syscall
                                 Ok(Err(guard)) => {
                                     use RuntimeSyscallGuard::*;
                                     match guard {
@@ -535,6 +551,8 @@ impl Agent for Worker {
                                                              */
                                     }
                                 }
+
+                                // mipsy runtime error
                                 Err((prev_runtime, err)) => {
                                     runtime = prev_runtime;
                                     mips_state.update_registers(&runtime);
@@ -552,7 +570,9 @@ impl Agent for Worker {
                                 break;
                             };
 
-                            // the next instruction may early exit, if so - let's update the registers
+                            // usually we only update registers after all steps ran, but in case
+                            // next instruction is a syscall, we need to update registers before it
+                            // early exits
                             if let Ok(next_instr_is_read_syscall) = runtime.next_inst_may_guard() {
                                 if next_instr_is_read_syscall {
                                     mips_state.update_registers(&runtime);
