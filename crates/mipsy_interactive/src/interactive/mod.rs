@@ -6,7 +6,7 @@ mod runtime_handler;
 
 use std::{ops::Deref, rc::Rc};
 
-use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::SteppedRuntime};
+use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
 use helper::MyHelper;
 
 use rustyline::{
@@ -215,6 +215,9 @@ impl State {
             }
             CommandError::CannotStepFurtherBack => {
                 prompt::error("can't step any further back")
+            }
+            CommandError::RanOutOfHistory => {
+                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold().to_string()))
             }
             CommandError::RuntimeError { mipsy_error, } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);

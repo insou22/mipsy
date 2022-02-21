@@ -33,8 +33,18 @@ pub(crate) fn back_command() -> Command {
             }?;
 
             let mut backs = 0;
+            let mut ran_out_of_history = false;
             for _ in 0..times {
                 let runtime = state.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+                if runtime.timeline().timeline_len() == 2 && runtime.timeline().lost_history() {
+                    if backs == 0 {
+                        return Err(CommandError::RanOutOfHistory);
+                    }
+                    
+                    ran_out_of_history = true;
+                    break;
+                }
 
                 if runtime.timeline_mut().pop_last_state() {
                     backs += 1;
@@ -50,7 +60,10 @@ pub(crate) fn back_command() -> Command {
             let pluralise = if backs != 1 { "s" } else { "" };
 
             let mut text = format!("stepped back {} instruction{}", backs.to_string().magenta(), pluralise);
-            if backs < times {
+            
+            if ran_out_of_history {
+                text.push_str(" (before running out of history)");
+            } else if backs < times {
                 text.push_str(" (reached start of program)");
             }
             text.push_str(", next instruction will be:");

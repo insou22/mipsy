@@ -23,6 +23,7 @@ pub enum CommandError {
     ProgramExited,
 
     CannotStepFurtherBack,
+    RanOutOfHistory,
     RuntimeError { mipsy_error: MipsyError },
     ReplRuntimeError { mipsy_error: MipsyError, line: String },
 

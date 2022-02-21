@@ -6,58 +6,49 @@ use super::{PAGE_SIZE, SafeToUninitResult};
 pub const WRITE_MARKER_LO: u32 = 32;
 pub const WRITE_MARKER_HI: u32 = 32;
 
-/// A timeline of states
-///
-/// # Safety
-///
-/// Timeline maintains an invariant that for any state (state `a`) in the timeline,
-/// and any other state (state `b`) subsequently appended to the timeline,
-/// state `a` will live for at least as long as state `b`.
-///
-/// This follows the standard lifetime subtyping rules in Rust, i.e. `'a: 'b`.
-pub struct Timeline {
-    timeline: VecDeque<State>,
-}
+pub const TIMELINE_MAX_LEN: usize = 1_000_000;
 
-impl Drop for Timeline {
-    fn drop(&mut self) {
-        // Drop all states in the timeline *in reverse order*.
-        // This is important for safety,
-        // so that the state invariant is maintained.
-        while let Some(_state) = self.timeline.pop_back() {}
-    }
+/// # A timeline of states
+pub struct Timeline {
+    seed: State,
+    timeline: VecDeque<State>,
+    lost_history: bool,
 }
 
 impl Timeline {
     pub fn new(seed: State) -> Self {
-        let mut timeline = VecDeque::with_capacity(1);
-        timeline.push_back(seed);
+        let timeline = VecDeque::new();
 
         Self {
+            seed,
             timeline,
+            lost_history: false,
         }
     }
 
     pub fn state(&self) -> &State {
-        self.timeline.back().expect("timeline cannot be empty")
+        self.timeline.back().unwrap_or(&self.seed)
     }
 
     pub fn state_mut(&mut self) -> &mut State {
-        self.timeline.back_mut().expect("timeline cannot be empty")
+        self.timeline.back_mut().unwrap_or(&mut self.seed)
     }
 
     pub fn reset(&mut self) {
-        while self.timeline.len() > 1 {
-            self.timeline.pop_back();
-        }
+        self.lost_history = false;
+        self.timeline = VecDeque::new();
     }
 
     pub fn timeline_len(&self) -> usize {
-        self.timeline.len()
+        self.timeline.len() + 1
     }
 
     pub fn nth_state(&self, n: usize) -> Option<&State> {
-        self.timeline.get(n)
+        if n == 0 {
+            Some(&self.seed)
+        } else {
+            self.timeline.get(n - 1)
+        }
     }
 
     pub fn prev_state(&self) -> Option<&State> {
@@ -65,7 +56,19 @@ impl Timeline {
     }
 
     pub fn push_next_state(&mut self) -> &mut State {
-        let last_state = self.timeline.back().expect("timelint cannot be empty");
+        let timeline_len = self.timeline_len();
+        if timeline_len == self.timeline.capacity()
+            && timeline_len     < TIMELINE_MAX_LEN
+            && timeline_len * 2 > TIMELINE_MAX_LEN {
+            self.timeline.reserve_exact(TIMELINE_MAX_LEN - timeline_len);
+        }
+
+        if self.timeline_len() >= TIMELINE_MAX_LEN {
+            self.timeline.pop_front();
+            self.lost_history = true;
+        }
+
+        let last_state = self.timeline.back().unwrap_or(&self.seed);
         let next_state = last_state.clone();
 
         self.timeline.push_back(next_state);
@@ -74,13 +77,17 @@ impl Timeline {
     }
 
     pub fn pop_last_state(&mut self) -> bool {
-        if self.timeline.len() > 1 {
+        if self.timeline.len() > 0 {
             self.timeline.pop_back();
-            
+
             true
         } else {
             false
         }
+    }
+    
+    pub fn lost_history(&self) -> bool {
+        self.lost_history
     }
 }
 
