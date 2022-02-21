@@ -2790,8 +2790,8 @@ pseudoinstructions:
       format: [I16]
       relative_label: true
     expand:
-      - inst: BGEZ
-        data: [$0, $I16]
+      - inst: BEQ
+        data: [$0, $0, $I16]
 
   - name: BAL
     compile:
