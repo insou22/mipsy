@@ -376,6 +376,7 @@ fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> 
         match &constant.0 {
             &MpConstValue::Value(value) => value as _,
             MpConstValue::Const(label) => binary.constants.get(label).copied()
+                .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
                 .ok_or_else(|| MipsyError::Compiler(
                     CompilerError::new(
                         Error::UnresolvedConstant { label: label.to_string() },
