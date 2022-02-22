@@ -539,8 +539,8 @@ impl Runtime {
         
                     // MULTU $Rs, $Rt
                     0x19 => {
-                        let rs_val = state.read_register(rs)?;
-                        let rt_val = state.read_register(rt)?;
+                        let rs_val = state.read_register(rs)? as u32;
+                        let rt_val = state.read_register(rt)? as u32;
         
                         let result = rs_val as u64 * rt_val as u64;
                         state.write_hi((result >> 32) as _);
