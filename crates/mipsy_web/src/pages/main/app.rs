@@ -216,7 +216,7 @@ pub fn render_app() -> Html {
     trace!("rendering");
 
     let modal_overlay_classes = if *display_modal {
-        "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen"
+        "bg-th-secondary bg-opacity-90 absolute top-0 left-0 h-screen w-screen z-20"
     } else {
         "hidden"
     };

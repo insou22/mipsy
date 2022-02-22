@@ -10,7 +10,7 @@ pub struct ModalProps {
 #[function_component(Modal)]
 pub fn render_modal(props: &ModalProps) -> Html {
     let classes = if *props.should_display {
-        "modal overflow-auto bg-th-primary border-black border-2 absolute top-28 w-3/4"
+        "modal overflow-auto bg-th-primary border-black border-2 absolute top-28 w-3/4 z-20"
     } else {
         "modal hidden"
     };
