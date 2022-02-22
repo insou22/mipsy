@@ -1019,6 +1019,11 @@ pseudoinstructions:
       - inst: MTHI
         data: [$Rs]
     only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: CLO
     compile:
@@ -1047,6 +1052,11 @@ pseudoinstructions:
       - inst: MTLO
         data: [$Rs]
     only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: MULT
     compile:
@@ -1056,9 +1066,14 @@ pseudoinstructions:
         data: [$Rs, $Rt]
     only_derive: true
     derives:
-      - DefaultValue:
-          value: Rt
-          default: $Rs
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: MULTU
     compile:
@@ -1068,9 +1083,14 @@ pseudoinstructions:
         data: [$Rs, $Rt]
     only_derive: true
     derives:
-      - DefaultValue:
-          value: Rt
-          default: $Rs
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: DIV
     compile:
@@ -1079,6 +1099,15 @@ pseudoinstructions:
       - inst: DIV
         data: [$Rs, $Rt]
     only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
   - name: DIVU
     compile:
@@ -1087,6 +1116,15 @@ pseudoinstructions:
       - inst: DIVU
         data: [$Rs, $Rt]
     only_derive: true
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
+      - Imm2Reg:
+          register: Rt
+          imm_types: [I16, U16, I32, U32]
+          sign_extend: true
 
 
   - name: TGE
