@@ -59,13 +59,12 @@ pub fn handle_response_from_worker(
             log!("recieved compiler error from worker");
             let mut mipsy_stdout = vec![];
 
-            file.set(Some(response_struct.file.clone()));
 
             match response_struct.error {
                 MipsyError::Compiler(ref compiler_err) => {
                     mipsy_stdout.push(format!(
                         "{}\n{}\n{}",
-                        generate_highlighted_line(response_struct.file, compiler_err),
+                        generate_highlighted_line(response_struct.file.clone(), compiler_err),
                         compiler_err.error().message(),
                         compiler_err.error().tips().join("\n")
                     ));
@@ -85,6 +84,8 @@ pub fn handle_response_from_worker(
                 mipsy_stdout,
             };
 
+            file.set(Some(response_struct.file));
+            show_tab.set(DisplayedTab::Source);
             state.set(State::CompilerError(state_struct));
         }
 

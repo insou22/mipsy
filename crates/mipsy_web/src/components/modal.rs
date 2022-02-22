@@ -43,7 +43,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </p>
                         <br />
                         <p class="mt-2">
-                            {"mipsy_web is pre-alpha software, and will eventually be a full replacement for QtSpim"}
+                            {"mipsy_web is alpha software, and will eventually be a full replacement for QtSpim"}
                         </p>
                         <br />
                         <p class="mb-2">
@@ -52,13 +52,17 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 {"Github Issues page"}
                             </a>
                         </p>
+
+                        <p>
+                            {"(if you're here because you're curious: pro-tip, control-s will save and recompile your file)"}
+                        </p>
+
                         <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
                         <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
                         <ul class="ml-4 list-disc">
                             <li>{"Runtime Errors"}</li>
                             <li>{"Separate text and data segments"}</li>
                             <li>{"Custom Settings + Theming"}</li>
-                            <li>{"Highlighted Register Changes between steps"}</li>
                         </ul>
 
                         <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>

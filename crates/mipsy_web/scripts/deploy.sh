@@ -17,8 +17,9 @@ fi
 wasm-pack build --target no-modules --out-name wasm --out-dir ./dist --no-typescript
 
 cd dist
-ln -sf ../index.html
+ln -sf ../_static/index.html
 cd ..
+cp -r _static/package/ dist
 
 NODE_ENV=production tailwindcss -c ./tailwind.config.js -o dist/tailwind.css --minify
 

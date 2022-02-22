@@ -2,16 +2,12 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Mipsy</title>
+    <title>mipsy</title>
     <link href="tailwind.css" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- split.js for the drag and drop areas -->
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
-    <link rel="stylesheet" data-name="vs/editor/editor.main" href="package/min/vs/editor/editor.main.css">
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/languages/mipsasm.min.js"></script>
-    <script>hljs.highlightAll();</script>
     <script>
         function split_setup() {
           console.log("setting up splits...");
@@ -22,17 +18,15 @@
             direction: "vertical",
           });
         };
-        
-        function highlight() {
-          hljs.highlightAll();
-        }
 
         function alarm() {
             console.error("AHHHHHHHHHHH");
         };
     </script>
-    <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
 
+    <!-- Monaco for the code editor -->
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="package/min/vs/editor/editor.main.css">
+    <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
     <script src="package/min/vs/loader.js"></script>
     <script src="package/min/vs/editor/editor.main.nls.js"></script>
     <script src="package/min/vs/editor/editor.main.js"></script>
@@ -51,9 +45,34 @@
         });
 
         window.editor = editor;
-        console.log("editor initialized");
       }
-      
+    
+      function highlight_section(startLineNumber, startColumn, endColumn) {
+        if (window.editor === undefined || window.editor === null) {
+          return;
+        };
+
+        let range = new monaco.Range(startLineNumber, startColumn, startLineNumber, endColumn);
+        window.editor.deltaDecorations(
+          [],
+          [
+            {
+              range,
+              options: {
+                inlineClassName: "highlight-line-err",
+              },
+            },
+            {
+              range,
+              options: {
+                linesDecorationsClassName: "highlight-line-gutter",
+                isWholeLine: true,
+              },
+            }
+          ]
+        );
+      }
+
       function set_editor_value(value="") {
         window.editor.setValue(value);
       }
@@ -80,6 +99,20 @@
     <script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>
 
     <style>
+      .highlight-line-err {
+        color: red !important;
+        display: inline-block;
+        position:relative;
+        font-weight: bold;
+        text-decoration: underline;
+      }
+
+      .highlight-line-gutter{
+        	background: red;
+          width: 5px !important;
+          margin-left: 3px;
+      }
+
       #monaco_editor {
         height: 95%;
       }

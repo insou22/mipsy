@@ -29,6 +29,7 @@ struct Icon {
     callback: Option<yew::Callback<yew::MouseEvent>>,
     title: String,
     html: Html,
+    disable_override: bool,
 }
 
 fn icons(props: &NavBarProps) -> Vec<Icon> {
@@ -70,6 +71,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     };
                 })
             }),
+            disable_override: false,
         },
         Icon {
             label: String::from("Reset"),
@@ -92,6 +94,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     }
                 })
             }),
+            disable_override: false,
         },
         Icon {
             label: String::from("Kill"),
@@ -113,6 +116,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     }
                 })
             }),
+            disable_override: false,
         },
         Icon {
             label: String::from("Step Back"),
@@ -145,6 +149,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     };
                 })
             }),
+            disable_override: false,
         },
         Icon {
             label: String::from("Step Next"),
@@ -177,6 +182,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     };
                 })
             }),
+            disable_override: false,
         },
         Icon {
             label: String::from("Download"),
@@ -192,11 +198,10 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 Callback::from(move |_| {
                     trace!("Download button clicked");
-                    if let State::Compiled(curr) = &*state {
-                        crate::trigger_download_file(filename.as_deref().unwrap_or(""), file.as_deref().unwrap_or(""));
-                    }
+                    crate::trigger_download_file(filename.as_deref().unwrap_or("untitled.s"), file.as_deref().unwrap_or(""));
                 })
             }),
+            disable_override: true,
         },
     ];
 
@@ -214,7 +219,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
     html! {
         <nav class="flex items-center justify-between flex-wrap bg-th-primary p-4">
           <div class="flex items-center flex-shrink-0 text-black mr-6">
-            <span class="font-semibold text-xl tracking-tight">{"Mipsy"}</span>
+            <span class="font-semibold text-xl tracking-tight">{"mipsy web"}</span>
           </div>
           <div class="w-full block flex-grow flex items-center w-auto">
             <div class="flex-grow flex flex-row">
@@ -243,7 +248,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
 
                         // if we are waiting on a syscall value, or if there is no file
                         // then we hsouldn't be able to step
-                        let is_disabled = props.waiting_syscall || !props.file_loaded || is_run_step_disabled;
+                        let is_disabled = !item.disable_override && (props.waiting_syscall || !props.file_loaded || is_run_step_disabled);
 
                         let onclick = if item.callback.is_some() {
                             item.callback.clone().unwrap()
@@ -279,6 +284,15 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                     })
                 }
             </div>
+            <a
+                href="https://cgi.cse.unsw.edu.au/~cs1521/22T1/resources/mips-guide.html"
+                target="_blank"
+                class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
+                       text-sm px-2 py-2 border rounded text-black border-black \
+                       hover:border-transparent hover:text-teal-500 hover:bg-white"
+            >
+                {"MIPS Docs"}
+            </a>
             <button
                 onclick={{
                     let display_modal = props.display_modal.clone();
@@ -290,7 +304,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                        text-sm px-2 py-2 border rounded text-black border-black \
                        hover:border-transparent hover:text-teal-500 hover:bg-white"
             >
-                {"About Mipsy Web"}
+                {"About"}
             </button>
           </div>
         </nav>

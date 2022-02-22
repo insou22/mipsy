@@ -12,8 +12,6 @@ use pages::main::app::App as Application;
 extern "C" {
     fn split_setup();
 
-    pub fn highlight();
-    
     pub fn init_editor();
 
     pub fn set_editor_value(value: &str);
@@ -22,6 +20,7 @@ extern "C" {
 
     pub fn trigger_download_file(filename: &str, content: &str);
 
+    pub fn highlight_section(startLineNumber: u32, startColumn: u32,  endColumn: u32); 
 }
 
 #[wasm_bindgen(start)]

@@ -9,10 +9,10 @@ wasm-pack build --target no-modules --out-name wasm --out-dir ./static --no-type
 cp _static/index.html static/
 cp -r _static/package static/
 
+
 if [ ! -f "dist/tailwind.css" -a ! -f "static/tailwind.css" ];
 then
 	tailwindcss -o ./static/tailwind.css
-    cp dist/tailwind.css static/tailwind.css
 else
 	cp dist/tailwind.css static/tailwind.css
 fi

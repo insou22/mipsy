@@ -19,7 +19,8 @@ use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
-use web_sys::{Element,HtmlInputElement};
+use mipsy_lib::MipsyError;
+use web_sys::{Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -46,16 +47,18 @@ pub fn render_app() -> Html {
     let input_ref: UseStateHandle<NodeRef> = use_state_eq(|| NodeRef::default());
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
-    let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Decompiled);
+    let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| true);
+
     {
         let file = file.clone();
+        let file2 = file.clone();
         use_effect_with_deps(
             move |_| {
                 //do stuff here for first render/mounted
                 unsafe {
-                    crate::highlight();
+                    log!("Running initialise editor");
                     let document = web_sys::window().unwrap().document().unwrap();
                     let element: Option<Element> = document.get_element_by_id("monaco_editor");
                     match element {
@@ -63,7 +66,6 @@ pub fn render_app() -> Html {
                             if e.child_element_count() == 0 {
                                 crate::init_editor();
                             }
-
                             if let Some(file) = &*file {
                                 crate::set_editor_value(file.as_str())
                             } else {
@@ -77,9 +79,27 @@ pub fn render_app() -> Html {
                 };
                 move || {} //do stuff when your componet is unmounted
             },
-            (filename.clone(), show_tab.clone(), state.clone()), // empty toople dependecy is what enables this
+            (filename.clone(), file2.clone(), show_tab.clone()), // empty toople dependecy is what enables this
         );
     }
+
+    {
+        let state_copy = state.clone();
+        use_effect_with_deps(
+            move |_| {
+                if let State::CompilerError(comp_err_state) = &*state_copy {
+                    if let MipsyError::Compiler(err) = &comp_err_state.error {
+                        info!("calling highlight_section");
+                        crate::highlight_section(err.line(), err.col(), err.col_end());
+                    }
+                };
+                move || {}
+            },
+            (state.clone(), show_tab.clone()),
+        );
+    }
+
+
     // if we have not yet setup the worker bridge, do so now
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
@@ -122,7 +142,6 @@ pub fn render_app() -> Html {
 
                     // prep items for closure below
                     let worker = worker.clone();
-                    let show_tab = show_tab.clone();
 
                     let mut tasks_new = vec![];
                     tasks_new.push(read_as_text(&gloo_file, move |res| match res {
@@ -156,12 +175,13 @@ pub fn render_app() -> Html {
                 log!("ctrl+s");
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
-                if let Some(_file_contents) = &*file {
-                    let clone = updated_content.clone();
-                    file.set(Some(updated_content));
-                    worker.borrow().as_ref().unwrap().send(WorkerRequest::CompileCode(clone));
-                }
-
+                let clone = updated_content.clone();
+                file.set(Some(updated_content));
+                worker
+                    .borrow()
+                    .as_ref()
+                    .unwrap()
+                    .send(WorkerRequest::CompileCode(clone));
             };
         })
     };
@@ -183,8 +203,7 @@ pub fn render_app() -> Html {
 
     /* what is the html content of the body? */
     let text_html_content = match &*state {
-        State::NoFile => "no file loaded".into(),
-        State::Compiled(_) | &State::CompilerError(_) => render_running(
+        State::Compiled(_) | &State::CompilerError(_) | &State::NoFile=> render_running(
             file.clone(),
             state.clone(),
             filename.clone(),
@@ -360,10 +379,11 @@ fn render_running(
     show_tab: UseStateHandle<DisplayedTab>,
 ) -> Html {
     let display_filename = if *is_saved {
-        format!("{}", &*filename.as_deref().unwrap_or(""))
+        format!("{}", &*filename.as_deref().unwrap_or("Untitled"))
     } else {
-        format!("{}*", &*filename.as_deref().unwrap_or(""))
+        format!("{}*", &*filename.as_deref().unwrap_or("Untitled"))
     };
+
     html! {
         <>
             <h3>
@@ -377,7 +397,7 @@ fn render_running(
                         match *show_tab {
                             DisplayedTab::Source => {
                                 html!{
-                                    <SourceCode save_keydown={save_keydown.clone()} file={(*file).clone()} />
+                                    <SourceCode save_keydown={save_keydown.clone()} file={(*file).clone()}/>
                                 }
                             },
                             DisplayedTab::Decompiled => {
@@ -395,7 +415,12 @@ fn render_running(
                                             </pre>
                                         }
                                     },
-                                    _ => html! {
+                                    State::NoFile => html! {
+                                        <pre class="text-xs whitespace-pre-wrap">
+                                            {"No file loaded or saved"}
+                                        </pre>
+                                    },
+                                    State::CompilerError(_) => html! {
                                         <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
                                     },
                                 }
@@ -432,7 +457,6 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
             }
         }
     } else {
-        info!("here");
         match &*state {
             State::Compiled(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
             State::NoFile => html! {""},
