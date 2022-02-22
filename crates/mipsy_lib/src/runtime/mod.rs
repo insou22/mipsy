@@ -562,15 +562,15 @@ impl Runtime {
         
                     // DIVU $Rs, $Rt
                     0x1B => {
-                        let rs_val = state.read_register(rs)?;
-                        let rt_val = state.read_register(rt)?;
+                        let rs_val = state.read_register(rs)? as u32;
+                        let rt_val = state.read_register(rt)? as u32;
         
                         if rt_val == 0 {
                             return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
                         }
         
-                        state.write_lo(rs_val / rt_val);
-                        state.write_hi(rs_val % rt_val);
+                        state.write_lo((rs_val / rt_val) as i32);
+                        state.write_hi((rs_val % rt_val) as i32);
                     },
         
                     // Unused
