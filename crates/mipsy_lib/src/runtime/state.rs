@@ -430,6 +430,10 @@ impl State {
         Self::page_base_addr(Self::get_page_index(address))
     }
 
+    pub fn pages(&self) -> &HashMap<u32, Rc<[Safe<u8>; PAGE_SIZE]>> {
+        &self.pages
+    }
+
     pub fn get_page(&self, address: u32) -> Option<&[Safe<u8>; PAGE_SIZE]> {
         let base_addr = Self::addr_to_page_base_addr(address);
 
