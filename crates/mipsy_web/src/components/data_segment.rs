@@ -28,6 +28,14 @@ fn should_display_segment(segment: Segment) -> bool {
     }
 }
 
+// NOTE to any future adventurers wanting to change the layout of this component:
+// This layout currently makes use of CSS grid crazy semantics
+// It is modelled as a grid with 40 columns
+// The first div spans the first column is the address at which we are inspecting
+// The second div spans columns 3-22 (ie, 19 columns long) are the hex values of the memory
+//    columns 7, 12, 17 are gaps between 4 byte chunks
+// The third div spans columns 24-40 (ie, 16 columns long) are the ascii values of the memory
+
 #[function_component(DataSegment)]
 pub fn data_segment(props: &DataSegmentProps) -> Html {
     let mut pages = props
@@ -43,8 +51,8 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
     let mut curr_segment = Segment::None;
 
     html! {
-        <div id="output" class="min-w-full">
-            <table style="width: 100%">
+        <div id="output" style="min-width: 650px;margin-top: 10px;">
+            <div style="width: 100%;">
                 {
                     for pages.into_iter().map(|(page_addr, page_contents)| {
                         let segment = get_segment(page_addr);
@@ -59,7 +67,10 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
                             html! {
                                 <>
                                     { render_segment_header(segment) }
-                                    { render_page(page_addr, page_contents) }
+
+                                    <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
+                                        { render_page(page_addr, page_contents) }
+                                    </div>
                                 </>
                             }
                         } else {
@@ -67,25 +78,25 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
                         }
                     })
                 }
-            </table>
+            </div>
         </div>
     }
 }
 
 fn render_segment_header(segment: Segment) -> Html {
     html! {
-        <tr style="border: 1px solid;">
+        <h4>
             {
                 match segment {
-                    Segment::None  => html! {},
-                    Segment::Text  => html! { <b>{ "Text segment" }</b> },
-                    Segment::Data  => html! { <b>{ "Data segment" }</b> },
-                    Segment::Stack => html! { <b>{ "Stack segment" }</b> },
-                    Segment::KText => html! { <b>{ "Kernel text segment" }</b> },
-                    Segment::KData => html! { <b>{ "Kernel data segment" }</b> },
+                    Segment::None  => {""} 
+                    Segment::Text  => {"Text segment"},
+                    Segment::Data  => {"Data segment"},
+                    Segment::Stack => {"Stack segment"},
+                    Segment::KText => {"Kernel text segment"},
+                    Segment::KData => {"Kernel data segment"},
                 }
             }
-        </tr>
+        </h4>
     }
 }
 
@@ -97,36 +108,46 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
         {
             for (0..ROWS).map(|nth| {
                 html! {
-                    <tr style="border: 1px solid;">
-                        <td>{ format!("0x{:08x}", page_addr as usize + nth * ROW_SIZE) }</td>
+                    <>
+                        
+                        <div style="grid-column: col-start / span 1">
+                            { format!("0x{:08x}", page_addr as usize + nth * ROW_SIZE) }
+                        </div>
+                        <div style="grid-column: col-start 3 / span 19; display: grid;  grid-template-columns: repeat(19, 1fr)">
                         {
-                            for (0..ROW_SIZE).map(|offset| {
+                            for (0..ROW_SIZE).enumerate().map(|(i, offset)| {
                                 html! {
-                                    <td>
-                                        {
-                                            match page_contents[nth * ROW_SIZE + offset] {
-                                                Safe::Valid(byte) => {
-                                                    html! { format!("{:02x}", byte) }
-                                                }
-                                                Safe::Uninitialised => {
-                                                    html! { "__" }
+                                    <>
+                                        // add an extra column to gap between 4 bytes
+                                        if i > 0 && i % 4 == 0 {
+                                            <pre>{"  "}</pre>
+                                        }
+                                        <div style="text-align: center;">
+                                            {
+                                                match page_contents[nth * ROW_SIZE + offset] {
+                                                    Safe::Valid(byte) => {
+                                                        html! { format!("{:02x}", byte) }
+                                                    }
+                                                    Safe::Uninitialised => {
+                                                        html! { "__" }
+                                                    }
                                                 }
                                             }
-                                        }
-                                    </td>
+                                        </div>
+                                    </>
                                 }
                             })
                         }
+                        </div>
 
-                        // I'm sure there is a nicer way of doing this...
-                        <td><pre>{ "      " }</pre></td>
-
+                        <div style="grid-column: col-start 25 / span 16; display: grid; grid-template-columns: repeat(16, 1fr);">
                         {
                             for (0..ROW_SIZE).map(|offset| {
                                 let value = page_contents[nth * ROW_SIZE + offset].into_option();
 
+                                    
                                 html! {
-                                    <td>
+                                    <div style="text-align: center;">
                                         {
                                             value
                                                 .map(|value| value as u32)
@@ -135,11 +156,12 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
                                                 .map(|value| html! { value })
                                                 .unwrap_or(html! { "_" })
                                         }
-                                    </td>
+                                    </div>
                                 }
                             })
                         }
-                    </tr>
+                        </div>
+                    </>
                 }
             })
         }
