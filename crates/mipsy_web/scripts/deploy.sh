@@ -34,3 +34,8 @@ if [ "$1" = "--push=cs1521" ]; then
     scp dist/* cse:~cs1521/web/mipsy/
 
 fi
+
+if [ "$1" = "--push=both" ]; then
+    scp -r dist/* cse:~cs1521/web/mipsy
+    scp -r dist/* cse:~/web/mipsy
+fi
