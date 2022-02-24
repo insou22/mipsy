@@ -1,15 +1,15 @@
+use crate::pages::main::state::RunningState;
+use mipsy_lib::compile::TEXT_TOP;
+use mipsy_lib::runtime::PAGE_SIZE;
+use mipsy_lib::Safe;
 use mipsy_lib::GLOBAL_BOT;
 use mipsy_lib::KDATA_BOT;
 use mipsy_lib::KTEXT_BOT;
 use mipsy_lib::STACK_BOT;
 use mipsy_lib::STACK_TOP;
-use mipsy_lib::Safe;
 use mipsy_lib::TEXT_BOT;
-use mipsy_lib::compile::TEXT_TOP;
-use mipsy_lib::runtime::PAGE_SIZE;
 use yew::prelude::*;
 use yew::Properties;
-use crate::pages::main::state::RunningState;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct DataSegmentProps {
@@ -19,9 +19,9 @@ pub struct DataSegmentProps {
 // TODO(shreys): Make this user-configurable
 fn should_display_segment(segment: Segment) -> bool {
     match segment {
-        Segment::None =>  false,
-        Segment::Text =>  false,
-        Segment::Data =>  true,
+        Segment::None => false,
+        Segment::Text => false,
+        Segment::Data => true,
         Segment::Stack => true,
         Segment::KText => false,
         Segment::KData => false,
@@ -30,10 +30,14 @@ fn should_display_segment(segment: Segment) -> bool {
 
 #[function_component(DataSegment)]
 pub fn data_segment(props: &DataSegmentProps) -> Html {
-    let mut pages = props.state.mips_state.memory.iter()
+    let mut pages = props
+        .state
+        .mips_state
+        .memory
+        .iter()
         .map(|(key, val)| (key.clone(), val.clone()))
         .collect::<Vec<_>>();
-    
+
     pages.sort_by_key(|(key, _)| *key);
 
     let mut curr_segment = Segment::None;
@@ -102,7 +106,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
                                         {
                                             match page_contents[nth * ROW_SIZE + offset] {
                                                 Safe::Valid(byte) => {
-                                                    html! { format!("{:02x}", byte) } 
+                                                    html! { format!("{:02x}", byte) }
                                                 }
                                                 Safe::Uninitialised => {
                                                     html! { "__" }
@@ -155,24 +159,12 @@ enum Segment {
 fn get_segment(address: u32) -> Segment {
     match address {
         // TODO(zkol): Update this when exclusive range matching is stabilised
-        _ if address < TEXT_BOT => {
-            Segment::None
-        }
-        _ if address >= TEXT_BOT && address <= TEXT_TOP => {
-            Segment::Text
-        }
-        _ if address >= GLOBAL_BOT && address < STACK_BOT => {
-            Segment::Data
-        }
-        _ if address >= STACK_BOT && address <= STACK_TOP => {
-            Segment::Stack
-        }
-        _ if address >= KTEXT_BOT && address < KDATA_BOT => {
-            Segment::KText
-        }
-        _ if address >= KDATA_BOT => {
-            Segment::KData
-        }
+        _ if address < TEXT_BOT => Segment::None,
+        _ if address >= TEXT_BOT && address <= TEXT_TOP => Segment::Text,
+        _ if address >= GLOBAL_BOT && address < STACK_BOT => Segment::Data,
+        _ if address >= STACK_BOT && address <= STACK_TOP => Segment::Stack,
+        _ if address >= KTEXT_BOT && address < KDATA_BOT => Segment::KText,
+        _ if address >= KDATA_BOT => Segment::KData,
         _ => unreachable!(),
     }
 }

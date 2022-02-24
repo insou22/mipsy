@@ -62,8 +62,8 @@ pub fn render_output_area(props: &OutputProps) -> Html {
             show_io.set(true);
         })
     };
-    
-    let switch_to_errors= {
+
+    let switch_to_errors = {
         let show_io = props.show_io.clone();
         Callback::from(move |_| {
             show_io.set(false);
