@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{MipsyError, Runtime, Safe, runtime::PAGE_SIZE};
+use mipsy_lib::{MipsyError, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ pub struct MipsState {
     pub current_instr: Option<u32>,
     // cannot be a big array due to serde not using const-generics yet
     // https://github.com/serde-rs/serde/issues/631
-    pub memory: HashMap<u32, Vec<Safe<u8>/*; PAGE_SIZE] */>>,
+    pub memory: HashMap<u32, Vec<Safe<u8> /*; PAGE_SIZE] */>>,
     pub is_stepping: bool,
 }
 
@@ -48,7 +48,8 @@ impl MipsState {
     }
 
     pub fn update_memory(&mut self, runtime: &Runtime) {
-        self.memory = runtime.timeline()
+        self.memory = runtime
+            .timeline()
             .state()
             .pages()
             .iter()

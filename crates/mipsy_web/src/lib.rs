@@ -1,11 +1,11 @@
 #![allow(unused_unsafe)]
-use yew_agent::Threaded;
 use wasm_bindgen::prelude::*;
+use yew_agent::Threaded;
 
 pub mod components;
 pub mod pages;
-pub mod worker;
 pub mod utils;
+pub mod worker;
 use pages::main::app::App as Application;
 
 #[wasm_bindgen]
@@ -20,15 +20,14 @@ extern "C" {
 
     pub fn trigger_download_file(filename: &str, content: &str);
 
-    pub fn highlight_section(startLineNumber: u32, startColumn: u32,  endColumn: u32); 
+    pub fn highlight_section(startLineNumber: u32, startColumn: u32, endColumn: u32);
 }
 
 #[wasm_bindgen(start)]
 pub fn start() {
     use js_sys::{global, Reflect};
     wasm_logger::init(wasm_logger::Config::default());
-    
-    
+
     unsafe {
         if Reflect::has(&global(), &JsValue::from_str("window")).unwrap() {
             let document = web_sys::window().unwrap().document().unwrap();
@@ -37,8 +36,7 @@ pub fn start() {
         } else {
             worker::Worker::register();
         }
-    
+
         split_setup();
-    
     }
 }

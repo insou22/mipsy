@@ -6,9 +6,9 @@ use crate::pages::main::state::DisplayedTab;
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
-        decompiled::DecompiledCode, modal::Modal, navbar::NavBar, outputarea::OutputArea,
-        pagebackground::PageBackground, registers::Registers, sourcecode::SourceCode,
-        data_segment::DataSegment,
+        data_segment::DataSegment, decompiled::DecompiledCode, modal::Modal, navbar::NavBar,
+        outputarea::OutputArea, pagebackground::PageBackground, registers::Registers,
+        sourcecode::SourceCode,
     },
     pages::main::{
         state::{MipsState, RunningState, State},
@@ -100,7 +100,6 @@ pub fn render_app() -> Html {
         );
     }
 
-
     // if we have not yet setup the worker bridge, do so now
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
@@ -129,7 +128,6 @@ pub fn render_app() -> Html {
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
         let filename = filename.clone();
-        let show_tab = show_tab.clone();
         let tasks = tasks.clone();
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
@@ -204,7 +202,7 @@ pub fn render_app() -> Html {
 
     /* what is the html content of the body? */
     let text_html_content = match &*state {
-        State::Compiled(_) | &State::CompilerError(_) | &State::NoFile=> render_running(
+        State::Compiled(_) | &State::CompilerError(_) | &State::NoFile => render_running(
             file.clone(),
             state.clone(),
             filename.clone(),

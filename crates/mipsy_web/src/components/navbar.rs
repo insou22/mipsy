@@ -49,7 +49,6 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     trace!("Run button clicked");
                     if let State::Compiled(ref curr) = *state {
                         state.set(State::Compiled(RunningState {
-
                             mips_state: MipsState {
                                 is_stepping: false,
                                 ..curr.mips_state.clone()
@@ -193,12 +192,14 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             },
             title: String::from("Download the current saved file"),
             callback: Some({
-                let state = props.state.clone();
                 let filename = props.filename.clone();
                 let file = props.file.clone();
                 Callback::from(move |_| {
                     trace!("Download button clicked");
-                    crate::trigger_download_file(filename.as_deref().unwrap_or("untitled.s"), file.as_deref().unwrap_or(""));
+                    crate::trigger_download_file(
+                        filename.as_deref().unwrap_or("untitled.s"),
+                        file.as_deref().unwrap_or(""),
+                    );
                 })
             }),
             disable_override: true,

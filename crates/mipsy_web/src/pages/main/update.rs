@@ -61,7 +61,6 @@ pub fn handle_response_from_worker(
             log!("recieved compiler error from worker");
             let mut mipsy_stdout = vec![];
 
-
             match response_struct.error {
                 MipsyError::Compiler(ref compiler_err) => {
                     mipsy_stdout.push(format!(
