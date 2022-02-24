@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{runtime::PAGE_SIZE, MipsyError, Runtime, Safe};
+use mipsy_lib::{MipsyError, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]

@@ -192,7 +192,6 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             },
             title: String::from("Download the current saved file"),
             callback: Some({
-                let state = props.state.clone();
                 let filename = props.filename.clone();
                 let file = props.file.clone();
                 Callback::from(move |_| {

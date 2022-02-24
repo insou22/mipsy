@@ -128,7 +128,6 @@ pub fn render_app() -> Html {
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
         let filename = filename.clone();
-        let show_tab = show_tab.clone();
         let tasks = tasks.clone();
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
