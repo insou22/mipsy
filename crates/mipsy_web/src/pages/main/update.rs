@@ -17,6 +17,7 @@ use super::state::CompilerErrorState;
 use gloo_console::log;
 use mipsy_lib::{MipsyError, Safe};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
@@ -44,6 +45,7 @@ pub fn handle_response_from_worker(
                     previous_registers: vec![Safe::Uninitialised; 32],
                     current_instr: None,
                     mipsy_stdout: Vec::new(),
+                    memory: HashMap::new(),
                     is_stepping: true,
                 },
                 input_needed: None,

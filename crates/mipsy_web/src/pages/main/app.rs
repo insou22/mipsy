@@ -8,6 +8,7 @@ use crate::{
     components::{
         decompiled::DecompiledCode, modal::Modal, navbar::NavBar, outputarea::OutputArea,
         pagebackground::PageBackground, registers::Registers, sourcecode::SourceCode,
+        data_segment::DataSegment,
     },
     pages::main::{
         state::{MipsState, RunningState, State},
@@ -426,7 +427,21 @@ fn render_running(
                                 }
                             },
                             DisplayedTab::Data => {
-                                html!{<p>{"DATA: Coming soon!"}</p>}
+                                match &*state {
+                                    State::Compiled(curr) => {
+                                        html! {
+                                            <DataSegment state={curr.clone()} />
+                                        }
+                                    },
+                                    State::NoFile => html! {
+                                        <pre class="text-xs whitespace-pre-wrap">
+                                            {"No file loaded or saved"}
+                                        </pre>
+                                    },
+                                    State::CompilerError(_) => html! {
+                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
+                                    },
+                                }
                             },
                         }
                     }

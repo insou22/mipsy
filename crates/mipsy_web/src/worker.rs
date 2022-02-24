@@ -331,6 +331,7 @@ impl Agent for Worker {
                                             runtime = prev_runtime;
                                             mips_state.update_registers(&runtime);
                                             mips_state.update_current_instr(&runtime);
+                                            mips_state.update_memory(&runtime);
                                             self.runtime = Some(RuntimeState::Running(runtime));
                                             mips_state.mipsy_stdout.push(format!("{:?}", err));
                                             let response =
@@ -347,6 +348,7 @@ impl Agent for Worker {
                             }
                             mips_state.update_registers(&runtime);
                             mips_state.update_current_instr(&runtime);
+                            mips_state.update_memory(&runtime);
                             self.runtime = Some(RuntimeState::Running(runtime));
                             if mips_state.is_stepping {
                                 let response = Self::Output::UpdateMipsState(mips_state);
@@ -557,6 +559,7 @@ impl Agent for Worker {
                                     runtime = prev_runtime;
                                     mips_state.update_registers(&runtime);
                                     mips_state.update_current_instr(&runtime);
+                                    mips_state.update_memory(&runtime);
                                     self.runtime = Some(RuntimeState::Running(runtime));
                                     error!("{:?}", err);
                                     mips_state.mipsy_stdout.push(format!("{:?}", err));
@@ -577,11 +580,13 @@ impl Agent for Worker {
                                 if next_instr_is_read_syscall {
                                     mips_state.update_registers(&runtime);
                                     mips_state.update_current_instr(&runtime);
+                                    mips_state.update_memory(&runtime);
                                 }
                             }
                         }
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
+                        mips_state.update_memory(&runtime);
                         self.runtime = Some(RuntimeState::Running(runtime));
 
                         let response;
@@ -624,6 +629,7 @@ impl Worker {
 
         mips_state.update_registers(&runtime);
         mips_state.update_current_instr(&runtime);
+        mips_state.update_memory(&runtime);
 
         self.runtime = Some(RuntimeState::Running(runtime));
 
