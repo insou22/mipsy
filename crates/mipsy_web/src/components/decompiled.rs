@@ -1,6 +1,5 @@
 use crate::pages::main::state::RunningState;
 use yew::{function_component, html, Properties};
-use log::info;
 
 #[derive(Properties, PartialEq)]
 pub struct DecompiledProps {
