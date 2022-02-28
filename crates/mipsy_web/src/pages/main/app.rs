@@ -485,6 +485,7 @@ pub fn process_syscall_request(
     required_type: ReadSyscalls,
     state: UseStateHandle<State>,
     input_ref: UseStateHandle<NodeRef>,
+    show_io: UseStateHandle<bool>
 ) -> () {
     if let State::Compiled(ref curr) = &*state {
         state.set(State::Compiled(RunningState {
@@ -492,6 +493,7 @@ pub fn process_syscall_request(
             input_needed: Some(required_type),
             ..curr.clone()
         }));
+        show_io.set(true);
         focus_input(input_ref);
     }
 }
