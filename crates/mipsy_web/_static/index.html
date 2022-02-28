@@ -51,12 +51,22 @@
         window.editor.onDidChangeModelContent(callback);
       }
 
-      function get_window_file_contents() {
-        return window?.lastSavedValue || "";
+      function get_localstorage_file_contents() {
+        return localStorage?.lastSavedValue || "";
       }
 
-      function set_window_file_contents(contents) {
-        window.lastSavedValue = contents;
+      function get_localstorage_filename() {
+        let val = localStorage?.lastSavedFilename || "Untitled";
+        console.log(val);
+        return val;
+      }
+
+      function set_localstorage_filename(value) {
+        localStorage.lastSavedFilename = value;
+      }
+
+      function set_localstorage_file_contents(contents) {
+        localStorage.lastSavedValue = contents;
       }
 
       function remove_highlight() {
@@ -138,6 +148,18 @@
 
       #monaco_editor {
         height: 95%;
+      }
+
+      #filename:focus, #filename:hover {
+        border: 1px solid black;
+        background: white;
+      }
+      
+      #filename {
+        border: none;
+        background: transparent;
+        margin-bottom: 10px;
+        box-shadow: none;
       }
 
       .gutter {

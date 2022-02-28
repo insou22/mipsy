@@ -56,7 +56,7 @@ pub fn handle_response_from_worker(
                 file.set(Some(response_struct.file.clone().unwrap()));
                 show_tab.set(DisplayedTab::Source);
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
-                crate::set_window_file_contents(&response_struct.file.unwrap());
+                crate::set_localstorage_file_contents(&response_struct.file.unwrap());
                 is_saved.set(true);
             }
         }

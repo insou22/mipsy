@@ -18,9 +18,11 @@ extern "C" {
 
     pub fn get_editor_value() -> String;
 
-    pub fn get_window_file_contents() -> String;
+    pub fn get_localstorage_file_contents() -> String;
+    pub fn set_localstorage_file_contents(value: &str);
 
-    pub fn set_window_file_contents(value: &str);
+    pub fn get_localstorage_filename() -> String;
+    pub fn set_localstorage_filename(value: &str);
 
     pub fn trigger_download_file(filename: &str, content: &str);
 
