@@ -25,13 +25,13 @@ NODE_ENV=production tailwindcss -c ./tailwind.config.js -o dist/tailwind.css --m
 
 if [ "$1" = "--push=shreys" ]; then
 
-    scp dist/* cse:~/web/mipsy/
+    scp -r dist/* cse:~/web/mipsy/
 
 fi
 
 if [ "$1" = "--push=cs1521" ]; then
 
-    scp dist/* cse:~cs1521/web/mipsy/
+    scp -r dist/* cse:~cs1521/web/mipsy/
 
 fi
 
