@@ -1,7 +1,7 @@
 use crate::pages::main::state::{MipsState, RunningState};
 use crate::{
     pages::main::{app::NUM_INSTR_BEFORE_RESPONSE, state::State},
-    worker::Worker,
+    worker::{Worker, WorkerRequest},
 };
 use derivative::Derivative;
 use log::{info, trace};
@@ -34,6 +34,31 @@ struct Icon {
 
 fn icons(props: &NavBarProps) -> Vec<Icon> {
     let icons = vec![
+        Icon {
+            label: String::from("Save"),
+            html: html! {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill="#494c4e" d="M17.85 3.15l-2.99-3A.508.508 0 0 0 14.5 0H1.4A1.417 1.417 0 0 0 0 1.43v15.14A1.417 1.417 0 0 0 1.4 18h15.2a1.417 1.417 0 0 0 1.4-1.43V3.5a.47.47 0 0 0-.15-.35zM2 5V3a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1zm7 11a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+                </svg>
+            },
+            title: String::from("Save the current file"),
+            callback: Some({
+                let file = props.file.clone();
+                let worker = props.worker.clone();
+                let filename = props.filename.clone();
+                Callback::from(move |_| {
+                    trace!("Save button clicked");
+                    // is_saved.set(true);
+                    let updated_content = crate::get_editor_value();
+                    let clone = updated_content.clone();
+                    crate::set_localstorage_file_contents(&updated_content);
+                    crate::set_localstorage_filename(&filename.as_deref().unwrap_or("Untitled"));
+                    file.set(Some(updated_content));
+                    worker.send(WorkerRequest::CompileCode(clone));
+                })
+            }),
+            disable_override: false,
+        },
         Icon {
             label: String::from("Run"),
             html: html! {
