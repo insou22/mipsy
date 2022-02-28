@@ -17,11 +17,12 @@ use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
+use wasm_bindgen::JsCast;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
-use web_sys::{window, Element, HtmlInputElement};
+use web_sys::{window, Element, HtmlInputElement, HtmlElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -57,6 +58,7 @@ pub fn render_app() -> Html {
         let file2 = file.clone();
         let on_content_change_closure_handle = on_content_change_closure_handle.clone();
         let is_saved = is_saved.clone();
+        let filename2 = filename.clone();
         use_effect_with_deps(
             move |_| {
                 unsafe {
@@ -71,14 +73,12 @@ pub fn render_app() -> Html {
 
                             // if window element is on the page, create, leak, and add the onchange callback
                             // only if we have not already added it
-                            let file3 = file.clone();
-                            info!("file3: {:?}", file3);
                             if window().unwrap().get("editor").is_some() {
                                 if !*on_content_change_closure_handle {
                                     let cb = Closure::wrap(Box::new(move || {
                                         let editor_contents = crate::get_editor_value();
                                         
-                                        let last_saved_contents = crate::get_window_file_contents();
+                                        let last_saved_contents = crate::get_localstorage_file_contents();
                                         
                                         info!("editor contents: {}", editor_contents);
                                         info!("last saved contents: {}", last_saved_contents);
@@ -99,7 +99,14 @@ pub fn render_app() -> Html {
                             if let Some(file) = &*file {
                                 crate::set_editor_value(file.as_str())
                             } else {
-                                crate::set_editor_value("");
+                                let local_editor_contents = crate::get_localstorage_file_contents();
+                                if local_editor_contents.is_empty() {
+                                    crate::set_editor_value("")
+                                } else {
+                                    crate::set_editor_value(local_editor_contents.as_str());
+                                    filename2.set(Some(crate::get_localstorage_filename()));
+                                }
+
                             }
                         }
                         None => {
@@ -175,8 +182,8 @@ pub fn render_app() -> Html {
                     let gloo_file = File::from(web_sys::File::from(file_blob));
 
                     let file_name = gloo_file.name();
-                    filename.set(Some(file_name));
-
+                    filename.set(Some(file_name.clone()));
+                    crate::set_localstorage_filename(&file_name);
                     // prep items for closure below
                     let worker = worker.clone();
 
@@ -203,6 +210,7 @@ pub fn render_app() -> Html {
         let file = file.clone();
         let worker = worker.clone();
         let is_saved = is_saved.clone();
+        let filename = filename.clone();
         Callback::from(move |e: KeyboardEvent| {
             if e.key() == "s" && e.ctrl_key() {
                 e.prevent_default();
@@ -210,7 +218,8 @@ pub fn render_app() -> Html {
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
                 let clone = updated_content.clone();
-                crate::set_window_file_contents(&updated_content);
+                crate::set_localstorage_file_contents(&updated_content);
+                crate::set_localstorage_filename(&filename.as_deref().unwrap_or("Untitled"));
                 file.set(Some(updated_content));
                 worker
                     .borrow()
@@ -422,20 +431,28 @@ fn render_running(
         )
     };
 
+
+    let callback_filename = filename.clone();
+    #[allow(unused_must_use)]
+    let filename_keydown = Callback::from(move |event: InputEvent| {
+        let element: HtmlInputElement = event.target_unchecked_into();
+        let value = element.value();
+        crate::set_localstorage_filename(&value);
+        callback_filename.set(Some(value));
+    });
+    
+
     html! {
         <>
             <h3>
-                <strong class="text-lg">
-                    {
-                        display_filename
-                    }
-                </strong>
+                <input value={display_filename} oninput={filename_keydown} id="filename" class="text-lg" />
             </h3>
                     {
                         match *show_tab {
                             DisplayedTab::Source => {
                                 html!{
                                     <SourceCode save_keydown={save_keydown.clone()} file={(*file).clone()}/>
+
                                 }
                             },
                             DisplayedTab::Decompiled => {
