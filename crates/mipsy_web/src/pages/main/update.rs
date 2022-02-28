@@ -138,19 +138,19 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::NeedInt(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadInt, state, input_ref)
+            process_syscall_request(mips_state, ReadSyscalls::ReadInt, state, input_ref, show_io)
         }
         WorkerResponse::NeedFloat(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadFloat, state, input_ref)
+            process_syscall_request(mips_state, ReadSyscalls::ReadFloat, state, input_ref, show_io)
         }
         WorkerResponse::NeedDouble(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadDouble, state, input_ref)
+            process_syscall_request(mips_state, ReadSyscalls::ReadDouble, state, input_ref, show_io)
         }
         WorkerResponse::NeedChar(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadChar, state, input_ref)
+            process_syscall_request(mips_state, ReadSyscalls::ReadChar, state, input_ref, show_io)
         }
         WorkerResponse::NeedString(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadString, state, input_ref)
+            process_syscall_request(mips_state, ReadSyscalls::ReadString, state, input_ref, show_io)
         }
     };
 }
