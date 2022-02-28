@@ -59,7 +59,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     worker.send(WorkerRequest::CompileCode(clone));
                 })
             }),
-            disable_override: false,
+            disable_override: true,
         },
         Icon {
             label: String::from("Run"),
