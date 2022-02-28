@@ -340,6 +340,7 @@ pub fn render_app() -> Html {
                     worker={worker.borrow().as_ref().unwrap().clone()}
                     filename={filename.clone()}
                     file={file.clone()}
+                    is_saved={is_saved.clone()}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">

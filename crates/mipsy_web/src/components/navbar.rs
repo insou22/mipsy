@@ -18,6 +18,7 @@ pub struct NavBarProps {
     pub file_loaded: bool,
     pub waiting_syscall: bool,
     pub state: UseStateHandle<State>,
+    pub is_saved: UseStateHandle<bool>,
     #[derivative(PartialEq = "ignore")]
     pub worker: UseBridgeHandle<Worker>,
     pub filename: UseStateHandle<Option<String>>,
@@ -46,9 +47,10 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 let worker = props.worker.clone();
                 let filename = props.filename.clone();
+                let is_saved = props.is_saved.clone();
                 Callback::from(move |_| {
                     trace!("Save button clicked");
-                    // is_saved.set(true);
+                    is_saved.set(true);
                     let updated_content = crate::get_editor_value();
                     let clone = updated_content.clone();
                     crate::set_localstorage_file_contents(&updated_content);
