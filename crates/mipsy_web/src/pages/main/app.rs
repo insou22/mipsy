@@ -212,7 +212,7 @@ pub fn render_app() -> Html {
         let is_saved = is_saved.clone();
         let filename = filename.clone();
         Callback::from(move |e: KeyboardEvent| {
-            if e.key() == "s" && e.ctrl_key() {
+            if e.key() == "s" && (e.ctrl_key() || e.meta_key()) {
                 e.prevent_default();
                 log!("ctrl+s save pressed");
                 is_saved.set(true);
