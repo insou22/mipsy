@@ -1,7 +1,7 @@
 #![allow(unused_unsafe)]
 use wasm_bindgen::prelude::*;
 use yew_agent::Threaded;
-
+use wasm_bindgen::closure::Closure;
 pub mod components;
 pub mod pages;
 pub mod utils;
@@ -18,9 +18,17 @@ extern "C" {
 
     pub fn get_editor_value() -> String;
 
+    pub fn get_window_file_contents() -> String;
+
+    pub fn set_window_file_contents(value: &str);
+
     pub fn trigger_download_file(filename: &str, content: &str);
 
     pub fn highlight_section(startLineNumber: u32, startColumn: u32, endColumn: u32);
+
+    pub fn remove_highlight();
+
+    pub fn set_model_change_listener(callback: &Closure<dyn Fn()>);
 }
 
 #[wasm_bindgen(start)]

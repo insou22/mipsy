@@ -1,7 +1,3 @@
-use std::cell::RefCell;
-use std::ops::Deref;
-use std::rc::Rc;
-
 use crate::pages::main::state::DisplayedTab;
 use crate::worker::ReadSyscallInputs;
 use crate::{
@@ -21,7 +17,11 @@ use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
-use web_sys::{Element, HtmlInputElement};
+use std::cell::RefCell;
+use std::ops::Deref;
+use std::rc::Rc;
+use wasm_bindgen::closure::Closure;
+use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -42,7 +42,7 @@ pub fn render_app() -> Html {
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
 
     let worker = Rc::new(RefCell::new(None));
-
+    let on_content_change_closure_handle: UseStateHandle<bool> = use_state_eq(|| false);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
     let input_ref: UseStateHandle<NodeRef> = use_state_eq(|| NodeRef::default());
@@ -55,18 +55,41 @@ pub fn render_app() -> Html {
     {
         let file = file.clone();
         let file2 = file.clone();
+        let on_content_change_closure_handle = on_content_change_closure_handle.clone();
+        let is_saved = is_saved.clone();
         use_effect_with_deps(
             move |_| {
-                //do stuff here for first render/mounted
                 unsafe {
-                    log!("Running initialise editor");
                     let document = web_sys::window().unwrap().document().unwrap();
                     let element: Option<Element> = document.get_element_by_id("monaco_editor");
                     match element {
                         Some(e) => {
+                            // if the editor does not exist, create it
                             if e.child_element_count() == 0 {
                                 crate::init_editor();
                             }
+
+                            // if window element is on the page, create, leak, and add the onchange callback
+                            // only if we have not already added it
+                            let file3 = file.clone();
+                            info!("file3: {:?}", file3);
+                            if window().unwrap().get("editor").is_some() {
+                                if !*on_content_change_closure_handle {
+                                    let cb = Closure::wrap(Box::new(move || {
+                                        let editor_contents = crate::get_editor_value();
+                                        let last_saved_contents = crate::get_window_file_contents();
+                                        if last_saved_contents != editor_contents {
+                                            is_saved.set(false);
+                                        }
+                                    })
+                                        as Box<dyn Fn()>);
+
+                                    crate::set_model_change_listener(&cb);
+                                    cb.forget();
+                                    on_content_change_closure_handle.set(true);
+                                };
+                            }
+
                             if let Some(file) = &*file {
                                 crate::set_editor_value(file.as_str())
                             } else {
@@ -80,20 +103,27 @@ pub fn render_app() -> Html {
                 };
                 move || {} //do stuff when your componet is unmounted
             },
-            (filename.clone(), file2.clone(), show_tab.clone()), // empty toople dependecy is what enables this
+            (filename.clone(), file2.clone(), show_tab.clone()), // run use_effect when these dependencies change
         );
     }
 
+    // when the state or show_tab changes
+    // update the highlights
     {
         let state_copy = state.clone();
         use_effect_with_deps(
             move |_| {
                 if let State::CompilerError(comp_err_state) = &*state_copy {
                     if let MipsyError::Compiler(err) = &comp_err_state.error {
-                        info!("calling highlight_section");
+                        info!("adding higlight decorations");
                         crate::highlight_section(err.line(), err.col(), err.col_end());
                     }
                 };
+
+                if let State::Compiled(_) = &*state_copy {
+                    info!("removing highlight decorations");
+                    crate::remove_highlight();
+                }
                 move || {}
             },
             (state.clone(), show_tab.clone()),
@@ -166,15 +196,13 @@ pub fn render_app() -> Html {
         let worker = worker.clone();
         let is_saved = is_saved.clone();
         Callback::from(move |e: KeyboardEvent| {
-            if !e.ctrl_key() {
-                is_saved.set(false);
-            }
             if e.key() == "s" && e.ctrl_key() {
                 e.prevent_default();
-                log!("ctrl+s");
+                log!("ctrl+s save pressed");
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
                 let clone = updated_content.clone();
+                crate::set_window_file_contents(&updated_content);
                 file.set(Some(updated_content));
                 worker
                     .borrow()
@@ -380,7 +408,10 @@ fn render_running(
     let display_filename = if *is_saved {
         format!("{}", &*filename.as_deref().unwrap_or("Untitled"))
     } else {
-        format!("{}*", &*filename.as_deref().unwrap_or("Untitled"))
+        format!(
+            "{} - [unsaved]",
+            &*filename.as_deref().unwrap_or("Untitled")
+        )
     };
 
     html! {
