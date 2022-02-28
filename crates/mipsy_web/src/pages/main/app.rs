@@ -77,9 +77,15 @@ pub fn render_app() -> Html {
                                 if !*on_content_change_closure_handle {
                                     let cb = Closure::wrap(Box::new(move || {
                                         let editor_contents = crate::get_editor_value();
+                                        
                                         let last_saved_contents = crate::get_window_file_contents();
+                                        
+                                        info!("editor contents: {}", editor_contents);
+                                        info!("last saved contents: {}", last_saved_contents);
                                         if last_saved_contents != editor_contents {
                                             is_saved.set(false);
+                                        } else {
+                                            is_saved.set(true);
                                         }
                                     })
                                         as Box<dyn Fn()>);
@@ -139,6 +145,7 @@ pub fn render_app() -> Html {
             let file = file.clone();
             let input_ref = input_ref.clone();
             let worker = worker.clone();
+            let is_saved = is_saved.clone();
 
             Some(use_bridge(move |response| {
                 let state = state.clone();
@@ -147,8 +154,9 @@ pub fn render_app() -> Html {
                 let file = file.clone();
                 let input_ref = input_ref.clone();
                 let worker = worker.clone();
+                let is_saved = is_saved.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, response, worker, input_ref,
+                    state, show_tab, show_io, file, response, worker, input_ref, is_saved
                 )
             }))
         };

@@ -32,6 +32,7 @@ pub fn handle_response_from_worker(
     response: WorkerResponse,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
+    is_saved: UseStateHandle<bool>,
 ) {
     match response {
         WorkerResponse::DecompiledCode(response_struct) => {
@@ -56,6 +57,7 @@ pub fn handle_response_from_worker(
                 show_tab.set(DisplayedTab::Source);
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
                 crate::set_window_file_contents(&response_struct.file.unwrap());
+                is_saved.set(true);
             }
         }
 
