@@ -47,13 +47,36 @@
         window.editor = editor;
       }
     
+      function set_model_change_listener(callback) {
+        window.editor.onDidChangeModelContent(callback);
+      }
+
+      function get_window_file_contents() {
+        return window?.lastSavedValue || "";
+      }
+
+      function set_window_file_contents(contents) {
+        window.lastSavedValue = contents;
+      }
+
+      function remove_highlight() {
+        if (!window.decorations) {
+          return;
+        }
+        if (window.editor !== undefined || window.editor !== null) {
+          console.log("removing highlight");
+          window.decorations = window.editor.deltaDecorations(window.decorations, []);
+        }
+      }
+
       function highlight_section(startLineNumber, startColumn, endColumn) {
         if (window.editor === undefined || window.editor === null) {
           return;
         };
 
         let range = new monaco.Range(startLineNumber, startColumn, startLineNumber, endColumn);
-        window.editor.deltaDecorations(
+        console.log("adding highlight");
+        window.decorations = window.editor.deltaDecorations(
           [],
           [
             {

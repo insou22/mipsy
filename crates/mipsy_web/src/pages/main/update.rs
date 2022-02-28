@@ -32,6 +32,7 @@ pub fn handle_response_from_worker(
     response: WorkerResponse,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
+    is_saved: UseStateHandle<bool>,
 ) {
     match response {
         WorkerResponse::DecompiledCode(response_struct) => {
@@ -52,8 +53,11 @@ pub fn handle_response_from_worker(
                 should_kill: false,
             }));
             if response_struct.file.is_some() {
-                file.set(Some(response_struct.file.unwrap()));
+                file.set(Some(response_struct.file.clone().unwrap()));
                 show_tab.set(DisplayedTab::Source);
+                crate::set_editor_value(&response_struct.file.clone().unwrap());
+                crate::set_window_file_contents(&response_struct.file.unwrap());
+                is_saved.set(true);
             }
         }
 
@@ -85,7 +89,7 @@ pub fn handle_response_from_worker(
                 mipsy_stdout,
             };
 
-            file.set(Some(response_struct.file));
+            file.set(Some(response_struct.file.clone()));
             show_tab.set(DisplayedTab::Source);
             state.set(State::CompilerError(state_struct));
         }
