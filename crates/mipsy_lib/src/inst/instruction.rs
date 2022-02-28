@@ -440,7 +440,7 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         }
-                        x => unreachable!(format!("{:?}", x)),
+                        x => unreachable!("{}", format!("{:?}", x)),
                     },
                     ArgumentType::F32     => unimplemented!(),
                     ArgumentType::F64     => unimplemented!(),
