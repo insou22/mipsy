@@ -52,7 +52,10 @@ pub fn render_app() -> Html {
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
-    
+   
+    if let State::NoFile = *state {
+        is_saved.set(false);
+    }
     {
         let file = file.clone();
         let file2 = file.clone();
