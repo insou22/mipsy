@@ -17,12 +17,12 @@ use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
-use wasm_bindgen::JsCast;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
-use web_sys::{window, Element, HtmlInputElement, HtmlElement};
+use wasm_bindgen::JsCast;
+use web_sys::{window, Element, HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -51,8 +51,8 @@ pub fn render_app() -> Html {
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
-    let is_saved: UseStateHandle<bool> = use_state_eq(|| true);
-
+    let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
+    
     {
         let file = file.clone();
         let file2 = file.clone();
@@ -77,12 +77,12 @@ pub fn render_app() -> Html {
                                 if !*on_content_change_closure_handle {
                                     let cb = Closure::wrap(Box::new(move || {
                                         let editor_contents = crate::get_editor_value();
-                                        
-                                        let last_saved_contents = crate::get_localstorage_file_contents();
-                                        
-                                        info!("editor contents: {}", editor_contents);
-                                        info!("last saved contents: {}", last_saved_contents);
+
+                                        let last_saved_contents =
+                                            crate::get_localstorage_file_contents();
+
                                         if last_saved_contents != editor_contents {
+                                            info!("File has changed");
                                             is_saved.set(false);
                                         } else {
                                             is_saved.set(true);
@@ -106,7 +106,6 @@ pub fn render_app() -> Html {
                                     crate::set_editor_value(local_editor_contents.as_str());
                                     filename2.set(Some(crate::get_localstorage_filename()));
                                 }
-
                             }
                         }
                         None => {
@@ -124,12 +123,14 @@ pub fn render_app() -> Html {
     // update the highlights
     {
         let state_copy = state.clone();
+        let is_saved = is_saved.clone();
         use_effect_with_deps(
             move |_| {
                 if let State::CompilerError(comp_err_state) = &*state_copy {
                     if let MipsyError::Compiler(err) = &comp_err_state.error {
                         info!("adding higlight decorations");
                         crate::highlight_section(err.line(), err.col(), err.col_end());
+                        is_saved.set(true);
                     }
                 };
 
@@ -163,7 +164,7 @@ pub fn render_app() -> Html {
                 let worker = worker.clone();
                 let is_saved = is_saved.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, response, worker, input_ref, is_saved
+                    state, show_tab, show_io, file, response, worker, input_ref, is_saved,
                 )
             }))
         };
@@ -432,7 +433,6 @@ fn render_running(
         )
     };
 
-
     let callback_filename = filename.clone();
     #[allow(unused_must_use)]
     let filename_keydown = Callback::from(move |event: InputEvent| {
@@ -441,7 +441,6 @@ fn render_running(
         crate::set_localstorage_filename(&value);
         callback_filename.set(Some(value));
     });
-    
 
     html! {
         <>
@@ -542,7 +541,7 @@ pub fn process_syscall_request(
     required_type: ReadSyscalls,
     state: UseStateHandle<State>,
     input_ref: UseStateHandle<NodeRef>,
-    show_io: UseStateHandle<bool>
+    show_io: UseStateHandle<bool>,
 ) -> () {
     if let State::Compiled(ref curr) = &*state {
         state.set(State::Compiled(RunningState {
