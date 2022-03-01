@@ -343,7 +343,7 @@ pub fn render_app() -> Html {
                     is_saved={is_saved.clone()}
                 />
 
-                <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 122px)">
+                <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 107px)">
                     <div id="file_data">
                         <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
                             <button class={source_tab_classes} onclick={{
