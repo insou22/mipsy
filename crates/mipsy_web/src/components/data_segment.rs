@@ -60,22 +60,29 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
                         if !should_display_segment(segment) {
                             return html! {};
                         }
+                        html! {
+                            <>
+                                // if we need a header, render it
+                                {
+                                    if curr_segment != segment {
+                                        curr_segment = segment;
+                                        html! {
+                                            <>
+                                                { render_segment_header(segment) }
+                                            </>
+                                        }
+                                    } else {
+                                        html!{}
+                                    }
+                                }
 
-                        if curr_segment != segment {
-                            curr_segment = segment;
-
-                            html! {
-                                <>
-                                    { render_segment_header(segment) }
-
-                                    <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
-                                        { render_page(page_addr, page_contents) }
-                                    </div>
-                                </>
-                            }
-                        } else {
-                            render_page(page_addr, page_contents)
+                                // render the data
+                                <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
+                                    { render_page(page_addr, page_contents) }
+                                </div>
+                            </>
                         }
+                        
                     })
                 }
             </div>
