@@ -112,7 +112,7 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 .collect()
         }
         MpDirective::Word(words) => {
-            let alignment = align(binary, segment, 2);
+            let alignment = align(binary, segment, 4);
 
             let words = words.into_iter()
                 .map(|(word, n)| Ok((
