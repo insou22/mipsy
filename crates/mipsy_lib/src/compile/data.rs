@@ -254,13 +254,13 @@ pub fn populate_labels_and_data(binary: &mut Binary, config: &MipsyConfig, iset:
                     match arg.0 {
                         MpArgument::Number(MpNumber::Immediate(MpImmediate::LabelReference(ref label))) => {
                             if let Some(&value) = binary.constants.get(label) {
-                                if u16::MIN <= value as _ && u16::MAX >= value as _ {
+                                if u16::MIN as i64 <= value && u16::MAX as i64 >= value {
                                     arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(value as _)));
-                                } else if i16::MIN <= value as _ && i16::MAX >= value as _ {
+                                } else if i16::MIN as i64 <= value && i16::MAX as i64 >= value {
                                     arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(value as _)));
-                                } else if u32::MIN <= value as _ && u32::MAX >= value as _ {
+                                } else if u32::MIN as i64 <= value && u32::MAX as i64 >= value {
                                     arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U32(value as _)));
-                                } else if i32::MIN <= value as _ && i32::MAX >= value as _ {
+                                } else if i32::MIN as i64 <= value && i32::MAX as i64 >= value {
                                     arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I32(value as _)));
                                 } else {
                                     todo!();
