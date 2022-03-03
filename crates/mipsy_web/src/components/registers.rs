@@ -1,7 +1,7 @@
 use crate::pages::main::state::State;
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
-
+use log::info;
 #[derive(Properties, PartialEq)]
 pub struct RegisterProps {
     pub state: UseStateHandle<State>,
@@ -9,12 +9,18 @@ pub struct RegisterProps {
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
-    let mut registers = vec![Safe::Uninitialised; 32];
-    let mut previous_registers = vec![Safe::Uninitialised; 32];
-    if let State::Compiled(state) = &*props.state {
-        registers = state.mips_state.register_values.clone();
-        previous_registers = state.mips_state.previous_registers.clone();
+    let state = match &*props.state {
+        State::Compiled(state) => Some(state),
+        _ => None,
     };
+
+    let registers = state
+        .map(|state| state.mips_state.register_values.clone())
+        .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
+    
+    let previous_registers = state
+        .map(|state| state.mips_state.previous_registers.clone())
+        .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
     html! {
         <table class="w-full border-collapse table-auto">

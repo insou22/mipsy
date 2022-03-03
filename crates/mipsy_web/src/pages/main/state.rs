@@ -33,7 +33,12 @@ pub struct CompilerErrorState {
 
 impl MipsState {
     pub fn update_registers(&mut self, runtime: &Runtime) {
-        self.previous_registers = self.register_values.clone();
+        self.previous_registers = runtime
+            .timeline()
+            .prev_state()
+            .map(|state| state.registers().iter().cloned().collect())
+            .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
+
         self.register_values = runtime
             .timeline()
             .state()
@@ -44,7 +49,7 @@ impl MipsState {
     }
 
     pub fn update_current_instr(&mut self, runtime: &Runtime) {
-        self.current_instr = Some(runtime.timeline().state().pc());
+        self.current_instr = runtime.timeline().prev_state().map(|state| state.pc());
     }
 
     pub fn update_memory(&mut self, runtime: &Runtime) {

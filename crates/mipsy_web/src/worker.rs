@@ -304,9 +304,12 @@ impl Agent for Worker {
                                     runtime.timeline_mut().pop_last_state();
                                     mips_state.exit_status = None;
                                     // avoid infinite loop of scrolling back
+                                    info!("hi");
                                     if runtime.timeline().state().pc() == 0x80000000 {
+                                        info!("poopy");
                                         break;
                                     }
+                                    info!("yeet");
                                 } else {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
@@ -346,10 +349,14 @@ impl Agent for Worker {
                                     break;
                                 };
                             }
+                            info!("1");
                             mips_state.update_registers(&runtime);
+                            info!("2");
                             mips_state.update_current_instr(&runtime);
+                            info!("3");
                             mips_state.update_memory(&runtime);
                             self.runtime = Some(RuntimeState::Running(runtime));
+                            info!("yeehaw");
                             if mips_state.is_stepping {
                                 let response = Self::Output::UpdateMipsState(mips_state);
                                 self.link.respond(id, response);
@@ -357,10 +364,10 @@ impl Agent for Worker {
                                 let response = Self::Output::InstructionOk(mips_state);
                                 self.link.respond(id, response);
                             }
-
+                            info!("me return");
                             return;
                         }
-
+                        
                         // prevent us from stepping too far in kernel and exiting
                         if step_size == -1 {
                             runtime.timeline_mut().pop_last_state();

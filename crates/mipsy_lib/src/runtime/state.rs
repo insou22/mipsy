@@ -52,7 +52,12 @@ impl Timeline {
     }
 
     pub fn prev_state(&self) -> Option<&State> {
-        self.nth_state(self.timeline_len() - 2)
+        let len = self.timeline_len();
+        if len == 1 {
+            None
+        } else {
+            self.nth_state(len - 2)
+        }
     }
 
     pub fn push_next_state(&mut self) -> &mut State {
