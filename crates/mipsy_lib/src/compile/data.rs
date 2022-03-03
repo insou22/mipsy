@@ -134,7 +134,7 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 .collect()
         }
         MpDirective::Float(floats) => {
-            let alignment = align(binary, segment, 2);
+            let alignment = align(binary, segment, 4);
 
             let floats = floats.into_iter()
                 .map(|(float, n)| Ok((
@@ -156,7 +156,7 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 .collect()
         }
         MpDirective::Double(doubles) => {
-            let alignment = align(binary, segment, 2);
+            let alignment = align(binary, segment, 8);
 
             let doubles = doubles.into_iter()
                 .map(|(double, n)| Ok((
