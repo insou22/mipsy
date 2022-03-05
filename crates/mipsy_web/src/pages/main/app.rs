@@ -21,8 +21,7 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
-use web_sys::{window, Element, HtmlElement, HtmlInputElement};
+use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -52,7 +51,7 @@ pub fn render_app() -> Html {
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
-   
+
     if let State::NoFile = *state {
         is_saved.set(false);
     }
@@ -129,7 +128,7 @@ pub fn render_app() -> Html {
         let is_saved = is_saved.clone();
         use_effect_with_deps(
             move |_| {
-                if let State::CompilerError(comp_err_state) = &*state_copy {
+                if let State::Error(comp_err_state) = &*state_copy {
                     if let MipsyError::Compiler(err) = &comp_err_state.error {
                         info!("adding higlight decorations");
                         crate::highlight_section(err.line(), err.col(), err.col_end());
@@ -251,7 +250,7 @@ pub fn render_app() -> Html {
 
     /* what is the html content of the body? */
     let text_html_content = match &*state {
-        State::Compiled(_) | &State::CompilerError(_) | &State::NoFile => render_running(
+        State::Compiled(_) | &State::Error(_) | &State::NoFile => render_running(
             file.clone(),
             state.clone(),
             filename.clone(),
@@ -270,19 +269,19 @@ pub fn render_app() -> Html {
     };
 
     let file_loaded = match *state {
-        State::NoFile | State::CompilerError(_) => false,
+        State::NoFile | State::Error(_) => false,
         State::Compiled(_) => true,
     };
 
     let waiting_syscall = match &*state {
         State::Compiled(curr) => curr.input_needed.is_some(),
-        State::NoFile | State::CompilerError(_) => false,
+        State::NoFile | State::Error(_) => false,
     };
 
     // TODO - make this nicer when refactoring compiler errs
     let mipsy_output_tab_title = match &*state {
         State::NoFile => "Mipsy Output - (0)".to_string(),
-        State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
+        State::Error(_) => "Mipsy Output - (1)".to_string(),
         State::Compiled(curr) => {
             format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
         }
@@ -314,7 +313,7 @@ pub fn render_app() -> Html {
 
     let input_needed = match &*state {
         State::Compiled(curr) => curr.input_needed.clone(),
-        State::NoFile | State::CompilerError(_) => None,
+        State::NoFile | State::Error(_) => None,
     };
 
     let rendered_running = render_running_output(show_io.clone(), state.clone());
@@ -478,7 +477,7 @@ fn render_running(
                                             {"No file loaded or saved"}
                                         </pre>
                                     },
-                                    State::CompilerError(_) => html! {
+                                    State::Error(_) => html! {
                                         <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
                                     },
                                 }
@@ -495,7 +494,7 @@ fn render_running(
                                             {"No file loaded or saved"}
                                         </pre>
                                     },
-                                    State::CompilerError(_) => html! {
+                                    State::Error(_) => html! {
                                         <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
                                     },
                                 }
@@ -524,7 +523,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
             State::NoFile => {
                 html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
             }
-            State::CompilerError(_) => {
+            State::Error(_) => {
                 html! {"File has compiler errors!"}
             }
         }
@@ -532,7 +531,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
         match &*state {
             State::Compiled(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
             State::NoFile => html! {""},
-            State::CompilerError(curr) => {
+            State::Error(curr) => {
                 html! {curr.mipsy_stdout.join("")}
             }
         }
@@ -585,7 +584,7 @@ pub fn process_syscall_response(
             input.set_value("");
             input.set_disabled(true);
         }
-        State::NoFile | State::CompilerError(_) => {
+        State::NoFile | State::Error(_) => {
             error!("Should not be possible to give syscall value with no file");
         }
     }

@@ -87,15 +87,17 @@ pub struct DecompiledResponse {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct CompilerErrorResponse {
+pub struct ErrorResponse {
+    // error is RuntimeError, ParseError, or CompilerError
     pub error: MipsyError,
+    // the file itself
     pub file: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub enum WorkerResponse {
     DecompiledCode(DecompiledResponse),
-    CompilerError(CompilerErrorResponse),
+    WorkerError(ErrorResponse),
     UpdateMipsState(MipsState),
     InstructionOk(MipsState),
     ProgramExited(MipsState),
@@ -165,7 +167,7 @@ impl Agent for Worker {
                         self.runtime = None;
                         self.link.respond(
                             id,
-                            Self::Output::CompilerError(CompilerErrorResponse {
+                            Self::Output::WorkerError(ErrorResponse {
                                 error: err,
                                 file: f,
                             }),
@@ -359,7 +361,7 @@ impl Agent for Worker {
                             }
                             return;
                         }
-                        
+
                         // prevent us from stepping too far in kernel and exiting
                         if step_size == -1 {
                             runtime.timeline_mut().pop_last_state();

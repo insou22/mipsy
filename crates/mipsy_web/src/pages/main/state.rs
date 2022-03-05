@@ -26,7 +26,7 @@ pub struct MipsState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct CompilerErrorState {
+pub struct ErrorState {
     pub error: MipsyError,
     pub mipsy_stdout: Vec<String>,
 }
@@ -74,6 +74,6 @@ pub struct RunningState {
 #[derive(Debug, PartialEq, Clone)]
 pub enum State {
     NoFile,
-    CompilerError(CompilerErrorState),
+    Error(ErrorState),
     Compiled(RunningState),
 }
