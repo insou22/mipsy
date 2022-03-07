@@ -61,7 +61,7 @@ pub fn handle_response_from_worker(
             }
         }
 
-        WorkerResponse::CompilerError(response_struct) => {
+        WorkerResponse::WorkerError(response_struct) => {
             log!("recieved compiler error from worker");
             let mut mipsy_stdout = vec![];
 
@@ -73,25 +73,25 @@ pub fn handle_response_from_worker(
                         compiler_err.error().message(),
                         compiler_err.error().tips().join("\n")
                     ));
-                    show_tab.set(DisplayedTab::Source);
                     show_io.set(false);
                 }
                 MipsyError::Parser(_) => {
-                    mipsy_stdout.push("Parser error".into());
+                    mipsy_stdout.push("failed to parse".into());
+                    show_io.set(false);
                 }
                 _ => {
                     mipsy_stdout.push("Runtime errors not yet supported".into());
                 }
             };
 
-            let state_struct = CompilerErrorState {
+            let state_struct = ErrorState {
                 error: response_struct.error.clone(),
                 mipsy_stdout,
             };
 
             file.set(Some(response_struct.file.clone()));
             show_tab.set(DisplayedTab::Source);
-            state.set(State::CompilerError(state_struct));
+            state.set(State::Error(state_struct));
         }
 
         WorkerResponse::ProgramExited(mips_state) => {

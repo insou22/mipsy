@@ -126,6 +126,7 @@ pub fn render_app() -> Html {
     {
         let state_copy = state.clone();
         let is_saved = is_saved.clone();
+        let file = file.clone();
         use_effect_with_deps(
             move |_| {
                 if let State::Error(comp_err_state) = &*state_copy {
@@ -133,6 +134,19 @@ pub fn render_app() -> Html {
                         info!("adding higlight decorations");
                         crate::highlight_section(err.line(), err.col(), err.col_end());
                         is_saved.set(true);
+                    } else if let MipsyError::Parser(err) = &comp_err_state.error {
+                        info!("adding higlights for parser err");
+
+                        let line_num = err.line();
+                        let last_column = file
+                            .as_deref()
+                            .unwrap_or("")
+                            .lines()
+                            .nth(line_num as usize - 1)
+                            .unwrap()
+                            .len();
+                        log!("highlighting from", err.col(), "to", last_column);
+                        crate::highlight_section(line_num, err.col(), last_column as u32);
                     }
                 };
 
