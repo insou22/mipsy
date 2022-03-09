@@ -298,7 +298,7 @@ impl Agent for Worker {
                         // or, fast rewind the kernel segment if we are rewinding
                         if runtime.timeline().state().pc() >= 0x80000000 {
                             while runtime.timeline().state().pc() >= 0x80000000 {
-                                // info!("stepping: {:08x}", runtime.timeline().state().pc());
+                                // info!("stepping ktext: {:08x}", runtime.timeline().state().pc());
                                 if step_size == -1 {
                                     info!("stepping back: {:08x}", runtime.timeline().state().pc());
                                     runtime.timeline_mut().pop_last_state();
@@ -350,7 +350,10 @@ impl Agent for Worker {
                             mips_state.update_current_instr(&runtime);
                             mips_state.update_memory(&runtime);
                             self.runtime = Some(RuntimeState::Running(runtime));
-                            if mips_state.is_stepping {
+                            if mips_state.exit_status.is_some() {
+                                let response = Self::Output::ProgramExited(mips_state);
+                                self.link.respond(id, response);
+                            } else if mips_state.is_stepping {
                                 let response = Self::Output::UpdateMipsState(mips_state);
                                 self.link.respond(id, response);
                             } else {
@@ -368,6 +371,10 @@ impl Agent for Worker {
 
                         // now let's us step the right number of times
                         for _ in 1..=step_size {
+                            if runtime.timeline().state().pc() >= 0x80000000 {
+                                break;
+                            }
+                            // info!("stepping text: {:08x}", runtime.timeline().state().pc());
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
                                 // instruction ran okay
