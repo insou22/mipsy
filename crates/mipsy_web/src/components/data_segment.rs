@@ -1,4 +1,4 @@
-use crate::pages::main::state::RunningState;
+use crate::state::state::RunningState;
 use mipsy_lib::compile::TEXT_TOP;
 use mipsy_lib::runtime::PAGE_SIZE;
 use mipsy_lib::Safe;

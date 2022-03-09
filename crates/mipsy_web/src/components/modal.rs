@@ -1,6 +1,5 @@
 use git_version::git_version;
-use yew::prelude::*;
-use yew::Properties;
+use yew::{ prelude::*, Properties};
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct ModalProps {

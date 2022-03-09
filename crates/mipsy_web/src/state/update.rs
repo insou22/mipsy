@@ -1,15 +1,10 @@
-use crate::worker::ReadSyscallInputs;
-use crate::worker::{WorkerRequest, WorkerResponse};
 use crate::{
-    pages::main::{
-        app::{
-            process_syscall_request, process_syscall_response, ReadSyscalls,
-            NUM_INSTR_BEFORE_RESPONSE,
-        },
-        state::{DisplayedTab, MipsState, RunningState, State},
+    pages::main::app::{
+        process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
+    state::state::{DisplayedTab, MipsState, RunningState, State},
     utils::generate_highlighted_line,
-    worker::Worker,
+    worker::{Worker, WorkerRequest, ReadSyscallInputs, WorkerResponse},
 };
 use log::{error, info};
 

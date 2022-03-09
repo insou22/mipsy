@@ -1,4 +1,4 @@
-use crate::pages::main::state::MipsState;
+use crate::state::state::MipsState;
 use log::{error, info};
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;

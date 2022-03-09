@@ -1,4 +1,3 @@
-use crate::pages::main::state::DisplayedTab;
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
@@ -6,8 +5,9 @@ use crate::{
         outputarea::OutputArea, pagebackground::PageBackground, registers::Registers,
         sourcecode::SourceCode,
     },
-    pages::main::{
-        state::{MipsState, RunningState, State},
+    state::{
+        config::MipsyWebConfig,
+        state::{DisplayedTab, MipsState, RunningState, State},
         update,
     },
     worker::{Worker, WorkerRequest},
@@ -51,6 +51,7 @@ pub fn render_app() -> Html {
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
+    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(|| MipsyWebConfig::default());
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -131,22 +132,63 @@ pub fn render_app() -> Html {
             move |_| {
                 if let State::Error(comp_err_state) = &*state_copy {
                     if let MipsyError::Compiler(err) = &comp_err_state.error {
-                        info!("adding higlight decorations");
+                        info!("adding higlight decorations on line {}", err.line());
                         crate::highlight_section(err.line(), err.col(), err.col_end());
                         is_saved.set(true);
                     } else if let MipsyError::Parser(err) = &comp_err_state.error {
                         info!("adding higlights for parser err");
 
                         let line_num = err.line();
-                        let last_column = file
-                            .as_deref()
-                            .unwrap_or("")
-                            .lines()
-                            .nth(line_num as usize - 1)
-                            .unwrap()
-                            .len();
-                        log!("highlighting from", err.col(), "to", last_column);
-                        crate::highlight_section(line_num, err.col(), last_column as u32);
+
+                        let line = {
+                            let target_line = (line_num - 1) as usize;
+
+                            let file = file.as_deref().unwrap_or("");
+                            let line = file.lines().nth(target_line);
+
+                            // special case: file is empty and ends with a newline, in which case the
+                            // parser will point to char 1-1 of the final line, but .lines() won't consider
+                            // that an actual line, as it doesn't contain any actual content.
+                            //
+                            // the only way this can actually occur is if the file contains no actual items,
+                            // as otherwise it would be happy to reach the end of the file, and return the
+                            // program. so we can just give a customised error message instead.
+                            if line.is_none()
+                                && file.ends_with('\n')
+                                && target_line == file.lines().count()
+                            {
+                                eprintln!("file contains no MIPS contents!");
+                                None
+                            } else {
+                                Some(line.expect("invalid line position in compiler error"))
+                            }
+                        };
+
+                        if let Some(line) = line {
+                            let updated_line = {
+                                let mut updated_line = String::new();
+
+                                for char in line.chars() {
+                                    if char != '\t' {
+                                        updated_line.push(char);
+                                        continue;
+                                    }
+
+                                    let spaces_to_insert = config.deref().mipsy_config.tab_size
+                                        - (updated_line.len() as u32
+                                            % config.deref().mipsy_config.tab_size);
+
+                                    updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
+                                }
+
+                                updated_line
+                            };
+
+                            let last_column = updated_line.len() as u32 + 1;
+
+                            log!("highlighting from", err.col(), "to", last_column);
+                            crate::highlight_section(line_num, err.col(), last_column as u32);
+                        }
                     }
                 };
 

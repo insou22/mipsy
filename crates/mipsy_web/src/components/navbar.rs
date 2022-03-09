@@ -1,12 +1,11 @@
-use crate::pages::main::state::{MipsState, RunningState};
 use crate::{
-    pages::main::{app::NUM_INSTR_BEFORE_RESPONSE, state::State},
+    state::state::{MipsState, RunningState, State},
+    pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
     worker::{Worker, WorkerRequest},
 };
 use derivative::Derivative;
 use log::{info, trace};
-use yew::prelude::*;
-use yew::Html;
+use yew::{Html, prelude::*};
 use yew_agent::{Agent, UseBridgeHandle};
 
 #[derive(Properties, Derivative)]

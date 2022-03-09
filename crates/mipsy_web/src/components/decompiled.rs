@@ -1,4 +1,4 @@
-use crate::pages::main::state::RunningState;
+use crate::state::state::RunningState;
 use yew::{function_component, html, Properties};
 
 #[derive(Properties, PartialEq)]

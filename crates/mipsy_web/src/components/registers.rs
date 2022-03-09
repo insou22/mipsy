@@ -1,4 +1,4 @@
-use crate::pages::main::state::State;
+use crate::state::state::State;
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
 use log::info;
