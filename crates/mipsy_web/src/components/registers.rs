@@ -1,4 +1,4 @@
-use crate::state::state::State;
+use crate::state::state::{State, ErrorType};
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
 #[derive(Properties, PartialEq)]
@@ -8,17 +8,18 @@ pub struct RegisterProps {
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
-    let state = match &*props.state {
-        State::Compiled(state) => Some(state),
+    let mips_state = match &*props.state {
+        State::Compiled(state) => Some(state.mips_state.clone()),
+        State::Error(ErrorType::RuntimeError(error)) => Some(error.mips_state.clone()),
         _ => None,
     };
 
-    let registers = state
-        .map(|state| state.mips_state.register_values.clone())
+    let registers = mips_state.clone()
+        .map(|state| state.register_values.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
     
-    let previous_registers = state
-        .map(|state| state.mips_state.previous_registers.clone())
+    let previous_registers = mips_state
+        .map(|state| state.previous_registers.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
     html! {

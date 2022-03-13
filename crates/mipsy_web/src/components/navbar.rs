@@ -48,7 +48,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let filename = props.filename.clone();
                 let is_saved = props.is_saved.clone();
                 Callback::from(move |_| {
-                    trace!("Save button clicked");
+                    info!("Save button clicked");
                     is_saved.set(true);
                     let updated_content = crate::get_editor_value();
                     let clone = updated_content.clone();
@@ -78,7 +78,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
-                    trace!("Run button clicked");
+                    info!("Run button clicked");
                     if let State::Compiled(ref curr) = *state {
                         state.set(State::Compiled(RunningState {
                             mips_state: MipsState {
@@ -120,7 +120,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let worker = props.worker.clone();
                 let state = props.state.clone();
                 Callback::from(move |_| {
-                    trace!("Reset button clicked");
+                    info!("Reset button clicked");
                     if let State::Compiled(curr) = &*state {
                         let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
                         worker.send(input);
@@ -129,7 +129,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     }
                 })
             }),
-            disable_override: false,
+            disable_override: true,
         },
         Icon {
             label: String::from("Kill"),
@@ -142,7 +142,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             callback: Some({
                 let state = props.state.clone();
                 Callback::from(move |_| {
-                    trace!("Kill button clicked");
+                    info!("Kill button clicked");
                     if let State::Compiled(curr) = &*state {
                         state.set(State::Compiled(RunningState {
                             should_kill: true,
@@ -167,7 +167,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
-                    trace!("Step Back button clicked");
+                    info!("Step Back button clicked");
                     if let State::Compiled(curr) = &*state {
                         let new_mips_state = MipsState {
                             is_stepping: true,
@@ -205,7 +205,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
-                    trace!("Step Back button clicked");
+                    info!("Step Back button clicked");
                     if let State::Compiled(curr) = &*state {
                         let new_mips_state = MipsState {
                             is_stepping: true,
@@ -241,7 +241,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let filename = props.filename.clone();
                 let file = props.file.clone();
                 Callback::from(move |_| {
-                    trace!("Download button clicked");
+                    info!("Download button clicked");
                     crate::trigger_download_file(
                         filename.as_deref().unwrap_or("untitled.s"),
                         file.as_deref().unwrap_or(""),
