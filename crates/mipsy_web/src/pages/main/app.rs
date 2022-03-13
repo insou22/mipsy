@@ -595,7 +595,7 @@ fn render_running(
                                         </pre>
                                     },
                                     State::Error(_) => html! {
-                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
+                                        <p>{"there was an error! See the Mipsy Output Tab for more :)"}</p>
                                     },
                                 }
                             },
