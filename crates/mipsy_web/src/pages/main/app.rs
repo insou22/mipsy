@@ -137,7 +137,10 @@ pub fn render_app() -> Html {
                             match &error_state.error {
                                 MipsyError::Compiler(err) => {
                                     info!("adding higlight decorations on line {}", err.line());
-                                    crate::highlight_section(err.line(), err.col(), err.col_end());
+                                    
+                                    if err.error().should_highlight_line() {
+                                        crate::highlight_section(err.line(), err.col(), err.col_end());
+                                    }
                                     is_saved.set(true);
                                 }
                                 MipsyError::Parser(err) => {
