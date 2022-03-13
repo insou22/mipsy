@@ -1,7 +1,7 @@
 use crate::{state::state::MipsState, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::error::runtime::ErrorContext;
-use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
+use mipsy_lib::{TEXT_BOT, runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,7 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
-            Self::Input::CompileCode(FileInformation { file, filename:_ }) => {
+            Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
                 let config = MipsyConfig {
                     tab_size: 8,
@@ -160,7 +160,7 @@ impl Agent for Worker {
                 };
                 let compiled = mipsy_lib::compile(
                     &self.inst_set,
-                    vec![TaggedFile::new(None, file.as_str())],
+                    vec![TaggedFile::new(Some(&filename), file.as_str())],
                     &config,
                 );
 
@@ -607,7 +607,7 @@ impl Agent for Worker {
                                         MipsyError::Runtime(runtime_error) => {
                                             let filename: Rc<str> = Rc::from(filename);
                                             let file: Rc<str> = Rc::from(file.clone());
-                                            let source_code = vec![(filename, file)];
+                                            let source_code = [(filename.clone(), file)];
                                             let runtime = match self.runtime {
                                                 Some(RuntimeState::Running(ref runtime)) => runtime,
                                                 _ => unreachable!("runtime not running"),
@@ -616,9 +616,11 @@ impl Agent for Worker {
                                                 .binary
                                                 .as_ref()
                                                 .expect("binary should exist if runtime error");
-
+                                            info!("filename: {filename}");
+                                            info!("{}", format!("{:?}",binary.line_numbers));
+                                            info!("source_name: {}", binary.line_numbers.iter().next().unwrap().0);
                                             let message = format!(
-                                                "error: {}\n{}\n",
+                                                "error: {}\ntips: {}\n",
                                                 runtime_error.error().message(
                                                     ErrorContext::Binary,
                                                     &source_code[..],
