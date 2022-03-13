@@ -197,7 +197,6 @@ impl Agent for Worker {
                                 );
                             }
                         };
-                        info!("compile time error message: \n {}", error_msg);
                         self.link.respond(
                             id,
                             Self::Output::WorkerError(ErrorResponse {
