@@ -1,15 +1,15 @@
-use crate::state::state::RunningState;
 use yew::{function_component, html, Properties};
 
 #[derive(Properties, PartialEq)]
 pub struct DecompiledProps {
-    pub state: RunningState,
+    pub current_instr: Option<u32>,
+    pub decompiled: String,
 }
 
 #[function_component(DecompiledCode)]
 pub fn render_decompiled(props: &DecompiledProps) -> Html {
-    let runtime_instr = props.state.mips_state.current_instr.unwrap_or(0);
-    let decompiled = &props.state.decompiled;
+    let runtime_instr = props.current_instr.unwrap_or(0);
+    let decompiled = &props.decompiled;
     html! {
         for decompiled.as_str().split("\n").into_iter().map(|item| {
             if item == "" {

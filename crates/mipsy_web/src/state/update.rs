@@ -3,14 +3,16 @@ use crate::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
     state::state::{DisplayedTab, MipsState, RunningState, State},
-    utils::generate_highlighted_line,
-    worker::{Worker, WorkerRequest, ReadSyscallInputs, WorkerResponse},
+    worker::{
+        FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
+        WorkerResponse,
+    },
 };
 use log::{error, info};
 
-use super::state::ErrorState;
+use super::state::{ErrorState, ErrorType, RuntimeErrorState};
 use gloo_console::log;
-use mipsy_lib::{MipsyError, Safe};
+use mipsy_lib::Safe;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -24,6 +26,7 @@ pub fn handle_response_from_worker(
     show_tab: UseStateHandle<DisplayedTab>,
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
+    filename: UseStateHandle<Option<String>>,
     response: WorkerResponse,
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
@@ -58,32 +61,13 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::WorkerError(response_struct) => {
             log!("recieved compiler error from worker");
-            let mut mipsy_stdout = vec![];
+            log!("{}", &response_struct.message);
+            let state_struct = ErrorType::CompilerOrParserError(ErrorState {
+                error: response_struct.error,
+                mipsy_stdout: vec![response_struct.message],
+            });
 
-            match response_struct.error {
-                MipsyError::Compiler(ref compiler_err) => {
-                    mipsy_stdout.push(format!(
-                        "{}\n{}\n{}",
-                        generate_highlighted_line(response_struct.file.clone(), compiler_err),
-                        compiler_err.error().message(),
-                        compiler_err.error().tips().join("\n")
-                    ));
-                    show_io.set(false);
-                }
-                MipsyError::Parser(_) => {
-                    mipsy_stdout.push("failed to parse".into());
-                    show_io.set(false);
-                }
-                _ => {
-                    mipsy_stdout.push("Runtime errors not yet supported".into());
-                }
-            };
-
-            let state_struct = ErrorState {
-                error: response_struct.error.clone(),
-                mipsy_stdout,
-            };
-
+            show_io.set(false);
             file.set(Some(response_struct.file.clone()));
             show_tab.set(DisplayedTab::Source);
             state.set(State::Error(state_struct));
@@ -108,7 +92,15 @@ pub fn handle_response_from_worker(
                 // if the isntruction was ok, run another instruction
                 // unless the user has said it should be killed
                 if !curr.should_kill {
-                    let input = WorkerRequest::Run(mips_state.clone(), NUM_INSTR_BEFORE_RESPONSE);
+                    let file_information = FileInformation {
+                        filename: filename.as_deref().unwrap_or("Untitled").to_string(),
+                        file: file.as_deref().unwrap_or("").to_string(),
+                    };
+                    let input = WorkerRequest::Run(
+                        mips_state.clone(),
+                        NUM_INSTR_BEFORE_RESPONSE,
+                        file_information,
+                    );
                     worker.borrow().as_ref().unwrap().send(input);
                 }
 
@@ -129,6 +121,19 @@ pub fn handle_response_from_worker(
                     ..curr.clone()
                 }));
                 info!("updating state");
+            }
+        }
+
+        WorkerResponse::RuntimeError(RuntimeErrorResponse { mips_state, error }) => {
+            if let State::Compiled(ref curr) = *state {
+                show_io.set(false);
+                show_tab.set(DisplayedTab::Source);
+                let decompiled = &curr.decompiled;
+                state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
+                    mips_state,
+                    error,
+                    decompiled: decompiled.to_string(),
+                })));
             }
         }
 

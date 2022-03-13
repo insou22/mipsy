@@ -31,6 +31,19 @@ pub struct ErrorState {
     pub mipsy_stdout: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeErrorState {
+    pub error: MipsyError,
+    pub mips_state: MipsState,
+    pub decompiled: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ErrorType {
+    CompilerOrParserError(ErrorState),
+    RuntimeError(RuntimeErrorState),
+}
+
 impl MipsState {
     pub fn update_registers(&mut self, runtime: &Runtime) {
         self.previous_registers = runtime
@@ -74,6 +87,6 @@ pub struct RunningState {
 #[derive(Debug, PartialEq, Clone)]
 pub enum State {
     NoFile,
-    Error(ErrorState),
+    Error(ErrorType),
     Compiled(RunningState),
 }

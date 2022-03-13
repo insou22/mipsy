@@ -1,7 +1,7 @@
 use crate::{
     state::state::{MipsState, RunningState, State},
     pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
-    worker::{Worker, WorkerRequest},
+    worker::{Worker, WorkerRequest, FileInformation},
 };
 use derivative::Derivative;
 use log::{info, trace};
@@ -52,10 +52,14 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     is_saved.set(true);
                     let updated_content = crate::get_editor_value();
                     let clone = updated_content.clone();
+                    let filename = &filename.as_deref().unwrap_or("Untitled");
                     crate::set_localstorage_file_contents(&updated_content);
-                    crate::set_localstorage_filename(&filename.as_deref().unwrap_or("Untitled"));
+                    crate::set_localstorage_filename(filename);
                     file.set(Some(updated_content));
-                    worker.send(WorkerRequest::CompileCode(clone));
+                    worker.send(WorkerRequest::CompileCode(FileInformation {
+                        filename: filename.to_string(),
+                        file: clone,
+                    }));
                 })
             }),
             disable_override: true,
@@ -71,6 +75,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             callback: Some({
                 let worker = props.worker.clone();
                 let state = props.state.clone();
+                let file = props.file.clone();
+                let filename = props.filename.clone();
                 Callback::from(move |_| {
                     trace!("Run button clicked");
                     if let State::Compiled(ref curr) = *state {
@@ -81,13 +87,17 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             },
                             ..curr.clone()
                         }));
-
+                        let file_information = FileInformation {
+                            filename: filename.as_deref().unwrap_or("Untitled").to_string(),
+                            file: file.as_deref().unwrap_or("").to_string(),
+                        };
                         let input = <Worker as Agent>::Input::Run(
                             MipsState {
                                 is_stepping: false,
                                 ..curr.mips_state.clone()
                             },
                             NUM_INSTR_BEFORE_RESPONSE,
+                            file_information
                         );
 
                         worker.send(input);
@@ -154,6 +164,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             callback: Some({
                 let worker = props.worker.clone();
                 let state = props.state.clone();
+                let file = props.file.clone();
+                let filename = props.filename.clone();
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Compiled(curr) = &*state {
@@ -166,8 +178,11 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
-
-                        let input = <Worker as Agent>::Input::Run(new_mips_state, -1);
+                        let file_information = FileInformation {
+                            filename: filename.as_deref().unwrap_or("Untitled").to_string(),
+                            file: file.as_deref().unwrap_or("").to_string(),
+                        };
+                        let input = <Worker as Agent>::Input::Run(new_mips_state, -1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");
@@ -187,6 +202,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
             callback: Some({
                 let worker = props.worker.clone();
                 let state = props.state.clone();
+                let file = props.file.clone();
+                let filename = props.filename.clone();
                 Callback::from(move |_| {
                     trace!("Step Back button clicked");
                     if let State::Compiled(curr) = &*state {
@@ -199,8 +216,11 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             mips_state: new_mips_state.clone(),
                             ..curr.clone()
                         }));
-
-                        let input = <Worker as Agent>::Input::Run(new_mips_state, 1);
+                        let file_information = FileInformation {
+                            filename: filename.as_deref().unwrap_or("Untitled").to_string(),
+                            file: file.as_deref().unwrap_or("").to_string(),
+                        };
+                        let input = <Worker as Agent>::Input::Run(new_mips_state, 1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");

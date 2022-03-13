@@ -1,9 +1,11 @@
-use crate::state::state::MipsState;
+use crate::{state::state::MipsState, utils::generate_highlighted_line};
 use log::{error, info};
+use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
+use std::rc::Rc;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
 
 //            Worker Overview
@@ -58,7 +60,6 @@ enum RuntimeState {
     //Stopped,
 }
 
-type File = String;
 type NumSteps = i32;
 
 #[derive(Serialize, Deserialize)]
@@ -74,9 +75,9 @@ pub enum ReadSyscallInputs {
 #[derive(Serialize, Deserialize)]
 pub enum WorkerRequest {
     // The struct that worker can obtain
-    CompileCode(File),
+    CompileCode(FileInformation),
     ResetRuntime(MipsState),
-    Run(MipsState, NumSteps),
+    Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
 
@@ -87,11 +88,26 @@ pub struct DecompiledResponse {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct FileInformation {
+    pub file: String,
+    pub filename: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
     // error is RuntimeError, ParseError, or CompilerError
     pub error: MipsyError,
     // the file itself
     pub file: String,
+
+    // error message
+    pub message: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RuntimeErrorResponse {
+    pub error: MipsyError,
+    pub mips_state: MipsState,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -106,7 +122,7 @@ pub enum WorkerResponse {
     NeedDouble(MipsState),
     NeedChar(MipsState),
     NeedString(MipsState),
-    //NeedRead((i32, Vec<u8>)),
+    RuntimeError(RuntimeErrorResponse), //NeedRead((i32, Vec<u8>)),
 }
 
 impl Agent for Worker {
@@ -136,7 +152,7 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         match msg {
-            Self::Input::CompileCode(f) => {
+            Self::Input::CompileCode(FileInformation { file, filename:_ }) => {
                 // TODO(shreys): this is a hack to get the file to compile
                 let config = MipsyConfig {
                     tab_size: 8,
@@ -144,7 +160,7 @@ impl Agent for Worker {
                 };
                 let compiled = mipsy_lib::compile(
                     &self.inst_set,
-                    vec![TaggedFile::new(None, f.as_str())],
+                    vec![TaggedFile::new(None, file.as_str())],
                     &config,
                 );
 
@@ -153,7 +169,7 @@ impl Agent for Worker {
                         let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
-                            file: Some(f),
+                            file: Some(file),
                         });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
@@ -162,14 +178,32 @@ impl Agent for Worker {
                         self.link.respond(id, response)
                     }
 
-                    Err(err) => {
+                    Err(error) => {
                         self.binary = None;
                         self.runtime = None;
+                        let error_msg = match error {
+                            MipsyError::Compiler(ref compiler_err) => {
+                                format!(
+                                    "{}\n{}\n{}",
+                                    generate_highlighted_line(file.clone(), compiler_err),
+                                    compiler_err.error().message(),
+                                    compiler_err.error().tips().join("\n")
+                                )
+                            }
+                            MipsyError::Parser(_) => String::from("failed to parse"),
+                            MipsyError::Runtime(_) => {
+                                unreachable!(
+                                    "runtime error should not be possible at compile time"
+                                );
+                            }
+                        };
+                        info!("compile time error message: \n {}", error_msg);
                         self.link.respond(
                             id,
                             Self::Output::WorkerError(ErrorResponse {
-                                error: err,
-                                file: f,
+                                error,
+                                file,
+                                message: error_msg,
                             }),
                         )
                     }
@@ -293,7 +327,7 @@ impl Agent for Worker {
                 }
             }
 
-            Self::Input::Run(mut mips_state, step_size) => {
+            Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
                         // fast forward the kernel segment
@@ -563,17 +597,61 @@ impl Agent for Worker {
                                 }
 
                                 // mipsy runtime error
-                                Err((prev_runtime, err)) => {
+                                Err((prev_runtime, error)) => {
                                     runtime = prev_runtime;
                                     mips_state.update_registers(&runtime);
                                     mips_state.update_current_instr(&runtime);
                                     mips_state.update_memory(&runtime);
                                     self.runtime = Some(RuntimeState::Running(runtime));
-                                    error!("{:?}", err);
-                                    mips_state.mipsy_stdout.push(format!("{:?}", err));
-                                    let response = Self::Output::UpdateMipsState(mips_state);
-                                    self.link.respond(id, response);
-                                    return;
+
+                                    match &error {
+                                        MipsyError::Runtime(runtime_error) => {
+                                            let filename: Rc<str> = Rc::from(filename);
+                                            let file: Rc<str> = Rc::from(file.clone());
+                                            let source_code = vec![(filename, file)];
+                                            let runtime = match self.runtime {
+                                                Some(RuntimeState::Running(ref runtime)) => runtime,
+                                                _ => unreachable!("runtime not running"),
+                                            };
+                                            let binary = self
+                                                .binary
+                                                .as_ref()
+                                                .expect("binary should exist if runtime error");
+
+                                            let message = format!(
+                                                "error: {}\n{}\n",
+                                                runtime_error.error().message(
+                                                    ErrorContext::Binary,
+                                                    &source_code[..],
+                                                    &self.inst_set,
+                                                    binary,
+                                                    runtime
+                                                ),
+                                                runtime_error
+                                                    .error()
+                                                    .tips(
+                                                        &source_code[..],
+                                                        &self.inst_set,
+                                                        binary,
+                                                        runtime
+                                                    )
+                                                    .join("\n")
+                                            );
+
+                                            mips_state.mipsy_stdout.push(message);
+                                            let response =
+                                                Self::Output::RuntimeError(RuntimeErrorResponse {
+                                                    mips_state: mips_state.clone(),
+                                                    error,
+                                                });
+                                            self.link.respond(id, response);
+                                            return;
+                                        }
+
+                                        MipsyError::Parser(_) | MipsyError::Compiler(_) => {
+                                            unreachable!("parser errors and compiler errors should not happen at runtime")
+                                        }
+                                    };
                                 }
                             }
 

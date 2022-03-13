@@ -1,7 +1,6 @@
 use crate::state::state::State;
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
-use log::info;
 #[derive(Properties, PartialEq)]
 pub struct RegisterProps {
     pub state: UseStateHandle<State>,

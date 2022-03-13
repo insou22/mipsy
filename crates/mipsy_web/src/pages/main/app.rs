@@ -7,10 +7,10 @@ use crate::{
     },
     state::{
         config::MipsyWebConfig,
-        state::{DisplayedTab, MipsState, RunningState, State},
+        state::{DisplayedTab, MipsState, RunningState, State, ErrorType},
         update,
     },
-    worker::{Worker, WorkerRequest},
+    worker::{FileInformation, Worker, WorkerRequest},
 };
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
@@ -131,63 +131,77 @@ pub fn render_app() -> Html {
         use_effect_with_deps(
             move |_| {
                 if let State::Error(comp_err_state) = &*state_copy {
-                    if let MipsyError::Compiler(err) = &comp_err_state.error {
-                        info!("adding higlight decorations on line {}", err.line());
-                        crate::highlight_section(err.line(), err.col(), err.col_end());
-                        is_saved.set(true);
-                    } else if let MipsyError::Parser(err) = &comp_err_state.error {
-                        info!("adding higlights for parser err");
-
-                        let line_num = err.line();
-
-                        let line = {
-                            let target_line = (line_num - 1) as usize;
-
-                            let file = file.as_deref().unwrap_or("");
-                            let line = file.lines().nth(target_line);
-
-                            // special case: file is empty and ends with a newline, in which case the
-                            // parser will point to char 1-1 of the final line, but .lines() won't consider
-                            // that an actual line, as it doesn't contain any actual content.
-                            //
-                            // the only way this can actually occur is if the file contains no actual items,
-                            // as otherwise it would be happy to reach the end of the file, and return the
-                            // program. so we can just give a customised error message instead.
-                            if line.is_none()
-                                && file.ends_with('\n')
-                                && target_line == file.lines().count()
-                            {
-                                eprintln!("file contains no MIPS contents!");
-                                None
-                            } else {
-                                Some(line.expect("invalid line position in compiler error"))
-                            }
-                        };
-
-                        if let Some(line) = line {
-                            let updated_line = {
-                                let mut updated_line = String::new();
-
-                                for char in line.chars() {
-                                    if char != '\t' {
-                                        updated_line.push(char);
-                                        continue;
-                                    }
-
-                                    let spaces_to_insert = config.deref().mipsy_config.tab_size
-                                        - (updated_line.len() as u32
-                                            % config.deref().mipsy_config.tab_size);
-
-                                    updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
+                    
+                    match &comp_err_state {
+                        ErrorType::CompilerOrParserError(error_state) => {
+                            match &error_state.error {
+                                MipsyError::Compiler(err) => {
+                                    info!("adding higlight decorations on line {}", err.line());
+                                    crate::highlight_section(err.line(), err.col(), err.col_end());
+                                    is_saved.set(true);
                                 }
+                                MipsyError::Parser(err) => {
+                                    info!("adding higlights for parser err");
 
-                                updated_line
-                            };
+                                    let line_num = err.line();
 
-                            let last_column = updated_line.len() as u32 + 1;
+                                    let line = {
+                                        let target_line = (line_num - 1) as usize;
 
-                            log!("highlighting from", err.col(), "to", last_column);
-                            crate::highlight_section(line_num, err.col(), last_column as u32);
+                                        let file = file.as_deref().unwrap_or("");
+                                        let line = file.lines().nth(target_line);
+
+                                        // special case: file is empty and ends with a newline, in which case the
+                                        // parser will point to char 1-1 of the final line, but .lines() won't consider
+                                        // that an actual line, as it doesn't contain any actual content.
+                                        //
+                                        // the only way this can actually occur is if the file contains no actual items,
+                                        // as otherwise it would be happy to reach the end of the file, and return the
+                                        // program. so we can just give a customised error message instead.
+                                        if line.is_none()
+                                            && file.ends_with('\n')
+                                            && target_line == file.lines().count()
+                                        {
+                                            eprintln!("file contains no MIPS contents!");
+                                            None
+                                        } else {
+                                            Some(line.expect("invalid line position in compiler error"))
+                                        }
+                                    };
+
+                                    if let Some(line) = line {
+                                        let updated_line = {
+                                            let mut updated_line = String::new();
+
+                                            for char in line.chars() {
+                                                if char != '\t' {
+                                                    updated_line.push(char);
+                                                    continue;
+                                                }
+
+                                                let spaces_to_insert = config.deref().mipsy_config.tab_size
+                                                    - (updated_line.len() as u32
+                                                        % config.deref().mipsy_config.tab_size);
+
+                                                updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
+                                            }
+
+                                            updated_line
+                                        };
+
+                                        let last_column = updated_line.len() as u32 + 1;
+
+                                        log!("highlighting from", err.col(), "to", last_column);
+                                        crate::highlight_section(line_num, err.col(), last_column as u32);
+                                    }
+                                }
+                                MipsyError::Runtime(_) => unreachable!("Runtime error should not be in ErrorType::CompilerOrParserError"),
+                            }
+
+                        }
+
+                        ErrorType::RuntimeError(_) => {
+                            // runtime errors expose no highlights
                         }
                     }
                 };
@@ -212,7 +226,7 @@ pub fn render_app() -> Html {
             let input_ref = input_ref.clone();
             let worker = worker.clone();
             let is_saved = is_saved.clone();
-
+            let filename = filename.clone();
             Some(use_bridge(move |response| {
                 let state = state.clone();
                 let show_tab = show_tab.clone();
@@ -221,8 +235,9 @@ pub fn render_app() -> Html {
                 let input_ref = input_ref.clone();
                 let worker = worker.clone();
                 let is_saved = is_saved.clone();
+                let filename = filename.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, response, worker, input_ref, is_saved,
+                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
                 )
             }))
         };
@@ -250,7 +265,10 @@ pub fn render_app() -> Html {
                     tasks_new.push(read_as_text(&gloo_file, move |res| match res {
                         Ok(ref file_contents) => {
                             // file.set(Some(file_contents.to_string()));
-                            let input = WorkerRequest::CompileCode(file_contents.to_string());
+                            let input = WorkerRequest::CompileCode(FileInformation {
+                                filename: file_name.clone(),
+                                file: file_contents.to_string(),
+                            });
                             log!("sending to worker");
 
                             worker.borrow().as_ref().unwrap().send(input);
@@ -277,14 +295,18 @@ pub fn render_app() -> Html {
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
                 let clone = updated_content.clone();
+                let filename = &filename.as_deref().unwrap_or("Untitled");
                 crate::set_localstorage_file_contents(&updated_content);
-                crate::set_localstorage_filename(&filename.as_deref().unwrap_or("Untitled"));
+                crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
                 worker
                     .borrow()
                     .as_ref()
                     .unwrap()
-                    .send(WorkerRequest::CompileCode(clone));
+                    .send(WorkerRequest::CompileCode(FileInformation {
+                        filename: filename.to_string(),
+                        file: clone,
+                    }));
             };
         })
     };
@@ -521,7 +543,8 @@ fn render_running(
                                                 <table>
                                                     <tbody>
                                                         <DecompiledCode
-                                                            state={curr.clone()}
+                                                            current_instr={curr.mips_state.current_instr}
+                                                            decompiled={curr.decompiled.clone()}
                                                         />
                                                     </tbody>
                                                 </table>
@@ -533,9 +556,27 @@ fn render_running(
                                             {"No file loaded or saved"}
                                         </pre>
                                     },
-                                    State::Error(_) => html! {
-                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
-                                    },
+                                    State::Error(error_type) => {
+                                        if let ErrorType::RuntimeError(error) = error_type {
+                                            html! {
+                                                <pre class="text-xs whitespace-pre-wrap">
+                                                    <table>
+                                                        <tbody>
+                                                            <DecompiledCode
+                                                                current_instr={error.mips_state.current_instr}
+                                                                decompiled={error.decompiled.clone()}
+                                                            />
+                                                        </tbody>
+                                                    </table>
+                                                </pre>
+                                            }
+                                        } else {
+                                            html! {
+                                                <p>{"There was an error when compiling! See the Mipsy Output Tab for more :)"}</p>
+                                            }
+                                        }
+                                        
+                                    }
                                 }
                             },
                             DisplayedTab::Data => {
@@ -580,7 +621,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
                 html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
             }
             State::Error(_) => {
-                html! {"File has compiler errors!"}
+                html! {""}
             }
         }
     } else {
@@ -588,7 +629,14 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
             State::Compiled(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
             State::NoFile => html! {""},
             State::Error(curr) => {
-                html! {curr.mipsy_stdout.join("")}
+                match curr {
+                    ErrorType::RuntimeError(error) => {
+                        html! {error.mips_state.mipsy_stdout.join("\n")}
+                    }
+                    ErrorType::CompilerOrParserError(error) => {
+                        html! {error.mipsy_stdout.join("\n")}
+                    }
+                }
             }
         }
     }
