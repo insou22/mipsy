@@ -51,7 +51,13 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 {"Github Issues page"}
                             </a>
                         </p>
+                        <p class="mb-2">
+                            {"You can also check the current items being worked on at"}
+                            <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/projects/2" target="_blank">
+                                {"this project board"}
+                            </a>
 
+                        </p>
                         <p>
                             {"(if you're here because you're curious: pro-tip, control-s will save and recompile your file)"}
                         </p>
@@ -59,10 +65,10 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
                         <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
                         <ul class="ml-4 list-disc">
-                            <li>{"Runtime Errors"}</li>
-                            <li>{"Separate text and data segments"}</li>
                             <li>{"Custom Settings + Theming"}</li>
                         </ul>
+
+                        
 
                         <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>
                         <p> {"The following features will not be supported in mipsy_web"}</p>
