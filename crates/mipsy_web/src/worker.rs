@@ -570,12 +570,6 @@ impl Agent for Worker {
                                             runtime = next_runtime;
                                         }
 
-                                        UnknownSyscall(_unknown_syscall_args, next_runtime) => {
-                                            error!("Unknown Syscall :(");
-
-                                            runtime = next_runtime;
-                                        }
-
                                         _ => unreachable!(), /*
 
                                                              Sbrk       (SbrkArgs, Runtime),
@@ -590,7 +584,6 @@ impl Agent for Worker {
 
                                                              // other
                                                              Breakpoint     (Runtime),
-                                                             UnknownSyscall (UnknownSyscallArgs, Runtime)
                                                              */
                                     }
                                 }

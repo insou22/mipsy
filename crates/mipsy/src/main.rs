@@ -262,13 +262,13 @@ fn main() {
                             PrintFloat(args, new_runtime) => {
                                 print!("{}", args.value);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             PrintDouble(args, new_runtime) => {
                                 print!("{}", args.value);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             PrintString(args, new_runtime) => {
@@ -322,10 +322,6 @@ fn main() {
                             Trap(new_runtime) => {
                                 // TODO(zkol): What do we want to do with a trap here
                                 runtime = new_runtime;
-                            }
-                            UnknownSyscall(args, new_runtime) => {
-                                runtime = new_runtime;
-                                prompt::error(format!("unknown syscall: {}", args.syscall_number));
                             }
                         }
                     }
