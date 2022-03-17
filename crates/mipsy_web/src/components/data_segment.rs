@@ -1,13 +1,7 @@
 use crate::state::state::RunningState;
-use mipsy_lib::compile::TEXT_TOP;
 use mipsy_lib::runtime::PAGE_SIZE;
 use mipsy_lib::Safe;
-use mipsy_lib::GLOBAL_BOT;
-use mipsy_lib::KDATA_BOT;
-use mipsy_lib::KTEXT_BOT;
-use mipsy_lib::STACK_BOT;
-use mipsy_lib::STACK_TOP;
-use mipsy_lib::TEXT_BOT;
+use mipsy_lib::util::{Segment, get_segment};
 use yew::prelude::*;
 use yew::Properties;
 
@@ -172,28 +166,5 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
                 }
             })
         }
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-enum Segment {
-    None,
-    Text,
-    Data,
-    Stack,
-    KText,
-    KData,
-}
-
-fn get_segment(address: u32) -> Segment {
-    match address {
-        // TODO(zkol): Update this when exclusive range matching is stabilised
-        _ if address < TEXT_BOT => Segment::None,
-        _ if address >= TEXT_BOT && address <= TEXT_TOP => Segment::Text,
-        _ if address >= GLOBAL_BOT && address < STACK_BOT => Segment::Data,
-        _ if address >= STACK_BOT && address <= STACK_TOP => Segment::Stack,
-        _ if address >= KTEXT_BOT && address < KDATA_BOT => Segment::KText,
-        _ if address >= KDATA_BOT => Segment::KData,
-        _ => unreachable!(),
     }
 }

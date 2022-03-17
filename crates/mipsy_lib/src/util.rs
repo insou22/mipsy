@@ -1,4 +1,13 @@
 use serde::{Deserialize, Serialize};
+use crate::{
+    TEXT_TOP,
+    TEXT_BOT,
+    GLOBAL_BOT,
+    STACK_BOT,
+    STACK_TOP,
+    KTEXT_BOT,
+    KDATA_BOT,
+};
 
 #[derive(Copy, Debug, Serialize, Deserialize)]
 pub enum Safe<T> {
@@ -72,5 +81,28 @@ impl TruncImm for i32 {
 impl TruncImm for u32 {
     fn trunc_imm(&self) -> Self {
         *self as i16 as Self
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum Segment {
+    None,
+    Text,
+    Data,
+    Stack,
+    KText,
+    KData,
+}
+
+pub fn get_segment(address: u32) -> Segment {
+    match address {
+        // TODO(zkol): Update this when exclusive range matching is stabilised
+        _ if address < TEXT_BOT => Segment::None,
+        _ if address >= TEXT_BOT && address <= TEXT_TOP => Segment::Text,
+        _ if address >= GLOBAL_BOT && address < STACK_BOT => Segment::Data,
+        _ if address >= STACK_BOT && address <= STACK_TOP => Segment::Stack,
+        _ if address >= KTEXT_BOT && address < KDATA_BOT => Segment::KText,
+        _ if address >= KDATA_BOT => Segment::KData,
+        _ => unreachable!(),
     }
 }

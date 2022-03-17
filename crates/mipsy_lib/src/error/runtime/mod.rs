@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, util::get_segment};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,7 @@ pub enum Error {
     IntegerOverflow,
     DivisionByZero,
 
-    SegmentationFault { addr: u32 }
+    SegmentationFault { addr: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

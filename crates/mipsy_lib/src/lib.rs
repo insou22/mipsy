@@ -30,6 +30,7 @@ pub use runtime::{
     State,
 };
 pub use compile::{
+    TEXT_TOP,
     TEXT_BOT,
     GLOBAL_BOT,
     GLOBAL_PTR,
