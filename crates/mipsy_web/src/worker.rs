@@ -1,7 +1,7 @@
 use crate::{state::state::MipsState, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::error::runtime::ErrorContext;
-use mipsy_lib::{TEXT_BOT, runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
+use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
