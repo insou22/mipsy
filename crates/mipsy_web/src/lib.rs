@@ -6,6 +6,7 @@ pub mod components;
 pub mod pages;
 pub mod utils;
 pub mod worker;
+pub mod state;
 use pages::main::app::App as Application;
 
 #[wasm_bindgen]

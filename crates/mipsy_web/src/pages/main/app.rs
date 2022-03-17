@@ -1,4 +1,3 @@
-use crate::pages::main::state::DisplayedTab;
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
@@ -6,11 +5,12 @@ use crate::{
         outputarea::OutputArea, pagebackground::PageBackground, registers::Registers,
         sourcecode::SourceCode,
     },
-    pages::main::{
-        state::{MipsState, RunningState, State},
+    state::{
+        config::MipsyWebConfig,
+        state::{DisplayedTab, MipsState, RunningState, State, ErrorType},
         update,
     },
-    worker::{Worker, WorkerRequest},
+    worker::{FileInformation, Worker, WorkerRequest},
 };
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
@@ -21,8 +21,7 @@ use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
-use web_sys::{window, Element, HtmlElement, HtmlInputElement};
+use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
 
@@ -52,7 +51,8 @@ pub fn render_app() -> Html {
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
-   
+    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(|| MipsyWebConfig::default());
+
     if let State::NoFile = *state {
         is_saved.set(false);
     }
@@ -127,13 +127,85 @@ pub fn render_app() -> Html {
     {
         let state_copy = state.clone();
         let is_saved = is_saved.clone();
+        let file = file.clone();
         use_effect_with_deps(
             move |_| {
-                if let State::CompilerError(comp_err_state) = &*state_copy {
-                    if let MipsyError::Compiler(err) = &comp_err_state.error {
-                        info!("adding higlight decorations");
-                        crate::highlight_section(err.line(), err.col(), err.col_end());
-                        is_saved.set(true);
+                if let State::Error(comp_err_state) = &*state_copy {
+                    
+                    match &comp_err_state {
+                        ErrorType::CompilerOrParserError(error_state) => {
+                            match &error_state.error {
+                                MipsyError::Compiler(err) => {
+                                    info!("adding higlight decorations on line {}", err.line());
+                                    
+                                    if err.error().should_highlight_line() {
+                                        crate::highlight_section(err.line(), err.col(), err.col_end());
+                                    }
+                                    is_saved.set(true);
+                                }
+                                MipsyError::Parser(err) => {
+                                    info!("adding higlights for parser err");
+
+                                    let line_num = err.line();
+
+                                    let line = {
+                                        let target_line = (line_num - 1) as usize;
+
+                                        let file = file.as_deref().unwrap_or("");
+                                        let line = file.lines().nth(target_line);
+
+                                        // special case: file is empty and ends with a newline, in which case the
+                                        // parser will point to char 1-1 of the final line, but .lines() won't consider
+                                        // that an actual line, as it doesn't contain any actual content.
+                                        //
+                                        // the only way this can actually occur is if the file contains no actual items,
+                                        // as otherwise it would be happy to reach the end of the file, and return the
+                                        // program. so we can just give a customised error message instead.
+                                        if line.is_none()
+                                            && file.ends_with('\n')
+                                            && target_line == file.lines().count()
+                                        {
+                                            eprintln!("file contains no MIPS contents!");
+                                            None
+                                        } else {
+                                            Some(line.expect("invalid line position in compiler error"))
+                                        }
+                                    };
+
+                                    if let Some(line) = line {
+                                        let updated_line = {
+                                            let mut updated_line = String::new();
+
+                                            for char in line.chars() {
+                                                if char != '\t' {
+                                                    updated_line.push(char);
+                                                    continue;
+                                                }
+
+                                                let spaces_to_insert = config.deref().mipsy_config.tab_size
+                                                    - (updated_line.len() as u32
+                                                        % config.deref().mipsy_config.tab_size);
+
+                                                updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
+                                            }
+
+                                            updated_line
+                                        };
+
+                                        let last_column = updated_line.len() as u32 + 1;
+
+                                        log!("highlighting from", err.col(), "to", last_column);
+                                        crate::highlight_section(line_num, err.col(), last_column as u32);
+                                    }
+                                }
+                                MipsyError::Runtime(_) => unreachable!("Runtime error should not be in ErrorType::CompilerOrParserError"),
+                            }
+
+                        }
+
+                        ErrorType::RuntimeError(_) => {
+                            // runtime errors expose no highlights
+                        }
                     }
                 };
 
@@ -157,7 +229,7 @@ pub fn render_app() -> Html {
             let input_ref = input_ref.clone();
             let worker = worker.clone();
             let is_saved = is_saved.clone();
-
+            let filename = filename.clone();
             Some(use_bridge(move |response| {
                 let state = state.clone();
                 let show_tab = show_tab.clone();
@@ -166,8 +238,9 @@ pub fn render_app() -> Html {
                 let input_ref = input_ref.clone();
                 let worker = worker.clone();
                 let is_saved = is_saved.clone();
+                let filename = filename.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, response, worker, input_ref, is_saved,
+                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
                 )
             }))
         };
@@ -195,7 +268,10 @@ pub fn render_app() -> Html {
                     tasks_new.push(read_as_text(&gloo_file, move |res| match res {
                         Ok(ref file_contents) => {
                             // file.set(Some(file_contents.to_string()));
-                            let input = WorkerRequest::CompileCode(file_contents.to_string());
+                            let input = WorkerRequest::CompileCode(FileInformation {
+                                filename: file_name.clone(),
+                                file: file_contents.to_string(),
+                            });
                             log!("sending to worker");
 
                             worker.borrow().as_ref().unwrap().send(input);
@@ -222,14 +298,18 @@ pub fn render_app() -> Html {
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
                 let clone = updated_content.clone();
+                let filename = &filename.as_deref().unwrap_or("Untitled");
                 crate::set_localstorage_file_contents(&updated_content);
-                crate::set_localstorage_filename(&filename.as_deref().unwrap_or("Untitled"));
+                crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
                 worker
                     .borrow()
                     .as_ref()
                     .unwrap()
-                    .send(WorkerRequest::CompileCode(clone));
+                    .send(WorkerRequest::CompileCode(FileInformation {
+                        filename: filename.to_string(),
+                        file: clone,
+                    }));
             };
         })
     };
@@ -251,7 +331,7 @@ pub fn render_app() -> Html {
 
     /* what is the html content of the body? */
     let text_html_content = match &*state {
-        State::Compiled(_) | &State::CompilerError(_) | &State::NoFile => render_running(
+        State::Compiled(_) | &State::Error(_) | &State::NoFile => render_running(
             file.clone(),
             state.clone(),
             filename.clone(),
@@ -270,19 +350,19 @@ pub fn render_app() -> Html {
     };
 
     let file_loaded = match *state {
-        State::NoFile | State::CompilerError(_) => false,
+        State::NoFile | State::Error(_) => false,
         State::Compiled(_) => true,
     };
 
     let waiting_syscall = match &*state {
         State::Compiled(curr) => curr.input_needed.is_some(),
-        State::NoFile | State::CompilerError(_) => false,
+        State::NoFile | State::Error(_) => false,
     };
 
     // TODO - make this nicer when refactoring compiler errs
     let mipsy_output_tab_title = match &*state {
         State::NoFile => "Mipsy Output - (0)".to_string(),
-        State::CompilerError(_) => "Mipsy Output - (1)".to_string(),
+        State::Error(_) => "Mipsy Output - (1)".to_string(),
         State::Compiled(curr) => {
             format!("Mipsy Output - ({})", curr.mips_state.mipsy_stdout.len())
         }
@@ -314,7 +394,7 @@ pub fn render_app() -> Html {
 
     let input_needed = match &*state {
         State::Compiled(curr) => curr.input_needed.clone(),
-        State::NoFile | State::CompilerError(_) => None,
+        State::NoFile | State::Error(_) => None,
     };
 
     let rendered_running = render_running_output(show_io.clone(), state.clone());
@@ -466,7 +546,8 @@ fn render_running(
                                                 <table>
                                                     <tbody>
                                                         <DecompiledCode
-                                                            state={curr.clone()}
+                                                            current_instr={curr.mips_state.current_instr}
+                                                            decompiled={curr.decompiled.clone()}
                                                         />
                                                     </tbody>
                                                 </table>
@@ -478,9 +559,27 @@ fn render_running(
                                             {"No file loaded or saved"}
                                         </pre>
                                     },
-                                    State::CompilerError(_) => html! {
-                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
-                                    },
+                                    State::Error(error_type) => {
+                                        if let ErrorType::RuntimeError(error) = error_type {
+                                            html! {
+                                                <pre class="text-xs whitespace-pre-wrap">
+                                                    <table>
+                                                        <tbody>
+                                                            <DecompiledCode
+                                                                current_instr={error.mips_state.current_instr}
+                                                                decompiled={error.decompiled.clone()}
+                                                            />
+                                                        </tbody>
+                                                    </table>
+                                                </pre>
+                                            }
+                                        } else {
+                                            html! {
+                                                <p>{"There was an error when compiling! See the Mipsy Output Tab for more :)"}</p>
+                                            }
+                                        }
+                                        
+                                    }
                                 }
                             },
                             DisplayedTab::Data => {
@@ -495,8 +594,8 @@ fn render_running(
                                             {"No file loaded or saved"}
                                         </pre>
                                     },
-                                    State::CompilerError(_) => html! {
-                                        <p>{"Compiler error! See the Mipsy Output Tab for more :)"}</p>
+                                    State::Error(_) => html! {
+                                        <p>{"there was an error! See the Mipsy Output Tab for more :)"}</p>
                                     },
                                 }
                             },
@@ -524,16 +623,23 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
             State::NoFile => {
                 html! {"mipsy_web beta\nSchool of Computer Science and Engineering, University of New South Wales, Sydney."}
             }
-            State::CompilerError(_) => {
-                html! {"File has compiler errors!"}
+            State::Error(_) => {
+                html! {""}
             }
         }
     } else {
         match &*state {
             State::Compiled(curr) => html! {curr.mips_state.mipsy_stdout.join("\n")},
             State::NoFile => html! {""},
-            State::CompilerError(curr) => {
-                html! {curr.mipsy_stdout.join("")}
+            State::Error(curr) => {
+                match curr {
+                    ErrorType::RuntimeError(error) => {
+                        html! {error.mips_state.mipsy_stdout.join("\n")}
+                    }
+                    ErrorType::CompilerOrParserError(error) => {
+                        html! {error.mipsy_stdout.join("\n")}
+                    }
+                }
             }
         }
     }
@@ -585,7 +691,7 @@ pub fn process_syscall_response(
             input.set_value("");
             input.set_disabled(true);
         }
-        State::NoFile | State::CompilerError(_) => {
+        State::NoFile | State::Error(_) => {
             error!("Should not be possible to give syscall value with no file");
         }
     }

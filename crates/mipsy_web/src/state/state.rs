@@ -26,9 +26,22 @@ pub struct MipsState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct CompilerErrorState {
+pub struct ErrorState {
     pub error: MipsyError,
     pub mipsy_stdout: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeErrorState {
+    pub error: MipsyError,
+    pub mips_state: MipsState,
+    pub decompiled: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ErrorType {
+    CompilerOrParserError(ErrorState),
+    RuntimeError(RuntimeErrorState),
 }
 
 impl MipsState {
@@ -74,6 +87,6 @@ pub struct RunningState {
 #[derive(Debug, PartialEq, Clone)]
 pub enum State {
     NoFile,
-    CompilerError(CompilerErrorState),
+    Error(ErrorType),
     Compiled(RunningState),
 }
