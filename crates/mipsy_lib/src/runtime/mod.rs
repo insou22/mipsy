@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
+use crate::util::{get_segment, Segment};
+
 pub const NUL:  u8  = 0;
 pub const NULL: u32 = 0;
 pub const PAGE_SIZE: usize = 64;
@@ -56,11 +58,18 @@ impl Runtime {
 
     pub fn step(mut self) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
         let state = self.timeline.state();
+        let segment = get_segment(state.pc());
+        match segment {
+            Segment::Text | Segment::KText => {}
+            _ => {
+                let addr = state.pc();
+                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::SegmentationFault { addr }))));
+            }
+        }
         let inst = match state.read_mem_word(state.pc()) {
             Ok(inst) => inst,
             Err(_) => {
                 let addr = state.pc();
-
                 return Err((self, MipsyError::Runtime(RuntimeError::new(Error::UnknownInstruction { addr }))));
             }
         };
