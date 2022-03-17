@@ -158,7 +158,9 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
+                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
+                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -290,7 +292,8 @@ impl Error {
                         }
                     }
 
-                    if last_inst_parts.location.is_none() {
+                    let last_next_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc());
+                    if last_inst_parts.location.is_none() || last_next_inst_parts.location.is_none() {
                         if let Some(real_inst_parts) = get_real_instruction_start(last_mod, binary, inst_set, last_mod.pc() - 4) {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -397,7 +400,9 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
+                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
+                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -625,7 +630,9 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
+                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
+                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -692,6 +699,9 @@ impl Error {
 
             }
             Error::InvalidSyscall { syscall , reason } => {
+                // This error is triggered when $v0 is not a known value when `syscall` is used
+                // This error triggers after $v0 is checked for being uninitialize, so we can can assume that $v0 is an integer value
+
                 let syscall = *syscall;
 
                 let mut error = String::new();
@@ -700,12 +710,196 @@ impl Error {
 
                 match reason {
                     InvalidReason::Unimplemented => {
-                        error.push_str(&format!("the syscall number `{}` is not implemented\n", syscall.to_string().bold().to_string()));
+                        // $v0 is a valid value, but mipsy doesn't implement the operation
+                        error.push_str(&format!("\nthe syscall number `{}` is not implemented.\n", syscall.to_string().bold()));
                     }
                     InvalidReason::Unknown => {
-                        error.push_str(&format!("the syscall number `{}` is no valid\n", syscall.to_string().bold().to_string()));
-                    }                    
+                        // $v0 is an invalid value, mips doesn't define this syscall
+                        error.push_str(&format!("\nthe syscall number `{}` is no valid.\n", syscall.to_string().bold()));
+                    }
                 }
+
+                let last_mod = get_last_mod(runtime, Register::V0.to_u32());
+                let state = runtime.timeline().state();
+                let inst = state.read_mem_word(state.pc()).unwrap();
+                let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
+
+                // This instruction should always be a `syscall`
+                // This is mainly used to print the line number of the instruction
+                if let ErrorContext::Binary | ErrorContext::Interactive = context {
+                    error.push_str("\nthe instruction that failed was:\n");
+                    error.push_str(&inst_parts_to_string(
+                        &decompiled,
+                        &source_code,
+                        binary,
+                        false,
+                        false,
+                    ));
+                    error.push('\n');
+                }
+
+                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
+                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
+                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                    // The current instruction should always be `syscall`, so we can't get a pseudo-instruction
+                    // Therefor, we don't need to expand it.
+                    unreachable!()
+                }
+
+                error.push_str(&format!(
+                    "\nthis happened because {}{} was `{}`.\n",
+                    "$".yellow(),
+                    "v0".white().bold(),
+                    syscall.to_string().bold(),
+                ));
+
+                if let Some((last_index, last_mod)) = last_mod {
+                    error.push_str(&format!(
+                        "{}\n{} the instruction that caused {}{} to become `{}` was:\n",
+                        ">".red(),
+                        "|".red(),
+                        "$".yellow(),
+                        "v0".white().bold(),
+                        syscall.to_string().bold(),
+                    ));
+
+                    let last_inst = last_mod.read_mem_word(last_mod.pc() - 4).unwrap();
+                    let last_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc() - 4);
+
+                    error.push_str(&format!(
+                        "{} {}\n",
+                        "|".red(),
+                        inst_parts_to_string(&last_inst_parts, &source_code, binary, false, false),
+                    ));
+
+                    if let Some(runtime_meta) = last_inst_parts.runtime_meta {
+                        if let Some(inst_sig) = last_inst_parts.inst_sig {
+                            if !runtime_meta.reads().is_empty() {
+                                error.push_str(&format!(
+                                    "{} {}:\n",
+                                    "|".red(),
+                                    "where".bold(),
+                                ));
+
+                                let rs =    (last_inst >> 21) & 0x1F;
+                                let rt =    (last_inst >> 16) & 0x1F;
+
+                                for read in runtime_meta.reads() {
+                                    let mut index = 0;
+
+                                    for argument in inst_sig.format() {
+                                        if read.eq_argument_type(argument) {
+                                            let value = match read {
+                                                ReadsRegisterType::Rs | ReadsRegisterType::OffRs => state.read_register_uninit(rs),
+                                                ReadsRegisterType::Rt | ReadsRegisterType::OffRt => state.read_register_uninit(rt),
+                                            };
+
+                                            let name = match read {
+                                                ReadsRegisterType::Rs | ReadsRegisterType::Rt => {
+                                                    format!("{}{}", "$".yellow(), last_inst_parts.arguments[index][1..].bold())
+                                                },
+                                                ReadsRegisterType::OffRs | ReadsRegisterType::OffRt => {
+                                                    format!("{}{}", "$".yellow(), last_inst_parts.arguments[index].split_once('(').unwrap().1.split_once(')').unwrap().0[1..].bold())
+                                                }
+                                            };
+
+                                            error.push_str(&format!(
+                                                "{}  {} = {}\n",
+                                                "|".red(),
+                                                name,
+                                                match value {
+                                                    Safe::Valid(value)  => format!("0x{:08x}", value),
+                                                    Safe::Uninitialised => String::from("uninitialised"),
+                                                },
+                                            ));
+
+                                            break;
+                                        }
+
+                                        index += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let last_next_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc());
+                    if last_inst_parts.location.is_none() || last_next_inst_parts.location.is_none() {
+                        if let Some(real_inst_parts) = get_real_instruction_start(last_mod, binary, inst_set, last_mod.pc() - 4) {
+
+                            let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                            let mut file = None;
+                            
+                            for (src_tag, src_file) in source_code {
+                                if &*file_tag == &**src_tag {
+                                    file = Some(src_file);
+                                    break;
+                                }
+                            }
+
+                            if let Some(file) = file {
+                                if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                    error.push_str(&format!(
+                                        "{}\n  {} this instruction was generated from your pseudo-instruction:\n",
+                                        ">=>".red(),
+                                        "|".red(),
+                                    ));
+                                    
+                                    // TODO: It would be nice to syntax highlight the instruction printed here
+                                    error.push_str(&format!(
+                                        "  {} {} {}\n",
+                                        "|".red(),
+                                        line_num.to_string().yellow().bold(),
+                                        line.bold(),
+                                    ));
+
+                                    error.push_str(&format!(
+                                        "  {} which was expanded into the following {} native instructions:\n",
+                                        "|".red(),
+                                        (last_mod.pc() - real_inst_parts.addr) / 4,
+                                    ));
+
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                        let inst = last_mod.read_mem_word(addr).unwrap();
+
+                                        let failed = addr == last_mod.pc() - 4;
+
+                                        error.push_str(&format!(
+                                            "  {} {}{}\n",
+                                            if failed { ">".green() } else { ">".bright_black() },
+                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            if failed {
+                                                format!(
+                                                    "  <-- this instruction caused {}{} to become `{}`",
+                                                    "$".yellow(),
+                                                    "v0".white().bold(),
+                                                    syscall.to_string().white().bold(),
+                                                )
+                                                    .bright_blue()
+                                                    .to_string()
+                                            } else {
+                                                String::new()
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if let ErrorContext::Interactive = context {
+                        let distance = runtime.timeline().timeline_len() - last_index;
+                        error.push_str(&format!(
+                            "{}\n{} to get back there, use `{} {}`\n",
+                            ">".red(),
+                            "|".red(),
+                            "back".bold(),
+                            distance.to_string().bold()
+                        ));
+                    }
+                }
+
+                error.push('\n');
 
                 error
             }
@@ -919,7 +1113,7 @@ fn get_last_mod(runtime: &Runtime, write_marker: u32) -> Option<(usize, &State)>
 }
 
 fn get_real_instruction_start<'inst_set>(state: &State, binary: &Binary, inst_set: &'inst_set InstSet, pseudo_address: u32) -> Option<Decompiled<'inst_set>> {
-    let mut real_inst_addr = pseudo_address - 4;
+    let mut real_inst_addr = pseudo_address;
     loop {
         let prev_inst = match state.read_mem_word(real_inst_addr) {
             Ok(real_inst) => real_inst,
