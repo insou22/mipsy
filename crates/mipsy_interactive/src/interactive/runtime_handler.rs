@@ -285,17 +285,6 @@ pub(crate) fn trap(_verbose: bool) {
     println!("{}\n", "[TRAP]".bright_red().bold());
 }
 
-pub(crate) fn sys_unknown(verbose: bool, syscall_number: i32) {
-    if verbose {
-        prompt::syscall_nl(
-            syscall_number,
-            format!(
-                "unknown",
-            ),
-        );
-    }
-}
-
 pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
     println!(
         "{}{}{}\n", 

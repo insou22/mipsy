@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, util::get_segment};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -57,6 +57,7 @@ pub enum Error {
     DivisionByZero,
 
     SegmentationFault { addr: u32 },
+    InvalidSyscall { syscall: i32, reason: InvalidReason },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -73,6 +74,12 @@ pub enum Uninitialised {
 pub enum AlignmentRequirement {
     Half,
     Word,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum InvalidReason {
+    Unimplemented, // Invalid becasue we don't have an implementation for it but it does exist
+    Unknown,       // Invalid because it doesn't exist to begin with
 }
 
 impl Error {
@@ -684,6 +691,24 @@ impl Error {
                 error
 
             }
+            Error::InvalidSyscall { syscall , reason } => {
+                let syscall = *syscall;
+
+                let mut error = String::new();
+
+                error.push_str("Invalid Syscall\n");
+
+                match reason {
+                    InvalidReason::Unimplemented => {
+                        error.push_str(&format!("the syscall number `{}` is not implemented\n", syscall.to_string().bold().to_string()));
+                    }
+                    InvalidReason::Unknown => {
+                        error.push_str(&format!("the syscall number `{}` is no valid\n", syscall.to_string().bold().to_string()));
+                    }                    
+                }
+
+                error
+            }
         }
     }
 
@@ -872,6 +897,9 @@ impl Error {
                     // hopefully unreachable
                     _ => vec![]
                 }
+            }
+            Error::InvalidSyscall { .. } => {
+                vec![]
             }
         }
     }

@@ -396,10 +396,6 @@ impl State {
                         runtime_handler::trap(verbose);
                         trapped = true;
                     }
-                    UnknownSyscall(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
-                        runtime_handler::sys_unknown(verbose, args.syscall_number);
-                    }
                 }
             }
             Err((new_runtime, err)) => {

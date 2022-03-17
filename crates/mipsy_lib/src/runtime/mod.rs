@@ -3,7 +3,7 @@ pub mod state;
 pub use self::state::State;
 
 use std::collections::HashMap;
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, Error}, compile::GLOBAL_PTR};
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidReason, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
 use crate::util::{get_segment, Segment};
@@ -163,18 +163,24 @@ impl Runtime {
                         self
                     )
                 }
-                SYS2_PRINT_FLOAT => RuntimeSyscallGuard::PrintFloat(
-                    PrintFloatArgs {
-                        value: todo!(),
-                    },
-                    self
-                ),
-                SYS3_PRINT_DOUBLE => RuntimeSyscallGuard::PrintDouble(
-                    PrintDoubleArgs {
-                        value: todo!(),
-                    },
-                    self
-                ),
+                SYS2_PRINT_FLOAT => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
+                // RuntimeSyscallGuard::PrintFloat(
+                //     PrintFloatArgs {
+                //         value: todo!(),
+                //     },
+                //     self
+                // ),
+                SYS3_PRINT_DOUBLE => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
+                // RuntimeSyscallGuard::PrintDouble(
+                //     PrintDoubleArgs {
+                //         value: todo!(),
+                //     },
+                //     self
+                // ),
                 SYS4_PRINT_STRING => {
                     let value = try_owned_self!(self, self.timeline.state().read_mem_string(
                         try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
@@ -193,12 +199,12 @@ impl Runtime {
                         self
                     })
                 ),
-                SYS6_READ_FLOAT => RuntimeSyscallGuard::ReadFloat(
-                    todo!()
-                ),
-                SYS7_READ_DOUBLE => RuntimeSyscallGuard::ReadDouble(
-                    todo!()
-                ),
+                SYS6_READ_FLOAT => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
+                SYS7_READ_DOUBLE => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
                 SYS8_READ_STRING => {
                     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as u32;
                     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
@@ -261,80 +267,89 @@ impl Runtime {
                         self
                     })
                 ),
-                SYS13_OPEN => RuntimeSyscallGuard::Open(
-                    OpenArgs {
-                        path: try_owned_self!(self, self.timeline.state().read_mem_string(
-                            try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
-                        )),
-                        flags: try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _,
-                        mode:  try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _,
-                    },
-                    Box::new(move |fd| {
-                        self.timeline.state_mut().write_register(Register::V0.to_u32(), fd as _);
-                        self
-                    })
-                ),
+                SYS13_OPEN => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
+                // RuntimeSyscallGuard::Open(
+                //     OpenArgs {
+                //         path: try_owned_self!(self, self.timeline.state().read_mem_string(
+                //             try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
+                //         )),
+                //         flags: try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _,
+                //         mode:  try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _,
+                //     },
+                //     Box::new(move |fd| {
+                //         self.timeline.state_mut().write_register(Register::V0.to_u32(), fd as _);
+                //         self
+                //     })
+                // ),
                 SYS14_READ => {
-                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
-                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
-                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-
-                    RuntimeSyscallGuard::Read(
-                        ReadArgs {
-                            fd,
-                            len,
-                        },
-                        Box::new(move |(n_bytes, bytes)| {
-                            let len = (len as usize).min(bytes.len());
-
-                            bytes[..len].iter().enumerate().for_each(|(i, byte)| {
-                                // if there's a segmentation fault, we just don't end up writing the data
-                                let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
-                            });
-                            self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
-                            
-                            self
-                        })
-                    )
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
                 }
+                // {
+                //     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                //     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
+                //     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+                //
+                //     RuntimeSyscallGuard::Read(
+                //         ReadArgs {
+                //             fd,
+                //             len,
+                //         },
+                //         Box::new(move |(n_bytes, bytes)| {
+                //             let len = (len as usize).min(bytes.len());
+                //
+                //             bytes[..len].iter().enumerate().for_each(|(i, byte)| {
+                //                 // if there's a segmentation fault, we just don't end up writing the data
+                //                 let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
+                //             });
+                //             self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
+                //
+                //             self
+                //         })
+                //     )
+                // }
                 SYS15_WRITE => {
-                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
-                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
-                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-
-                    RuntimeSyscallGuard::Write(
-                        WriteArgs {
-                            fd,
-                            buf: try_owned_self!(self, self.timeline.state().read_mem_bytes(buf, len)),
-                        },
-                        Box::new(move |written| {
-                            self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
-                            
-                            self
-                        })
-                    )
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
                 }
-                SYS16_CLOSE => RuntimeSyscallGuard::Close(
-                    CloseArgs {
-                        fd: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
-                    },
-                    Box::new(move |status| {
-                        self.timeline.state_mut().write_register(Register::V0.to_u32(), status as _);
-                        self
-                    })
-                ),
+                // {
+                //     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                //     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
+                //     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+                //
+                //     RuntimeSyscallGuard::Write(
+                //         WriteArgs {
+                //             fd,
+                //             buf: try_owned_self!(self, self.timeline.state().read_mem_bytes(buf, len)),
+                //         },
+                //         Box::new(move |written| {
+                //             self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
+                //
+                //             self
+                //         })
+                //     )
+                // }
+                SYS16_CLOSE => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                }
+                // RuntimeSyscallGuard::Close(
+                //     CloseArgs {
+                //         fd: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                //     },
+                //     Box::new(move |status| {
+                //         self.timeline.state_mut().write_register(Register::V0.to_u32(), status as _);
+                //         self
+                //     })
+                // ),
                 SYS17_EXIT_STATUS => RuntimeSyscallGuard::ExitStatus(
                     ExitStatusArgs {
                         exit_code: self.timeline.state().read_register_uninit(Register::A0.to_u32()).into_option().unwrap_or(0) as _,
                     },
                     self,
                 ),
-                unknown => RuntimeSyscallGuard::UnknownSyscall(
-                    UnknownSyscallArgs {
-                        syscall_number: unknown,
-                    },
-                    self,
-                )
+                _ => {
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unknown }))));
+                }
             }
         )
     }
@@ -1069,7 +1084,6 @@ pub enum RuntimeSyscallGuard {
     // other
     Breakpoint     (Runtime),
     Trap           (Runtime),
-    UnknownSyscall (UnknownSyscallArgs, Runtime)
 }
 
 pub struct PrintIntArgs {
@@ -1122,10 +1136,6 @@ pub struct CloseArgs {
 
 pub struct ExitStatusArgs {
     pub exit_code: i32,
-}
-
-pub struct UnknownSyscallArgs {
-    pub syscall_number: i32,
 }
 
 pub(self) trait SafeToUninitResult {
