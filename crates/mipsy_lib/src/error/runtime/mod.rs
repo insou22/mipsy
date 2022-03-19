@@ -741,9 +741,60 @@ impl Error {
                 let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
                 let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
                 if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
-                    // The current instruction should always be `syscall`, so we can't get a pseudo-instruction
-                    // Therefor, we don't need to expand it.
-                    unreachable!()
+                    if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
+
+                        let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                        let mut file = None;
+                        
+                        for (src_tag, src_file) in source_code {
+                            if &*file_tag == &**src_tag {
+                                file = Some(src_file);
+                                break;
+                            }
+                        }
+
+                        if let Some(file) = file {
+                            if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                error.push_str(&format!(
+                                    "{}\n{} this instruction was generated from your pseudo-instruction:\n",
+                                    ">".red(),
+                                    "|".red(),
+                                ));
+                                
+                                error.push_str(&format!(
+                                    "{} {} {}\n",
+                                    "|".red(),
+                                    line_num.to_string().yellow().bold(),
+                                    line.bold(),
+                                ));
+
+                                error.push_str(&format!(
+                                    "{} which was expanded into the following {} native instructions:\n",
+                                    "|".red(),
+                                    (state.pc() + 4 - real_inst_parts.addr) / 4,
+                                ));
+
+                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    let inst = state.read_mem_word(addr).unwrap();
+
+                                    let failed = addr == state.pc();
+
+                                    error.push_str(&format!(
+                                        "  {} {}{}\n",
+                                        if failed { ">".green() } else { ">".bright_black() },
+                                        inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                        if failed {
+                                            "  <-- this instruction failed"
+                                                .bright_blue()
+                                                .to_string()
+                                        } else {
+                                            String::new()
+                                        },
+                                    ));
+                                }
+                            }
+                        }
+                    }
                 }
 
                 error.push_str(&format!(

@@ -267,80 +267,68 @@ impl Runtime {
                         self
                     })
                 ),
-                SYS13_OPEN => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
-                }
-                // RuntimeSyscallGuard::Open(
-                //     OpenArgs {
-                //         path: try_owned_self!(self, self.timeline.state().read_mem_string(
-                //             try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
-                //         )),
-                //         flags: try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _,
-                //         mode:  try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _,
-                //     },
-                //     Box::new(move |fd| {
-                //         self.timeline.state_mut().write_register(Register::V0.to_u32(), fd as _);
-                //         self
-                //     })
-                // ),
+                SYS13_OPEN => RuntimeSyscallGuard::Open(
+                    OpenArgs {
+                        path: try_owned_self!(self, self.timeline.state().read_mem_string(
+                            try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _
+                        )),
+                        flags: try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _,
+                        mode:  try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _,
+                    },
+                    Box::new(move |fd| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), fd as _);
+                        self
+                    })
+                ),
                 SYS14_READ => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
+                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+                
+                    RuntimeSyscallGuard::Read(
+                        ReadArgs {
+                            fd,
+                            len,
+                        },
+                        Box::new(move |(n_bytes, bytes)| {
+                            let len = (len as usize).min(bytes.len());
+                
+                            bytes[..len].iter().enumerate().for_each(|(i, byte)| {
+                                // if there's a segmentation fault, we just don't end up writing the data
+                                let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
+                            });
+                            self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
+                
+                            self
+                        })
+                    )
                 }
-                // {
-                //     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
-                //     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
-                //     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-                //
-                //     RuntimeSyscallGuard::Read(
-                //         ReadArgs {
-                //             fd,
-                //             len,
-                //         },
-                //         Box::new(move |(n_bytes, bytes)| {
-                //             let len = (len as usize).min(bytes.len());
-                //
-                //             bytes[..len].iter().enumerate().for_each(|(i, byte)| {
-                //                 // if there's a segmentation fault, we just don't end up writing the data
-                //                 let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
-                //             });
-                //             self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
-                //
-                //             self
-                //         })
-                //     )
-                // }
-                SYS15_WRITE => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                SYS15_WRITE =>{
+                    let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
+                    let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
+                    let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
+                
+                    RuntimeSyscallGuard::Write(
+                        WriteArgs {
+                            fd,
+                            buf: try_owned_self!(self, self.timeline.state().read_mem_bytes(buf, len)),
+                        },
+                        Box::new(move |written| {
+                            self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
+                
+                            self
+                        })
+                    )
                 }
-                // {
-                //     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
-                //     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
-                //     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-                //
-                //     RuntimeSyscallGuard::Write(
-                //         WriteArgs {
-                //             fd,
-                //             buf: try_owned_self!(self, self.timeline.state().read_mem_bytes(buf, len)),
-                //         },
-                //         Box::new(move |written| {
-                //             self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
-                //
-                //             self
-                //         })
-                //     )
-                // }
-                SYS16_CLOSE => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
-                }
-                // RuntimeSyscallGuard::Close(
-                //     CloseArgs {
-                //         fd: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
-                //     },
-                //     Box::new(move |status| {
-                //         self.timeline.state_mut().write_register(Register::V0.to_u32(), status as _);
-                //         self
-                //     })
-                // ),
+                SYS16_CLOSE => RuntimeSyscallGuard::Close(
+                    CloseArgs {
+                        fd: try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _,
+                    },
+                    Box::new(move |status| {
+                        self.timeline.state_mut().write_register(Register::V0.to_u32(), status as _);
+                        self
+                    })
+                ),
                 SYS17_EXIT_STATUS => RuntimeSyscallGuard::ExitStatus(
                     ExitStatusArgs {
                         exit_code: self.timeline.state().read_register_uninit(Register::A0.to_u32()).into_option().unwrap_or(0) as _,

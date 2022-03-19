@@ -6,7 +6,9 @@ mod runtime_handler;
 
 use std::{ops::Deref, rc::Rc};
 
-use mipsy_lib::{MipsyError, ParserError, error::{parser, runtime::ErrorContext}, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
+use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
+use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
+use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidReason};
 use helper::MyHelper;
 
 use rustyline::{
@@ -365,21 +367,49 @@ impl State {
                         let value = runtime_handler::sys12_read_char(verbose);
                         self.runtime = Some(guard(value));
                     }
-                    Open(args, guard) => {
-                        let value = runtime_handler::sys13_open(verbose, args);
-                        self.runtime = Some(guard(value));
+                    Open(_args, guard) => {
+                        // TODO: implement file open for mipsy interactive frontend
+
+                        let mut new_runtime = guard(-1);
+                        new_runtime.timeline_mut().pop_last_state();
+                        self.runtime = Some(new_runtime);
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidReason::Unimplemented }))});
+
+                        // let value = runtime_handler::sys13_open(verbose, args);
+                        // self.runtime = Some(guard(value));
                     }
-                    Read(args, guard) => {
-                        let value = runtime_handler::sys14_read(verbose, args);
-                        self.runtime = Some(guard(value));
+                    Read(_args, guard) => {
+                        // TODO: implement file read for mipsy interactive frontend
+
+                        let mut new_runtime = guard((-1, Vec::new()));
+                        new_runtime.timeline_mut().pop_last_state();
+                        self.runtime = Some(new_runtime);
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidReason::Unimplemented }))});
+
+                        // let value = runtime_handler::sys14_read(verbose, args);
+                        // self.runtime = Some(guard(value));
                     }
-                    Write(args, guard) => {
-                        let value = runtime_handler::sys15_write(verbose, args);
-                        self.runtime = Some(guard(value));
+                    Write(_args, guard) => {
+                        // TODO: implement file write for mipsy interactive frontend
+
+                        let mut new_runtime = guard(-1);
+                        new_runtime.timeline_mut().pop_last_state();
+                        self.runtime = Some(new_runtime);
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidReason::Unimplemented }))});
+
+                        // let value = runtime_handler::sys15_write(verbose, args);
+                        // self.runtime = Some(guard(value));
                     }
-                    Close(args, guard) => {
-                        let value = runtime_handler::sys16_close(verbose, args);
-                        self.runtime = Some(guard(value));
+                    Close(_args, guard) => {
+                        // TODO: implement file close for mipsy interactive frontend
+
+                        let mut new_runtime = guard(-1);
+                        new_runtime.timeline_mut().pop_last_state();
+                        self.runtime = Some(new_runtime);
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidReason::Unimplemented }))});
+
+                        // let value = runtime_handler::sys16_close(verbose, args);
+                        // self.runtime = Some(guard(value));
                     }
                     ExitStatus(args, new_runtime) => {
                         self.runtime = Some(new_runtime);
