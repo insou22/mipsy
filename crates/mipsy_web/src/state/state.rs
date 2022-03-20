@@ -25,25 +25,6 @@ pub struct MipsState {
     pub is_stepping: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ErrorState {
-    pub error: MipsyError,
-    pub mipsy_stdout: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct RuntimeErrorState {
-    pub error: MipsyError,
-    pub mips_state: MipsState,
-    pub decompiled: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ErrorType {
-    CompilerOrParserError(ErrorState),
-    RuntimeError(RuntimeErrorState),
-}
-
 impl MipsState {
     pub fn update_registers(&mut self, runtime: &Runtime) {
         self.previous_registers = runtime
@@ -76,6 +57,13 @@ impl MipsState {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum State {
+    NoFile,
+    Error(ErrorType),
+    Compiled(RunningState),
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct RunningState {
     pub decompiled: String,
@@ -84,9 +72,22 @@ pub struct RunningState {
     pub input_needed: Option<ReadSyscalls>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum State {
-    NoFile,
-    Error(ErrorType),
-    Compiled(RunningState),
+#[derive(Debug, Clone, PartialEq)]
+pub enum ErrorType {
+    CompilerOrParserError(ErrorState),
+    RuntimeError(RuntimeErrorState),
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorState {
+    pub error: MipsyError,
+    pub mipsy_stdout: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeErrorState {
+    pub error: MipsyError,
+    pub mips_state: MipsState,
+    pub decompiled: String,
+}
+

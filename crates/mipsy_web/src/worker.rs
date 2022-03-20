@@ -616,9 +616,6 @@ impl Agent for Worker {
                                                 .binary
                                                 .as_ref()
                                                 .expect("binary should exist if runtime error");
-                                            info!("filename: {filename}");
-                                            info!("{}", format!("{:?}",binary.line_numbers));
-                                            info!("source_name: {}", binary.line_numbers.iter().next().unwrap().0);
                                             let message = format!(
                                                 "error: {}\ntips: {}\n",
                                                 runtime_error.error().message(
