@@ -84,10 +84,9 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::InstructionOk(mips_state) => {
             if let State::Compiled(ref curr) = *state {
-                state.set(State::Compiled(RunningState {
-                    mips_state: mips_state.clone(),
-                    ..curr.clone()
-                }));
+                if curr.mips_state.stdout != mips_state.stdout {
+                    show_io.set(true);
+                }
 
                 // if the isntruction was ok, run another instruction
                 // unless the user has said it should be killed
@@ -101,6 +100,12 @@ pub fn handle_response_from_worker(
                         NUM_INSTR_BEFORE_RESPONSE,
                         file_information,
                     );
+
+                    state.set(State::Compiled(RunningState {
+                        mips_state: mips_state.clone(),
+                        ..curr.clone()
+                    }));
+
                     worker.borrow().as_ref().unwrap().send(input);
                 }
 
@@ -116,6 +121,11 @@ pub fn handle_response_from_worker(
 
         WorkerResponse::UpdateMipsState(mips_state) => {
             if let State::Compiled(ref curr) = *state {
+                // focus IO if output
+                if curr.mips_state.stdout != mips_state.stdout {
+                    show_io.set(true);
+                }
+
                 state.set(State::Compiled(RunningState {
                     mips_state,
                     ..curr.clone()

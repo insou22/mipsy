@@ -1,11 +1,11 @@
 use crate::{
-    state::state::{MipsState, RunningState, State},
     pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
-    worker::{Worker, WorkerRequest, FileInformation},
+    state::state::{ErrorType, MipsState, RunningState, State},
+    worker::{FileInformation, Worker, WorkerRequest},
 };
 use derivative::Derivative;
 use log::{info, trace};
-use yew::{Html, prelude::*};
+use yew::{prelude::*, Html};
 use yew_agent::{Agent, UseBridgeHandle};
 
 #[derive(Properties, Derivative)]
@@ -29,7 +29,7 @@ struct Icon {
     callback: Option<yew::Callback<yew::MouseEvent>>,
     title: String,
     html: Html,
-    disable_override: bool,
+    is_disabled: bool,
 }
 
 fn icons(props: &NavBarProps) -> Vec<Icon> {
@@ -62,7 +62,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     }));
                 })
             }),
-            disable_override: true,
+            is_disabled: false,
         },
         Icon {
             label: String::from("Run"),
@@ -97,7 +97,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                                 ..curr.mips_state.clone()
                             },
                             NUM_INSTR_BEFORE_RESPONSE,
-                            file_information
+                            file_information,
                         );
 
                         worker.send(input);
@@ -106,7 +106,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     };
                 })
             }),
-            disable_override: false,
+            is_disabled: true,
         },
         Icon {
             label: String::from("Reset"),
@@ -121,15 +121,46 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let state = props.state.clone();
                 Callback::from(move |_| {
                     info!("Reset button clicked");
-                    if let State::Compiled(curr) = &*state {
-                        let input = <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
-                        worker.send(input);
-                    } else {
-                        state.set(State::NoFile);
+
+                    match &*state {
+                        State::Compiled(curr) => {
+                            state.set(State::Compiled(RunningState {
+                                should_kill: false,
+                                ..curr.clone()
+                            }));
+                            let input =
+                                <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                            worker.send(input);
+                        }
+                        State::Error(ErrorType::RuntimeError(curr)) => {
+                            state.set(State::Compiled(RunningState {
+                                should_kill: false,
+                                decompiled: curr.decompiled.clone(),
+                                mips_state: curr.mips_state.clone(),
+                                input_needed: None,
+                            }));
+                            let input =
+                                <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                            worker.send(input);
+                        }
+
+                        State::Error(ErrorType::CompilerOrParserError(_)) => {
+                            // shouldnt be able to click
+                            unreachable!("Reset button should not be clickable when compiler or parser error");
+                        }
+
+                        State::NoFile => {
+                            unreachable!("Reset button should not be clickable when no file");
+                        }
                     }
                 })
             }),
-            disable_override: true,
+            is_disabled: match &*props.state {
+                State::Compiled(_) => false,
+                State::Error(ErrorType::RuntimeError(_)) => false,
+                State::Error(ErrorType::CompilerOrParserError(_)) => true,
+                State::NoFile => true,
+            },
         },
         Icon {
             label: String::from("Kill"),
@@ -151,7 +182,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     }
                 })
             }),
-            disable_override: false,
+            is_disabled: true,
         },
         Icon {
             label: String::from("Step Back"),
@@ -182,14 +213,15 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             filename: filename.as_deref().unwrap_or("Untitled").to_string(),
                             file: file.as_deref().unwrap_or("").to_string(),
                         };
-                        let input = <Worker as Agent>::Input::Run(new_mips_state, -1, file_information);
+                        let input =
+                            <Worker as Agent>::Input::Run(new_mips_state, -1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");
                     };
                 })
             }),
-            disable_override: false,
+            is_disabled: true,
         },
         Icon {
             label: String::from("Step Next"),
@@ -205,7 +237,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
-                    info!("Step Back button clicked");
+                    info!("Step Next button clicked");
                     if let State::Compiled(curr) = &*state {
                         let new_mips_state = MipsState {
                             is_stepping: true,
@@ -220,14 +252,15 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             filename: filename.as_deref().unwrap_or("Untitled").to_string(),
                             file: file.as_deref().unwrap_or("").to_string(),
                         };
-                        let input = <Worker as Agent>::Input::Run(new_mips_state, 1, file_information);
+                        let input =
+                            <Worker as Agent>::Input::Run(new_mips_state, 1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");
                     };
                 })
             }),
-            disable_override: false,
+            is_disabled: true,
         },
         Icon {
             label: String::from("Download"),
@@ -248,7 +281,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                     );
                 })
             }),
-            disable_override: true,
+            is_disabled: false,
         },
     ];
 
@@ -295,7 +328,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
 
                         // if we are waiting on a syscall value, or if there is no file
                         // then we hsouldn't be able to step
-                        let is_disabled = !item.disable_override && (props.waiting_syscall || !props.file_loaded || is_run_step_disabled);
+                        let is_disabled = item.is_disabled && (props.waiting_syscall || !props.file_loaded || is_run_step_disabled);
 
                         let onclick = if item.callback.is_some() {
                             item.callback.clone().unwrap()
