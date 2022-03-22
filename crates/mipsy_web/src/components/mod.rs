@@ -6,3 +6,4 @@ pub mod outputarea;
 pub mod pagebackground;
 pub mod registers;
 pub mod sourcecode;
+pub mod banner;

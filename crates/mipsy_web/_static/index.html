@@ -126,6 +126,13 @@
         document.body.removeChild(element);
       }
 
+      function get_localstorage(key) {
+        return localStorage.getItem(key);
+      }
+
+      function set_localstorage(key, value) {
+        localStorage.setItem(key, value);
+      }
     </script>
     <script src="wasm.js"></script>
     <script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>

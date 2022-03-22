@@ -1,9 +1,10 @@
 use crate::worker::ReadSyscallInputs;
+use std::str::FromStr;
 use crate::{
     components::{
         data_segment::DataSegment, decompiled::DecompiledCode, modal::Modal, navbar::NavBar,
         outputarea::OutputArea, pagebackground::PageBackground, registers::Registers,
-        sourcecode::SourceCode,
+        sourcecode::SourceCode, banner::Banner,
     },
     state::{
         config::MipsyWebConfig,
@@ -52,6 +53,14 @@ pub fn render_app() -> Html {
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
     let config: UseStateHandle<MipsyWebConfig> = use_state_eq(|| MipsyWebConfig::default());
+    let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| 
+        crate::get_localstorage("ack_analytics")
+                .map(
+                    |item| FromStr::from_str(&item)
+                        .unwrap_or(true)
+                )
+                .unwrap_or(true)
+    );
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -483,10 +492,11 @@ pub fn render_app() -> Html {
                             on_input_keydown={on_input_keydown.clone()}
                             running_output={rendered_running}
                         />
-                    </div>
-
+                    </div>                    
                 </div>
-
+                if *show_analytics_banner {
+                    <Banner show_analytics_banner={show_analytics_banner}/>
+                }
             </PageBackground>
 
         </>
