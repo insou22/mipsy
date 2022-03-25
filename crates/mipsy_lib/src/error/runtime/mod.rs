@@ -637,7 +637,7 @@ impl Error {
                 }
 
                 let state = runtime.timeline().state();
-                let prev_state = runtime.timeline().prev_state().unwrap();
+                let prev_state = runtime.timeline().prev_state();
 
                 if get_segment(state.pc()) == Segment::Text || get_segment(state.pc()) == Segment::KText {
                     let inst = state.read_mem_word(state.pc()).unwrap();
@@ -715,8 +715,8 @@ impl Error {
                         }
                     }
                 }
-                else if get_segment(prev_state.pc()) == Segment::Text || get_segment(prev_state.pc()) == Segment::KText {
-                    let state = prev_state;
+                else if get_segment(prev_state.unwrap().pc()) == Segment::Text || get_segment(prev_state.unwrap().pc()) == Segment::KText {
+                    let state = prev_state.unwrap();
                     let inst = state.read_mem_word(state.pc()).unwrap();
                     let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
