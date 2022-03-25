@@ -623,15 +623,15 @@ impl Error {
 
                 match access {
                     AccessType::Read => {
-                        error.push_str(&format!("this happened because you tried to {} from\n", "read".yellow()));
+                        error.push_str(&format!("\nthis happened because you tried to {} from\n", "read".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to read from\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
                     AccessType::Write => {
-                        error.push_str(&format!("this happened because you tried to {} to\n", "write".yellow()));
+                        error.push_str(&format!("\nthis happened because you tried to {} to\n", "write".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to write to\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
                     AccessType::Execute => {
-                        error.push_str(&format!("this happened because you tried to {}\n", "execute".yellow()));
+                        error.push_str(&format!("\nthis happened because you tried to {}\n", "execute".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to execute\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
                 }
@@ -640,6 +640,7 @@ impl Error {
                 let prev_state = runtime.timeline().prev_state();
 
                 if get_segment(state.pc()) == Segment::Text || get_segment(state.pc()) == Segment::KText {
+                    // Current instruction is in a TEXT segment, so we are probaly reading or writing incorrectly
                     let inst = state.read_mem_word(state.pc()).unwrap();
                     let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
@@ -716,6 +717,8 @@ impl Error {
                     }
                 }
                 else if get_segment(prev_state.unwrap().pc()) == Segment::Text || get_segment(prev_state.unwrap().pc()) == Segment::KText {
+                    // Current instruction is not in a TEXT segment, so we are probably executing incorrectly
+                    // But we had to get here somehow, so the previuos instruction should be valid.
                     let state = prev_state.unwrap();
                     let inst = state.read_mem_word(state.pc()).unwrap();
                     let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
