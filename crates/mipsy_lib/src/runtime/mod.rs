@@ -3,7 +3,7 @@ pub mod state;
 pub use self::state::State;
 
 use std::collections::HashMap;
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidReason, Error}, compile::GLOBAL_PTR};
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidReason, AccessType, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
 use crate::util::{get_segment, Segment};
@@ -63,7 +63,7 @@ impl Runtime {
             Segment::Text | Segment::KText => {}
             _ => {
                 let addr = state.pc();
-                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::SegmentationFault { addr }))));
+                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::SegmentationFault { addr, access: AccessType::Execute }))));
             }
         }
         let inst = match state.read_mem_word(state.pc()) {
