@@ -46,13 +46,12 @@ pub fn render_app() -> Html {
     let on_content_change_closure_handle: UseStateHandle<bool> = use_state_eq(|| false);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
-    let input_ref: UseStateHandle<NodeRef> = use_state_eq(|| NodeRef::default());
+    let input_ref: UseStateHandle<NodeRef> = use_state_eq(NodeRef::default);
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
-    let tasks: UseStateHandle<Vec<FileReader>> = use_state(|| vec![]);
+    let tasks: UseStateHandle<Vec<FileReader>> = use_state(std::vec::Vec::new);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
-    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(|| MipsyWebConfig::default());
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| 
         crate::get_localstorage("ack_analytics")
                 .map(
@@ -61,6 +60,7 @@ pub fn render_app() -> Html {
                 )
                 .unwrap_or(true)
     );
+    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(MipsyWebConfig::default);
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -68,7 +68,6 @@ pub fn render_app() -> Html {
     {
         let file = file.clone();
         let file2 = file.clone();
-        let on_content_change_closure_handle = on_content_change_closure_handle.clone();
         let is_saved = is_saved.clone();
         let filename2 = filename.clone();
         use_effect_with_deps(
@@ -85,8 +84,7 @@ pub fn render_app() -> Html {
 
                             // if window element is on the page, create, leak, and add the onchange callback
                             // only if we have not already added it
-                            if window().unwrap().get("editor").is_some() {
-                                if !*on_content_change_closure_handle {
+                            if window().unwrap().get("editor").is_some() && !*on_content_change_closure_handle {
                                     let cb = Closure::wrap(Box::new(move || {
                                         let editor_contents = crate::get_editor_value();
 
@@ -105,7 +103,6 @@ pub fn render_app() -> Html {
                                     crate::set_model_change_listener(&cb);
                                     cb.forget();
                                     on_content_change_closure_handle.set(true);
-                                };
                             }
 
                             if let Some(file) = &*file {
@@ -127,7 +124,7 @@ pub fn render_app() -> Html {
                 };
                 move || {} //do stuff when your componet is unmounted
             },
-            (filename.clone(), file2.clone(), show_tab.clone()), // run use_effect when these dependencies change
+            (filename.clone(), file2, show_tab.clone()), // run use_effect when these dependencies change
         );
     }
 
@@ -259,13 +256,13 @@ pub fn render_app() -> Html {
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
         let filename = filename.clone();
-        let tasks = tasks.clone();
+        let tasks = tasks;
         Callback::from(move |e: Event| {
             let input: HtmlInputElement = e.target_unchecked_into();
 
             if let Some(file_list) = input.files() {
                 if let Some(file_blob) = file_list.item(0) {
-                    let gloo_file = File::from(web_sys::File::from(file_blob));
+                    let gloo_file = File::from(file_blob);
 
                     let file_name = gloo_file.name();
                     filename.set(Some(file_name.clone()));
@@ -344,7 +341,7 @@ pub fn render_app() -> Html {
             file.clone(),
             state.clone(),
             filename.clone(),
-            save_keydown.clone(),
+            save_keydown,
             is_saved.clone(),
             show_tab.clone(),
         ),
@@ -435,14 +432,14 @@ pub fn render_app() -> Html {
 
                 <NavBar
                     {load_onchange}
-                    display_modal={display_modal.clone()}
+                    display_modal={display_modal}
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
                     worker={worker.borrow().as_ref().unwrap().clone()}
-                    filename={filename.clone()}
-                    file={file.clone()}
-                    is_saved={is_saved.clone()}
+                    filename={filename}
+                    file={file}
+                    is_saved={is_saved}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 107px)">
@@ -511,11 +508,7 @@ pub fn is_nav_or_special_key(event: &KeyboardEvent) -> bool {
         return true;
     }
 
-    match event.key().as_str() {
-        "Backspace" => true,
-        "-" => true,
-        _ => false,
-    }
+    matches!(event.key().as_str(), "Backspace | -")
 }
 
 fn render_running(
@@ -527,7 +520,7 @@ fn render_running(
     show_tab: UseStateHandle<DisplayedTab>,
 ) -> Html {
     let display_filename = if *is_saved {
-        format!("{}", &*filename.as_deref().unwrap_or("Untitled"))
+        (&*filename.as_deref().unwrap_or("Untitled")).to_string()
     } else {
         format!(
             "{} - [unsaved]",
@@ -535,7 +528,7 @@ fn render_running(
         )
     };
 
-    let callback_filename = filename.clone();
+    let callback_filename = filename;
     #[allow(unused_must_use)]
     let filename_keydown = Callback::from(move |event: InputEvent| {
         let element: HtmlInputElement = event.target_unchecked_into();
@@ -553,7 +546,7 @@ fn render_running(
                         match *show_tab {
                             DisplayedTab::Source => {
                                 html!{
-                                    <SourceCode save_keydown={save_keydown.clone()} file={(*file).clone()}/>
+                                    <SourceCode save_keydown={save_keydown} file={(*file).clone()}/>
 
                                 }
                             },
@@ -670,7 +663,7 @@ pub fn process_syscall_request(
     state: UseStateHandle<State>,
     input_ref: UseStateHandle<NodeRef>,
     show_io: UseStateHandle<bool>,
-) -> () {
+) {
     if let State::Compiled(ref curr) = &*state {
         state.set(State::Compiled(RunningState {
             mips_state,
