@@ -40,6 +40,10 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
         .map(|(key, val)| (key.clone(), val.clone()))
         .collect::<Vec<_>>();
 
+    let registers = Some(props.state.mips_state.clone()).clone()
+        .map(|state| state.register_values.clone())
+        .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
+
     pages.sort_by_key(|(key, _)| *key);
 
     let mut curr_segment = Segment::None;
@@ -72,7 +76,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
 
                                 // render the data
                                 <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
-                                    { render_page(page_addr, page_contents) }
+                                    { render_page(page_addr, page_contents, &registers) }
                                 </div>
                             </>
                         }
@@ -101,7 +105,29 @@ fn render_segment_header(segment: Segment) -> Html {
     }
 }
 
-fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
+trait Escape {
+    fn escape(&self) -> String;
+}
+
+impl Escape for char {
+    fn escape(self: &char) -> String {
+        return match self {
+            '\0' => r"\0".to_string(), // null
+            '\t' => r"\t".to_string(), // tab
+            '\r' => r"\r".to_string(), // carriage return
+            '\n' => r"\n".to_string(), // newline
+            '\x07' => r"\a".to_string(), // bell
+            '\x08' => r"\b".to_string(), // backspace
+            '\x0B' => r"\v".to_string(), // vertical tab
+            '\x0C' => r"\f".to_string(), // form feed
+            '\x1B' => r"\e".to_string(), // escape
+            '\x20'..='\x7E' => self.to_string(), // printable ASCII
+            _ => ".".to_string(), // everything else
+        };
+    }
+}
+
+fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &Vec<Safe<i32>>) -> Html {
     const ROWS: usize = 4;
     const ROW_SIZE: usize = PAGE_SIZE / ROWS;
 
@@ -121,16 +147,76 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
                                     <>
                                         // add an extra column to gap between 4 bytes
                                         if i > 0 && i % 4 == 0 {
-                                            <pre>{"  "}</pre>
+                                            <div>{""}</div>
                                         }
                                         <div style="text-align: center;">
                                             {
                                                 match page_contents[nth * ROW_SIZE + offset] {
                                                     Safe::Valid(byte) => {
-                                                        html! { format!("{:02x}", byte) }
+                                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
+                                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="color: blue" tital="$sp & $fp">
+                                                                    {
+                                                                        html! { format!("{:02x}", byte) }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="color: green;" tital="$sp">
+                                                                    {
+                                                                        html! { format!("{:02x}", byte) }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="color: red;" tital="$fp">
+                                                                    {
+                                                                        html! { format!("{:02x}", byte) }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else {
+                                                            html! { format!("{:02x}", byte) }
+                                                        }
                                                     }
                                                     Safe::Uninitialised => {
-                                                        html! { "__" }
+                                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
+                                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="background-color: blue;" tital="$sp & $fp">
+                                                                    {
+                                                                        html! { "__" }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="background-color: green;" tital="$sp">
+                                                                    {
+                                                                        html! { "__" }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                            html! {
+                                                                <span style="background-color: red;" tital="$fp">
+                                                                    {
+                                                                        html! { "__" }
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        }
+                                                        else {
+                                                            html! { "__" }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -153,7 +239,8 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>) -> Html {
                                             value
                                                 .map(|value| value as u32)
                                                 .and_then(char::from_u32)
-                                                .filter(|&char| char.is_ascii_graphic() || char == ' ')
+                                                .map(|c| c.escape())
+                                                .filter(|char| char.len() == 2 || (char.len() == 1 && char.as_bytes()[0].is_ascii_graphic()) || char == " ")
                                                 .map(|value| html! { value })
                                                 .unwrap_or(html! { "_" })
                                         }
