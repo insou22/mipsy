@@ -8,7 +8,7 @@ use std::{ops::Deref, rc::Rc};
 
 use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
-use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidReason};
+use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
 
 use rustyline::{
@@ -373,7 +373,7 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = Some(new_runtime);
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys13_open(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -384,7 +384,7 @@ impl State {
                         let mut new_runtime = guard((-1, Vec::new()));
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = Some(new_runtime);
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys14_read(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -395,7 +395,7 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = Some(new_runtime);
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys15_write(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -406,7 +406,7 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = Some(new_runtime);
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys16_close(verbose, args);
                         // self.runtime = Some(guard(value));

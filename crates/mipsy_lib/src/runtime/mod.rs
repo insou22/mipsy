@@ -3,7 +3,7 @@ pub mod state;
 pub use self::state::State;
 
 use std::collections::HashMap;
-use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidReason, AccessType, Error}, compile::GLOBAL_PTR};
+use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidSyscallReason, SegmentationFaultAccessType, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
 use crate::util::{get_segment, Segment};
@@ -63,7 +63,7 @@ impl Runtime {
             Segment::Text | Segment::KText => {}
             _ => {
                 let addr = state.pc();
-                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::SegmentationFault { addr, access: AccessType::Execute }))));
+                return Err((self, MipsyError::Runtime(RuntimeError::new(Error::SegmentationFault { addr, access: SegmentationFaultAccessType::Execute }))));
             }
         }
         let inst = match state.read_mem_word(state.pc()) {
@@ -164,7 +164,7 @@ impl Runtime {
                     )
                 }
                 SYS2_PRINT_FLOAT => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidSyscallReason::Unimplemented }))));
                 }
                 // RuntimeSyscallGuard::PrintFloat(
                 //     PrintFloatArgs {
@@ -173,7 +173,7 @@ impl Runtime {
                 //     self
                 // ),
                 SYS3_PRINT_DOUBLE => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidSyscallReason::Unimplemented }))));
                 }
                 // RuntimeSyscallGuard::PrintDouble(
                 //     PrintDoubleArgs {
@@ -200,10 +200,10 @@ impl Runtime {
                     })
                 ),
                 SYS6_READ_FLOAT => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidSyscallReason::Unimplemented }))));
                 }
                 SYS7_READ_DOUBLE => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unimplemented }))));
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidSyscallReason::Unimplemented }))));
                 }
                 SYS8_READ_STRING => {
                     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as u32;
@@ -303,7 +303,7 @@ impl Runtime {
                         })
                     )
                 }
-                SYS15_WRITE =>{
+                SYS15_WRITE => {
                     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
                     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
                     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
@@ -336,7 +336,7 @@ impl Runtime {
                     self,
                 ),
                 _ => {
-                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidReason::Unknown }))));
+                    return Err((self, MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall, reason: InvalidSyscallReason::Unknown }))));
                 }
             }
         )

@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, VecDeque}, rc::Rc};
 
-use crate::{MipsyResult, Safe, Uninitialised, TEXT_BOT, compile::TEXT_TOP, GLOBAL_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, KTEXT_BOT, MipsyError, error::runtime::{RuntimeError, AccessType, self}};
+use crate::{MipsyResult, Safe, Uninitialised, TEXT_BOT, compile::TEXT_TOP, GLOBAL_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, KTEXT_BOT, MipsyError, error::runtime::{RuntimeError, SegmentationFaultAccessType, self}};
 use super::{PAGE_SIZE, SafeToUninitResult};
 
 pub const WRITE_MARKER_LO: u32 = 32;
@@ -187,7 +187,7 @@ impl State {
     }
 
     #[must_use]
-    pub fn check_segfault(&self, address: u32, access: AccessType) -> MipsyResult<()> {
+    pub fn check_segfault(&self, address: u32, access: SegmentationFaultAccessType) -> MipsyResult<()> {
         let segfault = match address {
             // TODO(zkol): Update this when exclusive range matching is stabilised
             _ if address < TEXT_BOT => {
@@ -221,7 +221,7 @@ impl State {
     }
 
     pub fn read_mem_byte(&self, address: u32) -> MipsyResult<u8> {
-        self.check_segfault(address, AccessType::Read)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Read)?;
 
         self.get_page(address)
             .and_then(|page| {
@@ -257,7 +257,7 @@ impl State {
     }
 
     pub fn read_mem_byte_uninit(&self, address: u32) -> MipsyResult<Safe<u8>> {
-        self.check_segfault(address, AccessType::Read)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Read)?;
 
         Ok(
             self.get_page(address)
@@ -272,8 +272,8 @@ impl State {
     }
 
     pub fn read_mem_half_uninit(&self, address: u32) -> MipsyResult<Safe<u16>> {
-        self.check_segfault(address, AccessType::Read)?;
-        self.check_segfault(address + 2, AccessType::Read)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Read)?;
+        self.check_segfault(address + 2, SegmentationFaultAccessType::Read)?;
 
         let result: MipsyResult<_> = (|| {
             let byte1 = self.read_mem_byte(address)?;
@@ -289,10 +289,10 @@ impl State {
     }
 
     pub fn read_mem_word_uninit(&self, address: u32) -> MipsyResult<Safe<u32>> {
-        self.check_segfault(address, AccessType::Read)?;
-        self.check_segfault(address + 1, AccessType::Read)?;
-        self.check_segfault(address + 2, AccessType::Read)?;
-        self.check_segfault(address + 3, AccessType::Read)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Read)?;
+        self.check_segfault(address + 1, SegmentationFaultAccessType::Read)?;
+        self.check_segfault(address + 2, SegmentationFaultAccessType::Read)?;
+        self.check_segfault(address + 3, SegmentationFaultAccessType::Read)?;
 
         let result: MipsyResult<_> = (|| {
             let byte1 = self.read_mem_byte(address)?;
@@ -311,7 +311,7 @@ impl State {
 
     #[must_use]
     pub fn write_mem_byte(&mut self, address: u32, byte: u8) -> MipsyResult<()> {
-        self.check_segfault(address, AccessType::Write)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Write)?;
 
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);
@@ -345,7 +345,7 @@ impl State {
 
     #[must_use]
     pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) -> MipsyResult<()> {
-        self.check_segfault(address, AccessType::Write)?;
+        self.check_segfault(address, SegmentationFaultAccessType::Write)?;
 
         let page = self.get_mut_page_or_new(address);
         let offset = Self::offset_in_page(address);

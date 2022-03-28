@@ -56,8 +56,8 @@ pub enum Error {
     IntegerOverflow,
     DivisionByZero,
 
-    SegmentationFault { addr: u32, access: AccessType },
-    InvalidSyscall { syscall: i32, reason: InvalidReason },
+    SegmentationFault { addr: u32, access: SegmentationFaultAccessType },
+    InvalidSyscall { syscall: i32, reason: InvalidSyscallReason },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -76,14 +76,14 @@ pub enum AlignmentRequirement {
     Word,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum InvalidReason {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum InvalidSyscallReason {
     Unimplemented, // Invalid becasue we don't have an implementation for it but it does exist
     Unknown,       // Invalid because it doesn't exist to begin with
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum AccessType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum SegmentationFaultAccessType {
     Read,
     Write,
     Execute,
@@ -165,9 +165,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
-                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
-                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -407,9 +405,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
-                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
-                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -614,23 +610,21 @@ impl Error {
                 error
             }
 
-            Error::SegmentationFault { addr, access } => {
-                let addr = *addr;
-
+            &Error::SegmentationFault { addr, access } => {
                 let mut error = String::new();
 
                 error.push_str("segmentation fault\n");
 
                 match access {
-                    AccessType::Read => {
+                    SegmentationFaultAccessType::Read => {
                         error.push_str(&format!("\nthis happened because you tried to {} from\n", "read".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to read from\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
-                    AccessType::Write => {
+                    SegmentationFaultAccessType::Write => {
                         error.push_str(&format!("\nthis happened because you tried to {} to\n", "write".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to write to\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
-                    AccessType::Execute => {
+                    SegmentationFaultAccessType::Execute => {
                         error.push_str(&format!("\nthis happened because you tried to {}\n", "execute".yellow()));
                         error.push_str(&format!("the address `{}{}`, which is not a valid address to execute\n", "0x".bold(), format!("{:08x}", addr).bold()));
                     }
@@ -639,7 +633,7 @@ impl Error {
                 let state = runtime.timeline().state();
                 let prev_state = runtime.timeline().prev_state();
 
-                if get_segment(state.pc()) == Segment::Text || get_segment(state.pc()) == Segment::KText {
+                if access == SegmentationFaultAccessType::Read || access == SegmentationFaultAccessType::Write {
                     // Current instruction is in a TEXT segment, so we are probaly reading or writing incorrectly
                     let inst = state.read_mem_word(state.pc()).unwrap();
                     let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
@@ -656,9 +650,7 @@ impl Error {
                         error.push('\n');
                     }
 
-                    let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
-                    let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
-                    if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                    if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                         if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -735,9 +727,7 @@ impl Error {
                         error.push('\n');
                     }
 
-                    let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
-                    let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
-                    if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                    if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                         if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -802,24 +792,22 @@ impl Error {
 
             }
 
-            Error::InvalidSyscall { syscall , reason } => {
+            &Error::InvalidSyscall { syscall , reason } => {
                 // This error is triggered when $v0 is not a known value when `syscall` is used
                 // This error triggers after $v0 is checked for being uninitialize, so we can can assume that $v0 is an integer value
-
-                let syscall = *syscall;
 
                 let mut error = String::new();
 
                 error.push_str("Invalid Syscall\n");
 
                 match reason {
-                    InvalidReason::Unimplemented => {
+                    InvalidSyscallReason::Unimplemented => {
                         // $v0 is a valid value, but mipsy doesn't implement the operation
                         error.push_str(&format!("\nthe syscall number `{}` is not implemented.\n", syscall.to_string().bold()));
                     }
-                    InvalidReason::Unknown => {
+                    InvalidSyscallReason::Unknown => {
                         // $v0 is an invalid value, mips doesn't define this syscall
-                        error.push_str(&format!("\nthe syscall number `{}` is no valid.\n", syscall.to_string().bold()));
+                        error.push_str(&format!("\nthe syscall number `{}` is not valid.\n", syscall.to_string().bold()));
                     }
                 }
 
@@ -842,9 +830,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                let decompiled_all = decompile::decompile_into_parts(binary, inst_set);
-                let decompiled_next = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc() + 4);
-                if decompiled.location.is_none() || ( decompiled_all.contains_key(&decompiled_next.addr) && decompiled_next.location.is_none()) {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -1225,25 +1211,32 @@ impl Error {
             Error::SegmentationFault { addr, access: _ } => {
                 let addr = *addr;
 
-                match get_segment(addr) {
-                        Segment::None => {
-                            vec![format!("the address `{}{}` is not part of any segment\n", "0x".bold(), format!("{:08x}", addr).bold())]
+                match addr {
+                    0 => {
+                        vec![format!("the address `{}{}` is {}\n", "0x".bold(), format!("{:08x}", addr).bold(), "NULL".yellow())]
+                    }
+                    _ => {
+                        match get_segment(addr) {
+                            Segment::None => {
+                                vec![format!("the address `{}{}` is not part of any segment\n", "0x".bold(), format!("{:08x}", addr).bold())]
+                            }
+                            Segment::Text => {
+                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "TEXT".yellow())]
+                            }
+                            Segment::Data => {
+                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "DATA".yellow())]
+                            }
+                            Segment::Stack => {
+                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "STACK".yellow())]
+                            }
+                            Segment::KText => {
+                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KTEXT".yellow())]
+                            }
+                            Segment::KData => {
+                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KDATA".yellow())]
+                            }
                         }
-                        Segment::Text => {
-                            vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "TEXT".yellow())]
-                        }
-                        Segment::Data => {
-                            vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "DATA".yellow())]
-                        }
-                        Segment::Stack => {
-                            vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "STACK".yellow())]
-                        }
-                        Segment::KText => {
-                            vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KTEXT".yellow())]
-                        }
-                        Segment::KData => {
-                            vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KDATA".yellow())]
-                        }
+                    }
                 }
             }
 

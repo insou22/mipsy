@@ -4,7 +4,7 @@ use std::io::Write;
 use colored::Colorize;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::get_kernel};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
-use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidReason};
+use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use mipsy_interactive::prompt;
 use clap::{Clap, AppSettings};
 use mipsy_parser::TaggedFile;
@@ -316,11 +316,11 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }).show_error(
                                     ErrorContext::Binary,
                                     files.iter()
-                                    .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
-                                    .collect(),
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
                                     &iset,
                                     &binary,
                                     &runtime
@@ -332,11 +332,11 @@ fn main() {
                                 runtime = guard((-1, Vec::new()));
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }).show_error(
                                     ErrorContext::Binary,
                                     files.iter()
-                                    .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
-                                    .collect(),
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
                                     &iset,
                                     &binary,
                                     &runtime
@@ -348,11 +348,11 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }).show_error(
                                     ErrorContext::Binary,
                                     files.iter()
-                                    .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
-                                    .collect(),
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
                                     &iset,
                                     &binary,
                                     &runtime
@@ -364,11 +364,11 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }).show_error(
                                     ErrorContext::Binary,
                                     files.iter()
-                                    .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
-                                    .collect(),
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
                                     &iset,
                                     &binary,
                                     &runtime
