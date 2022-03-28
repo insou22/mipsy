@@ -105,11 +105,11 @@ where
 
 fn get_input_int(name: &str) -> Option<i32> {
     loop {
-        let result: Result<i64, _> = try_read!();
+        let result: Result<i128, _> = try_read!();
 
         match result {
             Ok(n) => {
-                if n < std::i32::MIN as i64 || n > std::i32::MAX as i64 {
+                if n < std::i32::MIN as i128 || n > std::i32::MAX as i128 {
                     println!("[mipsy] bad input (too big to fit in 32 bits)");
                     println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
                     print!(  "[mipsy] try again: ");
