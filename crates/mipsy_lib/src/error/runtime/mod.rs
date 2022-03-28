@@ -867,7 +867,7 @@ impl Error {
                         vec![format!("the minimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_BOT).bold())]
                     }
                     _ if addr > STACK_TOP => {
-                        vec![format!("the maxmimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_TOP).bold())]
+                        vec![format!("the maximum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_TOP).bold())]
                     }
                     // hopefully unreachable
                     _ => vec![]
