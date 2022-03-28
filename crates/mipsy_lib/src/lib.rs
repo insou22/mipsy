@@ -7,6 +7,7 @@ pub mod runtime;
 
 use std::rc::Rc;
 
+use compile::CompilerOptions;
 pub use mipsy_parser::MpProgram;
 
 pub use error::{
@@ -43,11 +44,11 @@ pub use compile::{
 };
 pub use util::Safe;
 
-pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, config: &MipsyConfig) -> MipsyResult<Binary> {
-    compile_with_kernel(iset, files, &mut compile::get_kernel(), config)
+pub fn compile(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, options: &CompilerOptions, config: &MipsyConfig) -> MipsyResult<Binary> {
+    compile_with_kernel(iset, files, &mut compile::get_kernel(), options, config)
 }
 
-pub fn compile_with_kernel(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, kernel: &mut MpProgram, config: &MipsyConfig) -> MipsyResult<Binary> {
+pub fn compile_with_kernel(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, kernel: &mut MpProgram, options: &CompilerOptions, config: &MipsyConfig) -> MipsyResult<Binary> {
     let mut parsed = mipsy_parser::parse_mips(files, config.tab_size)
         .map_err(|err| 
             error::MipsyError::Parser(
@@ -60,7 +61,7 @@ pub fn compile_with_kernel(iset: &InstSet, files: Vec<TaggedFile<'_, '_>>, kerne
             )
         )?;
 
-    let compiled = compile::compile_with_kernel(&mut parsed, kernel, config, iset)?;
+    let compiled = compile::compile_with_kernel(&mut parsed, kernel, options, config, iset)?;
 
     Ok(compiled)
 }

@@ -17,7 +17,14 @@ use linked_hash_map::LinkedHashMap;
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 use text::populate_text;
+
+mod extra;
+
+
 pub use text::compile1;
+
+use self::extra::move_labels;
+
 
 static KERN_FILE: &str = include_str!("../../../../kern.s");
 
@@ -92,11 +99,29 @@ impl Binary {
     }
 }
 
-pub fn compile(program: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
-    compile_with_kernel(program, &mut get_kernel(), config, iset)
+#[derive(Debug, Default)]
+pub struct CompilerOptions {
+    moves: Vec<(String, String)>,
 }
 
-pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
+impl CompilerOptions {
+    pub fn new(moves: Vec<(String, String)>) -> Self {
+        Self {
+            moves,
+        }
+    }
+
+    pub fn moves(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.moves.iter()
+            .map(|(old, new)| (old.as_str(), new.as_str()))
+    }
+}
+
+pub fn compile(program: &mut MpProgram, config: &MipsyConfig, options: &CompilerOptions, iset: &InstSet) -> MipsyResult<Binary> {
+    compile_with_kernel(program, &mut get_kernel(), options, config, iset)
+}
+
+pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, options: &CompilerOptions, config: &MipsyConfig, iset: &InstSet) -> MipsyResult<Binary> {
     let warnings = check_pre(program)?;
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
@@ -122,6 +147,8 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, conf
     if !warnings.is_empty() {
         // TODO: Deal with warnings here
     }
+
+    move_labels(&mut binary, options.moves());
 
     populate_text           (&mut binary, iset, config, program)?;
 

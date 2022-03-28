@@ -2,7 +2,7 @@ use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::get_kernel, error::runtime::ErrorContext};
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}, error::runtime::ErrorContext};
 use mipsy_interactive::prompt;
 use clap::Parser;
 use mipsy_parser::TaggedFile;
@@ -35,6 +35,10 @@ struct Opts {
     /// Enable some SPIM compatibility options
     #[clap(long)]
     spim: bool,
+
+    /// Move a label to point to a different label
+    #[clap(long)]
+    move_label: Vec<String>,
 
     files: Vec<String>,
 
@@ -126,6 +130,23 @@ fn get_input_int(name: &str) -> Option<i32> {
 fn main() {
     let opts: Opts = Opts::parse();
 
+    let moves = {
+        opts.move_label.into_iter()
+            .map(|s| {
+                let (old, new) = match s.split_once('=') {
+                    Some(parts) => parts,
+                    None => {
+                        eprintln!("Invalid move label: {s}");
+                        eprintln!("Must be in format: --move-label old1=new1 --move-label old2=new2 ...");
+                        std::process::exit(1);
+                    },
+                };
+
+                (old.to_string(), new.to_string())
+            })
+            .collect::<Vec<_>>()
+        };
+
     let mut config = match read_config() {
         Ok(config) => config,
         Err(MipsyConfigError::InvalidConfig(to_path, config)) => {
@@ -174,10 +195,12 @@ fn main() {
             .map(|arg| &**arg)
             .collect::<Vec<_>>();
 
+    let compiler_options = CompilerOptions::new(moves);
+
     let compiled = if opts.check_no_main {
-        compile_with_kernel(&config, &files, &args, &mut MpProgram::new(vec![], vec![]))
+        compile_with_kernel(&compiler_options, &config, &files, &args, &mut MpProgram::new(vec![], vec![]))
     } else {
-        compile(&config, &files, &args)
+        compile(&compiler_options, &config, &files, &args)
     };
 
     let (iset, binary, mut runtime) = match compiled {
@@ -390,17 +413,17 @@ fn read_string(_max_len: u32) -> String {
     }
 }
 
-fn compile(config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
-    compile_with_kernel(config, files, args, &mut get_kernel())
+fn compile(options: &CompilerOptions, config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    compile_with_kernel(options, config, files, args, &mut get_kernel())
 }
 
-fn compile_with_kernel(config: &MipsyConfig, files: &[(String, String)], args: &[&str], kernel: &mut MpProgram) -> MipsyResult<(InstSet, Binary, Runtime)> {
+fn compile_with_kernel(options: &CompilerOptions, config: &MipsyConfig, files: &[(String, String)], args: &[&str], kernel: &mut MpProgram) -> MipsyResult<(InstSet, Binary, Runtime)> {
     let files = files.iter()
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
     let iset    = mipsy_instructions::inst_set();
-    let binary  = mipsy_lib::compile_with_kernel(&iset, files, kernel, &config)?;
+    let binary  = mipsy_lib::compile_with_kernel(&iset, files, kernel, options, &config)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))
