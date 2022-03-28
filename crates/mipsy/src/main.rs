@@ -2,7 +2,7 @@ use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::get_kernel, CompilerOptions};
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use mipsy_interactive::prompt;
