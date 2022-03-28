@@ -4,28 +4,40 @@ use std::io::Write;
 use colored::Colorize;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::get_kernel, error::runtime::ErrorContext};
 use mipsy_interactive::prompt;
-use clap::{Clap, AppSettings};
+use clap::Parser;
 use mipsy_parser::TaggedFile;
 use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct Opts {
-    #[clap(long, about("Just output compilation errors, if any"))]
+    /// Just output compilation errors, if any
+    #[clap(long)]
     check: bool,
-    #[clap(long, about("Implies --check: Ignore missing main label"))]
+
+    /// Implies --check: Ignore missing main label
+    #[clap(long)]
     check_no_main: bool,
-    #[clap(long, about("Just compile program instead of executing"))]
+
+    /// Just compile program instead of executing
+    #[clap(long)]
     compile: bool,
-    #[clap(long, about("Just compile program and output hexcodes"))]
+
+    /// Just compile program and output hexcodes
+    #[clap(long)]
     hex: bool,
-    #[clap(long, about("Implies --hex: pad to 8 hex digits with zeroes"))]
+
+    /// Implies --hex: pad to 8 hex digits with zeroes
+    #[clap(long)]
     hex_pad_zero: bool,
-    #[clap(long, about("Enable some SPIM compatibility options"))]
+
+    /// Enable some SPIM compatibility options
+    #[clap(long)]
     spim: bool,
+
     files: Vec<String>,
+
     #[clap(last = true)]
     args:  Vec<String>,
 }

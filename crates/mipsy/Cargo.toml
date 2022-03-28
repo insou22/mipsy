@@ -12,7 +12,7 @@ mipsy_parser = { version = "0.1.0", path = "../mipsy_parser" }
 mipsy_interactive = { version = "0.1.0", path = "../mipsy_interactive" }
 mipsy_utils = { version = "0.1.0", path = "../mipsy_utils" }
 mipsy_instructions = { path = "../mipsy_instructions" }
-clap = "3.0.0-beta.2"       # cli arg parsing
+clap = { version = "3.1.6", features = ["derive"] } # cli arg parsing
 rustyline = "9.1.1"         # readline support for interactive mipsy
 rustyline-derive = "0.3.1"  # for readline derive macro
 colored = "2"               # for ansi colors
