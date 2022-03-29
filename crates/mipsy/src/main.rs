@@ -2,7 +2,9 @@ use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 use std::io::Write;
 
 use colored::Colorize;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}, error::runtime::ErrorContext};
+use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}};
+use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
+use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use mipsy_interactive::prompt;
 use clap::Parser;
 use mipsy_parser::TaggedFile;
@@ -308,13 +310,13 @@ fn main() {
                             PrintFloat(args, new_runtime) => {
                                 print!("{}", args.value);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             PrintDouble(args, new_runtime) => {
                                 print!("{}", args.value);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             PrintString(args, new_runtime) => {
@@ -355,10 +357,70 @@ fn main() {
                                 let number: char = get_input_eof("character").unwrap_or('\0');
                                 runtime = guard(number as u8);
                             }
-                            Open(_, _) => todo!(),
-                            Read(_, _) => todo!(),
-                            Write(_, _) => todo!(),
-                            Close(_, _) => todo!(),
+                            Open(_args, guard) => {
+                                // TODO: implement file open for mipsy cli frontend
+                                runtime = guard(-1);
+                                runtime.timeline_mut().pop_last_state();
+                                println!();
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                    ErrorContext::Binary,
+                                    files.iter()
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
+                                    &iset,
+                                    &binary,
+                                    &runtime
+                                );
+                                process::exit(1);
+                            }
+                            Read(_args, guard) => {
+                                // TODO: implement file read for mipsy cli frontend
+                                runtime = guard((-1, Vec::new()));
+                                runtime.timeline_mut().pop_last_state();
+                                println!();
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                    ErrorContext::Binary,
+                                    files.iter()
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
+                                    &iset,
+                                    &binary,
+                                    &runtime
+                                );
+                                process::exit(1);
+                            }
+                            Write(_args, guard) => {
+                                // TODO: implement file write for mipsy cli frontend
+                                runtime = guard(-1);
+                                runtime.timeline_mut().pop_last_state();
+                                println!();
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                    ErrorContext::Binary,
+                                    files.iter()
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
+                                    &iset,
+                                    &binary,
+                                    &runtime
+                                );
+                                process::exit(1);
+                            }
+                            Close(_args, guard) => {
+                                // TODO: implement file close for mipsy cli frontend
+                                runtime = guard(-1);
+                                runtime.timeline_mut().pop_last_state();
+                                println!();
+                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                    ErrorContext::Binary,
+                                    files.iter()
+                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                        .collect(),
+                                    &iset,
+                                    &binary,
+                                    &runtime
+                                );
+                                process::exit(1);
+                            }
                             ExitStatus(args, _new_runtime) => {
                                 std::process::exit(args.exit_code);
                             }
@@ -368,10 +430,6 @@ fn main() {
                             Trap(new_runtime) => {
                                 // TODO(zkol): What do we want to do with a trap here
                                 runtime = new_runtime;
-                            }
-                            UnknownSyscall(args, new_runtime) => {
-                                runtime = new_runtime;
-                                prompt::error(format!("unknown syscall: {}", args.syscall_number));
                             }
                         }
                     }

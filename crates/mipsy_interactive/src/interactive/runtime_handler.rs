@@ -1,7 +1,7 @@
 use std::{fmt::{Debug, Display}, str::FromStr};
 use super::{prompt};
 use colored::*;
-use mipsy_lib::{runtime::{CloseArgs, OpenArgs, ReadArgs, WriteArgs}};
+use mipsy_lib::runtime::{OpenArgs, ReadArgs, WriteArgs, CloseArgs};
 use text_io::try_read;
 use std::io::Write;
 
@@ -268,18 +268,24 @@ pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
         .unwrap_or(0)
 }
 
+// TODO: implement file handling in mipsy interactive
+
+#[allow(unused)]
 pub(crate) fn sys13_open(_verbose: bool, _args: OpenArgs) -> i32 {
     todo!()
 }
 
+#[allow(unused)]
 pub(crate) fn sys14_read(_verbose: bool, _args: ReadArgs) -> (i32, Vec<u8>) {
     todo!()
 }
 
+#[allow(unused)]
 pub(crate) fn sys15_write(_verbose: bool, _args: WriteArgs) -> i32 {
     todo!()
 }
 
+#[allow(unused)]
 pub(crate) fn sys16_close(_verbose: bool, _args: CloseArgs) -> i32 {
     todo!()
 }
@@ -303,17 +309,6 @@ pub(crate) fn sys17_exit_status(verbose: bool, val: i32) {
 pub(crate) fn trap(_verbose: bool) {
     // TODO(zkol): This should provide actual diagnostics
     println!("{}\n", "[TRAP]".bright_red().bold());
-}
-
-pub(crate) fn sys_unknown(verbose: bool, syscall_number: i32) {
-    if verbose {
-        prompt::syscall_nl(
-            syscall_number,
-            format!(
-                "unknown",
-            ),
-        );
-    }
 }
 
 pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {

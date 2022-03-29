@@ -1,7 +1,7 @@
-use std::rc::Rc;
+use std::{rc::Rc};
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, HEAP_BOT, STACK_BOT, STACK_TOP};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, util::{get_segment, Segment}};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,8 @@ pub enum Error {
     IntegerOverflow,
     DivisionByZero,
 
-    SegmentationFault { addr: u32 }
+    SegmentationFault { addr: u32, access: SegmentationFaultAccessType },
+    InvalidSyscall { syscall: i32, reason: InvalidSyscallReason },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -73,6 +74,19 @@ pub enum Uninitialised {
 pub enum AlignmentRequirement {
     Half,
     Word,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum InvalidSyscallReason {
+    Unimplemented, // Invalid becasue we don't have an implementation for it but it does exist
+    Unknown,       // Invalid because it doesn't exist to begin with
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum SegmentationFaultAccessType {
+    Read,
+    Write,
+    Execute,
 }
 
 impl Error {
@@ -151,7 +165,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -283,7 +297,8 @@ impl Error {
                         }
                     }
 
-                    if last_inst_parts.location.is_none() {
+                    let last_next_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc());
+                    if last_inst_parts.location.is_none() || last_next_inst_parts.location.is_none() {
                         if let Some(real_inst_parts) = get_real_instruction_start(last_mod, binary, inst_set, last_mod.pc() - 4) {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -390,7 +405,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -594,18 +609,215 @@ impl Error {
 
                 error
             }
-        
-            Error::SegmentationFault { addr } => {
-                let addr = *addr;
 
+            &Error::SegmentationFault { addr, access } => {
                 let mut error = String::new();
 
                 error.push_str("segmentation fault\n");
 
+                match access {
+                    SegmentationFaultAccessType::Read => {
+                        error.push_str(&format!("\nthis happened because you tried to {} from\n", "read".yellow()));
+                        error.push_str(&format!("the address `{}{}`, which is not a valid address to read from\n", "0x".bold(), format!("{:08x}", addr).bold()));
+                    }
+                    SegmentationFaultAccessType::Write => {
+                        error.push_str(&format!("\nthis happened because you tried to {} to\n", "write".yellow()));
+                        error.push_str(&format!("the address `{}{}`, which is not a valid address to write to\n", "0x".bold(), format!("{:08x}", addr).bold()));
+                    }
+                    SegmentationFaultAccessType::Execute => {
+                        error.push_str(&format!("\nthis happened because you tried to {}\n", "execute".yellow()));
+                        error.push_str(&format!("the address `{}{}`, which is not a valid address to execute\n", "0x".bold(), format!("{:08x}", addr).bold()));
+                    }
+                }
+
+                let state = runtime.timeline().state();
+                let prev_state = runtime.timeline().prev_state();
+
+                if access == SegmentationFaultAccessType::Read || access == SegmentationFaultAccessType::Write {
+                    // Current instruction is in a TEXT segment, so we are probaly reading or writing incorrectly
+                    let inst = state.read_mem_word(state.pc()).unwrap();
+                    let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
+
+                    if let ErrorContext::Binary | ErrorContext::Interactive = context {
+                        error.push_str("\nthe instruction that failed was:\n");
+                        error.push_str(&inst_parts_to_string(
+                            &decompiled,
+                            &source_code,
+                            binary,
+                            false,
+                            false,
+                        ));
+                        error.push('\n');
+                    }
+
+                    if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
+                        if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
+
+                            let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                            let mut file = None;
+                            
+                            for (src_tag, src_file) in source_code {
+                                if &*file_tag == &**src_tag {
+                                    file = Some(src_file);
+                                    break;
+                                }
+                            }
+
+                            if let Some(file) = file {
+                                if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                    error.push_str(&format!(
+                                        "{}\n{} this instruction was generated from your pseudo-instruction:\n",
+                                        ">".red(),
+                                        "|".red(),
+                                    ));
+                                    
+                                    error.push_str(&format!(
+                                        "{} {} {}\n",
+                                        "|".red(),
+                                        line_num.to_string().yellow().bold(),
+                                        line.bold(),
+                                    ));
+
+                                    error.push_str(&format!(
+                                        "{} which was expanded into the following {} native instructions:\n",
+                                        "|".red(),
+                                        (state.pc() + 4 - real_inst_parts.addr) / 4,
+                                    ));
+
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                        let inst = state.read_mem_word(addr).unwrap();
+
+                                        let failed = addr == state.pc();
+
+                                        error.push_str(&format!(
+                                            "{} {} {}{}\n",
+                                            "|".red(),
+                                            if failed { ">".green() } else { ">".bright_black() },
+                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            if failed {
+                                                "  <-- this instruction failed"
+                                                    .bright_blue()
+                                                    .to_string()
+                                            } else {
+                                                String::new()
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if get_segment(prev_state.unwrap().pc()) == Segment::Text || get_segment(prev_state.unwrap().pc()) == Segment::KText {
+                    // Current instruction is not in a TEXT segment, so we are probably executing incorrectly
+                    // But we had to get here somehow, so the previuos instruction should be valid.
+                    let state = prev_state.unwrap();
+                    let inst = state.read_mem_word(state.pc()).unwrap();
+                    let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
+
+                    if let ErrorContext::Binary | ErrorContext::Interactive = context {
+                        error.push_str("\nthe instruction that got us here was:\n");
+                        error.push_str(&inst_parts_to_string(
+                            &decompiled,
+                            &source_code,
+                            binary,
+                            false,
+                            false,
+                        ));
+                        error.push('\n');
+                    }
+
+                    if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
+                        if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
+
+                            let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                            let mut file = None;
+                            
+                            for (src_tag, src_file) in source_code {
+                                if &*file_tag == &**src_tag {
+                                    file = Some(src_file);
+                                    break;
+                                }
+                            }
+
+                            if let Some(file) = file {
+                                if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                    error.push_str(&format!(
+                                        "{}\n{} this instruction was generated from your pseudo-instruction:\n",
+                                        ">".red(),
+                                        "|".red(),
+                                    ));
+                                    
+                                    error.push_str(&format!(
+                                        "{} {} {}\n",
+                                        "|".red(),
+                                        line_num.to_string().yellow().bold(),
+                                        line.bold(),
+                                    ));
+
+                                    error.push_str(&format!(
+                                        "{} which was expanded into the following {} native instructions:\n",
+                                        "|".red(),
+                                        (state.pc() + 4 - real_inst_parts.addr) / 4,
+                                    ));
+
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                        let inst = state.read_mem_word(addr).unwrap();
+
+                                        let failed = addr == state.pc();
+
+                                        error.push_str(&format!(
+                                            "{} {} {}{}\n",
+                                            "|".red(),
+                                            if failed { ">".green() } else { ">".bright_black() },
+                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            if failed {
+                                                "  <-- this instruction failed"
+                                                    .bright_blue()
+                                                    .to_string()
+                                            } else {
+                                                String::new()
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                error.push_str("\n");
+
+                error
+
+            }
+
+            &Error::InvalidSyscall { syscall , reason } => {
+                // This error is triggered when $v0 is not a known value when `syscall` is used
+                // This error triggers after $v0 is checked for being uninitialize, so we can can assume that $v0 is an integer value
+
+                let mut error = String::new();
+
+                error.push_str("Invalid Syscall\n");
+
+                match reason {
+                    InvalidSyscallReason::Unimplemented => {
+                        // $v0 is a valid value, but mipsy doesn't implement the operation
+                        error.push_str(&format!("\nthe syscall number `{}` is not implemented.\n", syscall.to_string().bold()));
+                    }
+                    InvalidSyscallReason::Unknown => {
+                        // $v0 is an invalid value, mips doesn't define this syscall
+                        error.push_str(&format!("\nthe syscall number `{}` is not valid.\n", syscall.to_string().bold()));
+                    }
+                }
+
+                let last_mod = get_last_mod(runtime, Register::V0.to_u32());
                 let state = runtime.timeline().state();
                 let inst = state.read_mem_word(state.pc()).unwrap();
                 let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, state.pc());
 
+                // This instruction should always be a `syscall`
+                // This is mainly used to print the line number of the instruction
                 if let ErrorContext::Binary | ErrorContext::Interactive = context {
                     error.push_str("\nthe instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
@@ -618,7 +830,7 @@ impl Error {
                     error.push('\n');
                 }
 
-                if decompiled.location.is_none() {
+                if decompiled.location.is_none() || !binary.line_numbers.contains_key(&(state.pc() + 4)) {
                     if let Some(real_inst_parts) = get_real_instruction_start(state, binary, inst_set, state.pc()) {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
@@ -658,8 +870,7 @@ impl Error {
                                     let failed = addr == state.pc();
 
                                     error.push_str(&format!(
-                                        "{} {} {}{}\n",
-                                        "|".red(),
+                                        "  {} {}{}\n",
                                         if failed { ">".green() } else { ">".bright_black() },
                                         inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
                                         if failed {
@@ -676,13 +887,162 @@ impl Error {
                     }
                 }
 
-                error.push_str("\n");
+                error.push_str(&format!(
+                    "\nthis happened because {}{} was `{}`.\n",
+                    "$".yellow(),
+                    "v0".white().bold(),
+                    syscall.to_string().bold(),
+                ));
 
-                error.push_str("this happened because you tried to read from\n");
-                error.push_str(&format!("the address `{}{}`, which is not a valid address\n", "0x".bold(), format!("{:08x}", addr).bold()));
+                if let Some((last_index, last_mod)) = last_mod {
+                    error.push_str(&format!(
+                        "{}\n{} the instruction that caused {}{} to become `{}` was:\n",
+                        ">".red(),
+                        "|".red(),
+                        "$".yellow(),
+                        "v0".white().bold(),
+                        syscall.to_string().bold(),
+                    ));
+
+                    let last_inst = last_mod.read_mem_word(last_mod.pc() - 4).unwrap();
+                    let last_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc() - 4);
+
+                    error.push_str(&format!(
+                        "{} {}\n",
+                        "|".red(),
+                        inst_parts_to_string(&last_inst_parts, &source_code, binary, false, false),
+                    ));
+
+                    if let Some(runtime_meta) = last_inst_parts.runtime_meta {
+                        if let Some(inst_sig) = last_inst_parts.inst_sig {
+                            if !runtime_meta.reads().is_empty() {
+                                error.push_str(&format!(
+                                    "{} {}:\n",
+                                    "|".red(),
+                                    "where".bold(),
+                                ));
+
+                                let rs =    (last_inst >> 21) & 0x1F;
+                                let rt =    (last_inst >> 16) & 0x1F;
+
+                                for read in runtime_meta.reads() {
+                                    let mut index = 0;
+
+                                    for argument in inst_sig.format() {
+                                        if read.eq_argument_type(argument) {
+                                            let value = match read {
+                                                ReadsRegisterType::Rs | ReadsRegisterType::OffRs => state.read_register_uninit(rs),
+                                                ReadsRegisterType::Rt | ReadsRegisterType::OffRt => state.read_register_uninit(rt),
+                                            };
+
+                                            let name = match read {
+                                                ReadsRegisterType::Rs | ReadsRegisterType::Rt => {
+                                                    format!("{}{}", "$".yellow(), last_inst_parts.arguments[index][1..].bold())
+                                                },
+                                                ReadsRegisterType::OffRs | ReadsRegisterType::OffRt => {
+                                                    format!("{}{}", "$".yellow(), last_inst_parts.arguments[index].split_once('(').unwrap().1.split_once(')').unwrap().0[1..].bold())
+                                                }
+                                            };
+
+                                            error.push_str(&format!(
+                                                "{}  {} = {}\n",
+                                                "|".red(),
+                                                name,
+                                                match value {
+                                                    Safe::Valid(value)  => format!("0x{:08x}", value),
+                                                    Safe::Uninitialised => String::from("uninitialised"),
+                                                },
+                                            ));
+
+                                            break;
+                                        }
+
+                                        index += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let last_next_inst_parts = decompile_inst_into_parts(binary, inst_set, last_inst, last_mod.pc());
+                    if last_inst_parts.location.is_none() || last_next_inst_parts.location.is_none() {
+                        if let Some(real_inst_parts) = get_real_instruction_start(last_mod, binary, inst_set, last_mod.pc() - 4) {
+
+                            let (file_tag, line_num) = real_inst_parts.location.unwrap();
+                            let mut file = None;
+                            
+                            for (src_tag, src_file) in source_code {
+                                if &*file_tag == &**src_tag {
+                                    file = Some(src_file);
+                                    break;
+                                }
+                            }
+
+                            if let Some(file) = file {
+                                if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                                    error.push_str(&format!(
+                                        "{}\n  {} this instruction was generated from your pseudo-instruction:\n",
+                                        ">=>".red(),
+                                        "|".red(),
+                                    ));
+                                    
+                                    // TODO: It would be nice to syntax highlight the instruction printed here
+                                    error.push_str(&format!(
+                                        "  {} {} {}\n",
+                                        "|".red(),
+                                        line_num.to_string().yellow().bold(),
+                                        line.bold(),
+                                    ));
+
+                                    error.push_str(&format!(
+                                        "  {} which was expanded into the following {} native instructions:\n",
+                                        "|".red(),
+                                        (last_mod.pc() - real_inst_parts.addr) / 4,
+                                    ));
+
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                        let inst = last_mod.read_mem_word(addr).unwrap();
+
+                                        let failed = addr == last_mod.pc() - 4;
+
+                                        error.push_str(&format!(
+                                            "  {} {}{}\n",
+                                            if failed { ">".green() } else { ">".bright_black() },
+                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            if failed {
+                                                format!(
+                                                    "  <-- this instruction caused {}{} to become `{}`",
+                                                    "$".yellow(),
+                                                    "v0".white().bold(),
+                                                    syscall.to_string().white().bold(),
+                                                )
+                                                    .bright_blue()
+                                                    .to_string()
+                                            } else {
+                                                String::new()
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if let ErrorContext::Interactive = context {
+                        let distance = runtime.timeline().timeline_len() - last_index;
+                        error.push_str(&format!(
+                            "{}\n{} to get back there, use `{} {}`\n",
+                            ">".red(),
+                            "|".red(),
+                            "back".bold(),
+                            distance.to_string().bold()
+                        ));
+                    }
+                }
+
+                error.push('\n');
 
                 error
-
             }
         }
     }
@@ -738,9 +1098,11 @@ impl Error {
                     vec![]
                 }                
             }
+
             Error::Uninitialised { .. } => {
                 vec![]
             }
+
             Error::UnalignedAccess { addr, alignment_requirement } => {
                 let state = runtime.timeline().state();
                 let inst = state.read_mem_word(state.pc()).unwrap();
@@ -775,6 +1137,7 @@ impl Error {
                     )
                 ]
             }
+
             Error::IntegerOverflow => {
                 let mut tip = String::new();
 
@@ -840,38 +1203,41 @@ impl Error {
 
                 vec![tip]
             }
+
             Error::DivisionByZero => {
                 vec![]
             }
-            Error::SegmentationFault { addr } => {
+
+            Error::SegmentationFault { addr, access: _ } => {
                 let addr = *addr;
 
-                let null_text_middle = TEXT_BOT / 2;
-                let heap_stack_middle = (HEAP_BOT / 2) + (STACK_BOT / 2);
-
-                match addr {
-                    0 => {
-                        vec![format!("the address is NULL")]
+                match get_segment(addr) {
+                    _ if addr == 0 => {
+                        vec![format!("the address `{}{}` is {}\n", "0x".bold(), format!("{:08x}", addr).bold(), "NULL".yellow())]
                     }
-                    _ if addr < null_text_middle => {
-                        // nothing really to say here
-                        vec![]
+                    Segment::None => {
+                        vec![format!("the address `{}{}` is not part of any segment\n", "0x".bold(), format!("{:08x}", addr).bold())]
                     }
-                    _ if addr < TEXT_BOT => {
-                        vec![format!("the address sits below the `{}` segment (`{}{}`)", ".text".bold(), "0x".bold(), format!("{:08x}", TEXT_BOT).bold())]
+                    Segment::Text => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "TEXT".yellow())]
                     }
-                    _ if addr >= HEAP_BOT && addr < heap_stack_middle => {
-                        vec![format!("the end of the heap is currently `{}{}`", "0x".bold(), format!("{:08x}", HEAP_BOT + runtime.timeline().state().heap_size()).bold())]
+                    Segment::Data => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "DATA".yellow())]
                     }
-                    _ if addr >= heap_stack_middle && addr < STACK_BOT => {
-                        vec![format!("the minimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_BOT).bold())]
+                    Segment::Stack => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "STACK".yellow())]
                     }
-                    _ if addr > STACK_TOP => {
-                        vec![format!("the maxmimum stack address is `{}{}`", "0x".bold(), format!("{:08x}", STACK_TOP).bold())]
+                    Segment::KText => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KTEXT".yellow())]
                     }
-                    // hopefully unreachable
-                    _ => vec![]
+                    Segment::KData => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KDATA".yellow())]
+                    }
                 }
+            }
+
+            Error::InvalidSyscall { .. } => {
+                vec![]
             }
         }
     }
@@ -891,7 +1257,7 @@ fn get_last_mod(runtime: &Runtime, write_marker: u32) -> Option<(usize, &State)>
 }
 
 fn get_real_instruction_start<'inst_set>(state: &State, binary: &Binary, inst_set: &'inst_set InstSet, pseudo_address: u32) -> Option<Decompiled<'inst_set>> {
-    let mut real_inst_addr = pseudo_address - 4;
+    let mut real_inst_addr = pseudo_address;
     loop {
         let prev_inst = match state.read_mem_word(real_inst_addr) {
             Ok(real_inst) => real_inst,

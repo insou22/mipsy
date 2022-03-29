@@ -4,7 +4,7 @@ use crate::{
     worker::{FileInformation, Worker, WorkerRequest},
 };
 use derivative::Derivative;
-use log::{info, trace};
+use log::info;
 use yew::{prelude::*, Html};
 use yew_agent::{Agent, UseBridgeHandle};
 
