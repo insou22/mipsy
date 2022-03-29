@@ -333,15 +333,15 @@ impl Agent for Worker {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
                         // fast forward the kernel segment
                         // or, fast rewind the kernel segment if we are rewinding
-                        if runtime.timeline().state().pc() >= 0x80000000 {
-                            while runtime.timeline().state().pc() >= 0x80000000 {
+                        if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
+                            while runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
                                 // info!("stepping ktext: {:08x}", runtime.timeline().state().pc());
                                 if step_size == -1 {
                                     info!("stepping back: {:08x}", runtime.timeline().state().pc());
                                     runtime.timeline_mut().pop_last_state();
                                     mips_state.exit_status = None;
                                     // avoid infinite loop of scrolling back
-                                    if runtime.timeline().state().pc() == 0x80000000 {
+                                    if runtime.timeline().state().pc() == mipsy_lib::KTEXT_BOT {
                                         break;
                                     }
                                 } else {
@@ -408,7 +408,7 @@ impl Agent for Worker {
 
                         // now let's us step the right number of times
                         for _ in 1..=step_size {
-                            if runtime.timeline().state().pc() >= 0x80000000 {
+                            if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
                                 break;
                             }
                             // info!("stepping text: {:08x}", runtime.timeline().state().pc());
