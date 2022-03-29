@@ -1211,31 +1211,27 @@ impl Error {
             Error::SegmentationFault { addr, access: _ } => {
                 let addr = *addr;
 
-                match addr {
-                    0 => {
+                match get_segment(addr) {
+                    _ if addr == 0 => {
                         vec![format!("the address `{}{}` is {}\n", "0x".bold(), format!("{:08x}", addr).bold(), "NULL".yellow())]
                     }
-                    _ => {
-                        match get_segment(addr) {
-                            Segment::None => {
-                                vec![format!("the address `{}{}` is not part of any segment\n", "0x".bold(), format!("{:08x}", addr).bold())]
-                            }
-                            Segment::Text => {
-                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "TEXT".yellow())]
-                            }
-                            Segment::Data => {
-                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "DATA".yellow())]
-                            }
-                            Segment::Stack => {
-                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "STACK".yellow())]
-                            }
-                            Segment::KText => {
-                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KTEXT".yellow())]
-                            }
-                            Segment::KData => {
-                                vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KDATA".yellow())]
-                            }
-                        }
+                    Segment::None => {
+                        vec![format!("the address `{}{}` is not part of any segment\n", "0x".bold(), format!("{:08x}", addr).bold())]
+                    }
+                    Segment::Text => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "TEXT".yellow())]
+                    }
+                    Segment::Data => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "DATA".yellow())]
+                    }
+                    Segment::Stack => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "STACK".yellow())]
+                    }
+                    Segment::KText => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KTEXT".yellow())]
+                    }
+                    Segment::KData => {
+                        vec![format!("the address `{}{}` is part of the {} segment\n", "0x".bold(), format!("{:08x}", addr).bold(), "KDATA".yellow())]
                     }
                 }
             }
