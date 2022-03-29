@@ -76,29 +76,49 @@ where
 }
 
 fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
-    let prompt: Box<dyn Fn()> = 
+    let bad_input_prompt: &dyn Fn() = &|| {
         if verbose {
-            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+            prompt::error_nonl(format!("bad input (expected {}), try again: ", name))
         } else {
-            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+            print!("[mipsy] bad input (expected {}), try again: ", name)
         };
+    };
+
+    let too_big_prompt: &dyn Fn() = &|| {
+        if verbose {
+            prompt::error(format!("bad input (too big to fit in 32 bits)"))
+        } else {
+            println!("[mipsy] bad input (too big to fit in 32 bits)")
+        }
+    };
 
     loop {
-        let result: Result<i64, _> = try_read!();
+        let result: Result<i128, _> = try_read!();
 
         match result {
-            Ok(n) => return Some(n as i32),
+            Ok(n) => {
+                match i32::try_from(n) {
+                    Ok(n) => return Some(n),
+                    Err(_) => {
+                        (too_big_prompt)();
+                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
+                        print!(  "[mipsy] try again: ");
+                        std::io::stdout().flush().unwrap();
+                        continue;
+                    }
+                }
+            },
             Err(text_io::Error::Parse(leftover, _)) => {
                 if leftover == "" {
                     return None;
                 }
 
-                (prompt)();
+                (bad_input_prompt)();
                 std::io::stdout().flush().unwrap();
                 continue;
             }
             Err(_) => {
-                (prompt)();
+                (bad_input_prompt)();
                 std::io::stdout().flush().unwrap();
                 continue;
             },

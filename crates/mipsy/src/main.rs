@@ -105,10 +105,21 @@ where
 
 fn get_input_int(name: &str) -> Option<i32> {
     loop {
-        let result: Result<i64, _> = try_read!();
+        let result: Result<i128, _> = try_read!();
 
         match result {
-            Ok(n) => return Some(n as i32),
+            Ok(n) => {
+                match i32::try_from(n) {
+                    Ok(n) => return Some(n),
+                    Err(_) => {
+                        println!("[mipsy] bad input (too big to fit in 32 bits)");
+                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
+                        print!(  "[mipsy] try again: ");
+                        std::io::stdout().flush().unwrap();
+                        continue;
+                    }
+                }
+            },
             Err(text_io::Error::Parse(leftover, _)) => {
                 if leftover == "" {
                     return None;
