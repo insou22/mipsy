@@ -76,34 +76,37 @@ where
 }
 
 fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
-    let bad_input_prompt: Box<dyn Fn()> =
+    let bad_input_prompt: &dyn Fn() = &|| {
         if verbose {
-            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+            prompt::error_nonl(format!("bad input (expected {}), try again: ", name))
         } else {
-            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+            print!("[mipsy] bad input (expected {}), try again: ", name)
         };
+    };
 
-    let too_big_prompt: Box<dyn Fn()> =
+    let too_big_prompt: &dyn Fn() = &|| {
         if verbose {
-            Box::new(|| prompt::error(format!("bad input (too big to fit in 32 bits)")))
+            prompt::error(format!("bad input (too big to fit in 32 bits)"))
         } else {
-            Box::new(|| println!("[mipsy] bad input (too big to fit in 32 bits)"))
-        };
+            println!("[mipsy] bad input (too big to fit in 32 bits)")
+        }
+    };
 
     loop {
         let result: Result<i128, _> = try_read!();
 
         match result {
             Ok(n) => {
-                if n < std::i32::MIN as i128 || n > std::i32::MAX as i128 {
-                    (too_big_prompt)();
-                    println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
-                    print!(  "[mipsy] try again: ");
-                    std::io::stdout().flush().unwrap();
-                    continue;
+                match i32::try_from(n) {
+                    Ok(n) => return Some(n),
+                    Err(_) => {
+                        (too_big_prompt)();
+                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
+                        print!(  "[mipsy] try again: ");
+                        std::io::stdout().flush().unwrap();
+                        continue;
+                    }
                 }
-
-                return Some(n as i32)
             },
             Err(text_io::Error::Parse(leftover, _)) => {
                 if leftover == "" {

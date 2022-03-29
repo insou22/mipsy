@@ -109,15 +109,16 @@ fn get_input_int(name: &str) -> Option<i32> {
 
         match result {
             Ok(n) => {
-                if n < std::i32::MIN as i128 || n > std::i32::MAX as i128 {
-                    println!("[mipsy] bad input (too big to fit in 32 bits)");
-                    println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
-                    print!(  "[mipsy] try again: ");
-                    std::io::stdout().flush().unwrap();
-                    continue;
+                match i32::try_from(n) {
+                    Ok(n) => return Some(n),
+                    Err(_) => {
+                        println!("[mipsy] bad input (too big to fit in 32 bits)");
+                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
+                        print!(  "[mipsy] try again: ");
+                        std::io::stdout().flush().unwrap();
+                        continue;
+                    }
                 }
-
-                return Some(n as i32)
             },
             Err(text_io::Error::Parse(leftover, _)) => {
                 if leftover == "" {
