@@ -65,9 +65,10 @@ See [mipsy](https://github.com/insou22/mipsy/blob/main/README.md) for more infor
 #### Tailwind
 [Tailwind CSS](https://tailwindcss.com/) is a CSS framework we use to style the application
 
-## Dependancies
+## Dependencies
 1) Install rust via rustup, by following the instructions at [rustup](https://www.rust-lang.org/tools/install)
-2) Instal tailwindcss via npm `npm i -g tailwindcss`.
+2) Install tailwindcss via npm `npm i -g tailwindcss`.
+3) Install cargo-watch using `cargo install cargo-watch` if you wish to serve with hot-reload. 
 
 ## Development
 1) `scripts/build_dev.sh` will compile the relevant rust code to wasm files, and place into the static directory
