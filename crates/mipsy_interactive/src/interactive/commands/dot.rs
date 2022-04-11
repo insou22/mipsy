@@ -1,3 +1,4 @@
+use mipsy_lib::Binary;
 use std::rc::Rc;
 
 use mipsy_lib::{MpProgram, compile};
@@ -36,7 +37,8 @@ pub(crate) fn dot_command() -> Command {
             compile::check_pre(&program)
                     .map_err(|error| CommandError::CannotCompileLine { line: line.to_string(), error })?;
 
-            let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let empty_binary = Binary::default();
+            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
 
             compile::check_post_data_label(&program, binary)
                     .map_err(|error| CommandError::CannotCompileLine { line: line.to_string(), error })?;

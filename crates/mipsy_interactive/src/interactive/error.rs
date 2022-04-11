@@ -1,4 +1,4 @@
-use mipsy_lib::{MipsyError};
+use mipsy_lib::MipsyError;
 use mipsy_parser::ErrorLocation;
 
 pub type CommandResult<T> = Result<T, CommandError>;

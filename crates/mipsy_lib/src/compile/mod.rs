@@ -40,6 +40,7 @@ pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
 
+#[derive(Default)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
@@ -127,17 +128,7 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, opti
         // TODO: Deal with warnings here
     }
 
-    let mut binary = Binary {
-        text: vec![],
-        data: vec![],
-        ktext: vec![],
-        kdata: vec![],
-        labels: LinkedHashMap::new(),
-        constants: HashMap::new(),
-        breakpoints: vec![],
-        globals: vec![],
-        line_numbers: HashMap::new(),
-    };
+    let mut binary = Binary::default();
     
     populate_labels_and_data(&mut binary, config, iset, kernel)?;
 

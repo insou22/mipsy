@@ -434,8 +434,9 @@ impl State {
             if self.exited {
                 true
             } else {
-                let binary = self.binary.as_ref().unwrap();
                 let pc = self.runtime.timeline().state().pc();
+                let empty_binary = Binary::default();
+                let binary = self.binary.as_ref().unwrap_or(&empty_binary);
     
                 if breakpoint || binary.breakpoints.contains(&pc) {
                     let label = binary.labels.iter()
