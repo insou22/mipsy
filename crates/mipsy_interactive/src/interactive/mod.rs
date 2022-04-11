@@ -4,9 +4,9 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{ops::Deref, rc::Rc};
+use std::{mem::take, ops::Deref, rc::Rc};
 
-use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
+use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
@@ -23,11 +23,6 @@ use rustyline::{
     error::ReadlineError,
 };
 use colored::*;
-use mipsy_lib::{
-    Binary, 
-    InstSet, 
-    Runtime,
-};
 use commands::{
     Command,
     Arguments,
@@ -43,7 +38,7 @@ pub(crate) struct State {
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<Vec<(String, String)>>,
     pub(crate) binary:  Option<Binary>,
-    pub(crate) runtime: Option<Runtime>,
+    pub(crate) runtime: Runtime,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
@@ -57,7 +52,7 @@ impl State {
             commands: vec![],
             program: None,
             binary:  None,
-            runtime: None,
+            runtime: Runtime::new_without_binary(),
             exited: false,
             prev_command: None,
             confirm_exit: false,
@@ -298,7 +293,7 @@ impl State {
                     },
                     &self.iset,
                     self.binary.as_ref().unwrap(),
-                    self.runtime.as_ref().unwrap(),
+                    &self.runtime,
                 )
             }
         }
@@ -310,7 +305,7 @@ impl State {
 
         match result {
             Ok(Ok(new_runtime)) => {
-                self.runtime = Some(new_runtime);
+                self.runtime = new_runtime;
             }
             Ok(Err(guard)) => {
                 // Ok(true) on exit or breakpoint, see self::exec_status
@@ -318,61 +313,61 @@ impl State {
 
                 match guard {
                     PrintInt(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys1_print_int(verbose, args.value);
                     }
                     PrintFloat(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys2_print_float(verbose, args.value);
                     }
                     PrintDouble(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys3_print_double(verbose, args.value);
                     }
                     PrintString(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys4_print_string(verbose, &args.value);
                     }
                     ReadInt(guard) => {
                         let value = runtime_handler::sys5_read_int(verbose);
-                        self.runtime = Some(guard(value));
+                        self.runtime = guard(value);
                     }
                     ReadFloat(guard) => {
                         let value = runtime_handler::sys6_read_float(verbose);
-                        self.runtime = Some(guard(value));
+                        self.runtime = guard(value);
                     }
                     ReadDouble(guard) => {
                         let value = runtime_handler::sys7_read_double(verbose);
-                        self.runtime = Some(guard(value));
+                        self.runtime = guard(value);
                     }
                     ReadString(args, guard) => {
                         let value = runtime_handler::sys8_read_string(verbose, args.max_len);
-                        self.runtime = Some(guard(value));
+                        self.runtime = guard(value);
                     }
                     Sbrk(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys9_sbrk(verbose, args.bytes);
                     }
                     Exit(new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         self.exited = true;
                         
                         runtime_handler::sys10_exit(verbose);
                     }
                     PrintChar(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::sys11_print_char(verbose, args.value);
                     }
                     ReadChar(guard) => {
                         let value = runtime_handler::sys12_read_char(verbose);
-                        self.runtime = Some(guard(value));
+                        self.runtime = guard(value);
                     }
                     Open(_args, guard) => {
                         // TODO: implement file open for mipsy interactive frontend
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys13_open(verbose, args);
@@ -383,7 +378,7 @@ impl State {
 
                         let mut new_runtime = guard((-1, Vec::new()));
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys14_read(verbose, args);
@@ -394,7 +389,7 @@ impl State {
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys15_write(verbose, args);
@@ -405,31 +400,31 @@ impl State {
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }))});
 
                         // let value = runtime_handler::sys16_close(verbose, args);
                         // self.runtime = Some(guard(value));
                     }
                     ExitStatus(args, new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         self.exited = true;
 
                         runtime_handler::sys17_exit_status(verbose, args.exit_code);
                     }
                     Breakpoint(new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         breakpoint = true;
                     }
                     Trap(new_runtime) => {
-                        self.runtime = Some(new_runtime);
+                        self.runtime = new_runtime;
                         runtime_handler::trap(verbose);
                         trapped = true;
                     }
                 }
             }
             Err((new_runtime, err)) => {
-                self.runtime = Some(new_runtime);
+                self.runtime = new_runtime;
 
                 return Err(CommandError::RuntimeError { mipsy_error: err });
             }
@@ -439,8 +434,8 @@ impl State {
             if self.exited {
                 true
             } else {
-                let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
                 let binary = self.binary.as_ref().unwrap();
+                let pc = self.runtime.timeline().state().pc();
     
                 if breakpoint || binary.breakpoints.contains(&pc) {
                     let label = binary.labels.iter()
@@ -460,14 +455,12 @@ impl State {
     }
 
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
-        let runtime = self.runtime.take().ok_or(CommandError::MustLoadFile)?;
-
+        let runtime = take(&mut self.runtime);
         self.eval_stepped_runtime(verbose, runtime.step())
     }
 
     pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
-        let runtime = self.runtime.take().ok_or(CommandError::MustLoadFile)?;
-
+        let runtime = take(&mut self.runtime);
         self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
     }
 
@@ -486,8 +479,7 @@ impl State {
     }
 
     pub(crate) fn reset(&mut self) -> CommandResult<()> {
-        let runtime = self.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
-        runtime.timeline_mut().reset();
+        self.runtime.timeline_mut().reset();
         self.exited = false;
 
         Ok(())

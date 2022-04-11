@@ -39,7 +39,7 @@ pub(crate) fn context_command() -> Command {
 
             let program = state.program.as_ref().ok_or(CommandError::MustLoadFile)?;
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let runtime = &state.runtime;
 
             let base_addr = runtime.timeline().state().pc();
             for i in (-n)..=n {

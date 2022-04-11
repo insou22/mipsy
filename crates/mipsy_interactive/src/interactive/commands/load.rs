@@ -53,7 +53,7 @@ pub(crate) fn load_command() -> Command {
             let runtime = mipsy_lib::runtime(&binary, &arguments.iter().map(|x| &**x).collect::<Vec<_>>());
 
             state.binary  = Some(binary);
-            state.runtime = Some(runtime);
+            state.runtime = runtime;
             state.exited  = false;
 
             let loaded = if program.len() == 1 {

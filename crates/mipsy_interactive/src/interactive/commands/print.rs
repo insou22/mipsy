@@ -68,7 +68,7 @@ pub(crate) fn print_command() -> Command {
             }
 
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let runtime = &state.runtime;
 
             match arg {
                 MpArgument::Register(MpRegister::Normal(ident)) => {

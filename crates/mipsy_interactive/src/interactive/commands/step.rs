@@ -38,7 +38,7 @@ pub(crate) fn step_command() -> Command {
 
             for _ in 0..times {
                 let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-                let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+                let runtime = &state.runtime;
 
                 if let Ok(inst) = runtime.next_inst() {
                     util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());

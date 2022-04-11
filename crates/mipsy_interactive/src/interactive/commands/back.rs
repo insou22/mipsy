@@ -35,7 +35,7 @@ pub(crate) fn back_command() -> Command {
             let mut backs = 0;
             let mut ran_out_of_history = false;
             for _ in 0..times {
-                let runtime = state.runtime.as_mut().ok_or(CommandError::MustLoadFile)?;
+                let runtime = &mut state.runtime;
 
                 if runtime.timeline().timeline_len() == 2 && runtime.timeline().lost_history() {
                     if backs == 0 {
@@ -55,7 +55,7 @@ pub(crate) fn back_command() -> Command {
             }
 
             let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let runtime = &state.runtime;
 
             let pluralise = if backs != 1 { "s" } else { "" };
 

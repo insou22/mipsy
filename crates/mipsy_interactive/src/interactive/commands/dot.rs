@@ -20,7 +20,7 @@ pub(crate) fn dot_command() -> Command {
 
             let inst = mipsy_parser::parse_instruction(&line, state.config.tab_size)
                     .map_err(|error| CommandError::CannotParseLine { line: line.to_string(), error })?;
-            
+
             let program = MpProgram::new(
                 vec![
                     MpAttributedItem::new(
