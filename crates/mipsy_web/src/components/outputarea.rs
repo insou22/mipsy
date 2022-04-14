@@ -32,18 +32,22 @@ pub fn render_output_area(props: &OutputProps) -> Html {
     };
 
     let (mipsy_tab_button_classes, io_tab_classes) = {
-        let mut default = (
-						    String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2"),
-						    String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 py-2")
-					  );
+        let default_tab_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
+        let selected_classes = "bg-th-primary";
+        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
         if *props.show_io {
-            default.1 = format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
+            (
+                format!("{} {}", default_tab_classes, unselected_classes),
+                format!("{} {}", left_tab_classes, selected_classes),
+            )
         } else {
-            default.0 = format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
-        };
-
-        default
+            (
+                format!("{} {}", default_tab_classes, selected_classes),
+                format!("{} {}", left_tab_classes, unselected_classes),
+            )
+        }
     };
 
     let input_classes = if !syscall_input_needed {
@@ -88,7 +92,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
                 <div class="w-full overflow-y-auto">
                 <h1>
                     <strong>
-                        {if *props.show_io {"Output"} else {"Mipsy Output"}}
+                        {if *props.show_io {"I/O"} else {"Mipsy Output"}}
                     </strong>
                 </h1>
                 <pre style="width:100%;" class="text-sm whitespace-pre-wrap">
