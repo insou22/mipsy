@@ -37,17 +37,10 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         let selected_classes = "bg-th-primary";
         let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
-        if *props.show_io {
-            (
-                format!("{} {}", default_tab_classes, unselected_classes),
-                format!("{} {}", left_tab_classes, selected_classes),
-            )
-        } else {
-            (
-                format!("{} {}", default_tab_classes, selected_classes),
-                format!("{} {}", left_tab_classes, unselected_classes),
-            )
-        }
+        (
+            format!("{} {}", default_tab_classes, if *props.show_io {unselected_classes} else {selected_classes}),
+            format!("{} {}", left_tab_classes,  if *props.show_io {selected_classes} else {unselected_classes}),
+        )
     };
 
     let input_classes = if !syscall_input_needed {
