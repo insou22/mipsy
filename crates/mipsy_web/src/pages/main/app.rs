@@ -368,7 +368,7 @@ pub fn render_app() -> Html {
         }
     };
 
-    let (decompiled_tab_classes, source_tab_classes, data_tab_classes) = {
+    let (source_tab_classes, decompiled_tab_classes, data_tab_classes) = {
         let default_tab_classes = "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
         let left_tab_classes = format!("{} border-l-2", default_tab_classes);
         let selected_classes = "bg-th-primary";
@@ -377,24 +377,24 @@ pub fn render_app() -> Html {
         match *show_tab {
             DisplayedTab::Source => {
                 (
-                    format!("{} {}", default_tab_classes, unselected_classes), 
                     format!("{} {}", left_tab_classes, selected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
                     format!("{} {}", default_tab_classes, unselected_classes)
                 )
             }
 
             DisplayedTab::Decompiled => {
                 (
-                    format!("{} {}", default_tab_classes, selected_classes), 
                     format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, selected_classes), 
                     format!("{} {}", default_tab_classes, unselected_classes)
                 )
             }
 
             DisplayedTab::Data => {
                 (
-                    format!("{} {}", default_tab_classes, unselected_classes), 
                     format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
                     format!("{} {}", default_tab_classes, selected_classes)
                 )
             }

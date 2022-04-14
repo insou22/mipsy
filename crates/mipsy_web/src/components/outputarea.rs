@@ -31,15 +31,15 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         None => "".to_string(),
     };
 
-    let (mipsy_tab_button_classes, io_tab_classes) = {
+    let (io_tab_classes, mipsy_output_tab_classes) = {
         let default_tab_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
         let left_tab_classes = format!("{} border-l-2", default_tab_classes);
         let selected_classes = "bg-th-primary";
         let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
         (
-            format!("{} {}", default_tab_classes, if *props.show_io {unselected_classes} else {selected_classes}),
             format!("{} {}", left_tab_classes,  if *props.show_io {selected_classes} else {unselected_classes}),
+            format!("{} {}", default_tab_classes, if *props.show_io {unselected_classes} else {selected_classes}),
         )
     };
 
@@ -72,7 +72,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
             <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
                 <button class={io_tab_classes} onclick={switch_to_io.clone()}>{"I/O"}</button>
                 <button
-                    class={mipsy_tab_button_classes}
+                    class={mipsy_output_tab_classes}
                     onclick={switch_to_errors.clone()}
                 >
                     {props.mipsy_output_tab_title.clone()}
