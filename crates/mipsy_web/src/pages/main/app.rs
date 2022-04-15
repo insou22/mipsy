@@ -368,28 +368,37 @@ pub fn render_app() -> Html {
         }
     };
 
-    let (decompiled_tab_classes, source_tab_classes, data_tab_classes) = {
-        let mut default = (
-            String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1"),
-            String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 "),
-            String::from("w-1/2 leading-none hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 ")
-        );
+    let (source_tab_classes, decompiled_tab_classes, data_tab_classes) = {
+        let default_tab_classes = "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
+        let selected_classes = "bg-th-primary";
+        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
         match *show_tab {
             DisplayedTab::Source => {
-                default.1 = format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
+                (
+                    format!("{} {}", left_tab_classes, selected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
+                    format!("{} {}", default_tab_classes, unselected_classes)
+                )
             }
 
             DisplayedTab::Decompiled => {
-                default.0 = format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
+                (
+                    format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, selected_classes), 
+                    format!("{} {}", default_tab_classes, unselected_classes)
+                )
             }
 
             DisplayedTab::Data => {
-                default.2 = format!("{} {}", &default.2, String::from("bg-th-tabclicked"));
+                (
+                    format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
+                    format!("{} {}", default_tab_classes, selected_classes)
+                )
             }
-        };
-
-        default
+        }
     };
 
     let input_needed = match &*state {
