@@ -31,11 +31,20 @@ pub(crate) fn load_command() -> Command {
                 }
             };
 
-            let program: Vec<_> = files.iter()
-                    .map(|path| {
+            let stdin = String::from("/dev/stdin");
+            let program: Vec<_> = files.into_iter()
+                    .map(|name| {
+                        let mut path = name;
+                        if path == "-" {
+                            path = &stdin;
+                        }
+
                         match std::fs::read_to_string(path) {
                             Ok(content) => Ok((path.to_string(), content)),
-                            Err(err)     => Err(CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })
+                            Err(err)    => Err(CommandError::CannotReadFile {
+                                path: path.clone(),
+                                os_error: err.to_string()
+                            })
                         }
                     })
                     .collect::<Result<_, _>>()?;

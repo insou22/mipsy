@@ -190,7 +190,11 @@ fn main() {
     }
 
     let files = opts.files.into_iter()
-            .map(|name| {
+            .map(|mut name| {
+                if name == "-" {
+                    name = String::from("/dev/stdin");
+                }
+
                 let file_contents = match fs::read_to_string(&name) {
                     Ok(contents) => contents,
                     Err(err) => {
