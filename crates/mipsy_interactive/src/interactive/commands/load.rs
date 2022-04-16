@@ -4,6 +4,7 @@ use super::*;
 use colored::*;
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_parser::TaggedFile;
+use mipsy_utils::expand_tilde;
 
 pub(crate) fn load_command() -> Command {
     command_varargs(
@@ -39,7 +40,7 @@ pub(crate) fn load_command() -> Command {
                             path = &stdin;
                         }
 
-                        match std::fs::read_to_string(path) {
+                        match std::fs::read_to_string(expand_tilde(path)) {
                             Ok(content) => Ok((path.to_string(), content)),
                             Err(err)    => Err(CommandError::CannotReadFile {
                                 path: path.clone(),
