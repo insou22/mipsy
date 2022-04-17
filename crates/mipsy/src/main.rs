@@ -7,7 +7,7 @@ use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscal
 use mipsy_interactive::prompt;
 use clap::Parser;
 use mipsy_parser::TaggedFile;
-use mipsy_utils::{MipsyConfig, MipsyConfigError, expand_tilde, config_path, read_config};
+use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
 #[derive(Parser, Debug)]
@@ -194,11 +194,7 @@ fn main() {
                     name = String::from("/dev/stdin");
                 }
 
-                // typically the shell will expand ~ to the user's home directory
-                // before our program sees the original string, but there is still the
-                // potential case of a path containing ~ being passed in via `xargs` or similar,
-                // in which case ~ expansion is not performed by the shell
-                let file_contents = match fs::read_to_string(expand_tilde(&name)) {
+                let file_contents = match fs::read_to_string(&name) {
                     Ok(contents) => contents,
                     Err(err) => {
                         prompt::error_nl(format!("failed to read file `{}`: {}", name.bold(), err.to_string().bright_red()));
