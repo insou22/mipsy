@@ -7,10 +7,17 @@ pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
         return path.into();
     }
 
-    // TODO: support ~other_user/rest/of/path
-    if let Some(home) = home_dir() {
+    let home = if let Some(home) = home_dir() {
+        home
+    } else {
+        return path.into()
+    };
+
+    if path.starts_with("~/") {
         home.join(path.strip_prefix("~").unwrap()).into()
     } else {
-        path.into()
+        // TODO: support ~other_user/rest/of/path
+        // for now, assume this is a lone ~
+        home.into()
     }
 }
