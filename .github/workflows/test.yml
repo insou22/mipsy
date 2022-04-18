@@ -1,4 +1,4 @@
-name: Rust
+name: Test Mipsy
 
 on:
   push:
@@ -11,16 +11,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-
-    name: Build and Test on ${{ matrix.os }}
+  test:
+    name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        # os: [ ubuntu-latest, macOS-latest, windows-latest ]
+        # windows can't build spim because of bison
+        # TODO: find a way to build spim on windows (choco doesn't install bison somewhere we can use it)
+        # macOS can't run tests because of how it handles SIGPIPE
+        # TODO: modify scripts/compare.sh so that SIGPIPE is never triggered
+        # os: [ macOS-latest, windows-latest ]
+
         experimental: [false]
 
     steps:
@@ -29,10 +33,6 @@ jobs:
 
     - name: Build
       run: cargo build --verbose --package mipsy
-
-    - name: Install bison
-      if: matrix.os == 'windows-latest'
-      run: choco install winflexbison3
 
     - name: Install SPIM
       shell: bash
