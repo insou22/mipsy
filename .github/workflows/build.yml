@@ -28,5 +28,6 @@ jobs:
     - name: Debug Build
       run: cargo build --verbose --package mipsy
 
-    - name: Release Build
-      run: cargo build --release --verbose --package mipsy
+    # OOM on windows
+    # - name: Release Build
+    #   run: cargo build --release --verbose --package mipsy
