@@ -1,4 +1,4 @@
-name: Rust
+name: Test Mipsy
 
 on:
   push:
@@ -11,9 +11,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-
-    name: Build and Test on ${{ matrix.os }}
+  test:
+    name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
