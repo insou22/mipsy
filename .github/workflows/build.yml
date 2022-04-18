@@ -1,0 +1,33 @@
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+
+    name: Build and Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
+        experimental: [false]
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v2
+
+    - name: Debug Build
+      run: cargo build --verbose --package mipsy
+
+    - name: Release Build
+      run: cargo build --release --verbose --package mipsy
