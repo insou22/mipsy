@@ -1,10 +1,22 @@
 use std::{borrow::Cow, path::Path};
 use dirs::home_dir;
-use users::os::unix::UserExt;
 
+#[cfg(unix)]
+use users::os::unix::UserExt;
+#[cfg(bsd)]
+use users::os::bsd::UserExt;
+
+#[cfg(windows)]
+pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
+    // don't bother expanding on windows systems
+    path.into()
+}
+
+#[cfg(any(unix, bsd))]
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     let path = path.as_ref();
-    if !path.to_string_lossy().starts_with("~") {
+    let path_str = path.to_string_lossy();
+    if !path_str.starts_with("~") {
         return path.into();
     }
 
@@ -21,26 +33,19 @@ pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
         home.into()
     } else {
         // is of format ~other_user/rest/of/path
-        let path_str = path.to_string_lossy();
         let index = if let Some(idx) = path_str.find('/') {
             idx
         } else {
             path_str.len()
         };
 
-        let (mut username, mut rest_of_path) = path_str.split_at(index);
-        username = &username[1..];
-        if index < path_str.len() {
-            // remove leading slash so that .join doesn't go back to the root
-            rest_of_path = &rest_of_path[1..];
-        }
-
+        let username = &path_str[1..index];
         if let Some(user) = users::get_user_by_name(username) {
             home = user.home_dir().into()
         } else {
             return path.into()
         }
 
-        home.join(&rest_of_path).into()
+        home.join(path.components().next().unwrap()).into()
     }
 }

@@ -32,10 +32,14 @@ pub(crate) fn load_command() -> Command {
                 }
             };
 
+            #[cfg(any(unix, bsd))]
             let stdin = String::from("/dev/stdin");
+
             let program: Vec<_> = files.into_iter()
                     .map(|name| {
                         let mut path = name;
+
+                        #[cfg(any(unix, bsd))]
                         if path == "-" {
                             path = &stdin;
                         }
