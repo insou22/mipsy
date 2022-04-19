@@ -9,7 +9,7 @@ use users::os::bsd::UserExt;
 #[cfg(windows)]
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     // don't bother expanding on windows systems
-    path.into()
+    path.as_ref().into()
 }
 
 #[cfg(any(unix, bsd))]
