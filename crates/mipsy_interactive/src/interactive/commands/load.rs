@@ -4,6 +4,7 @@ use super::*;
 use colored::*;
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_parser::TaggedFile;
+use mipsy_utils::expand_tilde;
 
 pub(crate) fn load_command() -> Command {
     command_varargs(
@@ -31,11 +32,24 @@ pub(crate) fn load_command() -> Command {
                 }
             };
 
-            let program: Vec<_> = files.iter()
-                    .map(|path| {
-                        match std::fs::read_to_string(path) {
+            #[cfg(unix)]
+            let stdin = String::from("/dev/stdin");
+
+            let program: Vec<_> = files.into_iter()
+                    .map(|name| {
+                        let mut path = name;
+
+                        #[cfg(any(unix, bsd))]
+                        if path == "-" {
+                            path = &stdin;
+                        }
+
+                        match std::fs::read_to_string(expand_tilde(path)) {
                             Ok(content) => Ok((path.to_string(), content)),
-                            Err(err)     => Err(CommandError::CannotReadFile { path: path.clone(), os_error: err.to_string() })
+                            Err(err)    => Err(CommandError::CannotReadFile {
+                                path: path.clone(),
+                                os_error: err.to_string()
+                            })
                         }
                     })
                     .collect::<Result<_, _>>()?;

@@ -10,4 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see ~/.config/mipsy/config.yaml
-dirs = "3.0"                                        # for user config directory
+dirs = "3.0"                                        # for user config directory and tilde expansion
+
+[target.'cfg(unix)'.dependencies]
+users = "0.11"                                      # for other user's home directories
