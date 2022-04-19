@@ -1,18 +1,15 @@
 use std::{borrow::Cow, path::Path};
-use dirs::home_dir;
 
 #[cfg(unix)]
-use users::os::unix::UserExt;
-#[cfg(bsd)]
-use users::os::bsd::UserExt;
+use {dirs::home_dir, users::os::unix::UserExt};
 
-#[cfg(windows)]
+#[cfg(not(unix))]
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     // don't bother expanding on windows systems
     path.as_ref().into()
 }
 
-#[cfg(any(unix, bsd))]
+#[cfg(unix)]
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy();

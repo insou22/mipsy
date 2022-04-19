@@ -190,7 +190,7 @@ fn main() {
 
     let files = opts.files.into_iter()
             .map(|mut name| {
-                #[cfg(any(unix, bsd))]
+                #[cfg(unix)]
                 if name == "-" {
                     name = String::from("/dev/stdin");
                 }

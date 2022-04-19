@@ -32,7 +32,7 @@ pub(crate) fn load_command() -> Command {
                 }
             };
 
-            #[cfg(any(unix, bsd))]
+            #[cfg(unix)]
             let stdin = String::from("/dev/stdin");
 
             let program: Vec<_> = files.into_iter()
