@@ -39,7 +39,7 @@ pub(crate) fn load_command() -> Command {
                     .map(|name| {
                         let mut path = name;
 
-                        #[cfg(any(unix, bsd))]
+                        #[cfg(unix)]
                         if path == "-" {
                             path = &stdin;
                         }
