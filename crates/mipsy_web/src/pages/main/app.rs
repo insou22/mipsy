@@ -1,9 +1,9 @@
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
-        banner::Banner, data_segment::DataSegment, decompiled::DecompiledCode, modal::Modal,
+        about_modal::Modal, banner::Banner, data_segment::DataSegment, decompiled::DecompiledCode,
         navbar::NavBar, outputarea::OutputArea, pagebackground::PageBackground,
-        registers::Registers, sourcecode::SourceCode,
+        registers::Registers, settings_modal::SettingsModal, sourcecode::SourceCode,
     },
     state::{
         config::MipsyWebConfig,
@@ -20,7 +20,6 @@ use mipsy_lib::MipsyError;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
-use std::str::FromStr;
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
@@ -45,6 +44,7 @@ pub fn render_app() -> Html {
     let worker = Rc::new(RefCell::new(None));
     let on_content_change_closure_handle: UseStateHandle<bool> = use_state_eq(|| false);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
+    let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
     let input_ref: UseStateHandle<NodeRef> = use_state_eq(NodeRef::default);
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
@@ -53,8 +53,10 @@ pub fn render_app() -> Html {
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(std::vec::Vec::new);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| {
-        crate::get_localstorage("ack_analytics")
-            .map(|item| FromStr::from_str(&item).unwrap_or(true))
+        // if we have ack'd analytics
+        // dont show the banner
+        crate::get_localstorage("analytics_ack")
+            .map(|item| !(item.as_str() == "true"))
             .unwrap_or(true)
     });
     let config: UseStateHandle<MipsyWebConfig> = use_state_eq(MipsyWebConfig::default);
@@ -414,32 +416,42 @@ pub fn render_app() -> Html {
             <div
                 onclick={{
                     let display_modal = display_modal.clone();
+                    let settings_modal = settings_modal.clone();
                     Callback::from(move |_| {
-                        display_modal.set(!*display_modal);
+                        if *display_modal {
+                            display_modal.set(false);
+                        } else if *settings_modal {
+                            settings_modal.set(false);
+                        }
                     })
                 }}
                 class={
-                    classes!("bg-th-secondary", "bg-opacity-90", "absolute", 
+                    classes!("bg-th-secondary", "bg-opacity-90", "absolute",
                              "top-0", "left-0", "h-screen", "w-screen", "z-20",
-                              if !(*display_modal) { "hidden" } else { "" })
+                              if !(*display_modal) && !(*settings_modal) { "hidden" } else { "" })
                 }
             >
             </div>
 
             <Modal should_display={display_modal.clone()} />
+            <SettingsModal 
+                analytics={show_analytics_banner.clone()} 
+                should_display={settings_modal.clone()} 
+            />
 
             <PageBackground>
 
                 <NavBar
                     {load_onchange}
-                    display_modal={display_modal}
+                    {display_modal}
+                    {settings_modal}
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
                     worker={worker.borrow().as_ref().unwrap().clone()}
-                    filename={filename}
-                    file={file}
-                    is_saved={is_saved}
+                    {filename}
+                    {file}
+                    {is_saved}
                 />
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 137px)">
@@ -520,8 +532,6 @@ fn render_running(
     show_tab: UseStateHandle<DisplayedTab>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
-
-    let callback_filename = filename;
 
     html! {
         <>
