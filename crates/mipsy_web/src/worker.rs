@@ -133,8 +133,6 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
-        wasm_logger::init(wasm_logger::Config::default());
-
         Self {
             link,
             inst_set: mipsy_instructions::inst_set(),

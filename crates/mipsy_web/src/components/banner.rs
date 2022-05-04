@@ -10,7 +10,7 @@ pub struct Props {
 pub fn render_banner(props: &Props) -> Html {
     html! {
 
-        <div class="absolute bottom-0 w-screen left-0 z-10 bg-blue-100/75 border-t border-b border-blue-500 px-4 py-6 flex items-center justify-center flex-row" role="alert">
+        <div class="absolute bottom-0 w-screen left-0 z-10 bg-blue-100 border-t border-b border-blue-500 px-4 py-6 flex items-center justify-center flex-row" role="alert">
             <div>
                 {" This app collects anonymous analytics to improve your experience. See settings for information on what is collected and how it is used"}
                 <button 

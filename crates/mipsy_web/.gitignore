@@ -3,3 +3,4 @@ static/wasm.js
 static/tailwind.css
 static/wasm_bg.wasm
 Session.vim
+_static/tailwind.css
