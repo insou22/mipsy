@@ -42,7 +42,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </p>
                         <br />
                         <p class="mt-2">
-                            {"mipsy_web is alpha software, and will eventually be a full replacement for QtSpim"}
+                            {"mipsy_web is beta software, and will eventually be a full replacement for QtSpim"}
                         </p>
                         <br />
                         <p class="mb-2">
@@ -52,7 +52,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             </a>
                         </p>
                         <p class="mb-2">
-                            {"You can also check the current items being worked on at"}
+                            {"You can also check the current items being worked on at "}
                             <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/projects/2" target="_blank">
                                 {"this project board"}
                             </a>

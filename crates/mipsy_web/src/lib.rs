@@ -32,6 +32,9 @@ extern "C" {
     pub fn remove_highlight();
 
     pub fn set_model_change_listener(callback: &Closure<dyn Fn()>);
+
+    pub fn get_localstorage(key: &str) -> Option<String>;
+    pub fn set_localstorage(key: &str, value: &str);
 }
 
 #[wasm_bindgen(start)]
