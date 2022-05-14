@@ -68,19 +68,12 @@ See [mipsy](https://github.com/insou22/mipsy/blob/main/README.md) for more infor
 ## Dependencies
 1) Install rust via rustup, by following the instructions at [rustup](https://www.rust-lang.org/tools/install)
 2) Install tailwindcss via npm `npm i -g tailwindcss`.
-3) Install cargo-watch using `cargo install cargo-watch` if you wish to serve with hot-reload. 
+3) Install trunk via the instructions on [their website](https://trunkrs.dev/)
 
 ## Development
-1) `scripts/build_dev.sh` will compile the relevant rust code to wasm files, and place into the static directory
-2) `scripts/serve.sh` will simply run a http client inside `static/` to serve the relevant files.      
+1) `trunk serve` will compile the relevant rust code to wasm files, generate the css, chuck them into `dist/` and serve a web server.
+It will also watch files for changes, and reload. You can use `trunk serve` during development
+2) `trunk build --release` is used for deployment. It will compile optimized rust code, optimized/minified css + bundle them in `dist/`.
 
-`scripts/hot_reload_build.sh` also exists to compile the rust code to wasm files, but will also watch for changes to the `src` directory
-
-## Production
-1) `scripts/deploy.sh` will be useful for figuring out how to compile release, build tailwind for release, and then deploy.
-
-## Debug
-If you have no CSS - you will need to produce `tailwind.css` file , `./purge_tailwind.sh` should help here. 
-
-tailwind setup with https://dev.to/arctic_hen7/how-to-set-up-tailwind-css-with-yew-and-trunk-il9
-
+## Deployment
+1) `scripts/deploy.sh` runs the build script, and then copies across the files to UNSW cse web servers.

@@ -2,15 +2,12 @@
 // It does that using a regular expression, which just analyses the file, meaning Rust is fine!
 
 module.exports = {
-    purge: {
-        mode: "all",
-        content: [
-            "./src/**/*.rs",
-            "./index.html",
-            "./src/**/*.html",
-            "./src/**/*.css",
-        ],
-    },
+    content: [
+        "./src/**/*.rs",
+        "./index.html",
+        "./src/**/*.html",
+        "./src/**/*.css",
+    ],
     theme: {
         extend: {
             colors: {

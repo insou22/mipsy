@@ -2,9 +2,9 @@
 # Note, this presumes you have an ssh alias `cse` 
 
 
-if ! command -v wasm-pack 2>&1 >/dev/null;
+if ! command -v trunk 2>&1 >/dev/null;
 then
-	echo 'error: you must install wasm-pack (try `cargo install wasm-pack`)'
+	echo 'error: you must install trunk (try the instructions at https://trunkrs.dev/)'
 	exit
 fi
 
@@ -14,14 +14,7 @@ then
 	exit
 fi
 
-wasm-pack build --target no-modules --out-name wasm --out-dir ./dist --no-typescript
-
-cd dist
-ln -sf ../_static/index.html
-cd ..
-cp -r _static/package/ dist
-
-NODE_ENV=production tailwindcss -c ./tailwind.config.js -o dist/tailwind.css --minify
+trunk build --release
 
 if [ "$1" = "--push=shreys" ]; then
 
