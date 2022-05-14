@@ -1,0 +1,16 @@
+[build]
+# The index HTML file to drive the bundling process.
+target = "index.html"
+# Build in release mode.
+release = false
+# The output dir for all final assets.
+dist = "dist"
+# The public URL from which assets are to be served.
+public_url = "/"
+# Whether to include hash values in the output file names.
+filehash = true
+
+[[hooks]]
+stage = "build"
+command = "sh"
+command_arguments = ["-c", "mkdir -p $TRUNK_STAGING_DIR/assets && tailwindcss -c ./tailwind.config.js -o $TRUNK_STAGING_DIR/assets/tailwind.css"]

@@ -142,7 +142,7 @@ impl Agent for Worker {
     }
 
     fn name_of_resource() -> &'static str {
-        "wasm.js"
+        "worker.js"
     }
 
     fn update(&mut self, _msg: Self::Message) {

@@ -2,41 +2,170 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Mipsy</title>
-    <link href="tailwind.css" rel="stylesheet" />
+    <title>mipsy</title>
+   	<link rel="stylesheet" href="assets/tailwind.css"/>
+    <link data-trunk rel="copy-dir" href="assets/package"/>
+
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- split.js for the drag and drop areas -->
     <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
-    <link rel="stylesheet" data-name="vs/editor/editor.main" href="package/min/vs/editor/editor.main.css">
-    <!-- Syntax Highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.2.0/languages/mipsasm.min.js"></script>
-    <script>hljs.highlightAll();</script>
     <script>
         function split_setup() {
           console.log("setting up splits...");
           Split(["#file_data", "#information"], {
             sizes: [70, 30],
-            minSize: 330,
           });          
           Split(["#regs", "#output"], {
             direction: "vertical",
           });
         };
-        
-        function highlight() {
-          hljs.highlightAll();
-        }
 
         function alarm() {
             console.error("AHHHHHHHHHHH");
         };
     </script>
+
+    <!-- Monaco for the code editor -->
+    <link rel="stylesheet" data-name="vs/editor/editor.main" href="package/min/vs/editor/editor.main.css">
+    <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
+    <script src="package/min/vs/loader.js"></script>
+    <script src="package/min/vs/editor/editor.main.nls.js"></script>
+    <script src="package/min/vs/editor/editor.main.js"></script>
+
+    <script>
+      function init_editor() {
+        var h_div = document.getElementById("monaco_editor");
+        var editor = monaco.editor.create(h_div, {
+          value: "",
+          language: "mips",
+          automaticLayout: true,
+          scrollBeyondLastLine: false,
+          minimap: {
+            enabled: false,
+          },
+        });
+
+        window.editor = editor;
+      }
     
-    <script src="wasm.js"></script>
-	<script type="application/javascript">wasm_bindgen('wasm_bg.wasm');</script>
+      function set_model_change_listener(callback) {
+        window.editor.onDidChangeModelContent(callback);
+      }
+
+      function get_localstorage_file_contents() {
+        return localStorage?.lastSavedValue || "";
+      }
+
+      function get_localstorage_filename() {
+        let val = localStorage?.lastSavedFilename || "Untitled";
+        return val;
+      }
+
+      function set_localstorage_filename(value) {
+        localStorage.lastSavedFilename = value;
+      }
+
+      function set_localstorage_file_contents(contents) {
+        localStorage.lastSavedValue = contents;
+      }
+
+      function remove_highlight() {
+        if (!window.decorations) {
+          return;
+        }
+        if (window.editor !== undefined || window.editor !== null) {
+          window.decorations = window.editor.deltaDecorations(window.decorations, []);
+        }
+      }
+
+      function highlight_section(startLineNumber, startColumn, endColumn) {
+        if (window.editor === undefined || window.editor === null) {
+          return;
+        };
+
+        let range = new monaco.Range(startLineNumber, startColumn, startLineNumber, endColumn);
+        window.decorations = window.editor.deltaDecorations(
+          [],
+          [
+            {
+              range,
+              options: {
+                inlineClassName: "highlight-line-err",
+              },
+            },
+            {
+              range,
+              options: {
+                linesDecorationsClassName: "highlight-line-gutter",
+                isWholeLine: true,
+              },
+            }
+          ]
+        );
+      }
+
+      function set_editor_value(value="") {
+        window.editor.setValue(value);
+      }
+
+      function get_editor_value() {
+        return window.editor.getValue();
+      }
+
+      function trigger_download_file(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+
+        element.style.display = 'none';
+        document.body.appendChild(element);
+
+        element.click();
+
+        document.body.removeChild(element);
+      }
+
+	  function get_localstorage(key) {
+        return localStorage.getItem(key);
+      }
+
+      function set_localstorage(key, value) {
+        localStorage.setItem(key, value);
+      }
+    </script>
 
     <style>
+      .highlight-line-err {
+        color: red !important;
+        display: inline-block;
+        position:relative;
+        font-weight: bold;
+        text-decoration: underline;
+      }
+
+      .highlight-line-gutter{
+        	background: red;
+          width: 5px !important;
+          margin-left: 3px;
+      }
+
+      #monaco_editor {
+        height: 95%;
+      }
+
+      #filename:focus, #filename:hover {
+        border: 1px solid black;
+        background: white;
+      }
+      
+      #filename {
+        border: none;
+        background: transparent;
+        margin-bottom: 10px;
+        box-shadow: none;
+      }
+
       .gutter {
         background-color: #eee;
         background-repeat: no-repeat;
@@ -53,28 +182,11 @@
         cursor: col-resize;
       }
     </style>
+    <link data-trunk rel="rust" href="Cargo.toml" data-bin="app"  data-wasm-opt="z" data-type="main" />
+    <link data-trunk rel="rust" href="Cargo.toml" data-bin="worker" data-wasm-opt="z" data-type="worker" />
   </head>
 
   <body>
-  <div id="yew_app"></div>
-  <div id="monaco_editor" style="height:400px">
-  <script>var require = { paths: { 'vs': 'package/min/vs' } };</script>
-
-  <script src="package/min/vs/loader.js"></script>
-  <script src="package/min/vs/editor/editor.main.nls.js"></script>
-  <script src="package/min/vs/editor/editor.main.js"></script>
-
-  <script>
-    // CREATE AN EDITOR
-    var h_div = document.getElementById('monaco_editor');
-    var editor = monaco.editor.create(h_div, {
-        value: [
-            'function x() {',
-            '\tconsole.log("Hello world!");',
-            '}'
-        ].join('\n'),
-        language: 'javascript'
-    });
-  </script>
+    <div id="yew_app"></div>
   </body>
 </html>
