@@ -13,4 +13,4 @@ filehash = true
 [[hooks]]
 stage = "build"
 command = "sh"
-command_arguments = ["-c", "mkdir -p $TRUNK_STAGING_DIR/assets && tailwindcss -c ./tailwind.config.js -o $TRUNK_STAGING_DIR/assets/tailwind.css"]
+command_arguments = ["-c", "mkdir -p $TRUNK_STAGING_DIR/assets; if [ $TRUNK_PROFILE = 'release' ]; then NODE_ENV=production tailwindcss -c ./tailwind.config.js -o $TRUNK_STAGING_DIR/assets/tailwind.css --minify; else tailwindcss -c ./tailwind.config.js -o $TRUNK_STAGING_DIR/assets/tailwind.css; fi"]
