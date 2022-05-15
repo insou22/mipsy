@@ -111,7 +111,7 @@ trait Escape {
 
 impl Escape for char {
     fn escape(self: &char) -> String {
-        return match self {
+        match self {
             '\0' => r"\0".to_string(), // null
             '\t' => r"\t".to_string(), // tab
             '\r' => r"\r".to_string(), // carriage return
@@ -123,11 +123,11 @@ impl Escape for char {
             '\x1B' => r"\e".to_string(), // escape
             '\x20'..='\x7E' => self.to_string(), // printable ASCII
             _ => ".".to_string(), // everything else
-        };
+        }
     }
 }
 
-fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &Vec<Safe<i32>>) -> Html {
+fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i32>]) -> Html {
     const ROWS: usize = 4;
     const ROW_SIZE: usize = PAGE_SIZE / ROWS;
 
@@ -151,73 +151,36 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &Vec<Saf
                                         }
                                         <div style="text-align: center;">
                                             {
-                                                match page_contents[nth * ROW_SIZE + offset] {
-                                                    Safe::Valid(byte) => {
-                                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
-                                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="color: blue" tital="$sp & $fp">
-                                                                    {
-                                                                        html! { format!("{:02x}", byte) }
-                                                                    }
-                                                                </span>
-                                                            }
+                                                if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
+                                                    page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                    html! {
+                                                        <span style="border: 1px solid blue; background-color: blue;" title="$sp & $fp">
+                                                        {
+                                                            render_data(page_contents[nth * ROW_SIZE + offset]) 
                                                         }
-                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="color: green;" tital="$sp">
-                                                                    {
-                                                                        html! { format!("{:02x}", byte) }
-                                                                    }
-                                                                </span>
-                                                            }
-                                                        }
-                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="color: red;" tital="$fp">
-                                                                    {
-                                                                        html! { format!("{:02x}", byte) }
-                                                                    }
-                                                                </span>
-                                                            }
-                                                        }
-                                                        else {
-                                                            html! { format!("{:02x}", byte) }
-                                                        }
+                                                        </span>
                                                     }
-                                                    Safe::Uninitialised => {
-                                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
-                                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="background-color: blue;" tital="$sp & $fp">
-                                                                    {
-                                                                        html! { "__" }
-                                                                    }
-                                                                </span>
-                                                            }
+                                                }
+                                                else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
+                                                    html! {
+                                                        <span style="border: 1px solid green; background-color: green;" title="$sp">
+                                                        {
+                                                            render_data(page_contents[nth * ROW_SIZE + offset]) 
                                                         }
-                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="background-color: green;" tital="$sp">
-                                                                    {
-                                                                        html! { "__" }
-                                                                    }
-                                                                </span>
-                                                            }
-                                                        }
-                                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                            html! {
-                                                                <span style="background-color: red;" tital="$fp">
-                                                                    {
-                                                                        html! { "__" }
-                                                                    }
-                                                                </span>
-                                                            }
-                                                        }
-                                                        else {
-                                                            html! { "__" }
-                                                        }
+                                                        </span>
                                                     }
+                                                }
+                                                else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                                    html! {
+                                                        <span style="border: 1px solid red;background-color: red;" title="$fp">
+                                                    {
+                                                                render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                        }
+                                                        </span>
+                                                    }
+                                                }
+                                                else {
+                                                    html! { "__" }
                                                 }
                                             }
                                         </div>
@@ -242,7 +205,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &Vec<Saf
                                                 .map(|c| c.escape())
                                                 .filter(|char| char.len() == 2 || (char.len() == 1 && char.as_bytes()[0].is_ascii_graphic()) || char == " ")
                                                 .map(|value| html! { value })
-                                                .unwrap_or(html! { "_" })
+                                                .unwrap_or_else(|| html! { "_" })
                                         }
                                     </div>
                                 }
@@ -254,4 +217,17 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &Vec<Saf
             })
         }
     }
+}
+
+fn render_data(data_val: Safe<u8>) -> Html {
+
+    match data_val {
+        Safe::Valid(byte) => {
+            html! { format!("{:02x}", byte) }
+        }
+        Safe::Uninitialised => {
+            html! { "__" }
+        }
+    }
+
 }
