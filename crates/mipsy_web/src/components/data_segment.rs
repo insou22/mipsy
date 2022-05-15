@@ -132,90 +132,87 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
     const ROW_SIZE: usize = PAGE_SIZE / ROWS;
 
     html! {
-        {
-            for (0..ROWS).map(|nth| {
-                html! {
-                    <>
-                        
-                        <div style="grid-column: col-start / span 1">
-                            { format!("0x{:08x}", page_addr as usize + nth * ROW_SIZE) }
-                        </div>
-                        <div style="grid-column: col-start 3 / span 19; display: grid;  grid-template-columns: repeat(19, 1fr)">
-                        {
-                            for (0..ROW_SIZE).enumerate().map(|(i, offset)| {
-                                html! {
-                                    <>
-                                        // add an extra column to gap between 4 bytes
-                                        if i > 0 && i % 4 == 0 {
-                                            <div>{""}</div>
-                                        }
-                                        <div style="text-align: center;">
-                                            {
-                                                if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
-                                                    page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                    html! {
-                                                        <span style="border: 1px solid blue; background-color: blue;" title="$sp & $fp">
-                                                        {
-                                                            render_data(page_contents[nth * ROW_SIZE + offset]) 
-                                                        }
-                                                        </span>
-                                                    }
+        for (0..ROWS).map(|nth| {
+            html! {
+                <>
+                <div style="grid-column: col-start / span 1">
+                    { format!("0x{:08x}", page_addr as usize + nth * ROW_SIZE) }
+                </div>
+                <div style="grid-column: col-start 3 / span 19; display: grid;  grid-template-columns: repeat(19, 1fr)">
+                {
+                    for (0..ROW_SIZE).enumerate().map(|(i, offset)| {
+                        html! {
+                            <>
+                                // add an extra column to gap between 4 bytes
+                                if i > 0 && i % 4 == 0 {
+                                    <div>{""}</div>
+                                }
+                                <div style="text-align: center;">
+                                    {
+                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
+                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                            html! {
+                                                <span class="cursor-help" style="border: 1px solid blue; background-color: blue;" title="$sp & $fp">
+                                                {
+                                                    render_data(page_contents[nth * ROW_SIZE + offset]) 
                                                 }
-                                                else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
-                                                    html! {
-                                                        <span style="border: 1px solid green; background-color: green;" title="$sp">
-                                                        {
-                                                            render_data(page_contents[nth * ROW_SIZE + offset]) 
-                                                        }
-                                                        </span>
-                                                    }
-                                                }
-                                                else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                                    html! {
-                                                        <span style="border: 1px solid red;background-color: red;" title="$fp">
-                                                    {
-                                                                render_data(page_contents[nth * ROW_SIZE + offset]) 
-                                                        }
-                                                        </span>
-                                                    }
-                                                }
-                                                else {
-                                                    html! { "__" }
-                                                }
+                                                </span>
                                             }
-                                        </div>
-                                    </>
-                                }
-                            })
-                        }
-                        </div>
-
-                        <div style="grid-column: col-start 25 / span 16; display: grid; grid-template-columns: repeat(16, 1fr);">
-                        {
-                            for (0..ROW_SIZE).map(|offset| {
-                                let value = page_contents[nth * ROW_SIZE + offset].into_option();
-
-                                    
-                                html! {
-                                    <div style="text-align: center;">
-                                        {
-                                            value
-                                                .map(|value| value as u32)
-                                                .and_then(char::from_u32)
-                                                .map(|c| c.escape())
-                                                .filter(|char| char.len() == 2 || (char.len() == 1 && char.as_bytes()[0].is_ascii_graphic()) || char == " ")
-                                                .map(|value| html! { value })
-                                                .unwrap_or_else(|| html! { "_" })
                                         }
-                                    </div>
-                                }
-                            })
+                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
+                                            html! {
+                                                <span class="cursor-help" style="border: 1px solid green; background-color: green;" title="$sp">
+                                                {
+                                                    render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                }
+                                                </span>
+                                            }
+                                        }
+                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
+                                            html! {
+                                                <span class="cursor-help" style="border: 1px solid red;background-color: red;" title="$fp">
+                                                {
+                                                        render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                }
+                                                </span>
+                                            }
+                                        }
+                                        else {
+                                            html! { "__" }
+                                        }
+                                    }
+                                </div>
+                            </>
                         }
-                        </div>
-                    </>
+                    })
                 }
-            })
-        }
+                </div>
+
+                <div style="grid-column: col-start 25 / span 16; display: grid; grid-template-columns: repeat(16, 1fr);">
+                {
+                    for (0..ROW_SIZE).map(|offset| {
+                        let value = page_contents[nth * ROW_SIZE + offset].into_option();
+
+                            
+                        html! {
+                            <div style="text-align: center;">
+                                {
+                                    value
+                                        .map(|value| value as u32)
+                                        .and_then(char::from_u32)
+                                        .map(|c| c.escape())
+                                        .filter(|char| char.len() == 2 || (char.len() == 1 && char.as_bytes()[0].is_ascii_graphic()) || char == " ")
+                                        .map(|value| html! { value })
+                                        .unwrap_or_else(|| html! { "_" })
+                                }
+                            </div>
+                        }
+                    })
+                }
+                </div>
+            </>
+            }
+        })
     }
 }
 

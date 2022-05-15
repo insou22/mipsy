@@ -7,7 +7,5 @@ fn main() {
 
     wasm_logger::init(wasm_logger::Config::default());
 
-    unsafe {
-        mipsy_web::split_setup();
-    }
+    mipsy_web::split_setup();
 }
