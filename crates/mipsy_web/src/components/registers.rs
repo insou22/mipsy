@@ -46,11 +46,34 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                         ""
                                     }
                                 }>
-                                    <td class="border-gray-500 border-b-2 pl-4">
-                                        {"$"}
-                                        {Register::from_u32(index as u32).unwrap().to_lower_str()}
+                                    <td class="border-gray-500 border-b-2 pl-4 text-center"> {
+                                            if index == 29 {
+                                                html! {
+                                                    <span style="color: green;">
+                                                            {"$"}
+                                                            {Register::from_u32(index as u32).unwrap().to_lower_str()}
+                                                    </span>
+                                                }
+                                            }
+                                            else if index == 30 {
+                                                html! {
+                                                    <span style="color: red;">
+                                                            {"$"}
+                                                            {Register::from_u32(index as u32).unwrap().to_lower_str()}
+                                                    </span>
+                                                }
+                                            }
+                                            else {
+                                                html! {
+                                                    <>
+                                                        {"$"}
+                                                        {Register::from_u32(index as u32).unwrap().to_lower_str()}
+                                                    </>
+                                                }
+                                            }
+                                        }
                                     </td>
-                                    <td class="pl-4 border-b-2 border-gray-500">
+                                    <td class="pl-4 border-b-2 border-gray-500 text-center">
                                         <pre>
                                             {format!("0x{:08x}", val)}
                                         </pre>

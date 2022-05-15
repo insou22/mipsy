@@ -1,4 +1,3 @@
-use log::info;
 use yew::prelude::*;
 use yew::{function_component, html, Properties};
 
