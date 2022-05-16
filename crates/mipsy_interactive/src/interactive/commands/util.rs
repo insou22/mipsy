@@ -148,11 +148,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
                 let repeat_space = {
                     let chars = strip_ansi_escapes::strip(&decompiled_part).unwrap().len();
 
-                    if chars >= 55 {
-                        0
-                    } else {
-                        55 - chars
-                    }
+                    60_usize.saturating_sub(chars)
                 };
 
                 line_part = format!("{} {}  {}", " ".repeat(repeat_space), "#".bright_black(), line.trim().bright_black())
@@ -160,7 +156,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
         }
     }
 
-    println!("{:80}{}", decompiled_part, line_part);
+    println!("{decompiled_part}{line_part}");
 }
 
 pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, files: Option<&[(String, String)]>) {
