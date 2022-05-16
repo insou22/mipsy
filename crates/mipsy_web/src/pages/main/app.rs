@@ -534,7 +534,7 @@ pub fn render_app() -> Html {
                         </div>
 
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
-                            <Registers state={state.clone()} />
+                            <Registers state={state.clone()} tab={show_register_tab} />
                         </div>
 
                         <OutputArea
