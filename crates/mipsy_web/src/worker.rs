@@ -698,7 +698,7 @@ impl Agent for Worker {
                             let label = binary.labels.iter()
                                 .find(|(_, &addr)| addr == pc)
                                 .map(|(name, _)| name.to_string())
-                                .unwrap_or(format!("0x{}",pc));
+                                .unwrap_or(format!("0x{:08x}",pc));
 
                             mips_state.mipsy_stdout.push(format!("BREAKPOINT - {label}"));
 
