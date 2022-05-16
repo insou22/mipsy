@@ -226,7 +226,6 @@ pub fn render_app() -> Html {
             };
 
             if let State::Compiled(_) = &*state_copy {
-                info!("removing highlight decorations");
                 crate::remove_highlight();
             }
             move || {}
@@ -443,6 +442,7 @@ pub fn render_app() -> Html {
             <PageBackground>
 
                 <NavBar
+                    show_tab={show_tab.clone()}
                     {load_onchange}
                     {display_modal}
                     {settings_modal}

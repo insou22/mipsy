@@ -1,3 +1,4 @@
+use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::compile::CompilerOptions;
@@ -42,6 +43,7 @@ pub struct Worker {
     // but that's a shift in the worker's behaviour
     // we can do that later
     binary: Option<Binary>,
+    config: MipsyWebConfig,
 }
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
@@ -78,6 +80,8 @@ pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(FileInformation),
     ResetRuntime(MipsState),
+    UpdateConfig(MipsyWebConfig),
+    AddBreakpoint,
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
@@ -138,6 +142,7 @@ impl Agent for Worker {
             inst_set: mipsy_instructions::inst_set(),
             runtime: None,
             binary: None,
+            config: MipsyWebConfig::default(),
         }
     }
 
@@ -150,6 +155,7 @@ impl Agent for Worker {
     }
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
+        let mut breakpoint = false;
         match msg {
             Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
@@ -324,6 +330,14 @@ impl Agent for Worker {
                         error!("Error: please report this to developers, with steps to reproduce. Runtime is None when Giving Syscall Val")
                     }
                 }
+            }
+
+            Self::Input::AddBreakpoint => {
+                unimplemented!()
+            }
+
+            Self::Input::UpdateConfig(config) => {
+                self.config = config
             }
 
             Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
@@ -565,12 +579,14 @@ impl Agent for Worker {
                                         }
 
                                         Breakpoint(next_runtime) => {
-                                            info!("breakpoint");
-
                                             runtime = next_runtime;
+                                            if !self.config.ignore_breakpoints {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
-                                        _ => unreachable!(), /*
+                                        _ => unreachable!("Invalid Syscall"), /*
 
                                                              Sbrk       (SbrkArgs, Runtime),
                                                              Exit       (Runtime),
@@ -664,6 +680,8 @@ impl Agent for Worker {
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
                         mips_state.update_memory(&runtime);
+                        let pc = runtime.timeline().state().pc();
+                        let binary = self.binary.as_ref().unwrap();
                         self.runtime = Some(RuntimeState::Running(runtime));
 
                         let response;
@@ -675,6 +693,16 @@ impl Agent for Worker {
                                     .expect("infinite loop guarantees Some return")
                             ));
                             response = Self::Output::ProgramExited(mips_state);
+                        } else if breakpoint || binary.breakpoints.contains(&pc)  {
+    
+                            let label = binary.labels.iter()
+                                .find(|(_, &addr)| addr == pc)
+                                .map(|(name, _)| name.to_string())
+                                .unwrap_or(format!("0x{}",pc));
+
+                            mips_state.mipsy_stdout.push(format!("BREAKPOINT - {label}"));
+
+                            response = Self::Output::UpdateMipsState(mips_state);
                         } else if step_size.abs() == 1 {
                             // just update the state
                             response = Self::Output::UpdateMipsState(mips_state);
