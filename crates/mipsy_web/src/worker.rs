@@ -80,8 +80,12 @@ pub enum WorkerRequest {
     CompileCode(FileInformation),
     ResetRuntime(MipsState),
     UpdateConfig(MipsyWebConfig),
+<<<<<<< HEAD
     // Toggle a breakpoiint at an address
     ToggleBreakpoint(u32),
+=======
+    AddBreakpoint,
+>>>>>>> 275b751 (initial breakpoint instruction + switch to mipsy-output + swithc to decompiled on run)
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
