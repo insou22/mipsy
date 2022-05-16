@@ -124,6 +124,8 @@ pub fn handle_response_from_worker(
                 // focus IO if output
                 if curr.mips_state.stdout != mips_state.stdout {
                     show_io.set(true);
+                } else if curr.mips_state.mipsy_stdout != mips_state.mipsy_stdout {
+                    show_io.set(false);
                 }
 
                 state.set(State::Compiled(RunningState {
