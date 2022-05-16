@@ -7,7 +7,7 @@ use crate::{
     },
     state::{
         config::MipsyWebConfig,
-        state::{DisplayedTab, ErrorType, MipsState, RunningState, State},
+        state::{DisplayedCodeTab, RegisterTab, ErrorType, MipsState, RunningState, State},
         update,
     },
     worker::{FileInformation, Worker, WorkerRequest},
@@ -49,7 +49,8 @@ pub fn render_app() -> Html {
     let input_ref: UseStateHandle<NodeRef> = use_state_eq(NodeRef::default);
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
-    let show_tab: UseStateHandle<DisplayedTab> = use_state_eq(|| DisplayedTab::Source);
+    let show_code_tab: UseStateHandle<DisplayedCodeTab> = use_state_eq(|| DisplayedCodeTab::Source);
+    let show_register_tab: UseStateHandle<RegisterTab> = use_state_eq(|| RegisterTab::UsedRegisters);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(std::vec::Vec::new);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| {
@@ -127,7 +128,7 @@ pub fn render_app() -> Html {
                 };
                 move || {} //do stuff when your componet is unmounted
             },
-            (filename.clone(), file2, show_tab.clone()), // run use_effect when these dependencies change
+            (filename.clone(), file2, show_code_tab.clone()), // run use_effect when these dependencies change
         );
     }
 
@@ -236,7 +237,7 @@ pub fn render_app() -> Html {
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
             let state = state.clone();
-            let show_tab = show_tab.clone();
+            let show_tab = show_code_tab.clone();
             let show_io = show_io.clone();
             let file = file.clone();
             let input_ref = input_ref.clone();
@@ -351,7 +352,7 @@ pub fn render_app() -> Html {
             filename.clone(),
             save_keydown,
             is_saved.clone(),
-            show_tab.clone(),
+            show_code_tab.clone(),
         ),
     };
 
@@ -384,24 +385,48 @@ pub fn render_app() -> Html {
         let selected_classes = "bg-th-primary";
         let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
-        match *show_tab {
-            DisplayedTab::Source => (
+        match *show_code_tab {
+            DisplayedCodeTab::Source => (
                 format!("{} {}", left_tab_classes, selected_classes),
                 format!("{} {}", default_tab_classes, unselected_classes),
                 format!("{} {}", default_tab_classes, unselected_classes),
             ),
 
-            DisplayedTab::Decompiled => (
+            DisplayedCodeTab::Decompiled => (
                 format!("{} {}", left_tab_classes, unselected_classes),
                 format!("{} {}", default_tab_classes, selected_classes),
                 format!("{} {}", default_tab_classes, unselected_classes),
             ),
 
-            DisplayedTab::Data => (
+            DisplayedCodeTab::Data => (
                 format!("{} {}", left_tab_classes, unselected_classes),
                 format!("{} {}", default_tab_classes, unselected_classes),
                 format!("{} {}", default_tab_classes, selected_classes),
             ),
+        }
+    };
+
+    let (used_registers_tab_classes, all_registers_tab_classes) = {
+        let default_tab_classes =
+            "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
+        let selected_classes = "bg-th-primary";
+        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+
+        match *show_register_tab {
+            RegisterTab::UsedRegisters => {
+                (
+                    format!("{} {}", left_tab_classes, selected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
+                )
+            }
+
+            RegisterTab::AllRegisters => {
+                (
+                    format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, selected_classes), 
+                )
+            }
         }
     };
 
@@ -458,25 +483,25 @@ pub fn render_app() -> Html {
                     <div id="file_data" class="pl-2">
                         <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
                             <button class={source_tab_classes} onclick={{
-                                let show_tab = show_tab.clone();
+                                let show_tab = show_code_tab.clone();
                                 Callback::from(move |_| {
-                                    show_tab.set(DisplayedTab::Source);
+                                    show_tab.set(DisplayedCodeTab::Source);
                                 })
                             }}>
                                 {"source"}
                             </button>
                             <button class={decompiled_tab_classes} onclick={{
-                                let show_tab = show_tab.clone();
+                                let show_tab = show_code_tab.clone();
                                 Callback::from(move |_| {
-                                    show_tab.set(DisplayedTab::Decompiled);
+                                    show_tab.set(DisplayedCodeTab::Decompiled);
                                 })
                             }}>
                                 {"decompiled"}
                             </button>
                             <button class={data_tab_classes} onclick={{
-                                let show_tab = show_tab.clone();
+                                let show_tab = show_code_tab.clone();
                                 Callback::from(move |_| {
-                                    show_tab.set(DisplayedTab::Data);
+                                    show_tab.set(DisplayedCodeTab::Data);
                                 })
                             }}>
                                 {"data"}
@@ -489,6 +514,25 @@ pub fn render_app() -> Html {
 
 
                     <div id="information" class="split pr-2 ">
+                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
+                            <button class={used_registers_tab_classes} onclick={{
+                                let show_register_tab = show_register_tab.clone();
+                                Callback::from(move |_| {
+                                    show_register_tab.set(RegisterTab::UsedRegisters);
+                                })
+                            }}>
+                                {"used registers"}
+                            </button>
+                            <button class={all_registers_tab_classes} onclick={{
+                                let show_register_tab = show_register_tab.clone();
+                                Callback::from(move |_| {
+                                    show_register_tab.set(RegisterTab::AllRegisters);
+                                })
+                            }}>
+                                {"all registers"}
+                            </button>
+                        </div>
+
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
                             <Registers state={state.clone()} />
                         </div>
@@ -502,6 +546,7 @@ pub fn render_app() -> Html {
                             running_output={rendered_running}
                         />
                     </div>
+
                 </div>
                 if *show_analytics_banner {
                     <Banner show_analytics_banner={show_analytics_banner}/>
@@ -529,7 +574,7 @@ fn render_running(
     filename: UseStateHandle<Option<String>>,
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
-    show_tab: UseStateHandle<DisplayedTab>,
+    show_tab: UseStateHandle<DisplayedCodeTab>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -543,12 +588,12 @@ fn render_running(
             </h3>
             {
                 match *show_tab {
-                    DisplayedTab::Source => {
+                    DisplayedCodeTab::Source => {
                         html!{
                             <SourceCode save_keydown={save_keydown} file={(*file).clone()}/>
                         }
                     },
-                    DisplayedTab::Decompiled => {
+                    DisplayedCodeTab::Decompiled => {
                         match &*state {
                             State::Compiled(curr) => {
                                 html! {
@@ -592,7 +637,7 @@ fn render_running(
                             }
                         }
                     },
-                    DisplayedTab::Data => {
+                    DisplayedCodeTab::Data => {
                         match &*state {
                             State::Compiled(curr) => {
                                 html! {

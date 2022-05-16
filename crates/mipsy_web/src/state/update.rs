@@ -2,7 +2,7 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::state::{DisplayedTab, MipsState, RunningState, State},
+    state::state::{DisplayedCodeTab, MipsState, RunningState, State},
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
@@ -23,7 +23,7 @@ use yew_agent::UseBridgeHandle;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
-    show_tab: UseStateHandle<DisplayedTab>,
+    show_tab: UseStateHandle<DisplayedCodeTab>,
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
     filename: UseStateHandle<Option<String>>,
@@ -52,7 +52,7 @@ pub fn handle_response_from_worker(
             }));
             if response_struct.file.is_some() {
                 file.set(Some(response_struct.file.clone().unwrap()));
-                show_tab.set(DisplayedTab::Source);
+                show_tab.set(DisplayedCodeTab::Source);
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
                 crate::set_localstorage_file_contents(&response_struct.file.unwrap());
                 is_saved.set(true);
@@ -69,7 +69,7 @@ pub fn handle_response_from_worker(
 
             show_io.set(false);
             file.set(Some(response_struct.file.clone()));
-            show_tab.set(DisplayedTab::Source);
+            show_tab.set(DisplayedCodeTab::Source);
             state.set(State::Error(state_struct));
         }
 
@@ -137,7 +137,7 @@ pub fn handle_response_from_worker(
         WorkerResponse::RuntimeError(RuntimeErrorResponse { mips_state, error }) => {
             if let State::Compiled(ref curr) = *state {
                 show_io.set(false);
-                show_tab.set(DisplayedTab::Source);
+                show_tab.set(DisplayedCodeTab::Source);
                 let decompiled = &curr.decompiled;
                 state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
                     mips_state,

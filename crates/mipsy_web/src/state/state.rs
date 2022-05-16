@@ -5,10 +5,16 @@ use mipsy_lib::{MipsyError, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]
-pub enum DisplayedTab {
+pub enum DisplayedCodeTab {
     Source,
     Decompiled,
     Data,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RegisterTab {
+    UsedRegisters,
+    AllRegisters,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
