@@ -7,7 +7,11 @@ use crate::{
     },
     state::{
         config::MipsyWebConfig,
+<<<<<<< HEAD
         state::{DisplayedCodeTab, ErrorType, MipsState, RegisterTab, RunningState, State},
+=======
+        state::{DisplayedCodeTab, RegisterTab, ErrorType, MipsState, RunningState, State},
+>>>>>>> f368885 (mipsy_web: add register tab bar (again))
         update,
     },
     worker::{FileInformation, Worker, WorkerRequest},
@@ -50,8 +54,12 @@ pub fn render_app() -> Html {
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_code_tab: UseStateHandle<DisplayedCodeTab> = use_state_eq(|| DisplayedCodeTab::Source);
+<<<<<<< HEAD
     let show_register_tab: UseStateHandle<RegisterTab> =
         use_state_eq(|| RegisterTab::UsedRegisters);
+=======
+    let show_register_tab: UseStateHandle<RegisterTab> = use_state_eq(|| RegisterTab::UsedRegisters);
+>>>>>>> f368885 (mipsy_web: add register tab bar (again))
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(std::vec::Vec::new);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| {
@@ -398,6 +406,30 @@ pub fn render_app() -> Html {
         match *show_register_tab {
             RegisterTab::UsedRegisters => (tab_left_select, tab_unselect),
             RegisterTab::AllRegisters => (tab_left_unselect, tab_select),
+        }
+    };
+
+    let (used_registers_tab_classes, all_registers_tab_classes) = {
+        let default_tab_classes =
+            "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
+        let selected_classes = "bg-th-primary";
+        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+
+        match *show_register_tab {
+            RegisterTab::UsedRegisters => {
+                (
+                    format!("{} {}", left_tab_classes, selected_classes),
+                    format!("{} {}", default_tab_classes, unselected_classes), 
+                )
+            }
+
+            RegisterTab::AllRegisters => {
+                (
+                    format!("{} {}", left_tab_classes, unselected_classes),
+                    format!("{} {}", default_tab_classes, selected_classes), 
+                )
+            }
         }
     };
 
