@@ -8,12 +8,12 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive", "rc"] }  # for data deserialization
-serde_yaml = "0.8"                                        #   - see mips.yaml
-strsim = "0.10"                                           # for error-reporting - string similarity
-linked-hash-map = "0.5.4"                                 # for labels
-colored = "2"                                             # for ansi colors
-strip-ansi-escapes = "0.1"                                # to strip color codes out for strlen calcs
+serde = { version = "1.0", features = ["derive", "rc"] }            # for data deserialization
+serde_yaml = "0.8"                                                  #   - see mips.yaml
+strsim = "0.10"                                                     # for error-reporting - string similarity
+linked-hash-map = { version = "0.5.4", features = ["serde_impl"] }  # for labels
+colored = "2"                                                       # for ansi colors
+strip-ansi-escapes = "0.1"                                          # to strip color codes out for strlen calcs
 mipsy_parser = { version = "0.1", path = "../mipsy_parser" }
 mipsy_utils  = { version = "0.1", path = "../mipsy_utils" }
 

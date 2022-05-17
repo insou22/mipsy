@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 use crate::{InstSet, MpProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
-
+use serde::{Serialize, Deserialize};
 mod bytes;
 
 mod checker;
@@ -40,6 +40,7 @@ pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
