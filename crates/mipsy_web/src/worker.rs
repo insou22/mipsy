@@ -353,7 +353,6 @@ impl Agent for Worker {
             Self::Input::UpdateConfig(config) => self.config = config,
 
             Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
-                let _ignore_breakpoints = &self.config.ignore_breakpoints.clone();
                 let binary = self.binary.as_ref().unwrap();
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
