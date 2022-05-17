@@ -353,6 +353,7 @@ pub fn render_app() -> Html {
             save_keydown,
             is_saved.clone(),
             show_code_tab.clone(),
+            worker.borrow().as_ref().unwrap().clone(),
         ),
     };
 
@@ -467,7 +468,7 @@ pub fn render_app() -> Html {
             <PageBackground>
 
                 <NavBar
-                    show_tab={show_tab.clone()}
+                    show_tab={show_code_tab.clone()}
                     {load_onchange}
                     {display_modal}
                     {settings_modal}
@@ -576,6 +577,7 @@ fn render_running(
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
     show_tab: UseStateHandle<DisplayedCodeTab>,
+    worker: UseBridgeHandle<Worker>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -598,16 +600,12 @@ fn render_running(
                         match &*state {
                             State::Compiled(curr) => {
                                 html! {
-                                    <pre class="text-xs whitespace-pre-wrap">
-                                        <table>
-                                            <tbody>
-                                                <DecompiledCode
-                                                    current_instr={curr.mips_state.current_instr}
-                                                    decompiled={curr.decompiled.clone()}
-                                                />
-                                            </tbody>
-                                        </table>
-                                    </pre>
+                                    <DecompiledCode
+                                        current_instr={curr.mips_state.current_instr}
+                                        decompiled={curr.decompiled.clone()}
+                                        state={state.clone()}
+                                        worker={worker.clone()}
+                                    />
                                 }
                             },
                             State::NoFile => html! {
@@ -624,6 +622,8 @@ fn render_running(
                                                     <DecompiledCode
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
+                                                        state={state.clone()}
+                                                        worker={worker.clone()}
                                                     />
                                                 </tbody>
                                             </table>
