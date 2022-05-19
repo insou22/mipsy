@@ -55,9 +55,10 @@ pub fn render_app() -> Html {
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| {
         // if we have ack'd analytics
         // dont show the banner
+        // this is false for now, as analytics is not yet implemented
         crate::get_localstorage("analytics_ack")
             .map(|item| !(item.as_str() == "true"))
-            .unwrap_or(true)
+            .unwrap_or(false)
     });
     let config: UseStateHandle<MipsyWebConfig> = use_state_eq(MipsyWebConfig::default);
 
