@@ -45,137 +45,144 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             <strong>{"Analytics"}</strong>
                         </h3>
                         <p>
-                            {"You are currently opted "}
-                            <b>
-                            {
-                                if !*is_opt_out {
-                                    "IN to"
-                                } else {
-                                    "OUT of"
-                                }
-                            }
-                            </b>
-                            {" analytics."}
+                            {"Analytics is currently not implemented for mipsy web but will be soon!"}
                         </p>
                         
-                        <button class="
-                            bg-th-primary border-2 border-black
-                            hover:bg-red-700 
-                            font-bold py-2 px-4 rounded
-                            m-2"
-                            onclick={{
-                                let opt_out = is_opt_out.clone();
-                                Callback::from(move |_| {
-                                    crate::set_localstorage("analytics-opt-out", if !*opt_out {"true"} else {"false"});
-                                    opt_out.set(!*opt_out);
-                                })}}
-                            >
-                            {
-                                if *is_opt_out {
-                                    "Opt in"
-                                } else {
-                                    "Opt out"
+                        // disable analytics info until implemented
+                        if false {
+
+                            <p>
+                                {"You are currently opted "}
+                                <b>
+                                {
+                                    if !*is_opt_out {
+                                        "IN to"
+                                    } else {
+                                        "OUT of"
+                                    }
                                 }
-                            }
-                        </button>
+                                </b>
+                                {" analytics."}
+                            </p>
+                            
+                            <button class="
+                                bg-th-primary border-2 border-black
+                                hover:bg-red-700 
+                                font-bold py-2 px-4 rounded
+                                m-2"
+                                onclick={{
+                                    let opt_out = is_opt_out.clone();
+                                    Callback::from(move |_| {
+                                        crate::set_localstorage("analytics-opt-out", if !*opt_out {"true"} else {"false"});
+                                        opt_out.set(!*opt_out);
+                                    })}}
+                                >
+                                {
+                                    if *is_opt_out {
+                                        "Opt in"
+                                    } else {
+                                        "Opt out"
+                                    }
+                                }
+                            </button>
 
-
-                        //TODO - put the below in an expand block
-                        <p>
-                            {"mipsy-web will in future use analytics to track the following information: "}
-                        </p>
-                        <table class="border-2 border-black border-collapse">
-                            <th class="border-2 border-black">
-                                {"Name"}
-                            </th>
-                            <th class="border-2 border-black">
-                                {"Description"}
-                            </th>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">
-                                    {"Session ID"}
-                                </td>
-                                <td class="p-1 border-2 border-black">
-                                    {"A uuid generated for each session"}
-                                </td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Seconds spent"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of seconds spent on the app"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Load button count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the load button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Save button count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the save button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Run button count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the run button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Kill button count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the kill button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Reset button count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the reset button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Code editor time"}</td>
-                                <td class="p-1 border-2 border-black">{"Seconds spent editing code in the monaco editor"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Step back count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the step back button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Step forward count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the step forward button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Download count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the download button is clicked in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Compiler error count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the compiler has an error in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Compiler error type"}</td>
-                                <td class="p-1 border-2 border-black">{"The type of error every time there is a compiler error"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Parser error count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the parser has an error in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Parser error type"}</td>
-                                <td class="p-1 border-2 border-black">{"The type of error every time there is a parser error"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Runtime error count"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of times the runtime has an error in a session"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Runtime error type"}</td>
-                                <td class="p-1 border-2 border-black">{"The type of error every time there is a runtime error"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Time in decompiled tab"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of seconds spent in the decompiled tab"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Time in data tab"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of seconds spent in the data tab"}</td>
-                            </tr>
-                            <tr class="border-2 border-black">
-                                <td class="p-1 border-2 border-black">{"Time in code tab"}</td>
-                                <td class="p-1 border-2 border-black">{"The number of seconds spent in the code tab"}</td>
-                            </tr>
-                        </table>
+                            //TODO - put the below in an expand block
+                            <p>
+                                {"mipsy-web will in future use analytics to track the following information: "}
+                            </p>
+                            <table class="border-2 border-black border-collapse">
+                                <th class="border-2 border-black">
+                                    {"Name"}
+                                </th>
+                                <th class="border-2 border-black">
+                                    {"Description"}
+                                </th>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">
+                                        {"Session ID"}
+                                    </td>
+                                    <td class="p-1 border-2 border-black">
+                                        {"A uuid generated for each session"}
+                                    </td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Seconds spent"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of seconds spent on the app"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Load button count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the load button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Save button count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the save button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Run button count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the run button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Kill button count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the kill button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Reset button count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the reset button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Code editor time"}</td>
+                                    <td class="p-1 border-2 border-black">{"Seconds spent editing code in the monaco editor"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Step back count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the step back button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Step forward count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the step forward button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Download count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the download button is clicked in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Compiler error count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the compiler has an error in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Compiler error type"}</td>
+                                    <td class="p-1 border-2 border-black">{"The type of error every time there is a compiler error"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Parser error count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the parser has an error in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Parser error type"}</td>
+                                    <td class="p-1 border-2 border-black">{"The type of error every time there is a parser error"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Runtime error count"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of times the runtime has an error in a session"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Runtime error type"}</td>
+                                    <td class="p-1 border-2 border-black">{"The type of error every time there is a runtime error"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Time in decompiled tab"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of seconds spent in the decompiled tab"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Time in data tab"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of seconds spent in the data tab"}</td>
+                                </tr>
+                                <tr class="border-2 border-black">
+                                    <td class="p-1 border-2 border-black">{"Time in code tab"}</td>
+                                    <td class="p-1 border-2 border-black">{"The number of seconds spent in the code tab"}</td>
+                                </tr>
+                            </table>
+                        }
                     </div>
                 </section>
                 <footer class="modal-footer"></footer>
