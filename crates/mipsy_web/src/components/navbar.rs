@@ -1,6 +1,8 @@
 use crate::{
     pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
-    state::state::{ErrorType, MipsState, RunningState, State, DisplayedTab},
+
+    state::state::{ErrorType, MipsState, RunningState, State, DisplayedCodeTab},
+
     worker::{FileInformation, Worker, WorkerRequest},
 };
 use derivative::Derivative;
@@ -23,7 +25,7 @@ pub struct NavBarProps {
     pub worker: UseBridgeHandle<Worker>,
     pub filename: UseStateHandle<Option<String>>,
     pub file: UseStateHandle<Option<String>>,
-    pub show_tab: UseStateHandle<DisplayedTab>,
+    pub show_tab: UseStateHandle<DisplayedCodeTab>,
 }
 
 struct Icon {
@@ -102,7 +104,9 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             NUM_INSTR_BEFORE_RESPONSE,
                             file_information,
                         );
-                        show_tab.set(DisplayedTab::Decompiled);
+
+                        show_tab.set(DisplayedCodeTab::Decompiled);
+
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot run");
