@@ -7,7 +7,7 @@ use crate::{
     },
     state::{
         config::MipsyWebConfig,
-        state::{DisplayedCodeTab, RegisterTab, ErrorType, MipsState, RunningState, State},
+        state::{DisplayedCodeTab, ErrorType, MipsState, RegisterTab, RunningState, State},
         update,
     },
     worker::{FileInformation, Worker, WorkerRequest},
@@ -50,7 +50,8 @@ pub fn render_app() -> Html {
     let filename: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let file: UseStateHandle<Option<String>> = use_state_eq(|| None);
     let show_code_tab: UseStateHandle<DisplayedCodeTab> = use_state_eq(|| DisplayedCodeTab::Source);
-    let show_register_tab: UseStateHandle<RegisterTab> = use_state_eq(|| RegisterTab::UsedRegisters);
+    let show_register_tab: UseStateHandle<RegisterTab> =
+        use_state_eq(|| RegisterTab::UsedRegisters);
     let tasks: UseStateHandle<Vec<FileReader>> = use_state(std::vec::Vec::new);
     let is_saved: UseStateHandle<bool> = use_state_eq(|| false);
     let show_analytics_banner: UseStateHandle<bool> = use_state_eq(|| {
@@ -380,54 +381,23 @@ pub fn render_app() -> Html {
 
     // REFACTOR - refactor this to use classes! macro somehow?
     let (source_tab_classes, decompiled_tab_classes, data_tab_classes) = {
-        let default_tab_classes =
-            "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
-        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
-        let selected_classes = "bg-th-primary";
-        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+        let (tab_select, tab_unselect, tab_left_select, tab_left_unselect) = get_tab_classes();
 
         match *show_code_tab {
-            DisplayedCodeTab::Source => (
-                format!("{} {}", left_tab_classes, selected_classes),
-                format!("{} {}", default_tab_classes, unselected_classes),
-                format!("{} {}", default_tab_classes, unselected_classes),
-            ),
+            DisplayedCodeTab::Source => (tab_left_select, tab_unselect.clone(), tab_unselect),
 
-            DisplayedCodeTab::Decompiled => (
-                format!("{} {}", left_tab_classes, unselected_classes),
-                format!("{} {}", default_tab_classes, selected_classes),
-                format!("{} {}", default_tab_classes, unselected_classes),
-            ),
+            DisplayedCodeTab::Decompiled => (tab_left_unselect, tab_select, tab_unselect),
 
-            DisplayedCodeTab::Data => (
-                format!("{} {}", left_tab_classes, unselected_classes),
-                format!("{} {}", default_tab_classes, unselected_classes),
-                format!("{} {}", default_tab_classes, selected_classes),
-            ),
+            DisplayedCodeTab::Data => (tab_left_unselect, tab_select, tab_unselect),
         }
     };
 
     let (used_registers_tab_classes, all_registers_tab_classes) = {
-        let default_tab_classes =
-            "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
-        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
-        let selected_classes = "bg-th-primary";
-        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+        let (tab_select, tab_unselect, tab_left_select, tab_left_unselect) = get_tab_classes();
 
         match *show_register_tab {
-            RegisterTab::UsedRegisters => {
-                (
-                    format!("{} {}", left_tab_classes, selected_classes),
-                    format!("{} {}", default_tab_classes, unselected_classes), 
-                )
-            }
-
-            RegisterTab::AllRegisters => {
-                (
-                    format!("{} {}", left_tab_classes, unselected_classes),
-                    format!("{} {}", default_tab_classes, selected_classes), 
-                )
-            }
+            RegisterTab::UsedRegisters => (tab_left_select, tab_unselect),
+            RegisterTab::AllRegisters => (tab_left_unselect, tab_select),
         }
     };
 
@@ -460,9 +430,9 @@ pub fn render_app() -> Html {
             </div>
 
             <Modal should_display={display_modal.clone()} />
-            <SettingsModal 
-                analytics={show_analytics_banner.clone()} 
-                should_display={settings_modal.clone()} 
+            <SettingsModal
+                analytics={show_analytics_banner.clone()}
+                should_display={settings_modal.clone()}
             />
 
             <PageBackground>
@@ -749,4 +719,19 @@ pub fn process_syscall_response(
             error!("Should not be possible to give syscall value with no file");
         }
     }
+}
+
+fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
+    let default_tab_classes =
+        "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+    let left_tab_classes = classes!("border-l-2", default_tab_classes);
+    let selected_classes = "bg-th-primary";
+    let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+
+    (
+        classes!(default_tab_classes, selected_classes),        // selected tab
+        classes!(default_tab_classes, unselected_classes),      // unselected tab
+        classes!(left_tab_classes.clone(), selected_classes),   // selected left tab
+        classes!(left_tab_classes, unselected_classes),         // unselected left tab
+    )
 }
