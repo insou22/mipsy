@@ -2,15 +2,13 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::state::{DisplayedTab, MipsState, RunningState, State},
+    state::state::{ErrorState, ErrorType, RuntimeErrorState, DisplayedTab, MipsState, RunningState, State},
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
     },
 };
 use log::{error, info};
-
-use super::state::{ErrorState, ErrorType, RuntimeErrorState};
 use gloo_console::log;
 use mipsy_lib::Safe;
 use std::cell::RefCell;
@@ -46,6 +44,7 @@ pub fn handle_response_from_worker(
                     mipsy_stdout: Vec::new(),
                     memory: HashMap::new(),
                     is_stepping: true,
+                    binary: Some(response_struct.binary),
                 },
                 input_needed: None,
                 should_kill: false,
@@ -58,6 +57,34 @@ pub fn handle_response_from_worker(
                 is_saved.set(true);
             }
         }
+
+        WorkerResponse::UpdateBinary(binary) => match &*state {
+            State::Error(ErrorType::RuntimeError(curr)) => {
+                let mips_state = MipsState {
+                    binary,
+                    ..curr.mips_state.clone()
+                };
+
+                state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
+                    mips_state,
+                    ..curr.clone()
+                })))
+            }
+
+            State::Compiled(curr) => {
+                let mips_state = MipsState {
+                    binary,
+                    ..curr.mips_state.clone()
+                };
+
+                state.set(State::Compiled(RunningState {
+                    mips_state,
+                    ..curr.clone()
+                }))
+            }
+
+            _ => unreachable!("cannot update binary if there is no binary"),
+        },
 
         WorkerResponse::WorkerError(response_struct) => {
             log!("recieved compiler error from worker");
@@ -124,6 +151,8 @@ pub fn handle_response_from_worker(
                 // focus IO if output
                 if curr.mips_state.stdout != mips_state.stdout {
                     show_io.set(true);
+                } else if curr.mips_state.mipsy_stdout != mips_state.mipsy_stdout {
+                    show_io.set(false);
                 }
 
                 state.set(State::Compiled(RunningState {
