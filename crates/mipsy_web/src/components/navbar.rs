@@ -1,14 +1,6 @@
 use crate::{
     pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
-<<<<<<< HEAD
-<<<<<<< HEAD
     state::state::{ErrorType, MipsState, RunningState, State, DisplayedCodeTab},
-=======
-    state::state::{ErrorType, MipsState, RunningState, State, DisplayedTab},
->>>>>>> c8fab75 (Breakpoints (#199))
-=======
-    state::state::{ErrorType, MipsState, RunningState, State, DisplayedCodeTab},
->>>>>>> 9e073f5 (click to add breakpoints, breakpoints in ktext, and support breakpoints)
     worker::{FileInformation, Worker, WorkerRequest},
 };
 use derivative::Derivative;
@@ -31,15 +23,7 @@ pub struct NavBarProps {
     pub worker: UseBridgeHandle<Worker>,
     pub filename: UseStateHandle<Option<String>>,
     pub file: UseStateHandle<Option<String>>,
-<<<<<<< HEAD
-<<<<<<< HEAD
     pub show_tab: UseStateHandle<DisplayedCodeTab>,
-=======
-    pub show_tab: UseStateHandle<DisplayedTab>,
->>>>>>> c8fab75 (Breakpoints (#199))
-=======
-    pub show_tab: UseStateHandle<DisplayedCodeTab>,
->>>>>>> 9e073f5 (click to add breakpoints, breakpoints in ktext, and support breakpoints)
 }
 
 struct Icon {
@@ -118,15 +102,8 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             NUM_INSTR_BEFORE_RESPONSE,
                             file_information,
                         );
-<<<<<<< HEAD
-<<<<<<< HEAD
+
                         show_tab.set(DisplayedCodeTab::Decompiled);
-=======
-                        show_tab.set(DisplayedTab::Decompiled);
->>>>>>> c8fab75 (Breakpoints (#199))
-=======
-                        show_tab.set(DisplayedCodeTab::Decompiled);
->>>>>>> 9e073f5 (click to add breakpoints, breakpoints in ktext, and support breakpoints)
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot run");
