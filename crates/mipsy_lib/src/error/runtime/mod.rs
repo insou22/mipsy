@@ -463,7 +463,7 @@ impl Error {
                     }
                 }
 
-                error.push_str("\n");
+                error.push('\n');
 
                 let alignment_bytes = match alignment_requirement {
                     AlignmentRequirement::Half => 2,
@@ -786,7 +786,7 @@ impl Error {
                     }
                 }
 
-                error.push_str("\n");
+                error.push('\n');
 
                 error
 

@@ -464,10 +464,10 @@ impl Clone for State {
         Self {
             pages: cow_pages,
             pc: self.pc,
-            registers: self.registers.clone(),
+            registers: self.registers,
             write_marker: 0,
-            hi: self.hi.clone(),
-            lo: self.lo.clone(),
+            hi: self.hi,
+            lo: self.lo,
             heap_size: self.heap_size,
         }
     }

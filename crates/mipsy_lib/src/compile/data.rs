@@ -395,7 +395,7 @@ fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> 
             MpConstValue::And (v1, v2) => eval_constant(binary, v1, file.clone())? & eval_constant(binary, v2, file)?,
             MpConstValue::Or  (v1, v2) => eval_constant(binary, v1, file.clone())? | eval_constant(binary, v2, file)?,
             MpConstValue::Xor (v1, v2) => eval_constant(binary, v1, file.clone())? ^ eval_constant(binary, v2, file)?,
-            MpConstValue::Neg (value)  => !eval_constant(binary, value, file.clone())?,
+            MpConstValue::Neg (value)  => !eval_constant(binary, value, file)?,
             MpConstValue::Shl (v1, v2) => eval_constant(binary, v1, file.clone())? << eval_constant(binary, v2, file)?,
             MpConstValue::Shr (v1, v2) => eval_constant(binary, v1, file.clone())? >> eval_constant(binary, v2, file)?,
         }

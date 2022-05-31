@@ -86,7 +86,7 @@ impl Binary {
         self.labels.insert(label.to_string(), addr);
     }
 
-    pub fn text_words<'a>(&'a self) -> impl Iterator<Item = Safe<u32>> + 'a {
+    pub fn text_words(&'_ self) -> impl Iterator<Item = Safe<u32>> + '_ {
         (&self.text).chunks_exact(4)
             .into_iter()
             .map(|chunk| match (chunk[0], chunk[1], chunk[2], chunk[3]) {

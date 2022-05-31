@@ -86,7 +86,7 @@ fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
 
     let too_big_prompt: &dyn Fn() = &|| {
         if verbose {
-            prompt::error(format!("bad input (too big to fit in 32 bits)"))
+            prompt::error("bad input (too big to fit in 32 bits)")
         } else {
             println!("[mipsy] bad input (too big to fit in 32 bits)")
         }

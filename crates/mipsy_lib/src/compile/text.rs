@@ -18,10 +18,10 @@ pub fn find_instruction<'a>(iset: &'a InstSet, inst: &MpInstruction) -> MipsyInt
         let mut close_names:    Vec<SignatureRef<'a>> = vec![];
 
         let all_instns = iset.native_set().iter()
-            .map(|native| SignatureRef::Native(native))
+            .map(SignatureRef::Native)
             .chain(
                 iset.pseudo_set().iter()
-                    .map(|pseudo| SignatureRef::Pseudo(pseudo))
+                    .map(SignatureRef::Pseudo)
             );
 
         for real_inst in all_instns {

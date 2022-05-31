@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt, str::FromStr};
 use serde::{Serialize, Deserialize};
 
-use crate::{Binary, TEXT_BOT, error::{MipsyInternalResult}};
+use crate::{Binary, TEXT_BOT, error::MipsyInternalResult};
 use super::register::Register;
 use mipsy_parser::{MpArgument, MpImmediate, MpImmediateBinaryOp, MpInstruction, MpNumber, MpOffsetOperator, MpRegister, MpRegisterIdentifier, parse_argument};
 
@@ -147,13 +147,12 @@ pub enum ReadsRegisterType {
 
 impl ReadsRegisterType {
     pub fn eq_argument_type(&self, other: &ArgumentType) -> bool {
-        match (self, other) {
-            (Self::Rs,    ArgumentType::Rs) => true,
-            (Self::Rt,    ArgumentType::Rt) => true,
-            (Self::OffRs, ArgumentType::OffRs) => true,
-            (Self::OffRt, ArgumentType::OffRt) => true,
-            _ => false,
-        }
+        matches!((self, other),
+            (Self::Rs,    ArgumentType::Rs)    |
+            (Self::Rt,    ArgumentType::Rt)    |
+            (Self::OffRs, ArgumentType::OffRs) |
+            (Self::OffRt, ArgumentType::OffRt)
+        )
     }   
 }
 
@@ -173,14 +172,12 @@ impl InstMetadata {
 
     pub fn desc_short(&self) -> Option<&str> {
         self.desc_short
-            .as_ref()
-            .map(String::as_str)
+            .as_deref()
     }
 
     pub fn desc_long(&self) -> Option<&str> {
         self.desc_long
-            .as_ref()
-            .map(String::as_str)
+            .as_deref()
     }
 }
 
@@ -562,11 +559,10 @@ impl ArgumentType {
                         }
                     }
                     MpNumber::BinaryOpImmediate(_imm1, _op, _imm2) => {
-                        match self {
-                            // TODO(zkol): this is brittle and based on faulty assumptions
-                            Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
-                            _ => false,
-                        }
+                        // TODO(zkol): this is brittle and based on faulty assumptions
+                        matches!(self,
+                            Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt
+                        )
                     }
                     MpNumber::Char(_) => matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32),
                     MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
