@@ -150,9 +150,9 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, opti
 
     move_labels(&mut binary, options.moves());
 
-    populate_text           (&mut binary, iset, config, program)?;
+    populate_text(&mut binary, iset, config, program)?;
 
-    populate_text           (&mut binary, iset, config, &kernel)?;
+    populate_text(&mut binary, iset, config, kernel)?;
 
     Ok(binary)
 }

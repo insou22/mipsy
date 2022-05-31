@@ -157,7 +157,7 @@ impl Error {
                     error.push_str("the instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
                         &decompiled,
-                        &source_code,
+                        source_code,
                         binary,
                         false,
                         false,
@@ -170,9 +170,9 @@ impl Error {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
-                        
+
                         for (src_tag, src_file) in source_code {
-                            if &*file_tag == &**src_tag {
+                            if *file_tag == **src_tag {
                                 file = Some(src_file);
                                 break;
                             }
@@ -207,7 +207,7 @@ impl Error {
                                     error.push_str(&format!(
                                         "  {} {}{}\n",
                                         if failed { ">".green() } else { ">".bright_black() },
-                                        inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                        inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                         if failed {
                                             "  <-- this instruction failed"
                                                 .bright_blue()
@@ -243,7 +243,7 @@ impl Error {
                     error.push_str(&format!(
                         "{} {}\n",
                         "|".red(),
-                        inst_parts_to_string(&last_inst_parts, &source_code, binary, false, false),
+                        inst_parts_to_string(&last_inst_parts, source_code, binary, false, false),
                     ));
 
                     if let Some(runtime_meta) = last_inst_parts.runtime_meta {
@@ -303,9 +303,9 @@ impl Error {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
                             let mut file = None;
-                            
+
                             for (src_tag, src_file) in source_code {
-                                if &*file_tag == &**src_tag {
+                                if *file_tag == **src_tag {
                                     file = Some(src_file);
                                     break;
                                 }
@@ -340,7 +340,7 @@ impl Error {
                                         error.push_str(&format!(
                                             "  {} {}{}\n",
                                             if failed { ">".green() } else { ">".bright_black() },
-                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                             if failed {
                                                 format!(
                                                     "  <-- this instruction caused {}{} to become uninitialised",                   
@@ -397,7 +397,7 @@ impl Error {
                     error.push_str("\nthe instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
                         &decompiled,
-                        &source_code,
+                        source_code,
                         binary,
                         false,
                         false,
@@ -410,9 +410,9 @@ impl Error {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
-                        
+
                         for (src_tag, src_file) in source_code {
-                            if &*file_tag == &**src_tag {
+                            if *file_tag == **src_tag {
                                 file = Some(src_file);
                                 break;
                             }
@@ -448,7 +448,7 @@ impl Error {
                                         "{} {} {}{}\n",
                                         "|".red(),
                                         if failed { ">".green() } else { ">".bright_black() },
-                                        inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                        inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                         if failed {
                                             "  <-- this instruction failed"
                                                 .bright_blue()
@@ -519,7 +519,7 @@ impl Error {
                     error.push_str("\nthe instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
                         &decompiled,
-                        &source_code,
+                        source_code,
                         binary,
                         false,
                         false,
@@ -580,7 +580,7 @@ impl Error {
                     error.push_str("\nthe instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
                         &decompiled,
-                        &source_code,
+                        source_code,
                         binary,
                         false,
                         false,
@@ -642,7 +642,7 @@ impl Error {
                         error.push_str("\nthe instruction that failed was:\n");
                         error.push_str(&inst_parts_to_string(
                             &decompiled,
-                            &source_code,
+                            source_code,
                             binary,
                             false,
                             false,
@@ -655,9 +655,9 @@ impl Error {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
                             let mut file = None;
-                            
+
                             for (src_tag, src_file) in source_code {
-                                if &*file_tag == &**src_tag {
+                                if *file_tag == **src_tag {
                                     file = Some(src_file);
                                     break;
                                 }
@@ -693,7 +693,7 @@ impl Error {
                                             "{} {} {}{}\n",
                                             "|".red(),
                                             if failed { ">".green() } else { ">".bright_black() },
-                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                             if failed {
                                                 "  <-- this instruction failed"
                                                     .bright_blue()
@@ -719,7 +719,7 @@ impl Error {
                         error.push_str("\nthe instruction that got us here was:\n");
                         error.push_str(&inst_parts_to_string(
                             &decompiled,
-                            &source_code,
+                            source_code,
                             binary,
                             false,
                             false,
@@ -732,9 +732,9 @@ impl Error {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
                             let mut file = None;
-                            
+
                             for (src_tag, src_file) in source_code {
-                                if &*file_tag == &**src_tag {
+                                if *file_tag == **src_tag {
                                     file = Some(src_file);
                                     break;
                                 }
@@ -770,7 +770,7 @@ impl Error {
                                             "{} {} {}{}\n",
                                             "|".red(),
                                             if failed { ">".green() } else { ">".bright_black() },
-                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                             if failed {
                                                 "  <-- this instruction failed"
                                                     .bright_blue()
@@ -822,7 +822,7 @@ impl Error {
                     error.push_str("\nthe instruction that failed was:\n");
                     error.push_str(&inst_parts_to_string(
                         &decompiled,
-                        &source_code,
+                        source_code,
                         binary,
                         false,
                         false,
@@ -835,9 +835,9 @@ impl Error {
 
                         let (file_tag, line_num) = real_inst_parts.location.unwrap();
                         let mut file = None;
-                        
+
                         for (src_tag, src_file) in source_code {
-                            if &*file_tag == &**src_tag {
+                            if *file_tag == **src_tag {
                                 file = Some(src_file);
                                 break;
                             }
@@ -872,7 +872,7 @@ impl Error {
                                     error.push_str(&format!(
                                         "  {} {}{}\n",
                                         if failed { ">".green() } else { ">".bright_black() },
-                                        inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                        inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                         if failed {
                                             "  <-- this instruction failed"
                                                 .bright_blue()
@@ -910,7 +910,7 @@ impl Error {
                     error.push_str(&format!(
                         "{} {}\n",
                         "|".red(),
-                        inst_parts_to_string(&last_inst_parts, &source_code, binary, false, false),
+                        inst_parts_to_string(&last_inst_parts, source_code, binary, false, false),
                     ));
 
                     if let Some(runtime_meta) = last_inst_parts.runtime_meta {
@@ -970,9 +970,9 @@ impl Error {
 
                             let (file_tag, line_num) = real_inst_parts.location.unwrap();
                             let mut file = None;
-                            
+
                             for (src_tag, src_file) in source_code {
-                                if &*file_tag == &**src_tag {
+                                if *file_tag == **src_tag {
                                     file = Some(src_file);
                                     break;
                                 }
@@ -1008,7 +1008,7 @@ impl Error {
                                         error.push_str(&format!(
                                             "  {} {}{}\n",
                                             if failed { ">".green() } else { ">".bright_black() },
-                                            inst_to_string(inst, addr, &source_code, binary, inst_set, failed, false),
+                                            inst_to_string(inst, addr, source_code, binary, inst_set, failed, false),
                                             if failed {
                                                 format!(
                                                     "  <-- this instruction caused {}{} to become `{}`",
@@ -1063,7 +1063,7 @@ impl Error {
 
                         if let Ok(inst) = prev_state.read_mem_word(prev_state.pc()) {
                             let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, prev_state.pc());
-                            let inst_str = inst_parts_to_string(&decompiled, &source_code, binary, false, true);
+                            let inst_str = inst_parts_to_string(&decompiled, source_code, binary, false, true);
 
                             vec![
                                 format!("the last instruction to execute was:\n{inst_str}\n"),
@@ -1081,7 +1081,7 @@ impl Error {
                         //   how peculiar!
 
                         let decompiled = decompile::decompile_inst_into_parts(binary, inst_set, inst, prev_state.pc());
-                        let inst_str = inst_parts_to_string(&decompiled, &source_code, binary, false, true);
+                        let inst_str = inst_parts_to_string(&decompiled, source_code, binary, false, true);
 
                         let back = "back".bold();
 

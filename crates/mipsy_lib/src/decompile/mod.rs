@@ -132,8 +132,8 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
     let mut inst = None;
 
     for native_inst in iset.native_set() {
-        match native_inst.runtime_signature() {
-            &RuntimeSignature::R { opcode: inst_opcode, funct: inst_funct, shamt: inst_shamt, rs: inst_rs, rt: inst_rt, rd: inst_rd } => {
+        match *native_inst.runtime_signature() {
+            RuntimeSignature::R { opcode: inst_opcode, funct: inst_funct, shamt: inst_shamt, rs: inst_rs, rt: inst_rt, rd: inst_rd } => {
                 if inst_opcode as u32 != opcode || inst_funct as u32 != funct {
                     continue;
                 }
@@ -163,13 +163,13 @@ pub fn decompile_inst_into_parts<'a>(program: &Binary, iset: &'a InstSet, inst: 
                 }
             }
 
-            &RuntimeSignature::I { opcode: inst_opcode, rt: inst_rt } => {
+            RuntimeSignature::I { opcode: inst_opcode, rt: inst_rt } => {
                 if inst_opcode as u32 != opcode || inst_rt.is_some() && inst_rt.unwrap() as u32 != rt {
                     continue;
                 }
             }
 
-            &RuntimeSignature::J { opcode: inst_opcode, .. } => {
+            RuntimeSignature::J { opcode: inst_opcode, .. } => {
                 if inst_opcode as u32 != opcode {
                     continue;
                 }
