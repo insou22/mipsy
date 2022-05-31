@@ -82,15 +82,14 @@ impl Timeline {
     }
 
     pub fn pop_last_state(&mut self) -> bool {
-        if self.timeline.len() > 0 {
+        if !self.timeline.is_empty() {
             self.timeline.pop_back();
-
             true
         } else {
             false
         }
     }
-    
+
     pub fn lost_history(&self) -> bool {
         self.lost_history
     }
@@ -114,7 +113,7 @@ impl State {
     pub fn set_pc(&mut self, pc: u32) {
         self.pc = pc;
     }
-    
+
     pub fn heap_size(&self) -> u32 {
         self.heap_size
     }
@@ -132,7 +131,7 @@ impl State {
     }
 
     pub fn registers(&self) -> &[Safe<i32>] {
-       &self.registers 
+       &self.registers
     }
 
     pub fn read_register(&self, reg_num: u32) -> MipsyResult<i32> {
@@ -193,18 +192,18 @@ impl State {
             _ if address < TEXT_BOT => {
                 true
             }
-            _ if address >= TEXT_BOT && address <= TEXT_TOP => {
+            _ if (TEXT_BOT..=TEXT_TOP).contains(&address) => {
                 false
             }
-            _ if address >= GLOBAL_BOT && address < HEAP_BOT => {
+            _ if (GLOBAL_BOT..HEAP_BOT).contains(&address) => {
                 false
             }
-            _ if address >= HEAP_BOT && address < STACK_BOT => {
+            _ if (HEAP_BOT..STACK_BOT).contains(&address) => {
                 let heap_offset = address - HEAP_BOT;
 
                 heap_offset >= self.heap_size()
             }
-            _ if address >= STACK_BOT && address <= STACK_TOP => {
+            _ if (STACK_BOT..=STACK_TOP).contains(&address) => {
                 false
             }
             _ if address >= KTEXT_BOT => {
@@ -226,7 +225,7 @@ impl State {
         self.get_page(address)
             .and_then(|page| {
                 let offset = Self::offset_in_page(address);
-    
+
                 page[offset as usize].as_option().copied()
             })
             .to_result(Uninitialised::Byte { addr: address })
@@ -263,7 +262,7 @@ impl State {
             self.get_page(address)
                 .and_then(|page| {
                     let offset = Self::offset_in_page(address);
-        
+
                     page[offset as usize].as_option().copied()
                 })
                 .map(Safe::Valid)
@@ -321,20 +320,18 @@ impl State {
         Ok(())
     }
 
-    #[must_use]
     pub fn write_mem_half(&mut self, address: u32, half: u16) -> MipsyResult<()> {
         let [b1, b2] = half.to_le_bytes();
-        
+
         self.write_mem_byte(address, b1)?;
         self.write_mem_byte(address + 1, b2)?;
 
         Ok(())
     }
 
-    #[must_use]
     pub fn write_mem_word(&mut self, address: u32, word: u32) -> MipsyResult<()> {
         let [b1, b2, b3, b4] = word.to_le_bytes();
-        
+
         self.write_mem_byte(address, b1)?;
         self.write_mem_byte(address + 1, b2)?;
         self.write_mem_byte(address + 2, b3)?;
@@ -414,7 +411,7 @@ impl State {
     pub fn branch(&mut self, imm: i16) {
         let imm = imm as i32 - 1; // branch offset is 1-based
         let imm = imm * 4;        // branch offset is in instructions
-        
+
         let pc_offset = imm as u32;
         self.pc = self.pc.wrapping_add(pc_offset);
     }
