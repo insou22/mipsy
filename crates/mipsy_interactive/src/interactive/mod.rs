@@ -261,8 +261,7 @@ impl State {
                     let file = self.program.as_ref()
                         .expect("cannot get parser error without a file to compile")
                         .iter()
-                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
-                        .next()
+                        .find(|(tag, _)| tag.as_str() == file_tag.deref())
                         .map(|(_, str)| Rc::from(&**str))
                         .expect("for file to throw a parser error, it should probably exist");
 
@@ -278,8 +277,7 @@ impl State {
                     let file = self.program.as_ref()
                         .expect("cannot get compiler error without a file to compile")
                         .iter()
-                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
-                        .next()
+                        .find(|(tag, _)| tag.as_str() == file_tag.deref())
                         .map(|(_, str)| Rc::from(&**str))
                         .unwrap_or_else(|| Rc::from(""));
     
