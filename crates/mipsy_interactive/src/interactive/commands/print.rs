@@ -7,6 +7,7 @@ use colored::*;
 use mipsy_lib::Register;
 use mipsy_parser::*;
 
+#[allow(clippy::format_in_format_args)]
 pub(crate) fn print_command() -> Command {
     command(
         "print",

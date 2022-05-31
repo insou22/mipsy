@@ -214,7 +214,7 @@ fn expand_one_derive(of: &meta::PseudoInstructionYaml, derive: &DeriveStatementY
                             inst: expand.inst.clone(),
                             data: expand.data.iter()
                                 // TODO(zkol): this format is incredibly stupid
-                                .map(|arg| arg.replace(&format!("${}", value.to_string()), &default))
+                                .map(|arg| arg.replace(&format!("${}", value), default))
                                 .collect(),
                         })
                         .collect(),

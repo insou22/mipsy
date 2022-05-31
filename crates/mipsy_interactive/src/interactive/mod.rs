@@ -219,7 +219,7 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RanOutOfHistory => {
-                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold().to_string()))
+                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold()))
             }
             CommandError::RuntimeError { mipsy_error, } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);

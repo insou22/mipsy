@@ -24,17 +24,15 @@ pub(crate) fn breakpoint_command() -> Command {
              When running or stepping through your program, a breakpoint will cause execution to\n\
          \x20 pause temporarily, allowing you to debug the current state.\n\
              May error if provided a label that doesn't exist.\n\
-           \n{6} you can also use the `{7}` MIPS instruction in your program's code!",
+           \n{6}{7} you can also use the `{8}` MIPS instruction in your program's code!",
              "<i>".magenta(),
              "<d>".magenta(),
              "<address>".magenta(),
              "0x".yellow(),
              "main".yellow().bold(),
              "<i|d>".magenta(),
-             format!(
-                 "{}{}",
-                 "tip".yellow().bold(), ":".bold(),
-             ),
+             "tip".yellow().bold(),
+             ":".bold(),
              "break".bold(),
         ),
         |state, _label, args| {
