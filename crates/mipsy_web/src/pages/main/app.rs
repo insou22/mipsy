@@ -42,7 +42,6 @@ pub fn render_app() -> Html {
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
 
     let worker = Rc::new(RefCell::new(None));
-    let on_content_change_closure_handle: UseStateHandle<bool> = use_state_eq(|| false);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
@@ -72,6 +71,7 @@ pub fn render_app() -> Html {
     {
         let file = file.clone();
         let file2 = file.clone();
+        let file3 = file.clone();
         let is_saved = is_saved.clone();
         let filename2 = filename.clone();
         use_effect_with_deps(
@@ -89,26 +89,23 @@ pub fn render_app() -> Html {
                             // if window element is on the page, create, leak, and add the onchange callback
                             // only if we have not already added it
                             if window().unwrap().get("editor").is_some()
-                                && !*on_content_change_closure_handle
                             {
                                 let cb = Closure::wrap(Box::new(move || {
                                     let editor_contents = crate::get_editor_value();
+                                    let editor_contents2 = editor_contents.clone();
+                                    file3.set(Some(editor_contents2));
 
                                     let last_saved_contents =
                                         crate::get_localstorage_file_contents();
 
-                                    if last_saved_contents != editor_contents {
-                                        info!("File has changed");
-                                        is_saved.set(false);
-                                    } else {
-                                        is_saved.set(true);
-                                    }
+                                    is_saved.set(
+                                        editor_contents == last_saved_contents,
+                                    );
                                 })
                                     as Box<dyn Fn()>);
 
                                 crate::set_model_change_listener(&cb);
                                 cb.forget();
-                                on_content_change_closure_handle.set(true);
                             }
 
                             if let Some(file) = &*file {
