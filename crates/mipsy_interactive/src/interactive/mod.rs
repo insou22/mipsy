@@ -448,10 +448,8 @@ impl State {
                     runtime_handler::breakpoint(label.as_deref(), pc);
     
                     true
-                } else if trapped {
-                    true
                 } else {
-                    false
+                    trapped
                 }
             }
         )

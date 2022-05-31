@@ -259,9 +259,7 @@ impl Error {
                                 let rt =    (last_inst >> 16) & 0x1F;
 
                                 for read in runtime_meta.reads() {
-                                    let mut index = 0;
-
-                                    for argument in inst_sig.format() {
+                                    for (index, argument) in inst_sig.format().iter().enumerate() {
                                         if read.eq_argument_type(argument) {
                                             let value = match read {
                                                 ReadsRegisterType::Rs | ReadsRegisterType::OffRs => state.read_register_uninit(rs),
@@ -289,8 +287,6 @@ impl Error {
 
                                             break;
                                         }
-
-                                        index += 1;
                                     }
                                 }
                             }
@@ -926,9 +922,7 @@ impl Error {
                                 let rt =    (last_inst >> 16) & 0x1F;
 
                                 for read in runtime_meta.reads() {
-                                    let mut index = 0;
-
-                                    for argument in inst_sig.format() {
+                                    for (index, argument) in inst_sig.format().iter().enumerate() {
                                         if read.eq_argument_type(argument) {
                                             let value = match read {
                                                 ReadsRegisterType::Rs | ReadsRegisterType::OffRs => state.read_register_uninit(rs),
@@ -956,8 +950,6 @@ impl Error {
 
                                             break;
                                         }
-
-                                        index += 1;
                                     }
                                 }
                             }

@@ -2,7 +2,7 @@ pub mod state;
 
 pub use self::state::State;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, cmp::Ordering};
 use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidSyscallReason, SegmentationFaultAccessType, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
@@ -239,11 +239,12 @@ impl Runtime {
 
                     self.timeline.state_mut().write_register(Register::V0.to_u32(), (HEAP_BOT + heap_size) as _);
 
-                    if bytes > 0 {
-                        self.timeline.state_mut().set_heap_size(heap_size.saturating_add(bytes as _));
-                    } else if bytes < 0 {
-                        self.timeline.state_mut().set_heap_size(heap_size.saturating_sub(bytes.abs() as _));
-                    }
+                    let new_heap_size = match bytes.cmp(&0) {
+                        Ordering::Greater => heap_size.saturating_add(bytes as _),
+                        Ordering::Less    => heap_size.saturating_sub(bytes.abs() as _),
+                        _                 => heap_size
+                    };
+                    self.timeline.state_mut().set_heap_size(new_heap_size);
 
                     RuntimeSyscallGuard::Sbrk(
                         SbrkArgs {
