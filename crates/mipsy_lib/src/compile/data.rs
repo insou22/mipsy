@@ -75,11 +75,11 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
             chars
         }
         MpDirective::Byte(bytes) => {
-            bytes.into_iter()
+            bytes.iter()
                 .map(|(byte, n)| Ok((
-                    eval_constant_in_range(&byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())? as u8,
+                    eval_constant_in_range(byte, i8::MIN as _, u8::MAX as _, binary, file_tag.clone())? as u8,
                     if let Some(n) = n {
-                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                        eval_constant_in_range(n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
                     } else {
                         1
                     }
@@ -92,11 +92,11 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
         MpDirective::Half(halfs) => {
             let alignment = align(binary, segment, 2);
 
-            let halfs = halfs.into_iter()
+            let halfs = halfs.iter()
                 .map(|(half, n)| Ok((
-                    eval_constant_in_range(&half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())? as u16,
+                    eval_constant_in_range(half, i16::MIN as _, u16::MAX as _, binary, file_tag.clone())? as u16,
                     if let Some(n) = n {
-                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                        eval_constant_in_range(n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
                     } else {
                         1
                     }
@@ -114,11 +114,11 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
         MpDirective::Word(words) => {
             let alignment = align(binary, segment, 4);
 
-            let words = words.into_iter()
+            let words = words.iter()
                 .map(|(word, n)| Ok((
-                    eval_constant_in_range(&word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32,
+                    eval_constant_in_range(word, i32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32,
                     if let Some(n) = n {
-                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                        eval_constant_in_range(n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
                     } else {
                         1
                     }
@@ -136,11 +136,11 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
         MpDirective::Float(floats) => {
             let alignment = align(binary, segment, 4);
 
-            let floats = floats.into_iter()
+            let floats = floats.iter()
                 .map(|(float, n)| Ok((
                     float,
                     if let Some(n) = n {
-                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                        eval_constant_in_range(n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
                     } else {
                         1
                     }
@@ -158,11 +158,11 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
         MpDirective::Double(doubles) => {
             let alignment = align(binary, segment, 8);
 
-            let doubles = doubles.into_iter()
+            let doubles = doubles.iter()
                 .map(|(double, n)| Ok((
                     double,
                     if let Some(n) = n {
-                        eval_constant_in_range(&n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
+                        eval_constant_in_range(n, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32
                     } else {
                         1
                     }
@@ -178,17 +178,17 @@ pub(super) fn eval_directive(directive: &MpDirective, binary: &mut Binary, confi
                 .collect()
         }
         MpDirective::Align(num) => {
-            let num = eval_constant_in_range(&num, u32::MIN as _, 31, binary, file_tag)? as u32;
+            let num = eval_constant_in_range(num, u32::MIN as _, 31, binary, file_tag)? as u32;
 
             let multiple = 2usize.pow(num);
 
             align(binary, segment, multiple)
         }
         MpDirective::Space(num) => {
-            let num = eval_constant_in_range(&num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
+            let num = eval_constant_in_range(num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
 
             let space_byte = if config.spim { Safe::Valid(0) } else { Safe::Uninitialised };
-            
+
             vec![space_byte; num as usize]
         }
         MpDirective::Globl(label) => {
