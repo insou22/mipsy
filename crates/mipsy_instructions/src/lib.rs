@@ -27,12 +27,12 @@ use mipsy_lib::InstSet;
 
 
 #[cfg(feature = "rt_yaml")]
-static MIPS_YAML: &'static str = include_str!("../../../mips.yaml");
+static MIPS_YAML: &str = include_str!("../../../mips.yaml");
 
 #[cfg(feature = "rt_yaml")]
 pub fn inst_set() -> InstSet {
     let meta_yaml: meta::YamlFile = serde_yaml::from_str(MIPS_YAML)
-        .expect(&format!("Failed to parse mips.yaml"));
+        .unwrap_or_else(|_| panic!("Failed to parse mips.yaml"));
     
     let base_yaml = load_instructions(meta_yaml);
 

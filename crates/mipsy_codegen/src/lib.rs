@@ -25,7 +25,7 @@ pub fn instruction_set(input: TokenStream) -> TokenStream {
     let (path, contents) = read_mips_yaml(input);
 
     let meta_yaml: meta::YamlFile = serde_yaml::from_str(&contents)
-        .expect(&format!("Failed to parse {}", path.to_string_lossy()));
+        .unwrap_or_else(|_| panic!("Failed to parse {}", path.to_string_lossy()));
 
     let base_yaml = load_instructions(meta_yaml);
 
@@ -116,7 +116,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
             }
             InstructionType::I => {
                 let opcode = instruction.runtime.opcode
-                        .expect(&format!("invalid mips.yaml: missing opcode for {}", instruction.name));
+                        .unwrap_or_else(|| panic!("invalid mips.yaml: missing opcode for {}", instruction.name));
 
                 let rt = match instruction.runtime.rt {
                     Some(rt) => quote! { ::std::option::Option::Some(#rt) },
@@ -127,7 +127,7 @@ fn quote_instruction(instruction: InstructionYaml) -> proc_macro2::TokenStream {
             }
             InstructionType::J => {
                 let opcode = instruction.runtime.opcode
-                        .expect(&format!("invalid mips.yaml: missing opcode for {}", instruction.name));
+                        .unwrap_or_else(|| panic!("invalid mips.yaml: missing opcode for {}", instruction.name));
 
                 quote! { J { opcode: #opcode } }
             }
@@ -284,9 +284,9 @@ fn read_mips_yaml(input: TokenStream) -> (PathBuf, String) {
             let mut contents = String::new();
 
             File::open(&path)
-                    .expect(&format!("Failed to open file: {}", path.to_string_lossy()))
+                    .unwrap_or_else(|_| panic!("Failed to open file: {}", path.to_string_lossy()))
                     .read_to_string(&mut contents)
-                    .expect(&format!("Failed to read as a UTF-8 string: {}", path.to_string_lossy()));
+                    .unwrap_or_else(|_| panic!("Failed to read as a UTF-8 string: {}", path.to_string_lossy()));
 
             (path, contents)           
         }
