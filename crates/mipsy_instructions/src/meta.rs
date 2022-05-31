@@ -143,9 +143,9 @@ impl Display for ArgumentType {
     }
 }
 
-impl Into<super::base::InstructionType> for InstructionType {
-    fn into(self) -> super::base::InstructionType {
-        match self {
+impl From<InstructionType> for super::base::InstructionType {
+    fn from(x: InstructionType) -> super::base::InstructionType {
+        match x {
             InstructionType::R => super::base::InstructionType::R,
             InstructionType::I => super::base::InstructionType::I,
             InstructionType::J => super::base::InstructionType::J,
@@ -153,9 +153,9 @@ impl Into<super::base::InstructionType> for InstructionType {
     }
 }
 
-impl Into<super::base::ArgumentType> for ArgumentType {
-    fn into(self) -> super::base::ArgumentType {
-        match self {
+impl From<ArgumentType> for super::base::ArgumentType {
+    fn from(x: ArgumentType) -> super::base::ArgumentType {
+        match x {
             ArgumentType::Rd      => super::base::ArgumentType::Rd,
             ArgumentType::Rs      => super::base::ArgumentType::Rs,
             ArgumentType::Rt      => super::base::ArgumentType::Rt,
@@ -176,18 +176,18 @@ impl Into<super::base::ArgumentType> for ArgumentType {
     }
 }
 
-impl Into<super::base::InstructionExpansionYaml> for InstructionExpansionYaml {
-    fn into(self) -> super::base::InstructionExpansionYaml {
+impl From<InstructionExpansionYaml> for super::base::InstructionExpansionYaml {
+    fn from(x: InstructionExpansionYaml) -> super::base::InstructionExpansionYaml {
         super::base::InstructionExpansionYaml {
-            inst: self.inst,
-            data: self.data,
+            inst: x.inst,
+            data: x.data,
         }
     }
 }
 
-impl Into<super::base::ReadsRegisterType> for ReadsRegisterType {
-    fn into(self) -> super::base::ReadsRegisterType {
-        match self {
+impl From<ReadsRegisterType> for super::base::ReadsRegisterType {
+    fn from(x: ReadsRegisterType) -> super::base::ReadsRegisterType {
+        match x {
             ReadsRegisterType::Rs => super::base::ReadsRegisterType::Rs,
             ReadsRegisterType::Rt => super::base::ReadsRegisterType::Rt,
             ReadsRegisterType::OffRs => super::base::ReadsRegisterType::OffRs,
