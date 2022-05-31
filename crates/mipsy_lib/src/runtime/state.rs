@@ -185,7 +185,6 @@ impl State {
         self.write_marker |= 1u64 << WRITE_MARKER_LO;
     }
 
-    #[must_use]
     pub fn check_segfault(&self, address: u32, access: SegmentationFaultAccessType) -> MipsyResult<()> {
         let segfault = match address {
             // TODO(zkol): Update this when exclusive range matching is stabilised
@@ -308,7 +307,6 @@ impl State {
         )
     }
 
-    #[must_use]
     pub fn write_mem_byte(&mut self, address: u32, byte: u8) -> MipsyResult<()> {
         self.check_segfault(address, SegmentationFaultAccessType::Write)?;
 
@@ -340,7 +338,6 @@ impl State {
         Ok(())
     }
 
-    #[must_use]
     pub fn write_mem_byte_uninit(&mut self, address: u32, byte: Safe<u8>) -> MipsyResult<()> {
         self.check_segfault(address, SegmentationFaultAccessType::Write)?;
 
@@ -352,7 +349,6 @@ impl State {
         Ok(())
     }
 
-    #[must_use]
     pub fn write_mem_half_uninit(&mut self, address: u32, half: Safe<u16>) -> MipsyResult<()> {
         match half {
             Safe::Valid(half) => self.write_mem_half(address, half)?,
@@ -365,7 +361,6 @@ impl State {
         Ok(())
     }
 
-    #[must_use]
     pub fn write_mem_word_uninit(&mut self, address: u32, word: Safe<u32>) -> MipsyResult<()> {
         match word {
             Safe::Valid(word) => self.write_mem_word(address, word)?,
