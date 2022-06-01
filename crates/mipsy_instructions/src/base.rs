@@ -88,54 +88,54 @@ pub enum ReadsRegisterType {
     OffRt,
 }
 
-impl Into<InstSignature> for InstructionYaml {
-    fn into(self) -> InstSignature {
+impl From<InstructionYaml> for InstSignature {
+    fn from(x: InstructionYaml) -> InstSignature {
         InstSignature::new(
-            self.name.to_ascii_lowercase(),
-            self.compile.into(),
-            self.runtime.clone().into(),
-            self.runtime.into(),
-            InstMetadata::new(self.desc_short, self.desc_long),
+            x.name.to_ascii_lowercase(),
+            x.compile.into(),
+            x.runtime.clone().into(),
+            x.runtime.into(),
+            InstMetadata::new(x.desc_short, x.desc_long),
         )
     }
 }
 
-impl Into<CompileSignature> for CompileYaml {
-    fn into(self) -> CompileSignature {
+impl From<CompileYaml> for CompileSignature {
+    fn from(x: CompileYaml) -> CompileSignature {
         CompileSignature::new(
-            self.format.into_iter().map(Into::into).collect(),
-            self.relative_label,
+            x.format.into_iter().map(Into::into).collect(),
+            x.relative_label,
         )
     }
 }
 
-impl Into<RuntimeSignature> for RuntimeYaml {
-    fn into(self) -> RuntimeSignature {
-        match self.inst_type {
+impl From<RuntimeYaml> for RuntimeSignature {
+    fn from(x: RuntimeYaml) -> RuntimeSignature {
+        match x.inst_type {
             InstructionType::R => RuntimeSignature::R {
-                opcode: self.opcode.unwrap_or(0),
-                funct: self.funct.unwrap_or(0),
-                shamt: self.shamt, rs: self.rs, rt: self.rt, rd: self.rd
+                opcode: x.opcode.unwrap_or(0),
+                funct: x.funct.unwrap_or(0),
+                shamt: x.shamt, rs: x.rs, rt: x.rt, rd: x.rd
             },
             InstructionType::I => RuntimeSignature::I {
-                opcode: self.opcode.expect("I-type requires opcode"), rt: self.rt
+                opcode: x.opcode.expect("I-type requires opcode"), rt: x.rt
             },
             InstructionType::J => RuntimeSignature::J {
-                opcode: self.opcode.expect("J-type requires opcode")
+                opcode: x.opcode.expect("J-type requires opcode")
             },
         }
     }
 }
 
-impl Into<RuntimeMetadata> for RuntimeYaml {
-    fn into(self) -> RuntimeMetadata {
-        RuntimeMetadata::new(self.reads.into_iter().map(Into::into).collect())
+impl From<RuntimeYaml> for RuntimeMetadata {
+    fn from(x: RuntimeYaml) -> RuntimeMetadata {
+        RuntimeMetadata::new(x.reads.into_iter().map(Into::into).collect())
     }
 }
 
-impl Into<mipsy_lib::ArgumentType> for ArgumentType {
-    fn into(self) -> mipsy_lib::ArgumentType {
-        match self {
+impl From<ArgumentType> for mipsy_lib::ArgumentType {
+    fn from(x: ArgumentType) -> mipsy_lib::ArgumentType {
+        match x {
             ArgumentType::Rd      => mipsy_lib::ArgumentType::Rd,
             ArgumentType::Rs      => mipsy_lib::ArgumentType::Rs,
             ArgumentType::Rt      => mipsy_lib::ArgumentType::Rt,
@@ -156,9 +156,9 @@ impl Into<mipsy_lib::ArgumentType> for ArgumentType {
     }
 }
 
-impl Into<mipsy_lib::inst::ReadsRegisterType> for ReadsRegisterType {
-    fn into(self) -> mipsy_lib::inst::ReadsRegisterType {
-        match self {
+impl From<ReadsRegisterType> for mipsy_lib::inst::ReadsRegisterType {
+    fn from(x: ReadsRegisterType) -> mipsy_lib::inst::ReadsRegisterType {
+        match x {
             ReadsRegisterType::Rs    => mipsy_lib::inst::ReadsRegisterType::Rs,
             ReadsRegisterType::Rt    => mipsy_lib::inst::ReadsRegisterType::Rt,
             ReadsRegisterType::OffRs => mipsy_lib::inst::ReadsRegisterType::OffRs,
@@ -167,21 +167,21 @@ impl Into<mipsy_lib::inst::ReadsRegisterType> for ReadsRegisterType {
     }
 }
 
-impl Into<PseudoSignature> for PseudoInstructionYaml {
-    fn into(self) -> PseudoSignature {
+impl From<PseudoInstructionYaml> for PseudoSignature {
+    fn from(x: PseudoInstructionYaml) -> PseudoSignature {
         PseudoSignature::new(
-            self.name.to_ascii_lowercase(),
-            self.compile.into(),
-            self.expand.into_iter().map(Into::into).collect(),
+            x.name.to_ascii_lowercase(),
+            x.compile.into(),
+            x.expand.into_iter().map(Into::into).collect(),
         )
     }
 }
 
-impl Into<PseudoExpand> for InstructionExpansionYaml {
-    fn into(self) -> PseudoExpand {
+impl From<InstructionExpansionYaml> for PseudoExpand {
+    fn from(x: InstructionExpansionYaml) -> PseudoExpand {
         PseudoExpand::new(
-            self.inst,
-            self.data,
+            x.inst,
+            x.data,
         )
     }
 }

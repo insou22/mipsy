@@ -40,7 +40,7 @@ where
     }
 }
 
-fn leftover_tokens_strip_multispace<'a>(i: Span<'a>, file_name: Option<Rc<str>>) -> ErrorLocation {
+fn leftover_tokens_strip_multispace(i: Span<'_>, file_name: Option<Rc<str>>) -> ErrorLocation {
     match comment_multispace0(i) {
         Ok((leftover, _)) => {
             ErrorLocation {

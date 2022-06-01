@@ -35,7 +35,7 @@ pub(crate) fn load_command() -> Command {
             #[cfg(unix)]
             let stdin = String::from("/dev/stdin");
 
-            let program: Vec<_> = files.into_iter()
+            let program: Vec<_> = files.iter()
                     .map(|name| {
                         let mut path = name;
 

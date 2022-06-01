@@ -98,10 +98,10 @@ pub fn get_segment(address: u32) -> Segment {
     match address {
         // TODO(zkol): Update this when exclusive range matching is stabilised
         _ if address < TEXT_BOT => Segment::None,
-        _ if address >= TEXT_BOT && address <= TEXT_TOP => Segment::Text,
-        _ if address >= GLOBAL_BOT && address < STACK_BOT => Segment::Data,
-        _ if address >= STACK_BOT && address <= STACK_TOP => Segment::Stack,
-        _ if address >= KTEXT_BOT && address < KDATA_BOT => Segment::KText,
+        _ if (TEXT_BOT..=TEXT_TOP)  .contains(&address) => Segment::Text,
+        _ if (GLOBAL_BOT..STACK_BOT).contains(&address) => Segment::Data,
+        _ if (STACK_BOT..=STACK_TOP).contains(&address) => Segment::Stack,
+        _ if (KTEXT_BOT..KDATA_BOT) .contains(&address) => Segment::KText,
         _ if address >= KDATA_BOT => Segment::KData,
         _ => unreachable!(),
     }

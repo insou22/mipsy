@@ -13,7 +13,7 @@ pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     let path = path.as_ref();
     let path_str = path.to_string_lossy();
-    if !path_str.starts_with("~") {
+    if !path_str.starts_with('~') {
         return path.into();
     }
 

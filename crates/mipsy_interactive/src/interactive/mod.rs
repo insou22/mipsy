@@ -219,7 +219,7 @@ impl State {
                 prompt::error("can't step any further back")
             }
             CommandError::RanOutOfHistory => {
-                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold().to_string()))
+                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold()))
             }
             CommandError::RuntimeError { mipsy_error, } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);
@@ -261,8 +261,7 @@ impl State {
                     let file = self.program.as_ref()
                         .expect("cannot get parser error without a file to compile")
                         .iter()
-                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
-                        .next()
+                        .find(|(tag, _)| tag.as_str() == file_tag.deref())
                         .map(|(_, str)| Rc::from(&**str))
                         .expect("for file to throw a parser error, it should probably exist");
 
@@ -278,8 +277,7 @@ impl State {
                     let file = self.program.as_ref()
                         .expect("cannot get compiler error without a file to compile")
                         .iter()
-                        .filter(|(tag, _)| tag.as_str() == file_tag.deref())
-                        .next()
+                        .find(|(tag, _)| tag.as_str() == file_tag.deref())
                         .map(|(_, str)| Rc::from(&**str))
                         .unwrap_or_else(|| Rc::from(""));
     
@@ -450,10 +448,8 @@ impl State {
                     runtime_handler::breakpoint(label.as_deref(), pc);
     
                     true
-                } else if trapped {
-                    true
                 } else {
-                    false
+                    trapped
                 }
             }
         )
