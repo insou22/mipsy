@@ -97,7 +97,7 @@ pub fn decompile(program: &Binary, iset: &InstSet, file: Option<String>) -> Stri
                         let chars = (&decompiled_part).len();
                         60_usize.saturating_sub(chars)
                     };
-                    text.push_str(&format!("{}; {}", " ".repeat(repeat_space), line.trim_start()));
+                    text.push_str(&format!("{}; [{}] {}", " ".repeat(repeat_space), line_num, line.trim_start()));
                 }
             }
         }
