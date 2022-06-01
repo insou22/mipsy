@@ -1,4 +1,4 @@
-use mipsy_lib::CompilerError;
+use mipsy_lib::{CompilerError, Binary, InstSet, decompile::decompile_into_parts};
 
 pub fn generate_highlighted_line(file: String, err: &CompilerError) -> String {
     let line = &file
@@ -45,4 +45,65 @@ pub fn generate_highlighted_line(file: String, err: &CompilerError) -> String {
         pre_highlight_space,
         highlight
     )
+}
+
+pub fn decompile(program: &Binary, iset: &InstSet, file: Option<String>) -> String {
+    let mut text = String::new();
+    let unknown_instruction = String::from("# Unknown instruction");
+
+    let decompiled = decompile_into_parts(program, iset);
+
+    let mut keys: Vec<u32> = decompiled.keys().copied().collect();
+    keys.sort_unstable();
+
+    for (addr, parts) in keys.into_iter().map(|addr| (addr, decompiled.get(&addr).unwrap())) {
+        if let Err(parts) = parts {
+            if !parts.labels.is_empty() {
+                text.push('\n');
+            }
+
+            for label in parts.labels.iter() {
+                text.push_str(&format!("{}: \n", label));
+            }
+
+            text.push_str(&format!("0x{:08x}: [uninitialised]\n", addr));
+            continue;
+        }
+
+        let parts = parts.as_ref().expect("just checked Err case");
+
+        if !parts.labels.is_empty() {
+            text.push('\n');
+        }
+
+        for label in parts.labels.iter() {
+            text.push_str(&format!("{}: \n", label));
+        }
+
+        let decompiled_part = &format!(
+            "0x{:08x} [0x{:08x}]    {:6} {}",
+            addr,
+            parts.opcode,
+            parts.inst_name.as_ref().unwrap_or(&unknown_instruction),
+            parts.arguments.join(", ")
+        );
+
+        text.push_str(&decompiled_part);
+
+        if let Some(file) = file.clone() {
+            if let Some((_, line_num)) = parts.location.clone() {
+                if let Some(line) = file.lines().nth((line_num - 1) as usize) {
+                    let repeat_space = {
+                        let chars = (&decompiled_part).len();
+                        60_usize.saturating_sub(chars)
+                    };
+                    text.push_str(&format!("{}; {}", " ".repeat(repeat_space), line.trim_start()));
+                }
+            }
+        }
+
+        text.push('\n');
+    }
+        
+    text
 }
