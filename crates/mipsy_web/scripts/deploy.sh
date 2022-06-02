@@ -1,10 +1,11 @@
-#!/bin/bash
-# Note, this presumes you have an ssh alias `cse` 
+#!/usr/bin/env bash 
+# This script will build and deploy to UNSW CSE servers
+# presumes you have an ssh alias 'cse'
 
 
-if ! command -v wasm-pack 2>&1 >/dev/null;
+if ! command -v trunk 2>&1 >/dev/null;
 then
-	echo 'error: you must install wasm-pack (try `cargo install wasm-pack`)'
+	echo 'error: you must install trunk (try the instructions at https://trunkrs.dev/)'
 	exit
 fi
 
@@ -14,28 +15,27 @@ then
 	exit
 fi
 
-wasm-pack build --target no-modules --out-name wasm --out-dir ./dist --no-typescript
+CSE_ACCOUNT=
+PUBLIC_URL="/"
+while true; do
+    case "$1" in 
+        --cse_account=*)
+            val=${1#*=}
+            CSE_ACCOUNT="$val"; shift; 
+            ;;
+        --public_url=*)             
+            val=${1#*=}
+            PUBLIC_URL="$val"; shift; 
+            ;;
+        * ) break ;;
+    esac
+done
 
-cd dist
-ln -sf ../_static/index.html
-cd ..
-cp -r _static/package/ dist
+trunk build --release --public-url=$PUBLIC_URL
 
-NODE_ENV=production tailwindcss -c ./tailwind.config.js -o dist/tailwind.css --minify
-
-if [ "$1" = "--push=shreys" ]; then
-
-    scp -r dist/* cse:~/web/mipsy/
-
-fi
-
-if [ "$1" = "--push=cs1521" ]; then
-
-    scp -r dist/* cse:~cs1521/web/mipsy/
-
-fi
-
-if [ "$1" = "--push=both" ]; then
+if [ "$CSE_ACCOUNT" = "both" ]; then
     scp -r dist/* cse:~cs1521/web/mipsy
     scp -r dist/* cse:~/web/mipsy
+else
+    scp -r dist/* cse:~$CSE_ACCOUNT/web/mipsy/
 fi

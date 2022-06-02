@@ -450,6 +450,10 @@ name = "linked-hash-map"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
+dependencies = [
+ "serde",
+ "serde_test",
+]
 
 [[package]]
 name = "log"
@@ -487,7 +491,6 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
- "mipsy_codegen",
  "mipsy_instructions",
  "mipsy_interactive",
  "mipsy_lib",
@@ -505,6 +508,7 @@ dependencies = [
 name = "mipsy_codegen"
 version = "0.1.0"
 dependencies = [
+ "mipsy_instructions",
  "proc-macro2",
  "quote",
  "serde",
@@ -515,8 +519,9 @@ dependencies = [
 name = "mipsy_instructions"
 version = "0.1.0"
 dependencies = [
- "mipsy_codegen",
  "mipsy_lib",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -525,7 +530,6 @@ version = "0.1.0"
 dependencies = [
  "colored",
  "dirs",
- "mipsy_codegen",
  "mipsy_instructions",
  "mipsy_lib",
  "mipsy_parser",
@@ -572,6 +576,7 @@ dependencies = [
  "dirs",
  "serde",
  "serde_yaml",
+ "users",
 ]
 
 [[package]]
@@ -584,7 +589,6 @@ dependencies = [
  "gloo-file",
  "js-sys",
  "log",
- "mipsy_codegen",
  "mipsy_instructions",
  "mipsy_lib",
  "mipsy_parser",
@@ -846,6 +850,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_test"
+version = "1.0.137"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe196827aea34242c314d2f0dd49ed00a129225e80dda71b0dbf65d54d25628d"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_yaml"
 version = "0.8.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -976,6 +989,16 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
+
+[[package]]
+name = "users"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24cc0f6d6f267b73e5a2cadf007ba8f9bc39c6a6f9666f8cf25ea809a153b032"
+dependencies = [
+ "libc",
+ "log",
+]
 
 [[package]]
 name = "utf8parse"

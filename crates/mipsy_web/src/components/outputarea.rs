@@ -31,19 +31,16 @@ pub fn render_output_area(props: &OutputProps) -> Html {
         None => "".to_string(),
     };
 
-    let (mipsy_tab_button_classes, io_tab_classes) = {
-        let mut default = (
-						    String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2"),
-						    String::from("w-1/2 hover:bg-white float-left border-t-2 border-r-2 border-l-2 border-black cursor-pointer px-1 py-2")
-					  );
+    let (io_tab_classes, mipsy_output_tab_classes) = {
+        let default_tab_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+        let left_tab_classes = format!("{} border-l-2", default_tab_classes);
+        let selected_classes = "bg-th-primary";
+        let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
-        if *props.show_io {
-            default.1 = format!("{} {}", &default.1, String::from("bg-th-tabclicked"));
-        } else {
-            default.0 = format!("{} {}", &default.0, String::from("bg-th-tabclicked"));
-        };
-
-        default
+        (
+            format!("{} {}", left_tab_classes,  if *props.show_io {selected_classes} else {unselected_classes}),
+            format!("{} {}", default_tab_classes, if *props.show_io {unselected_classes} else {selected_classes}),
+        )
     };
 
     let input_classes = if !syscall_input_needed {
@@ -75,7 +72,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
             <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
                 <button class={io_tab_classes} onclick={switch_to_io.clone()}>{"I/O"}</button>
                 <button
-                    class={mipsy_tab_button_classes}
+                    class={mipsy_output_tab_classes}
                     onclick={switch_to_errors.clone()}
                 >
                     {props.mipsy_output_tab_title.clone()}
@@ -88,7 +85,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
                 <div class="w-full overflow-y-auto">
                 <h1>
                     <strong>
-                        {if *props.show_io {"Output"} else {"Mipsy Output"}}
+                        {if *props.show_io {"I/O"} else {"Mipsy Output"}}
                     </strong>
                 </h1>
                 <pre style="width:100%;" class="text-sm whitespace-pre-wrap">

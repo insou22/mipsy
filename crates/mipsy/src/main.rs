@@ -1,5 +1,4 @@
-use std::{fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
-use std::io::Write;
+use std::{io::Write, fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
 
 use colored::Colorize;
 use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}};
@@ -190,7 +189,12 @@ fn main() {
     }
 
     let files = opts.files.into_iter()
-            .map(|name| {
+            .map(|mut name| {
+                #[cfg(unix)]
+                if name == "-" {
+                    name = String::from("/dev/stdin");
+                }
+
                 let file_contents = match fs::read_to_string(&name) {
                     Ok(contents) => contents,
                     Err(err) => {

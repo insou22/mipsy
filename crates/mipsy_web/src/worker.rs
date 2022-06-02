@@ -1,10 +1,10 @@
+use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
-use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use yew_agent::{Agent, AgentLink, HandlerId, Public};
@@ -42,6 +42,7 @@ pub struct Worker {
     // but that's a shift in the worker's behaviour
     // we can do that later
     binary: Option<Binary>,
+    config: MipsyWebConfig,
 }
 
 type Guard<T> = Box<dyn FnOnce(T) -> Runtime>;
@@ -78,6 +79,9 @@ pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(FileInformation),
     ResetRuntime(MipsState),
+    UpdateConfig(MipsyWebConfig),
+    // Toggle a breakpoiint at an address
+    ToggleBreakpoint(u32),
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
@@ -86,6 +90,7 @@ pub enum WorkerRequest {
 pub struct DecompiledResponse {
     pub decompiled: String,
     pub file: Option<String>,
+    pub binary: Binary,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -116,6 +121,7 @@ pub enum WorkerResponse {
     DecompiledCode(DecompiledResponse),
     WorkerError(ErrorResponse),
     UpdateMipsState(MipsState),
+    UpdateBinary(Option<Binary>),
     InstructionOk(MipsState),
     ProgramExited(MipsState),
     NeedInt(MipsState),
@@ -133,18 +139,17 @@ impl Agent for Worker {
     type Output = WorkerResponse;
 
     fn create(link: AgentLink<Self>) -> Self {
-        wasm_logger::init(wasm_logger::Config::default());
-
         Self {
             link,
             inst_set: mipsy_instructions::inst_set(),
             runtime: None,
             binary: None,
+            config: MipsyWebConfig::default(),
         }
     }
 
     fn name_of_resource() -> &'static str {
-        "wasm.js"
+        "worker.js"
     }
 
     fn update(&mut self, _msg: Self::Message) {
@@ -152,13 +157,11 @@ impl Agent for Worker {
     }
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
+        let mut breakpoint = false;
         match msg {
             Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
-                let config = MipsyConfig {
-                    tab_size: 8,
-                    spim: false,
-                };
+                let config = &self.config.mipsy_config;
                 let compiled = mipsy_lib::compile(
                     &self.inst_set,
                     vec![TaggedFile::new(Some(&filename), file.as_str())],
@@ -172,6 +175,7 @@ impl Agent for Worker {
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
                             file: Some(file),
+                            binary: binary.to_owned(),
                         });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
@@ -232,6 +236,7 @@ impl Agent for Worker {
                                 let response = Self::Output::DecompiledCode(DecompiledResponse {
                                     decompiled,
                                     file: None,
+                                    binary: binary.to_owned(),
                                 });
                                 let runtime = mipsy_lib::runtime(&binary, &[]);
                                 self.runtime = Some(RuntimeState::Running(runtime));
@@ -245,6 +250,7 @@ impl Agent for Worker {
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
                             file: None,
+                            binary: binary.to_owned(),
                         });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.runtime = Some(RuntimeState::Running(runtime));
@@ -328,7 +334,26 @@ impl Agent for Worker {
                 }
             }
 
+            /* Toggles a breakpoint at an address
+             */
+            Self::Input::ToggleBreakpoint(addr) => {
+                let binary = self.binary.as_mut();
+                if let Some(binary) = binary {
+                    if binary.breakpoints.iter().any(|&x| x == addr) {
+                        binary.breakpoints.retain(|&x| addr != x);
+                    } else {
+                        binary.breakpoints.push(addr);
+                    }
+                }
+
+                let response = Self::Output::UpdateBinary(self.binary.clone());
+                self.link.respond(id, response)
+            }
+
+            Self::Input::UpdateConfig(config) => self.config = config,
+
             Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
+                let binary = self.binary.as_ref().unwrap();
                 if let Some(runtime_state) = self.runtime.take() {
                     if let RuntimeState::Running(mut runtime) = runtime_state {
                         // fast forward the kernel segment
@@ -347,7 +372,20 @@ impl Agent for Worker {
                                 } else {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
-                                        Ok(Ok(next_runtime)) => runtime = next_runtime,
+                                        Ok(Ok(next_runtime)) => {
+
+                                            let pc = next_runtime.timeline().state().pc();
+
+                                            runtime = next_runtime;
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
+                                        }
                                         Ok(Err(guard)) => {
                                             use RuntimeSyscallGuard::*;
                                             match guard {
@@ -386,9 +424,25 @@ impl Agent for Worker {
                             mips_state.update_registers(&runtime);
                             mips_state.update_current_instr(&runtime);
                             mips_state.update_memory(&runtime);
+                            let pc = runtime.timeline().state().pc();
+                            let binary = self.binary.as_ref().unwrap();
                             self.runtime = Some(RuntimeState::Running(runtime));
                             if mips_state.exit_status.is_some() {
                                 let response = Self::Output::ProgramExited(mips_state);
+                                self.link.respond(id, response);
+                            } else if breakpoint {
+                                // the label or address
+                                let label = binary
+                                    .labels
+                                    .iter()
+                                    .find(|(_, &addr)| addr == pc)
+                                    .map(|(name, _)| name.to_string())
+                                    .unwrap_or(format!("0x{:08x}", pc));
+                                mips_state
+                                    .mipsy_stdout
+                                    .push(format!("BREAKPOINT - {label}"));
+
+                                let response = Self::Output::UpdateMipsState(mips_state);
                                 self.link.respond(id, response);
                             } else if mips_state.is_stepping {
                                 let response = Self::Output::UpdateMipsState(mips_state);
@@ -411,11 +465,24 @@ impl Agent for Worker {
                             if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
                                 break;
                             }
+
                             // info!("stepping text: {:08x}", runtime.timeline().state().pc());
                             let stepped_runtime = runtime.step();
                             match stepped_runtime {
                                 // instruction ran okay
-                                Ok(Ok(next_runtime)) => runtime = next_runtime,
+                                Ok(Ok(next_runtime)) => {
+                                    let pc = next_runtime.timeline().state().pc();
+
+                                    runtime = next_runtime;
+                                    // we want to stop at the instruction before the breakpoint
+                                    // so that the line of breakpoint doesnt get executed
+                                    if binary.breakpoints.contains(&pc)
+                                        && !self.config.ignore_breakpoints
+                                    {
+                                        breakpoint = true;
+                                        break;
+                                    }
+                                }
 
                                 // instruction ran but we need to handle a syscall
                                 Ok(Err(guard)) => {
@@ -567,26 +634,28 @@ impl Agent for Worker {
                                         }
 
                                         Breakpoint(next_runtime) => {
-                                            info!("breakpoint");
-
                                             runtime = next_runtime;
+                                            if !self.config.ignore_breakpoints {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
-                                        _ => unreachable!(), /*
+                                        _ => unreachable!("Invalid Syscall"), /*
 
-                                                             Sbrk       (SbrkArgs, Runtime),
-                                                             Exit       (Runtime),
-                                                             PrintChar  (PrintCharArgs, Runtime),
-                                                             ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
-                                                             Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
-                                                             Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
-                                                             Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                             Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                             ExitStatus (ExitStatusArgs, Runtime),
+                                                                              Sbrk       (SbrkArgs, Runtime),
+                                                                              Exit       (Runtime),
+                                                                              PrintChar  (PrintCharArgs, Runtime),
+                                                                              ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
+                                                                              Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                              Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
+                                                                              Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                              Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                              ExitStatus (ExitStatusArgs, Runtime),
 
-                                                             // other
-                                                             Breakpoint     (Runtime),
-                                                             */
+                                                                              // other
+                                                                              Breakpoint     (Runtime),
+                                                                              */
                                     }
                                 }
 
@@ -666,6 +735,8 @@ impl Agent for Worker {
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
                         mips_state.update_memory(&runtime);
+                        let pc = runtime.timeline().state().pc();
+                        let binary = self.binary.as_ref().unwrap();
                         self.runtime = Some(RuntimeState::Running(runtime));
 
                         let response;
@@ -677,6 +748,19 @@ impl Agent for Worker {
                                     .expect("infinite loop guarantees Some return")
                             ));
                             response = Self::Output::ProgramExited(mips_state);
+                        } else if breakpoint {
+                            // the label or address
+                            let label = binary
+                                .labels
+                                .iter()
+                                .find(|(_, &addr)| addr == pc)
+                                .map(|(name, _)| name.to_string())
+                                .unwrap_or(format!("0x{:08x}", pc));
+                            mips_state
+                                .mipsy_stdout
+                                .push(format!("BREAKPOINT - {label}"));
+
+                            response = Self::Output::UpdateMipsState(mips_state);
                         } else if step_size.abs() == 1 {
                             // just update the state
                             response = Self::Output::UpdateMipsState(mips_state);

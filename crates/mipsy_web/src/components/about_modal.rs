@@ -34,17 +34,31 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </h1>
                         <br />
                         <p>
-                            {"mipsy_web is a MIPS emulator built using the mipsy platform."}
+                            {"mipsy web is an online MIPS emulator and debugger that runs in the browser, built using the mipsy platform."}
+                        </p>
+                        <br />
+                        <p>
+                            {"mipsy web allows you load existing files, and to edit them in the microsoft Monaco editor (the same editor as vscode)"}
                         </p>
                         <p>
-                            {"mipsy_web, alongside the mipsy platform, is fully open source "}
-                            <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
+                            {"Once you have loaded a file, you can step through, run, step back, and view the decompiled, and data sections"}
                         </p>
+                        <p>
+                            {"You are able to view registers, IO, and any error output from the mipsy platform"}
+                        </p>
+                        <p>
+                            {"Control-s will save and recompile your file, if you have edited it"}
+                        </p>
+
                         <br />
                         <p class="mt-2">
-                            {"mipsy_web is alpha software, and will eventually be a full replacement for QtSpim"}
+                            {"mipsy web is beta software, and will eventually be a full replacement for QtSpim"}
                         </p>
-                        <br />
+                    
+                        <p>
+                            {"mipsy web, alongside the mipsy platform, is fully open source "}
+                            <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
+                        </p>
                         <p class="mb-2">
                             {"Please leave any relevant feedback, issues or concerns on the "}
                             <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
@@ -52,35 +66,25 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             </a>
                         </p>
                         <p class="mb-2">
-                            {"You can also check the current items being worked on at"}
+                            {"You can also check the current and future items being worked on at "}
                             <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/projects/2" target="_blank">
                                 {"this project board"}
                             </a>
 
                         </p>
-                        <p>
-                            {"(if you're here because you're curious: pro-tip, control-s will save and recompile your file)"}
-                        </p>
-
-                        <h2 class="mt-2"> <strong> {"Unimplemented Features"} </strong> </h2>
-                        <p > {"Many features have yet to be implemented, including (but not limited to)"}</p>
-                        <ul class="ml-4 list-disc">
-                            <li>{"Custom Settings + Theming"}</li>
-                        </ul>
-
-                        
-
-                        <h2 class="mt-4"> <strong> {"Unsupported Features"} </strong> </h2>
-                        <p> {"The following features will not be supported in mipsy_web"}</p>
+                    
+                        <h4 class="mt-2"> <strong> {"Unsupported Features"} </strong> </h4>
+                        <p> {"The following features will not be supported in mipsy web"}</p>
                         <ul>
                             <li>{"FileRead, Write and Open Syscalls"}</li>
                         </ul>
                         <div class="mt-4 text-xs">
-                            <p> {"Made with love by Shrey Somaiya for cs1521 at UNSW CSE"} </p>
+                            <p> {"Made with love by Shrey Somaiya for cs1521 at the School of Computer Science and Engineering, University of New South Wales, Sydney."} </p>
                             <p> {"with help from:"}</p>
                             <ul class="ml-4 list-disc">
-                                <li>{"Zac Kologlu - partnering on development and major implementation decisions."}</li>
+                                <li>{"Zac Kologlu"}</li>
                                 <li>{"Dylan Brotherson"}</li>
+                                <li>{"Abiram Nadarajah"}</li>
                                 <li>{"Andrew Taylor"}</li>
                                 <li>{"Jashank Jeremy"}</li>
                                 <li>{"You, for testing this out!"}</li>

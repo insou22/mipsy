@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{MipsyError, Runtime, Safe};
+use mipsy_lib::{MipsyError, Runtime, Safe, Binary};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]
-pub enum DisplayedTab {
+pub enum DisplayedCodeTab {
     Source,
     Decompiled,
     Data,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum RegisterTab {
+    UsedRegisters,
+    AllRegisters,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -23,6 +29,7 @@ pub struct MipsState {
     // https://github.com/serde-rs/serde/issues/631
     pub memory: HashMap<u32, Vec<Safe<u8> /*; PAGE_SIZE] */>>,
     pub is_stepping: bool,
+    pub binary: Option<Binary>
 }
 
 impl MipsState {

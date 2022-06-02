@@ -161,7 +161,8 @@ fn parse_asciiz(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     )(i)
 }
 
-fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Vec<(T, Option<MpConstValueLoc>)>>
+fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> IResult<Span<'a>, T>)
+    -> impl FnMut(Span<'a>) -> IResult<Span<'a>, Vec<(T, Option<MpConstValueLoc>)>>
 {
     move |i| {
         let (
@@ -172,7 +173,7 @@ fn parse_num_type<'a, T: Clone>(tag_str: &'static str, parser: fn(Span<'a>) -> I
                 list,
                 _,
             )
-        ): (Span<'a>, (_, _, Vec<(T, Option<MpConstValueLoc>)>, _)) 
+        )
         = tuple((
             tag(tag_str),
             comment_multispace0,

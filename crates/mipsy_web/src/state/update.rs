@@ -2,15 +2,13 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::state::{DisplayedTab, MipsState, RunningState, State},
+    state::state::{ErrorState, ErrorType, RuntimeErrorState, DisplayedCodeTab, MipsState, RunningState, State},
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
     },
 };
 use log::{error, info};
-
-use super::state::{ErrorState, ErrorType, RuntimeErrorState};
 use gloo_console::log;
 use mipsy_lib::Safe;
 use std::cell::RefCell;
@@ -23,7 +21,7 @@ use yew_agent::UseBridgeHandle;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
-    show_tab: UseStateHandle<DisplayedTab>,
+    show_tab: UseStateHandle<DisplayedCodeTab>,
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
     filename: UseStateHandle<Option<String>>,
@@ -46,18 +44,47 @@ pub fn handle_response_from_worker(
                     mipsy_stdout: Vec::new(),
                     memory: HashMap::new(),
                     is_stepping: true,
+                    binary: Some(response_struct.binary),
                 },
                 input_needed: None,
                 should_kill: false,
             }));
             if response_struct.file.is_some() {
                 file.set(Some(response_struct.file.clone().unwrap()));
-                show_tab.set(DisplayedTab::Source);
+                show_tab.set(DisplayedCodeTab::Source);
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
                 crate::set_localstorage_file_contents(&response_struct.file.unwrap());
                 is_saved.set(true);
             }
         }
+
+        WorkerResponse::UpdateBinary(binary) => match &*state {
+            State::Error(ErrorType::RuntimeError(curr)) => {
+                let mips_state = MipsState {
+                    binary,
+                    ..curr.mips_state.clone()
+                };
+
+                state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
+                    mips_state,
+                    ..curr.clone()
+                })))
+            }
+
+            State::Compiled(curr) => {
+                let mips_state = MipsState {
+                    binary,
+                    ..curr.mips_state.clone()
+                };
+
+                state.set(State::Compiled(RunningState {
+                    mips_state,
+                    ..curr.clone()
+                }))
+            }
+
+            _ => unreachable!("cannot update binary if there is no binary"),
+        },
 
         WorkerResponse::WorkerError(response_struct) => {
             log!("recieved compiler error from worker");
@@ -69,7 +96,7 @@ pub fn handle_response_from_worker(
 
             show_io.set(false);
             file.set(Some(response_struct.file.clone()));
-            show_tab.set(DisplayedTab::Source);
+            show_tab.set(DisplayedCodeTab::Source);
             state.set(State::Error(state_struct));
         }
 
@@ -124,6 +151,8 @@ pub fn handle_response_from_worker(
                 // focus IO if output
                 if curr.mips_state.stdout != mips_state.stdout {
                     show_io.set(true);
+                } else if curr.mips_state.mipsy_stdout != mips_state.mipsy_stdout {
+                    show_io.set(false);
                 }
 
                 state.set(State::Compiled(RunningState {
@@ -137,7 +166,7 @@ pub fn handle_response_from_worker(
         WorkerResponse::RuntimeError(RuntimeErrorResponse { mips_state, error }) => {
             if let State::Compiled(ref curr) = *state {
                 show_io.set(false);
-                show_tab.set(DisplayedTab::Source);
+                show_tab.set(DisplayedCodeTab::Source);
                 let decompiled = &curr.decompiled;
                 state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
                     mips_state,

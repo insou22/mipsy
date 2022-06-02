@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 use crate::{InstSet, MpProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
-
+use serde::{Serialize, Deserialize};
 mod bytes;
 
 mod checker;
@@ -40,7 +40,7 @@ pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
@@ -87,7 +87,7 @@ impl Binary {
         self.labels.insert(label.to_string(), addr);
     }
 
-    pub fn text_words<'a>(&'a self) -> impl Iterator<Item = Safe<u32>> + 'a {
+    pub fn text_words(&'_ self) -> impl Iterator<Item = Safe<u32>> + '_ {
         (&self.text).chunks_exact(4)
             .into_iter()
             .map(|chunk| match (chunk[0], chunk[1], chunk[2], chunk[3]) {
@@ -141,9 +141,9 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, opti
 
     move_labels(&mut binary, options.moves());
 
-    populate_text           (&mut binary, iset, config, program)?;
+    populate_text(&mut binary, iset, config, program)?;
 
-    populate_text           (&mut binary, iset, config, &kernel)?;
+    populate_text(&mut binary, iset, config, kernel)?;
 
     Ok(binary)
 }

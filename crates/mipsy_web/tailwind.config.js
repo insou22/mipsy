@@ -2,15 +2,10 @@
 // It does that using a regular expression, which just analyses the file, meaning Rust is fine!
 
 module.exports = {
-    purge: {
-        mode: "all",
-        content: [
-            "./src/**/*.rs",
-            "./index.html",
-            "./src/**/*.html",
-            "./src/**/*.css",
-        ],
-    },
+    content: [
+        "./src/**/*.rs",
+        "./index.html",
+    ],
     theme: {
         extend: {
             colors: {
@@ -20,11 +15,12 @@ module.exports = {
                 'th-secondary': '#f0f0f0',
                 // used for step highlighting
                 'th-highlighting':'#34d399',
-                // selected tab
-                'th-tabclicked': '#d19292',
+                // tab hover color
+                'th-tabhover': '#fff0f0',
+                // unselected tab
+                'th-tabunselected': '#d19292',
             }
         }
     },
-    variants: {},
     plugins: [],
 };
