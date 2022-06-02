@@ -1408,9 +1408,8 @@ impl Runtime {
 
     fn fill_valid_state(mut starting_addr: u32, data: &[Safe<u8>], state: &mut State) {
         for &byte in data {
-            match byte {
-                Safe::Valid(byte) => state.write_mem_byte(starting_addr, byte).unwrap(),
-                Safe::Uninitialised => {}
+            if let Safe::Valid(byte) = byte {
+                state.write_mem_byte(starting_addr, byte).unwrap();
             }
 
             starting_addr += 1;
