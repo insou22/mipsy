@@ -2663,6 +2663,8 @@ pseudoinstructions:
     compile:
       format: [Rs, Rt]
     expand:
+      - inst: ADDU
+        data: [$Rs, $0, $Rt]
       - inst: BGEZ
         data: [$Rt, 2]
       - inst: SUB
