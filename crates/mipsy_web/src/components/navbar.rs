@@ -372,7 +372,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                 }
             </div>
             <a
-                href="https://cgi.cse.unsw.edu.au/~cs1521/22T1/resources/mips-guide.html"
+                href="https://cgi.cse.unsw.edu.au/~cs1521/current/resources/mips-guide.html"
                 target="_blank"
                 class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
                        text-sm px-2 py-2 border rounded text-black border-black \
