@@ -178,7 +178,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                                             }
                                         }
                                         else {
-                                            html! { "__" }
+                                            render_data(page_contents[nth * ROW_SIZE + offset])
                                         }
                                     }
                                 </div>
