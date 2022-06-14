@@ -1352,6 +1352,22 @@ pseudoinstructions:
           imm_types: [I16, U16, I32, U32]
           sign_extend: true
 
+  - name: INCR
+    desc_short: Increment the value of $Rs
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$Rs, $Rs, 1]
+
+  - name: DECR
+    desc_short: Decrement the value of $Rs
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$Rs, $Rs, -1]
+
   - name: SUB
     compile:
       format: [Rd, Rs, Rt]
@@ -3010,3 +3026,105 @@ pseudoinstructions:
       - Imm2Reg:
           register: Rs
           imm_types: [U16, U32]
+
+  - name: DBG_PRINT_INT
+    desc_short: Print the value of $Rs as an integer without modifying any registers
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$a0, ($sp)]
+      - inst: ADDU
+        data: [$a0, $zero, $Rs]
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$v0, $zero, 1]
+      - inst: SYSCALL
+        data: []
+      - inst: LW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+      - inst: LW
+        data: [$a0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+
+  - name: DBG_PRINT_CHAR
+    desc_short: Print the value of $Rs as a character without modifying any registers
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$a0, ($sp)]
+      - inst: ADDU
+        data: [$a0, $zero, $Rs]
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$v0, $zero, 11]
+      - inst: SYSCALL
+        data: []
+      - inst: LW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+      - inst: LW
+        data: [$a0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [I16, U16, I32, U32]
+
+  - name: DBG_PRINT_STR
+    desc_short: Print the value of $Rs as a string without modifying any registers
+    compile:
+      format: [Rs]
+    expand:
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$a0, ($sp)]
+      - inst: ADDU
+        data: [$a0, $zero, $Rs]
+      - inst: ADDIU
+        data: [$sp, $sp, -4]
+      - inst: SW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$v0, $zero, 4]
+      - inst: SYSCALL
+        data: []
+      - inst: LW
+        data: [$v0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+      - inst: LW
+        data: [$a0, ($sp)]
+      - inst: ADDIU
+        data: [$sp, $sp, 4]
+
+  # - name: DBG_PRINT_STR
+  #   desc_short: Print the value of $Rs as a string without modifying any registers
+  #   compile:
+  #     format: [OffRt]
+
+  # - name: DBG_PRINT_STR
+  #   desc_short: Print the value of $Rs as a string without modifying any registers
+  #   compile:
+  #     format: [Off32Rt]
