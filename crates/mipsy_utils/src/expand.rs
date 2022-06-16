@@ -1,4 +1,4 @@
-use std::{borrow::Cow, path::Path};
+use std::{borrow::Cow, path::{Path, PathBuf}};
 
 #[cfg(unix)]
 use {dirs::home_dir, users::os::unix::UserExt};
@@ -22,7 +22,6 @@ pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
     } else {
         return path.into()
     };
-
     if path.starts_with("~/") {
         home.join(path.strip_prefix("~").unwrap()).into()
     } else if path.as_os_str().len() == 1 {
@@ -35,14 +34,16 @@ pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {
         } else {
             path_str.len()
         };
-
         let username = &path_str[1..index];
         if let Some(user) = users::get_user_by_name(username) {
-            home = user.home_dir().into()
+            home = user.home_dir().into();
         } else {
-            return path.into()
+            return path.into();
         }
 
-        home.join(path.components().next().unwrap()).into()
+        home.join(path.components()
+                      .skip(1)
+                      .collect::<PathBuf>())
+            .into()
     }
 }
