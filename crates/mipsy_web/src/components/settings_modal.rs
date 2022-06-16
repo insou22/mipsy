@@ -1,5 +1,6 @@
 use crate::components::{dropdown::Dropdown, heading::Heading};
-use log::info;
+use serde::{Deserialize, Serialize};
+use wasm_bindgen::JsValue;
 use web_sys::HtmlSelectElement;
 use yew::{prelude::*, Properties};
 
@@ -48,7 +49,8 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                     <div class="w-9/12">
                         <Heading
-                            title="Font Size"
+                            title="Editor Font Size"
+                            subtitle="Adjust the font size of the editor"
                         />
 
                         <div class="w-3/12">
@@ -56,7 +58,17 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 onchange={Callback::from(|e: Event| {
                                     let input: HtmlSelectElement = e.target_unchecked_into();
                                     let val = input.value();
-                                    info!("{val:?}");
+
+                                    #[derive(Serialize, Deserialize)]
+                                    struct Options {
+                                        fontSize: f32,
+                                    };
+
+                                    crate::change_editor_options(
+                                        JsValue::from_serde(&Options {
+                                            fontSize: val.parse::<f32>().unwrap(),
+                                        }).unwrap()
+                                    );
                                 })}
                                 label={"font size"}
                                 hide_label={true}

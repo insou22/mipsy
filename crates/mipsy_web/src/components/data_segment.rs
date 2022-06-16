@@ -1,7 +1,7 @@
 use crate::state::state::RunningState;
 use mipsy_lib::runtime::PAGE_SIZE;
+use mipsy_lib::util::{get_segment, Segment};
 use mipsy_lib::Safe;
-use mipsy_lib::util::{Segment, get_segment};
 use yew::prelude::*;
 use yew::Properties;
 
@@ -40,7 +40,8 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
         .map(|(key, val)| (key.clone(), val.clone()))
         .collect::<Vec<_>>();
 
-    let registers = Some(props.state.mips_state.clone()).clone()
+    let registers = Some(props.state.mips_state.clone())
+        .clone()
         .map(|state| state.register_values.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
@@ -80,7 +81,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
                                 </div>
                             </>
                         }
-                        
+
                     })
                 }
             </div>
@@ -93,7 +94,7 @@ fn render_segment_header(segment: Segment) -> Html {
         <h4>
             {
                 match segment {
-                    Segment::None  => {""} 
+                    Segment::None  => {""}
                     Segment::Text  => {"Text segment"},
                     Segment::Data  => {"Data segment"},
                     Segment::Stack => {"Stack segment"},
@@ -112,17 +113,17 @@ trait Escape {
 impl Escape for char {
     fn escape(self: &char) -> String {
         match self {
-            '\0' => r"\0".to_string(), // null
-            '\t' => r"\t".to_string(), // tab
-            '\r' => r"\r".to_string(), // carriage return
-            '\n' => r"\n".to_string(), // newline
-            '\x07' => r"\a".to_string(), // bell
-            '\x08' => r"\b".to_string(), // backspace
-            '\x0B' => r"\v".to_string(), // vertical tab
-            '\x0C' => r"\f".to_string(), // form feed
-            '\x1B' => r"\e".to_string(), // escape
+            '\0' => r"\0".to_string(),           // null
+            '\t' => r"\t".to_string(),           // tab
+            '\r' => r"\r".to_string(),           // carriage return
+            '\n' => r"\n".to_string(),           // newline
+            '\x07' => r"\a".to_string(),         // bell
+            '\x08' => r"\b".to_string(),         // backspace
+            '\x0B' => r"\v".to_string(),         // vertical tab
+            '\x0C' => r"\f".to_string(),         // form feed
+            '\x1B' => r"\e".to_string(),         // escape
             '\x20'..='\x7E' => self.to_string(), // printable ASCII
-            _ => ".".to_string(), // everything else
+            _ => ".".to_string(),                // everything else
         }
     }
 }
@@ -154,7 +155,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                                             html! {
                                                 <span class="cursor-help" style="border: 1px solid blue; background-color: blue;" title="$sp & $fp">
                                                 {
-                                                    render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                    render_data(page_contents[nth * ROW_SIZE + offset])
                                                 }
                                                 </span>
                                             }
@@ -163,7 +164,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                                             html! {
                                                 <span class="cursor-help" style="border: 1px solid green; background-color: green;" title="$sp">
                                                 {
-                                                    render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                    render_data(page_contents[nth * ROW_SIZE + offset])
                                                 }
                                                 </span>
                                             }
@@ -172,7 +173,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                                             html! {
                                                 <span class="cursor-help" style="border: 1px solid red;background-color: red;" title="$fp">
                                                 {
-                                                        render_data(page_contents[nth * ROW_SIZE + offset]) 
+                                                        render_data(page_contents[nth * ROW_SIZE + offset])
                                                 }
                                                 </span>
                                             }
@@ -193,7 +194,7 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                     for (0..ROW_SIZE).map(|offset| {
                         let value = page_contents[nth * ROW_SIZE + offset].into_option();
 
-                            
+
                         html! {
                             <div style="text-align: center;">
                                 {
@@ -217,7 +218,6 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
 }
 
 fn render_data(data_val: Safe<u8>) -> Html {
-
     match data_val {
         Safe::Valid(byte) => {
             html! { format!("{:02x}", byte) }
@@ -226,5 +226,4 @@ fn render_data(data_val: Safe<u8>) -> Html {
             html! { "__" }
         }
     }
-
 }

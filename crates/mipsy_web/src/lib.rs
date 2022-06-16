@@ -1,11 +1,11 @@
 #![allow(unused_unsafe)]
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::closure::Closure;
+use wasm_bindgen::prelude::*;
 pub mod components;
 pub mod pages;
+pub mod state;
 pub mod utils;
 pub mod worker;
-pub mod state;
 
 #[wasm_bindgen]
 extern "C" {
@@ -33,4 +33,6 @@ extern "C" {
 
     pub fn get_localstorage(key: &str) -> Option<String>;
     pub fn set_localstorage(key: &str, value: &str);
+
+    pub fn change_editor_options(options: JsValue);
 }

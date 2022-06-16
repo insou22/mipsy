@@ -19,4 +19,3 @@ pub fn heading(HeadingProps { title, subtitle }: &HeadingProps) -> Html {
         </div>
     }
 }
-

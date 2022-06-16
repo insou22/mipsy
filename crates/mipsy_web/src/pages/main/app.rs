@@ -88,8 +88,7 @@ pub fn render_app() -> Html {
 
                             // if window element is on the page, create, leak, and add the onchange callback
                             // only if we have not already added it
-                            if window().unwrap().get("editor").is_some()
-                            {
+                            if window().unwrap().get("editor").is_some() {
                                 let cb = Closure::wrap(Box::new(move || {
                                     let editor_contents = crate::get_editor_value();
                                     let editor_contents2 = editor_contents.clone();
@@ -98,9 +97,7 @@ pub fn render_app() -> Html {
                                     let last_saved_contents =
                                         crate::get_localstorage_file_contents();
 
-                                    is_saved.set(
-                                        editor_contents == last_saved_contents,
-                                    );
+                                    is_saved.set(editor_contents == last_saved_contents);
                                 })
                                     as Box<dyn Fn()>);
 
@@ -726,9 +723,9 @@ fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
     let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
     (
-        classes!(default_tab_classes, selected_classes),        // selected tab
-        classes!(default_tab_classes, unselected_classes),      // unselected tab
-        classes!(left_tab_classes.clone(), selected_classes),   // selected left tab
-        classes!(left_tab_classes, unselected_classes),         // unselected left tab
+        classes!(default_tab_classes, selected_classes), // selected tab
+        classes!(default_tab_classes, unselected_classes), // unselected tab
+        classes!(left_tab_classes.clone(), selected_classes), // selected left tab
+        classes!(left_tab_classes, unselected_classes),  // unselected left tab
     )
 }

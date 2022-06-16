@@ -1,10 +1,10 @@
-use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
-use yew_agent::UseBridgeHandle;
 use crate::{
     state::state::{ErrorType::RuntimeError, State},
     worker::{Worker, WorkerRequest},
 };
 use derivative::Derivative;
+use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
+use yew_agent::UseBridgeHandle;
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
 pub struct DecompiledProps {

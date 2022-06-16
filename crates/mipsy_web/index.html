@@ -48,7 +48,11 @@
 
         window.editor = editor;
       }
-    
+
+      function change_editor_options(options) {
+        window.editor.updateOptions(options);
+      }
+
       function set_model_change_listener(callback) {
         window.editor.onDidChangeModelContent(callback);
       }
@@ -152,18 +156,6 @@
 
       #monaco_editor {
         height: 95%;
-      }
-
-      #filename:focus, #filename:hover {
-        border: 1px solid black;
-        background: white;
-      }
-      
-      #filename {
-        border: none;
-        background: transparent;
-        margin-bottom: 10px;
-        box-shadow: none;
       }
 
       .gutter {

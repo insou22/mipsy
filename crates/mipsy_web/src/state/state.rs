@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::pages::main::app::ReadSyscalls;
-use mipsy_lib::{MipsyError, Runtime, Safe, Binary};
+use mipsy_lib::{Binary, MipsyError, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq)]
@@ -29,7 +29,7 @@ pub struct MipsState {
     // https://github.com/serde-rs/serde/issues/631
     pub memory: HashMap<u32, Vec<Safe<u8> /*; PAGE_SIZE] */>>,
     pub is_stepping: bool,
-    pub binary: Option<Binary>
+    pub binary: Option<Binary>,
 }
 
 impl MipsState {
@@ -97,4 +97,3 @@ pub struct RuntimeErrorState {
     pub mips_state: MipsState,
     pub decompiled: String,
 }
-

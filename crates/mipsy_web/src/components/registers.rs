@@ -1,4 +1,4 @@
-use crate::state::state::{State, ErrorType, RegisterTab};
+use crate::state::state::{ErrorType, RegisterTab, State};
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
 #[derive(Properties, PartialEq)]
@@ -18,12 +18,13 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
     let show_uninitialised_registers = match &*props.tab {
         RegisterTab::AllRegisters => true,
         _ => false,
-    }; 
+    };
 
-    let registers = mips_state.clone()
+    let registers = mips_state
+        .clone()
         .map(|state| state.register_values.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
-    
+
     let previous_registers = mips_state
         .map(|state| state.previous_registers.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
@@ -43,7 +44,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <tbody>
             {
                 for registers.iter().enumerate().map(|(index, item)| {
-                        
+
                     if show_uninitialised_registers || item != &Safe::Uninitialised {
                         html! {
                                 <tr class={if registers[index] != previous_registers[index] {

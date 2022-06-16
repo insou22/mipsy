@@ -16,7 +16,7 @@ pub fn dropdown(
         options,
         label,
         hide_label,
-        selected_value
+        selected_value,
     }: &DropDownProps,
 ) -> Html {
     html! {
@@ -37,8 +37,8 @@ pub fn dropdown(
                     for options.iter().map(|opt| {
                         let is_selected = selected_value.as_deref() == Some(opt);
                         html! {
-                            <option 
-                                selected={is_selected} 
+                            <option
+                                selected={is_selected}
                                 value={opt.clone()}
                             >
                                 {opt}

@@ -1,4 +1,4 @@
-use mipsy_lib::{CompilerError, Binary, InstSet, decompile::decompile_into_parts};
+use mipsy_lib::{decompile::decompile_into_parts, Binary, CompilerError, InstSet};
 
 pub fn generate_highlighted_line(file: String, err: &CompilerError) -> String {
     let line = &file
@@ -56,7 +56,10 @@ pub fn decompile(program: &Binary, iset: &InstSet, file: Option<String>) -> Stri
     let mut keys: Vec<u32> = decompiled.keys().copied().collect();
     keys.sort_unstable();
 
-    for (addr, parts) in keys.into_iter().map(|addr| (addr, decompiled.get(&addr).unwrap())) {
+    for (addr, parts) in keys
+        .into_iter()
+        .map(|addr| (addr, decompiled.get(&addr).unwrap()))
+    {
         if let Err(parts) = parts {
             if !parts.labels.is_empty() {
                 text.push('\n');
@@ -97,13 +100,18 @@ pub fn decompile(program: &Binary, iset: &InstSet, file: Option<String>) -> Stri
                         let chars = (&decompiled_part).len();
                         60_usize.saturating_sub(chars)
                     };
-                    text.push_str(&format!("{}; [{}] {}", " ".repeat(repeat_space), line_num, line.trim_start()));
+                    text.push_str(&format!(
+                        "{}; [{}] {}",
+                        " ".repeat(repeat_space),
+                        line_num,
+                        line.trim_start()
+                    ));
                 }
             }
         }
 
         text.push('\n');
     }
-        
+
     text
 }
