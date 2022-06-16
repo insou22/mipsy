@@ -8,3 +8,6 @@ pub mod registers;
 pub mod sourcecode;
 pub mod banner;
 pub mod settings_modal;
+pub mod toggle;
+pub mod dropdown;
+pub mod heading;
