@@ -1,5 +1,5 @@
 use git_version::git_version;
-use yew::{ prelude::*, Properties};
+use yew::{prelude::*, Properties};
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct ModalProps {
@@ -54,7 +54,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         <p class="mt-2">
                             {"mipsy web is beta software, and will eventually be a full replacement for QtSpim"}
                         </p>
-                    
+
                         <p>
                             {"mipsy web, alongside the mipsy platform, is fully open source "}
                             <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
@@ -72,7 +72,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             </a>
 
                         </p>
-                    
+
                         <h4 class="mt-2"> <strong> {"Unsupported Features"} </strong> </h4>
                         <p> {"The following features will not be supported in mipsy web"}</p>
                         <ul>

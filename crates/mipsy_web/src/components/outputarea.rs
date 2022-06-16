@@ -32,14 +32,31 @@ pub fn render_output_area(props: &OutputProps) -> Html {
     };
 
     let (io_tab_classes, mipsy_output_tab_classes) = {
-        let default_tab_classes = "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+        let default_tab_classes =
+            "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
         let left_tab_classes = format!("{} border-l-2", default_tab_classes);
         let selected_classes = "bg-th-primary";
         let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
 
         (
-            format!("{} {}", left_tab_classes,  if *props.show_io {selected_classes} else {unselected_classes}),
-            format!("{} {}", default_tab_classes, if *props.show_io {unselected_classes} else {selected_classes}),
+            format!(
+                "{} {}",
+                left_tab_classes,
+                if *props.show_io {
+                    selected_classes
+                } else {
+                    unselected_classes
+                }
+            ),
+            format!(
+                "{} {}",
+                default_tab_classes,
+                if *props.show_io {
+                    unselected_classes
+                } else {
+                    selected_classes
+                }
+            ),
         )
     };
 

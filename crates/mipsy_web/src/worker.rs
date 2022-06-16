@@ -1,5 +1,5 @@
 use crate::state::config::MipsyWebConfig;
-use crate::{state::state::MipsState, utils::generate_highlighted_line, utils::decompile};
+use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
@@ -186,7 +186,7 @@ impl Agent for Worker {
                         self.link.respond(id, response)
                     }
 
-                    Err(error) => { 
+                    Err(error) => {
                         self.binary = None;
                         self.runtime = None;
                         let error_msg = match error {
@@ -234,7 +234,8 @@ impl Agent for Worker {
                             // if we are not running, then just recompile the file (since we have
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
-                                let decompiled = decompile(&binary, &self.inst_set, self.file.clone());
+                                let decompiled =
+                                    decompile(&binary, &self.inst_set, self.file.clone());
                                 let response = Self::Output::DecompiledCode(DecompiledResponse {
                                     decompiled,
                                     file: None,
@@ -375,7 +376,6 @@ impl Agent for Worker {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => {
-
                                             let pc = next_runtime.timeline().state().pc();
 
                                             runtime = next_runtime;

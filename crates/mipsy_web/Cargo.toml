@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 yew = "0.19.3"
 yew-agent = "0.1.0"
 gloo-file = "0.2.0"
-web-sys = { version="0.3.55", features=["Element", "EventTarget", "HtmlElement"] }
+web-sys = { version="0.3.55", features=["Element", "EventTarget", "HtmlElement", "HtmlSelectElement"] }
 mipsy_lib = { path = "../mipsy_lib" }
 mipsy_instructions = { path = "../mipsy_instructions", features = ["rt_yaml"] }
 mipsy_parser = { path = "../mipsy_parser" }

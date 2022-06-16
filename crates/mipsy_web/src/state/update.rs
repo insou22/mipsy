@@ -2,14 +2,16 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::state::{ErrorState, ErrorType, RuntimeErrorState, DisplayedCodeTab, MipsState, RunningState, State},
+    state::state::{
+        DisplayedCodeTab, ErrorState, ErrorType, MipsState, RunningState, RuntimeErrorState, State,
+    },
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
     },
 };
-use log::{error, info};
 use gloo_console::log;
+use log::{error, info};
 use mipsy_lib::Safe;
 use std::cell::RefCell;
 use std::collections::HashMap;

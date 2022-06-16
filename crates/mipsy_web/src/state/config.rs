@@ -1,5 +1,5 @@
 use mipsy_utils::MipsyConfig;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Serialize, Deserialize)]
 pub struct MipsyWebConfig {
