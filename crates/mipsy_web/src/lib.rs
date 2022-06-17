@@ -34,5 +34,7 @@ extern "C" {
     pub fn get_localstorage(key: &str) -> Option<String>;
     pub fn set_localstorage(key: &str, value: &str);
 
-    pub fn change_editor_options(options: JsValue);
+    pub fn update_editor_options(options: JsValue);
+
+    pub fn update_editor_model_options(options: JsValue);
 }
