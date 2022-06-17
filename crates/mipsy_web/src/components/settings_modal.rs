@@ -61,12 +61,13 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                                     #[derive(Serialize, Deserialize)]
                                     struct Options {
-                                        fontSize: f32,
-                                    };
+                                        #[serde(rename = "fontSize")]
+                                        font_size: f32,
+                                    }
 
-                                    crate::change_editor_options(
+                                    crate::update_editor_options(
                                         JsValue::from_serde(&Options {
-                                            fontSize: val.parse::<f32>().unwrap(),
+                                            font_size: val.parse::<f32>().unwrap(),
                                         }).unwrap()
                                     );
                                 })}
@@ -77,6 +78,42 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 options={
                                     (10..=70_i32)
                                         .step_by(2)
+                                        .map(|x| x.to_string())
+                                        .collect::<Vec<String>>()
+                                }
+                            />
+                        </div>
+
+                        <Heading
+                            title="Tab Size"
+                            subtitle="Adjust the tab size of the editor"
+                        />
+
+                        <div class="w-3/12">
+                            <Dropdown
+                                onchange={Callback::from(|e: Event| {
+                                    let input: HtmlSelectElement = e.target_unchecked_into();
+                                    let val = input.value();
+
+                                    #[derive(Serialize, Deserialize)]
+                                    struct Options {
+                                        #[serde(rename = "tabSize")]
+                                        tab_size: u32,
+                                    }
+                                    
+                                    crate::update_editor_model_options(
+                                        JsValue::from_serde(&Options {
+                                            tab_size: val.parse::<u32>().unwrap(),
+                                        }).unwrap()
+                                    );
+                                })}
+                                label={"tab size"}
+                                hide_label={true}
+                                selected_value={8.to_string()}
+                                // TODO - config selected, min max and font step
+                                options={
+                                    (2..=8_i32)
+                                        .step_by(1)
                                         .map(|x| x.to_string())
                                         .collect::<Vec<String>>()
                                 }

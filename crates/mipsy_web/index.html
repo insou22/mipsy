@@ -45,12 +45,16 @@
             enabled: false,
           },
         });
-
+        editor.getModel().updateOptions({ tabSize: 8 });
         window.editor = editor;
       }
 
-      function change_editor_options(options) {
+      function update_editor_options(options) {
         window.editor.updateOptions(options);
+      }
+
+      function update_editor_model_options(options) {
+        window.editor.getModel().updateOptions(options);
       }
 
       function set_model_change_listener(callback) {
@@ -130,7 +134,7 @@
         document.body.removeChild(element);
       }
 
-	  function get_localstorage(key) {
+      function get_localstorage(key) {
         return localStorage.getItem(key);
       }
 
