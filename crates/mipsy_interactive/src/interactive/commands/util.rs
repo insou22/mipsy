@@ -43,7 +43,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
     }
 
     if let Err(parts) = parts {
-        let last_line = get_last_line(binary, parts.addr);
+        let last_line_len = get_final_line(binary).to_string().len();
 
         println!(
             "{} {} [{}]",
@@ -53,12 +53,12 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
                 format!("0x{:08x}", parts.addr).bright_black()
             },
             match parts.location {
-                Some((_, num)) => format!("{:<3}", num),
+                Some((_, num)) => format!("{:<last_line_len$}", num),
                 None      => {
                     if parts.addr >= KTEXT_BOT {
                         "kernel".yellow().bold().to_string()
                     } else {
-                        format!("{:3}", " ".repeat(last_line.to_string().len()))
+                        format!("{:last_line_len$}", "")
                     }
                 }
             }.yellow().bold(),
@@ -76,7 +76,7 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
 
     let name = parts.inst_name.as_ref().unwrap();
 
-    let last_line = get_last_line(binary, parts.addr);
+    let last_line_len = get_final_line(binary).to_string().len();
 
     let args = parts.arguments
         .iter()
@@ -119,12 +119,12 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
             format!("0x{:08x}", parts.addr).bright_black()
         },
         match parts.location {
-            Some((_, num)) => format!("{:<3}", num),
+            Some((_, num)) => format!("{:<last_line_len$}", num),
             None      => {
                 if parts.addr >= KTEXT_BOT {
                     "kernel".yellow().bold().to_string()
                 } else {
-                    format!("{:3}", " ".repeat(last_line.to_string().len()))
+                    format!("{:last_line_len$}", "")
                 }
             }
         }.yellow().bold(),
@@ -164,19 +164,10 @@ pub(crate) fn print_inst(iset: &InstSet, binary: &Binary, inst: u32, addr: u32, 
     print_inst_parts(binary, &Ok(parts), files, false);
 }
 
-pub(crate) fn get_last_line(binary: &Binary, addr: u32) -> u32 {
-    let mut last_line = 1;
-
-    let mut lines = binary.line_numbers.iter().collect::<Vec<_>>();
-    lines.sort_by_key(|&(addr, _line)| addr);
-
-    for (&prev_addr, (_file_name, prev_line)) in lines {
-        if prev_addr >= addr {
-            break;
-        }
-
-        last_line = *prev_line;
-    }
-
-    last_line
+pub(crate) fn get_final_line(binary: &Binary) -> u32 {
+    binary.line_numbers.iter()
+        .map(|(_, (_, line))| line)
+        .max()
+        .copied()
+        .unwrap_or(1)
 }
