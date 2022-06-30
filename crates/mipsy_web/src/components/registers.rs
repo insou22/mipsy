@@ -1,4 +1,6 @@
+use crate::state::config::{RegisterBase, MipsyWebConfig};
 use crate::state::state::{ErrorType, RegisterTab, State};
+use bounce::use_atom;
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Properties, UseStateHandle};
 #[derive(Properties, PartialEq)]
@@ -14,6 +16,8 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
         State::Error(ErrorType::RuntimeError(error)) => Some(error.mips_state.clone()),
         _ => None,
     };
+
+    let config = use_atom::<MipsyWebConfig>();
 
     let show_uninitialised_registers = match &*props.tab {
         RegisterTab::AllRegisters => true,
@@ -85,7 +89,19 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     <td class="pl-4 border-b-2 border-gray-500 text-center">
                                         <pre>
                                             if let Safe::Valid(val) = item {
-                                                {format!("0x{:08x}", val)}
+                                                {
+                                                    match config.register_base {
+                                                        RegisterBase::Hexadecimal => {
+                                                            format!("0x{:x}", val)
+                                                        },
+                                                        RegisterBase::Decimal => {
+                                                            format!("{}", val)
+                                                        },
+                                                        RegisterBase::Binary => {
+                                                            format!("0b{:b}", val)
+                                                        },
+                                                    }
+                                                }
                                             } else {
                                                 {"uninitialised"}
                                             }

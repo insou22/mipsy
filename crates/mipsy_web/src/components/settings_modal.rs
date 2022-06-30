@@ -1,5 +1,7 @@
 use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
-use crate::state::config::{MipsyWebConfig, PrimaryColor, SecondaryColor, TertiaryColor};
+use crate::state::config::{
+    MipsyWebConfig, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor,
+};
 use bounce::use_atom;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
@@ -136,10 +138,37 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 }
                             />
                         </div>
-                        
+
+                        // === Register Base ===
+                        <Heading
+                            title="Register Base"
+                            subtitle="Adjust the register base of the editor"
+                        />
+                        <div class="w-3/12">
+                        <Dropdown
+                            onchange={
+                                let config = config.clone();
+                                Callback::from(move |e: Event| {
+                                    let input: HtmlSelectElement = e.target_unchecked_into();
+                                    let register_base: RegisterBase = input.value().into();
+                                    config.set(MipsyWebConfig {
+                                        register_base,
+                                        ..(*config).clone()
+                                    });
+                            })}
+                            label={"register base"}
+                            hide_label={true}
+                            selected_value={(*config).register_base.to_string()}
+                            options={
+                                vec!["Hexadecimal".to_string(), "Decimal".to_string(), "Binary".to_string()]
+                            }
+                        />
+                        </div>
+
+
                         <Heading title="editor theme" subtitle="pick a theme for the editor!" />
                         <div class="w-3/12">
-                        <Dropdown 
+                        <Dropdown
                             onchange={{
                             let config = config.clone();
                             Callback::from(move |e: Event| {
@@ -159,7 +188,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                                 crate::update_editor_options(
                                     JsValue::from_serde(&Options{
-                                        theme: monaco_theme, 
+                                        theme: monaco_theme,
                                     }).unwrap()
                                 );
                             })}}

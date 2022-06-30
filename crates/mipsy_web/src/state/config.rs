@@ -23,6 +23,7 @@ pub struct MipsyWebConfig {
     pub tab_size: u32,
     pub font_size: u32,
     pub monaco_theme: String,
+    pub register_base: RegisterBase,
 }
 
 impl Observed for MipsyWebConfig {
@@ -64,6 +65,33 @@ impl From<std::string::String> for TertiaryColor {
         TertiaryColor(value)
     }
 }
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+pub enum RegisterBase {
+    Hexadecimal,
+    Decimal,
+    Binary,
+}
+
+impl std::fmt::Display for RegisterBase {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            RegisterBase::Hexadecimal => write!(f, "Hexadecimal"),
+            RegisterBase::Decimal => write!(f, "Decimal"),
+            RegisterBase::Binary => write!(f, "Binary"),
+        }
+    }
+}
+
+impl From<std::string::String> for RegisterBase {
+    fn from(value: std::string::String) -> Self {
+        match value.as_str() {
+            "Hexadecimal" => RegisterBase::Hexadecimal,
+            "Decimal" => RegisterBase::Decimal,
+            "Binary" => RegisterBase::Binary,
+            _ => RegisterBase::Hexadecimal,
+        }
+    }
+}
 
 impl Default for MipsyWebConfig {
     fn default() -> Self {
@@ -76,6 +104,7 @@ impl Default for MipsyWebConfig {
             tab_size: 8,
             font_size: 14,
             monaco_theme: "vs".to_string(),
+            register_base: RegisterBase::Hexadecimal,
         }
     }
 }
