@@ -52,11 +52,11 @@ pub fn render_modal(props: &ModalProps) -> Html {
                     <br />
 
                     <div class="w-9/12">
+                        // === FONT SIZE ===
                         <Heading
                             title="Editor Font Size"
                             subtitle="Adjust the font size of the editor"
                         />
-
                         <div class="w-3/12">
                             <Dropdown
                                 onchange={
@@ -94,11 +94,11 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             />
                         </div>
 
+                        // === TAB SIZE ==
                         <Heading
                             title="Tab Size"
                             subtitle="Adjust the tab size of the editor"
                         />
-
                         <div class="w-3/12">
                             <Dropdown
                                 onchange={
@@ -136,12 +136,51 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 }
                             />
                         </div>
+                        
+                        <Heading title="editor theme" subtitle="pick a theme for the editor!" />
+                        <div class="w-3/12">
+                        <Dropdown 
+                            onchange={{
+                            let config = config.clone();
+                            Callback::from(move |e: Event| {
+
+                                #[derive(Serialize, Deserialize)]
+                                struct Options {
+                                    theme: String,
+                                }
+
+                                let input: HtmlSelectElement = e.target_unchecked_into();
+                                let monaco_theme = input.value();
+
+                                config.set(MipsyWebConfig {
+                                    monaco_theme: monaco_theme.clone(),
+                                    ..(*config).clone()
+                                });
+
+                                crate::update_editor_options(
+                                    JsValue::from_serde(&Options{
+                                        theme: monaco_theme, 
+                                    }).unwrap()
+                                );
+                            })}}
+                            label={"monaco theme"}
+                            hide_label={true}
+                            selected_value={(*config).monaco_theme.clone()}
+                            options={
+                                vec![
+                                    "vs".to_string(),
+                                    "vs-dark".to_string(),
+                                    "hc-black".to_string(),
+                                ]
+                            }
+                        />
+                        </div>
+
 
                         <Heading
                             title="Primary color"
                             subtitle="Adjust the primary color"
                         />
-
                         <div class="flex flex-row items-center">
                         <ColorPicker
                             oninput={

@@ -22,6 +22,7 @@ pub struct MipsyWebConfig {
     pub tertiary_color: TertiaryColor,
     pub tab_size: u32,
     pub font_size: u32,
+    pub monaco_theme: String,
 }
 
 impl Observed for MipsyWebConfig {
@@ -74,6 +75,7 @@ impl Default for MipsyWebConfig {
             tertiary_color: TertiaryColor::default(),
             tab_size: 8,
             font_size: 14,
+            monaco_theme: "vs".to_string(),
         }
     }
 }
@@ -89,6 +91,7 @@ impl MipsyWebConfig {
         struct EditorOptions {
             #[serde(rename = "fontSize")]
             font_size: u32,
+            theme: String,
         }
 
         crate::update_primary_color(&self.primary_color.0);
@@ -97,6 +100,7 @@ impl MipsyWebConfig {
         crate::update_editor_options(
             JsValue::from_serde(&EditorOptions {
                 font_size: self.font_size,
+                theme: self.monaco_theme.clone(),
             })
             .unwrap(),
         );
