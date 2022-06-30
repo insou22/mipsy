@@ -1,8 +1,10 @@
-use crate::components::{dropdown::Dropdown, heading::Heading};
+use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
+use crate::state::config::MipsyWebConfig;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use web_sys::HtmlSelectElement;
+use web_sys::{HtmlSelectElement, HtmlInputElement};
 use yew::{prelude::*, Properties};
+use bounce::use_atom;
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct ModalProps {
@@ -12,6 +14,8 @@ pub struct ModalProps {
 
 #[function_component(SettingsModal)]
 pub fn render_modal(props: &ModalProps) -> Html {
+    let config = use_atom::<MipsyWebConfig>();
+
     let classes = if *props.should_display {
         "modal overflow-auto bg-th-primary border-black border-2 absolute top-14 w-3/4 z-20 text-sm"
     } else {
@@ -100,7 +104,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                         #[serde(rename = "tabSize")]
                                         tab_size: u32,
                                     }
-                                    
+
                                     crate::update_editor_model_options(
                                         JsValue::from_serde(&Options {
                                             tab_size: val.parse::<u32>().unwrap(),
@@ -119,6 +123,29 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 }
                             />
                         </div>
+
+                        <Heading
+                            title="Primary color"
+                            subtitle="Adjust the primary color"
+                        />
+
+                        <ColorPicker
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let val = input.value();
+                                    let color = val.parse::<String>().unwrap();
+                                    config.set(MipsyWebConfig {
+                                        primary_color: color,
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_primary_color(&val);
+                                })
+                            }
+                            color={config.primary_color.clone()}
+                        />
+
 
                         <Heading
                             title="Analytics"

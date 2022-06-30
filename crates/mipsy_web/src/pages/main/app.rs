@@ -12,19 +12,17 @@ use crate::{
     },
     worker::{FileInformation, Worker, WorkerRequest},
 };
+use bounce::{use_atom, BounceRoot};
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -41,7 +39,6 @@ pub fn render_app() -> Html {
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
 
-    let worker = Rc::new(RefCell::new(None));
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
@@ -61,7 +58,27 @@ pub fn render_app() -> Html {
             .map(|item| !(item.as_str() == "true"))
             .unwrap_or(false)
     });
-    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(MipsyWebConfig::default);
+    let worker = use_bridge(|_| {});
+    let worker: UseBridgeHandle<Worker> = {
+        let state = state.clone();
+        let show_code_tab = show_code_tab.clone();
+        let show_io = show_io.clone();
+        let file = file.clone();
+        let input_ref = input_ref.clone();
+        let worker = worker.clone();
+        let is_saved = is_saved.clone();
+        let filename = filename.clone();
+        use_bridge(move |response: <Worker as yew_agent::Agent>::Output| {
+            update::handle_response_from_worker(
+                state.clone(), show_code_tab.clone(), show_io.clone(), file.clone(),
+                filename.clone(), response, worker.clone(),
+                input_ref.clone(), is_saved.clone(),
+            )
+        })
+    };
+
+    let config = use_atom::<MipsyWebConfig>();
+
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -228,33 +245,6 @@ pub fn render_app() -> Html {
         });
     }
 
-    // if we have not yet setup the worker bridge, do so now
-    if worker.borrow().is_none() {
-        *worker.borrow_mut() = {
-            let state = state.clone();
-            let show_tab = show_code_tab.clone();
-            let show_io = show_io.clone();
-            let file = file.clone();
-            let input_ref = input_ref.clone();
-            let worker = worker.clone();
-            let is_saved = is_saved.clone();
-            let filename = filename.clone();
-            Some(use_bridge(move |response| {
-                let state = state.clone();
-                let show_tab = show_tab.clone();
-                let show_io = show_io.clone();
-                let file = file.clone();
-                let input_ref = input_ref.clone();
-                let worker = worker.clone();
-                let is_saved = is_saved.clone();
-                let filename = filename.clone();
-                update::handle_response_from_worker(
-                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
-                )
-            }))
-        };
-    }
-
     /*    CALLBACKS   */
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
@@ -283,7 +273,7 @@ pub fn render_app() -> Html {
                             });
                             log!("sending to worker");
 
-                            worker.borrow().as_ref().unwrap().send(input);
+                            worker.send(input);
                         }
 
                         Err(_e) => {}
@@ -313,9 +303,6 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
                 worker
-                    .borrow()
-                    .as_ref()
-                    .unwrap()
                     .send(WorkerRequest::CompileCode(FileInformation {
                         filename: filename.to_string(),
                         file: clone,
@@ -330,11 +317,11 @@ pub fn render_app() -> Html {
         let input_ref = input_ref.clone();
         Callback::from(move |event: KeyboardEvent| {
             if event.key() == "Enter" {
-                update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_input(&worker, &input_ref, &state);
             };
             if event.key() == "d" && event.ctrl_key() {
                 event.prevent_default();
-                update::submit_eof(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_eof(&worker, &input_ref, &state);
             };
         })
     };
@@ -348,7 +335,7 @@ pub fn render_app() -> Html {
             save_keydown,
             is_saved.clone(),
             show_code_tab.clone(),
-            worker.borrow().as_ref().unwrap().clone(),
+            worker.clone(),
         ),
     };
 
@@ -402,7 +389,7 @@ pub fn render_app() -> Html {
 
     let rendered_running = render_running_output(show_io.clone(), state.clone());
     html! {
-        <>
+        <BounceRoot>
             <div
                 onclick={{
                     let display_modal = display_modal.clone();
@@ -439,7 +426,7 @@ pub fn render_app() -> Html {
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
-                    worker={worker.borrow().as_ref().unwrap().clone()}
+                    worker={worker.clone()}
                     {filename}
                     {file}
                     {is_saved}
@@ -518,8 +505,7 @@ pub fn render_app() -> Html {
                     <Banner show_analytics_banner={show_analytics_banner}/>
                 }
             </PageBackground>
-
-        </>
+        </BounceRoot>
     }
 }
 
@@ -720,7 +706,7 @@ fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
         "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
     let left_tab_classes = classes!("border-l-2", default_tab_classes);
     let selected_classes = "bg-th-primary";
-    let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+    let unselected_classes = "bg-th-tabunselected hover:bg-th-primary";
 
     (
         classes!(default_tab_classes, selected_classes), // selected tab
