@@ -1,7 +1,11 @@
-use crate::components::{dropdown::Dropdown, heading::Heading};
+use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
+use crate::state::config::{
+    MipsyWebConfig, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor,
+};
+use bounce::use_atom;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use web_sys::HtmlSelectElement;
+use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::{prelude::*, Properties};
 
 #[derive(Properties, Clone, PartialEq)]
@@ -12,6 +16,8 @@ pub struct ModalProps {
 
 #[function_component(SettingsModal)]
 pub fn render_modal(props: &ModalProps) -> Html {
+    let config = use_atom::<MipsyWebConfig>();
+
     let classes = if *props.should_display {
         "modal overflow-auto bg-th-primary border-black border-2 absolute top-14 w-3/4 z-20 text-sm"
     } else {
@@ -48,33 +54,39 @@ pub fn render_modal(props: &ModalProps) -> Html {
                     <br />
 
                     <div class="w-9/12">
+                        // === FONT SIZE ===
                         <Heading
                             title="Editor Font Size"
                             subtitle="Adjust the font size of the editor"
                         />
-
                         <div class="w-3/12">
                             <Dropdown
-                                onchange={Callback::from(|e: Event| {
-                                    let input: HtmlSelectElement = e.target_unchecked_into();
-                                    let val = input.value();
+                                onchange={
+                                    let config = config.clone();
+                                    Callback::from(move |e: Event| {
+                                        let input: HtmlSelectElement = e.target_unchecked_into();
+                                        let val = input.value();
 
-                                    #[derive(Serialize, Deserialize)]
-                                    struct Options {
-                                        #[serde(rename = "fontSize")]
-                                        font_size: f32,
-                                    }
-
-                                    crate::update_editor_options(
-                                        JsValue::from_serde(&Options {
-                                            font_size: val.parse::<f32>().unwrap(),
-                                        }).unwrap()
-                                    );
+                                        #[derive(Serialize, Deserialize)]
+                                        struct Options {
+                                            #[serde(rename = "fontSize")]
+                                            font_size: u32,
+                                        }
+                                        let font_size = val.parse::<u32>().unwrap();
+                                        config.set(MipsyWebConfig {
+                                            font_size,
+                                            ..(*config).clone()
+                                        });
+                                        crate::update_editor_options(
+                                            JsValue::from_serde(&Options {
+                                                font_size,
+                                            }).unwrap()
+                                        );
                                 })}
                                 label={"font size"}
                                 hide_label={true}
                                 // TODO - config selected, min max and font step
-                                selected_value={"14"}
+                                selected_value={(*config).font_size.to_string()}
                                 options={
                                     (10..=70_i32)
                                         .step_by(2)
@@ -84,32 +96,39 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             />
                         </div>
 
+                        // === TAB SIZE ==
                         <Heading
                             title="Tab Size"
                             subtitle="Adjust the tab size of the editor"
                         />
-
                         <div class="w-3/12">
                             <Dropdown
-                                onchange={Callback::from(|e: Event| {
+                                onchange={
+                                    let config = config.clone();
+                                    Callback::from(move |e: Event| {
                                     let input: HtmlSelectElement = e.target_unchecked_into();
                                     let val = input.value();
+                                    let tab_size = val.parse::<u32>().unwrap();
 
                                     #[derive(Serialize, Deserialize)]
                                     struct Options {
                                         #[serde(rename = "tabSize")]
                                         tab_size: u32,
                                     }
-                                    
+
+                                    config.set(MipsyWebConfig {
+                                        tab_size,
+                                        ..(*config).clone()
+                                    });
                                     crate::update_editor_model_options(
                                         JsValue::from_serde(&Options {
-                                            tab_size: val.parse::<u32>().unwrap(),
+                                            tab_size,
                                         }).unwrap()
                                     );
                                 })}
                                 label={"tab size"}
                                 hide_label={true}
-                                selected_value={8.to_string()}
+                                selected_value={(*config).tab_size.to_string()}
                                 // TODO - config selected, min max and font step
                                 options={
                                     (2..=8_i32)
@@ -120,6 +139,198 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             />
                         </div>
 
+                        // === Register Base ===
+                        <Heading
+                            title="Register Base"
+                            subtitle="Adjust the register base of the editor"
+                        />
+                        <div class="w-3/12">
+                        <Dropdown
+                            onchange={
+                                let config = config.clone();
+                                Callback::from(move |e: Event| {
+                                    let input: HtmlSelectElement = e.target_unchecked_into();
+                                    let register_base: RegisterBase = input.value().into();
+                                    config.set(MipsyWebConfig {
+                                        register_base,
+                                        ..(*config).clone()
+                                    });
+                            })}
+                            label={"register base"}
+                            hide_label={true}
+                            selected_value={(*config).register_base.to_string()}
+                            options={
+                                vec!["Hexadecimal".to_string(), "Decimal".to_string(), "Binary".to_string()]
+                            }
+                        />
+                        </div>
+
+
+                        <Heading title="editor theme" subtitle="pick a theme for the editor!" />
+                        <div class="w-3/12">
+                        <Dropdown
+                            onchange={{
+                            let config = config.clone();
+                            Callback::from(move |e: Event| {
+
+                                #[derive(Serialize, Deserialize)]
+                                struct Options {
+                                    theme: String,
+                                }
+
+                                let input: HtmlSelectElement = e.target_unchecked_into();
+                                let monaco_theme = input.value();
+
+                                config.set(MipsyWebConfig {
+                                    monaco_theme: monaco_theme.clone(),
+                                    ..(*config).clone()
+                                });
+
+                                crate::update_editor_options(
+                                    JsValue::from_serde(&Options{
+                                        theme: monaco_theme,
+                                    }).unwrap()
+                                );
+                            })}}
+                            label={"monaco theme"}
+                            hide_label={true}
+                            selected_value={(*config).monaco_theme.clone()}
+                            options={
+                                vec![
+                                    "vs".to_string(),
+                                    "vs-dark".to_string(),
+                                    "hc-black".to_string(),
+                                ]
+                            }
+                        />
+                        </div>
+
+
+                        <Heading
+                            title="Primary color"
+                            subtitle="Adjust the primary color"
+                        />
+                        <div class="flex flex-row items-center">
+                        <ColorPicker
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let val = input.value();
+                                    let color = val.parse::<String>().unwrap();
+                                    config.set(MipsyWebConfig {
+                                        primary_color: color.into(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_primary_color(&val);
+                                })
+                            }
+                            color={(&*config.primary_color.0).to_string()}
+                        />
+
+                        <button
+                            type="button"
+                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black round"
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        primary_color: PrimaryColor::default(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_primary_color(&*PrimaryColor::default().0);
+                                })
+                            }
+                        >
+
+                            {"reset"}
+                        </button>
+                        </div>
+
+                        <Heading
+                            title="Secondary color"
+                            subtitle="Used for the background of the editor, register and IO areas"
+                        />
+
+
+                        <div class="flex flex-row items-center">
+                        <ColorPicker
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let val = input.value();
+                                    let color = val.parse::<String>().unwrap();
+                                    config.set(MipsyWebConfig {
+                                        secondary_color: color.into(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_secondary_color(&val);
+                                })
+                            }
+                            color={(&*config.secondary_color.0).to_string()}
+                        />
+
+                        <button
+                            type="button"
+                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black rounde"
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        secondary_color: SecondaryColor::default(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_secondary_color(&*SecondaryColor::default().0);
+                                })
+                            }
+                        >
+
+                            {"reset"}
+                        </button>
+                        </div>
+
+                        <Heading
+                            title="Tertiary color"
+                            subtitle="Used for unselected tabs"
+                        />
+
+                        <div class="flex flex-row items-center">
+                        <ColorPicker
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let val = input.value();
+                                    let color = val.parse::<String>().unwrap();
+                                    config.set(MipsyWebConfig {
+                                        tertiary_color: color.into(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_tertiary_color(&val);
+                                })
+                            }
+                            color={(&*config.tertiary_color.0).to_string()}
+                        />
+
+                        <button
+                            type="button"
+                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black rounded"
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        tertiary_color: TertiaryColor::default(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_tertiary_color(&*TertiaryColor::default().0);
+                                })
+                            }
+                        >
+
+                            {"reset"}
+                        </button>
+                        </div>
                         <Heading
                             title="Analytics"
                             subtitle="Analytics is currently not implemented"

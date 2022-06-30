@@ -25,6 +25,8 @@ wasm-logger = "0.2.0"
 git-version = "0.3.5"
 derivative = "2.2.0"
 gloo-console = "0.2.1"
+bounce = "0.3.0"
+serde_json = "1.0.82"
 
 # [profile.release]
 # # less code to include into binary

@@ -45,7 +45,7 @@
             enabled: false,
           },
         });
-        editor.getModel().updateOptions({ tabSize: 8 });
+        editor.getModel().updateOptions({ tabSize: 8, insertSpaces: false });
         window.editor = editor;
       }
 
@@ -141,6 +141,29 @@
       function set_localstorage(key, value) {
         localStorage.setItem(key, value);
       }
+      
+      function update_primary_color(color) {
+        console.log("updating primary color to: " + color);
+        let all_items = document.getElementsByClassName("bg-th-primary");
+        for (let i = 0; i < all_items.length; i++) {
+          all_items[i].style.backgroundColor = color;
+        }
+      }
+
+      function update_secondary_color(color) {
+        let all_items = document.getElementsByClassName("bg-th-secondary");
+        for (let i = 0; i < all_items.length; i++) {
+          all_items[i].style.backgroundColor = color + "80"; // opacity hack
+        }
+      }
+
+      function update_tertiary_color(color) {
+        let all_items = document.getElementsByClassName("bg-th-tabunselected");
+        for (let i = 0; i < all_items.length; i++) {
+          all_items[i].style.backgroundColor = color;
+        }
+      }
+
     </script>
 
     <style>

@@ -11,3 +11,4 @@ pub mod registers;
 pub mod settings_modal;
 pub mod sourcecode;
 pub mod toggle;
+pub mod color_picker;

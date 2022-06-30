@@ -13,9 +13,7 @@ use crate::{
 use gloo_console::log;
 use log::{error, info};
 use mipsy_lib::Safe;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -23,12 +21,12 @@ use yew_agent::UseBridgeHandle;
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
-    show_tab: UseStateHandle<DisplayedCodeTab>,
+    show_code_tab: UseStateHandle<DisplayedCodeTab>,
     show_io: UseStateHandle<bool>,
     file: UseStateHandle<Option<String>>,
     filename: UseStateHandle<Option<String>>,
     response: WorkerResponse,
-    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
+    worker: UseBridgeHandle<Worker>,
     input_ref: UseStateHandle<NodeRef>,
     is_saved: UseStateHandle<bool>,
 ) {
@@ -53,7 +51,7 @@ pub fn handle_response_from_worker(
             }));
             if response_struct.file.is_some() {
                 file.set(Some(response_struct.file.clone().unwrap()));
-                show_tab.set(DisplayedCodeTab::Source);
+                show_code_tab.set(DisplayedCodeTab::Source);
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
                 crate::set_localstorage_file_contents(&response_struct.file.unwrap());
                 is_saved.set(true);
@@ -98,7 +96,7 @@ pub fn handle_response_from_worker(
 
             show_io.set(false);
             file.set(Some(response_struct.file.clone()));
-            show_tab.set(DisplayedCodeTab::Source);
+            show_code_tab.set(DisplayedCodeTab::Source);
             state.set(State::Error(state_struct));
         }
 
@@ -135,7 +133,7 @@ pub fn handle_response_from_worker(
                         ..curr.clone()
                     }));
 
-                    worker.borrow().as_ref().unwrap().send(input);
+                    worker.send(input);
                 }
 
                 state.set(State::Compiled(RunningState {
@@ -168,7 +166,7 @@ pub fn handle_response_from_worker(
         WorkerResponse::RuntimeError(RuntimeErrorResponse { mips_state, error }) => {
             if let State::Compiled(ref curr) = *state {
                 show_io.set(false);
-                show_tab.set(DisplayedCodeTab::Source);
+                show_code_tab.set(DisplayedCodeTab::Source);
                 let decompiled = &curr.decompiled;
                 state.set(State::Error(ErrorType::RuntimeError(RuntimeErrorState {
                     mips_state,
