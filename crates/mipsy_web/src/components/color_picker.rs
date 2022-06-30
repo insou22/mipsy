@@ -15,7 +15,7 @@ pub fn colorpicker(
 ) -> Html {
     html! {
         <label for="default-toggle" class="">
-            <input type="color" value={color.to_owned()} {oninput} id="default-toggle" class="sr-only peer" />
+            <input type="color" value={color.to_owned()} {oninput} id="default-toggle" class="peer" />
         </label>
     }
 }

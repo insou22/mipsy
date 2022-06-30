@@ -37,4 +37,5 @@ extern "C" {
 
     pub fn update_primary_color(color: &str);
     pub fn update_secondary_color(color: &str);
+    pub fn update_tertiary_color(color: &str);
 }

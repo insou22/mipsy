@@ -12,7 +12,7 @@ use crate::{
     },
     worker::{FileInformation, Worker, WorkerRequest},
 };
-use bounce::{use_atom, BounceRoot};
+use bounce::use_atom;
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
@@ -70,15 +70,20 @@ pub fn render_app() -> Html {
         let filename = filename.clone();
         use_bridge(move |response: <Worker as yew_agent::Agent>::Output| {
             update::handle_response_from_worker(
-                state.clone(), show_code_tab.clone(), show_io.clone(), file.clone(),
-                filename.clone(), response, worker.clone(),
-                input_ref.clone(), is_saved.clone(),
+                state.clone(),
+                show_code_tab.clone(),
+                show_io.clone(),
+                file.clone(),
+                filename.clone(),
+                response,
+                worker.clone(),
+                input_ref.clone(),
+                is_saved.clone(),
             )
         })
     };
 
     let config = use_atom::<MipsyWebConfig>();
-
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -144,7 +149,27 @@ pub fn render_app() -> Html {
             (filename.clone(), file2, show_code_tab.clone()), // run use_effect when these dependencies change
         );
     }
-
+    // now that we have an editor, restore some config
+    {
+        let config = config.clone();
+        use_effect_with_deps(
+            move |_| {
+                let localstorage_config = crate::get_localstorage("mipsy_web_config");
+                if let Some(localstorage_config) = localstorage_config {
+                    if let Ok(parsed_localstorage) = serde_json::from_str::<MipsyWebConfig>(&localstorage_config) {
+                        if parsed_localstorage != MipsyWebConfig::default() {
+                            MipsyWebConfig::apply(&parsed_localstorage);
+                            config.set(parsed_localstorage);
+                        }
+                    }
+                } else {
+                    crate::set_localstorage("mipsy_web_config", &serde_json::to_string(&*config).unwrap());
+                }
+                move || {}
+            },
+            (),
+        )
+    };
     // REFACTOR - move to fn/file
     // when the state or show_tab changes
     // update the highlights
@@ -302,11 +327,10 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_file_contents(&updated_content);
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
-                worker
-                    .send(WorkerRequest::CompileCode(FileInformation {
-                        filename: filename.to_string(),
-                        file: clone,
-                    }));
+                worker.send(WorkerRequest::CompileCode(FileInformation {
+                    filename: filename.to_string(),
+                    file: clone,
+                }));
             };
         })
     };
@@ -389,7 +413,7 @@ pub fn render_app() -> Html {
 
     let rendered_running = render_running_output(show_io.clone(), state.clone());
     html! {
-        <BounceRoot>
+        <>
             <div
                 onclick={{
                     let display_modal = display_modal.clone();
@@ -505,7 +529,7 @@ pub fn render_app() -> Html {
                     <Banner show_analytics_banner={show_analytics_banner}/>
                 }
             </PageBackground>
-        </BounceRoot>
+        </>
     }
 }
 
