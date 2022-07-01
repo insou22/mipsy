@@ -156,20 +156,38 @@ pub fn render_app() -> Html {
             move |_| {
                 let localstorage_config = crate::get_localstorage("mipsy_web_config");
                 if let Some(localstorage_config) = localstorage_config {
-                    if let Ok(parsed_localstorage) = serde_json::from_str::<MipsyWebConfig>(&localstorage_config) {
+                    if let Ok(parsed_localstorage) =
+                        serde_json::from_str::<MipsyWebConfig>(&localstorage_config)
+                    {
                         if parsed_localstorage != MipsyWebConfig::default() {
                             MipsyWebConfig::apply(&parsed_localstorage);
                             config.set(parsed_localstorage);
                         }
                     }
                 } else {
-                    crate::set_localstorage("mipsy_web_config", &serde_json::to_string(&*config).unwrap());
+                    crate::set_localstorage(
+                        "mipsy_web_config",
+                        &serde_json::to_string(&*config).unwrap(),
+                    );
                 }
                 move || {}
             },
             (),
         )
     };
+    if web_sys::window().unwrap().get("editor").is_some() {
+        MipsyWebConfig::apply(&*config);
+    }
+
+    {
+        let show_io = show_io.clone();
+        let config = config.clone();
+        use_effect_with_deps(move |_| {
+            MipsyWebConfig::apply(&*config);
+            move || {}
+        }, show_io)
+    }
+
     // REFACTOR - move to fn/file
     // when the state or show_tab changes
     // update the highlights
