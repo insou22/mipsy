@@ -92,7 +92,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                                 {
                                                     match config.register_base {
                                                         RegisterBase::Hexadecimal => {
-                                                            format!("0x{:x}", val)
+                                                            format!("0x{:08x}", val)
                                                         },
                                                         RegisterBase::Decimal => {
                                                             format!("{}", val)
