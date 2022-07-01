@@ -65,7 +65,6 @@ pub fn render_app() -> Html {
         let show_io = show_io.clone();
         let file = file.clone();
         let input_ref = input_ref.clone();
-        let worker = worker.clone();
         let is_saved = is_saved.clone();
         let filename = filename.clone();
         use_bridge(move |response: <Worker as yew_agent::Agent>::Output| {
@@ -183,10 +182,12 @@ pub fn render_app() -> Html {
         let config = config.clone();
         let display_modal = display_modal.clone();
         let settings_modal = settings_modal.clone();
+        let show_code_tab = show_code_tab.clone();
+        let show_register_tab = show_register_tab.clone();
         use_effect_with_deps(move |_| {
             MipsyWebConfig::apply(&*config);
             move || {}
-        }, (show_io, settings_modal, display_modal));
+        }, (show_io, settings_modal, display_modal, show_code_tab, show_register_tab));
     }
 
     // REFACTOR - move to fn/file
@@ -412,7 +413,7 @@ pub fn render_app() -> Html {
 
             DisplayedCodeTab::Decompiled => (tab_left_unselect, tab_select, tab_unselect),
 
-            DisplayedCodeTab::Data => (tab_left_unselect, tab_select, tab_unselect),
+            DisplayedCodeTab::Data => (tab_left_unselect, tab_unselect, tab_select),
         }
     };
 
