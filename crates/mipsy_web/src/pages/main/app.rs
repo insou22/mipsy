@@ -458,7 +458,7 @@ pub fn render_app() -> Html {
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 137px)">
                     <div id="file_data" class="pl-2">
-                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
+                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-current">
                             <button class={source_tab_classes} onclick={{
                                 let show_tab = show_code_tab.clone();
                                 Callback::from(move |_| {
@@ -484,14 +484,14 @@ pub fn render_app() -> Html {
                                 {"data"}
                             </button>
                         </div>
-                        <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                        <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-current">
                                 { text_html_content }
                         </div>
                     </div>
 
 
                     <div id="information" class="split pr-2 ">
-                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
+                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-current">
                             <button class={used_registers_tab_classes} onclick={{
                                 let show_register_tab = show_register_tab.clone();
                                 Callback::from(move |_| {
@@ -510,7 +510,7 @@ pub fn render_app() -> Html {
                             </button>
                         </div>
 
-                        <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                        <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
                             <Registers state={state.clone()} tab={show_register_tab} />
                         </div>
 
@@ -727,7 +727,7 @@ pub fn process_syscall_response(
 
 fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
     let default_tab_classes =
-        "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+        "w-1/2 leading-none float-left border-t-2 border-r-2 border-current cursor-pointer px-1";
     let left_tab_classes = classes!("border-l-2", default_tab_classes);
     let selected_classes = "bg-th-primary";
     let unselected_classes = "bg-th-tabunselected hover:bg-th-primary";

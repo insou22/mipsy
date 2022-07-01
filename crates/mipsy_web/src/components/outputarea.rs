@@ -33,7 +33,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
 
     let (io_tab_classes, mipsy_output_tab_classes) = {
         let default_tab_classes =
-            "w-1/2 float-left border-t-2 border-r-2 border-black cursor-pointer px-1 py-2";
+            "w-1/2 float-left border-t-2 border-r-2 border-current cursor-pointer px-1 py-2";
         let left_tab_classes = format!("{} border-l-2", default_tab_classes);
         let selected_classes = "bg-th-primary";
         let unselected_classes = "bg-th-tabunselected hover:bg-th-primary";
@@ -86,7 +86,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
 
     html! {
         <div id="output" class="min-w-full">
-            <div style="height: 10%;" class="flex overflow-hidden border-1 border-black">
+            <div style="height: 10%;" class="flex overflow-hidden border-1 border-current">
                 <button class={io_tab_classes} onclick={switch_to_io.clone()}>{"I/O"}</button>
                 <button
                     class={mipsy_output_tab_classes}
@@ -97,7 +97,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
             </div>
             <div
                 style={if *props.show_io {"height: 80%;"} else {"height: 90%;"}}
-                class="py-2 w-full flex overflow-y-auto flex-wrap-reverse bg-th-secondary px-2 border-2 border-gray-600"
+                class="py-2 w-full flex overflow-y-auto flex-wrap-reverse bg-th-secondary px-2 border-2 border-current"
             >
                 <div class="w-full overflow-y-auto">
                 <h1>
@@ -110,7 +110,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
                 </pre>
                 </div>
             </div>
-            <div style="height: 10%;" class={if *props.show_io {"border-l-2 border-r-2 border-b-2 border-black"} else {"hidden"}}>
+            <div style="height: 10%;" class={if *props.show_io {"border-l-2 border-r-2 border-b-2 border-current"} else {"hidden"}}>
                 <input
                     ref={props.input_ref.clone()}
                     id="user_input"
