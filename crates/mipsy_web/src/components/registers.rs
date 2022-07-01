@@ -57,7 +57,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                         ""
                                     }
                                 }>
-                                    <td class="border-gray-500 border-b-2 pl-4 text-center"> {
+                                    <td class="border-current border-b-2 pl-4 text-center"> {
                                             if index == 29 {
                                                 // make stack pointer green
                                                 html! {
@@ -86,7 +86,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                             }
                                         }
                                     </td>
-                                    <td class="pl-4 border-b-2 border-gray-500 text-center">
+                                    <td class="pl-4 border-b-2 border-current text-center">
                                         <pre>
                                             if let Safe::Valid(val) = item {
                                                 {
