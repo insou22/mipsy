@@ -140,7 +140,6 @@ pub fn render_app() -> Html {
                             }
                         }
                         None => {
-                            log!("Could not find element with id 'monaco_editor'");
                         }
                     }
                 };
@@ -182,10 +181,12 @@ pub fn render_app() -> Html {
     {
         let show_io = show_io.clone();
         let config = config.clone();
+        let display_modal = display_modal.clone();
+        let settings_modal = settings_modal.clone();
         use_effect_with_deps(move |_| {
             MipsyWebConfig::apply(&*config);
             move || {}
-        }, show_io)
+        }, (show_io, settings_modal, display_modal));
     }
 
     // REFACTOR - move to fn/file
