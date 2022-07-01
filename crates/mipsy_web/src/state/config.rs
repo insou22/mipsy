@@ -5,12 +5,15 @@ use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
 
+// i should probably write a macro for this
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 pub struct PrimaryColor(pub String);
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 pub struct SecondaryColor(pub String);
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 pub struct TertiaryColor(pub String);
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+pub struct FontColor(pub String);
 
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 #[bounce(observed)]
@@ -20,6 +23,7 @@ pub struct MipsyWebConfig {
     pub primary_color: PrimaryColor,
     pub secondary_color: SecondaryColor,
     pub tertiary_color: TertiaryColor,
+    pub font_color: FontColor,
     pub tab_size: u32,
     pub font_size: u32,
     pub monaco_theme: String,
@@ -65,6 +69,19 @@ impl From<std::string::String> for TertiaryColor {
         TertiaryColor(value)
     }
 }
+
+impl Default for FontColor {
+    fn default() -> Self {
+        FontColor("#000000".to_string())
+    }
+}
+
+impl From<std::string::String> for FontColor {
+    fn from(value: std::string::String) -> Self {
+        FontColor(value)
+    }
+}
+
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum RegisterBase {
     Hexadecimal,
@@ -101,6 +118,7 @@ impl Default for MipsyWebConfig {
             primary_color: PrimaryColor::default(),
             secondary_color: SecondaryColor::default(),
             tertiary_color: TertiaryColor::default(),
+            font_color: FontColor::default(),
             tab_size: 8,
             font_size: 14,
             monaco_theme: "vs".to_string(),
@@ -123,6 +141,7 @@ impl MipsyWebConfig {
             theme: String,
         }
 
+        crate::update_font_color(&self.font_color.0);
         crate::update_primary_color(&self.primary_color.0);
         crate::update_secondary_color(&self.secondary_color.0);
         crate::update_tertiary_color(&self.tertiary_color.0);

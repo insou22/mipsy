@@ -1,6 +1,6 @@
 use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
 use crate::state::config::{
-    MipsyWebConfig, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor,
+    MipsyWebConfig, FontColor, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor,
 };
 use bounce::use_atom;
 use serde::{Deserialize, Serialize};
@@ -205,7 +205,44 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         />
                         </div>
 
+                        <Heading title="Font color" subtitle="Font, Icon and Border colors" />
+                        <div class="flex flex-row items-center">
+                        <ColorPicker  
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let color = input.value();
+                                    crate::update_font_color(&color);
+                                    config.set(MipsyWebConfig {
+                                        font_color: color.into(),
+                                        ..(*config).clone()
+                                    });
+                                })
 
+                            }
+                            color={(&*config.font_color.0).to_string()}
+                        />
+                        <button
+                            type="button"
+                            class="text-black m-2 p-2 border hover:bg-th-secondary border-current rounded"
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        font_color: FontColor::default(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_font_color(&*FontColor::default().0);
+                                })
+                            }
+                        >
+
+                            {"reset"}
+                        </button>
+                        </div>
+
+                        // === Primary Color ===
                         <Heading
                             title="Primary color"
                             subtitle="Adjust the primary color"
@@ -230,7 +267,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black round"
+                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black round"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -273,7 +310,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black rounde"
+                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black rounde"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -315,7 +352,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border bg-th-primary hover:bg-th-secondary border-black rounded"
+                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black rounded"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -372,7 +409,7 @@ pub fn analytics_info(AnalyticsInfoProps { is_opt_out }: &AnalyticsInfoProps) ->
         </p>
 
         <button class="
-            bg-th-primary border-2 border-black
+            border-2 border-current
             hover:bg-red-700 
             font-bold py-2 px-4 rounded
             m-2"
