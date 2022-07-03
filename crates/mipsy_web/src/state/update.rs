@@ -18,6 +18,7 @@ use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::UseBridgeHandle;
+use std::{rc::Rc, cell::RefCell};
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,
@@ -26,7 +27,7 @@ pub fn handle_response_from_worker(
     file: UseStateHandle<Option<String>>,
     filename: UseStateHandle<Option<String>>,
     response: WorkerResponse,
-    worker: UseBridgeHandle<Worker>,
+    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
     is_saved: UseStateHandle<bool>,
 ) {
@@ -133,7 +134,7 @@ pub fn handle_response_from_worker(
                         ..curr.clone()
                     }));
 
-                    worker.send(input);
+                    worker.borrow().as_ref().unwrap().send(input);
                 }
 
                 state.set(State::Compiled(RunningState {
