@@ -23,6 +23,7 @@ use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
+use std::{rc::Rc, cell::RefCell};
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -36,9 +37,9 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
 #[function_component(App)]
 pub fn render_app() -> Html {
+    let worker = Rc::new(RefCell::new(None));
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
-
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
@@ -58,29 +59,33 @@ pub fn render_app() -> Html {
             .map(|item| !(item.as_str() == "true"))
             .unwrap_or(false)
     });
-    let worker = use_bridge(|_| {});
-    let worker: UseBridgeHandle<Worker> = {
-        let state = state.clone();
-        let show_code_tab = show_code_tab.clone();
-        let show_io = show_io.clone();
-        let file = file.clone();
-        let input_ref = input_ref.clone();
-        let is_saved = is_saved.clone();
-        let filename = filename.clone();
-        use_bridge(move |response: <Worker as yew_agent::Agent>::Output| {
-            update::handle_response_from_worker(
-                state.clone(),
-                show_code_tab.clone(),
-                show_io.clone(),
-                file.clone(),
-                filename.clone(),
-                response,
-                worker.clone(),
-                input_ref.clone(),
-                is_saved.clone(),
-            )
-        })
-    };
+    
+    if worker.borrow().is_none() {
+        *worker.borrow_mut() = {
+            let state = state.clone();
+            let show_tab = show_code_tab.clone();
+            let show_io = show_io.clone();
+            let file = file.clone();
+            let input_ref = input_ref.clone();
+            let worker = worker.clone();
+            let is_saved = is_saved.clone();
+            let filename = filename.clone();
+            Some(use_bridge(move |response| {
+                let state = state.clone();
+                let show_tab = show_tab.clone();
+                let show_io = show_io.clone();
+                let file = file.clone();
+                let input_ref = input_ref.clone();
+                let worker = worker.clone();
+                let is_saved = is_saved.clone();
+                let filename = filename.clone();
+                update::handle_response_from_worker(
+                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
+                )
+            }))
+        };
+    }
+
 
     let config = use_atom::<MipsyWebConfig>();
 
@@ -318,7 +323,7 @@ pub fn render_app() -> Html {
                             });
                             log!("sending to worker");
 
-                            worker.send(input);
+                            worker.borrow().as_ref().unwrap().send(input);
                         }
 
                         Err(_e) => {}
@@ -347,7 +352,7 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_file_contents(&updated_content);
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
-                worker.send(WorkerRequest::CompileCode(FileInformation {
+                worker.borrow().as_ref().unwrap().send(WorkerRequest::CompileCode(FileInformation {
                     filename: filename.to_string(),
                     file: clone,
                 }));
@@ -361,11 +366,11 @@ pub fn render_app() -> Html {
         let input_ref = input_ref.clone();
         Callback::from(move |event: KeyboardEvent| {
             if event.key() == "Enter" {
-                update::submit_input(&worker, &input_ref, &state);
+                update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
             };
             if event.key() == "d" && event.ctrl_key() {
                 event.prevent_default();
-                update::submit_eof(&worker, &input_ref, &state);
+                update::submit_eof(worker.borrow().as_ref().unwrap(), &input_ref, &state);
             };
         })
     };
@@ -470,7 +475,7 @@ pub fn render_app() -> Html {
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
-                    worker={worker.clone()}
+                    worker={worker.borrow().as_ref().unwrap().clone()}
                     {filename}
                     {file}
                     {is_saved}
@@ -571,7 +576,7 @@ fn render_running(
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
     show_tab: UseStateHandle<DisplayedCodeTab>,
-    worker: UseBridgeHandle<Worker>,
+    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -598,7 +603,7 @@ fn render_running(
                                         current_instr={curr.mips_state.current_instr}
                                         decompiled={curr.decompiled.clone()}
                                         state={state.clone()}
-                                        worker={worker.clone()}
+                                        worker={worker.borrow().as_ref().unwrap().clone()}
                                     />
                                 }
                             },
@@ -617,7 +622,7 @@ fn render_running(
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
                                                         state={state.clone()}
-                                                        worker={worker.clone()}
+                                                        worker={worker.borrow().as_ref().unwrap().clone()}
                                                     />
                                                 </tbody>
                                             </table>
