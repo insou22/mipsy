@@ -1146,26 +1146,12 @@ impl Error {
 
                 let rs = (inst >> 21) & 0x1F;
                 let rs_value = runtime.timeline().state().read_register(rs).unwrap();
-                eprintln!("values:");
-                eprintln!(
-                    " - {}{} = {}",
-                    "$".yellow(),
-                    Register::from_u32(rs).unwrap().to_lower_str().bold(),
-                    rs_value,
-                );
 
                 let value = if let Ok(imm) = decompiled.arguments[2].parse::<i16>() {
                     imm as i32
                 } else {
                     let rt = (inst >> 16) & 0x1F;
                     let value = runtime.timeline().state().read_register(rt).unwrap();
-
-                    eprintln!(
-                        " - {}{} = {}",
-                        "$".yellow(),
-                        Register::from_u32(rt).unwrap().to_lower_str().bold(),
-                        value
-                    );
 
                     value
                 };
