@@ -4,15 +4,15 @@
     <meta charset="utf-8" />
     <title>mipsy</title>
    	<link rel="stylesheet" href="assets/tailwind.css"/>
-    <link data-trunk rel="copy-dir" href="assets/package"/>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
     <!-- split.js for the drag and drop areas -->
-    <script src="https://unpkg.com/split.js/dist/split.min.js"></script>
+	<link data-trunk rel="inline" type="js" href="assets/split.js"/>
+
+	<!-- monaco editor  -->
+    <link data-trunk rel="copy-dir" href="assets/package"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    		
     <script>
         function split_setup() {
-          console.log("setting up splits...");
           Split(["#file_data", "#information"], {
             sizes: [70, 30],
           });          
@@ -143,7 +143,6 @@
       }
       
       function update_primary_color(color) {
-        console.log("updating primary color to: " + color);
         let all_items = document.getElementsByClassName("bg-th-primary");
         for (let i = 0; i < all_items.length; i++) {
           all_items[i].style.backgroundColor = color;
