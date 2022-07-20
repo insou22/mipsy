@@ -102,8 +102,16 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String], remov
                 return Ok(());
             }
 
-            if remove {
-                if !state.breakpoints.values().any(|br| br.addr == addr) {
+
+
+            let id;
+
+            let action = if remove {
+                if let Some(br) = state.breakpoints.iter().find(|&i| i.1.addr == addr) {
+                    id = *br.0;
+                    state.breakpoints.remove(&id);
+                    "removed"
+                } else {
                     prompt::error_nl(format!(
                         "breakpoint at {} doesn't exist",
                         if is_label {
@@ -112,38 +120,24 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String], remov
                             args[0].to_string()
                         }
                     ));
-
                     return Ok(());
                 }
-            } else if state.breakpoints.values().any(|br| br.addr == addr) {
-                prompt::error_nl(format!(
-                    "breakpoint at {} already exists", 
-                    if is_label {
-                        args[0].yellow().bold().to_string()
-                    } else {
-                        args[0].to_string()
-                    }
-                ));
-
-                return Ok(());
-            }
-
-            let mut id = 0;
-
-            let action = if remove {
-                state.breakpoints.retain(|_id, bp| {
-                    if bp.addr == addr {
-                        id = *_id;
-                        false
-                    } else {
-                        true
-                    }
-                });
-                "removed"
             } else {
-                id = state.generate_breakpoint_id();
-                state.breakpoints.insert(id, Breakpoint::new(addr));
-                "inserted"
+                if !state.breakpoints.values().any(|br| br.addr == addr) {
+                    id = state.generate_breakpoint_id();
+                    state.breakpoints.insert(id, Breakpoint::new(addr));
+                    "inserted"
+                } else {
+                    prompt::error_nl(format!(
+                        "breakpoint at {} already exists",
+                        if is_label {
+                            args[0].yellow().bold().to_string()
+                        } else {
+                            args[0].to_string()
+                        }
+                    ));
+                    return Ok(());
+                }
             };
 
             // TODO(joshh): "inserted" kinda cringe
