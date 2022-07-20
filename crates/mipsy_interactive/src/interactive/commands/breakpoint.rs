@@ -36,16 +36,22 @@ pub(crate) fn breakpoint_command() -> Command {
              ":".bold(),
              "break".bold(),
         ),
-        |state, _label, args| {
+        |state, label, args| {
+            // TODO(joshh): match on label for breakpoints aliases?
             return match &*args[0] {
-                "list" => breakpoint_list(state, _label, &args[1..]),
-                _      => breakpoint_insert(state, _label, &args),
+                "list" =>
+                    breakpoint_list  (state, label, &args[1..]),
+                // reserving e/d for enable/disable
+                "del" | "delete" | "remove" =>
+                    breakpoint_insert(state, label, &args[1..], true),
+                _ =>
+                    breakpoint_insert(state, label, &args, false),
             }
         }
     )
 }
 
-fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String]) -> Result<(), CommandError> {
+fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String], remove: bool) -> Result<(), CommandError> {
     // todo(joshh): try to allow breakpoints to be inserted at labels sharing names with reserved
     // keywords
     
@@ -96,7 +102,20 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String]) -> Re
                 return Ok(());
             }
 
-            if state.breakpoints.contains_key(&addr) {
+            if remove {
+                if !state.breakpoints.values().any(|br| br.addr == addr) {
+                    prompt::error_nl(format!(
+                        "breakpoint at {} doesn't exist",
+                        if is_label {
+                            args[0].yellow().bold().to_string()
+                        } else {
+                            args[0].to_string()
+                        }
+                    ));
+
+                    return Ok(());
+                }
+            } else if state.breakpoints.values().any(|br| br.addr == addr) {
                 prompt::error_nl(format!(
                     "breakpoint at {} already exists", 
                     if is_label {
@@ -109,14 +128,29 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String]) -> Re
                 return Ok(());
             }
 
-            let id = state.generate_breakpoint_id();
-            state.breakpoints.insert(id, Breakpoint::new(addr));
+            let mut id = 0;
+
+            let action = if remove {
+                state.breakpoints.retain(|_id, bp| {
+                    if bp.addr == addr {
+                        id = *_id;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                "removed"
+            } else {
+                id = state.generate_breakpoint_id();
+                state.breakpoints.insert(id, Breakpoint::new(addr));
+                "inserted"
+            };
 
             // TODO(joshh): "inserted" kinda cringe
             if is_label {
-                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, "inserted", args[0].yellow().bold(), addr));
+                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, action, args[0].yellow().bold(), addr));
             } else {
-                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}", id, "inserted", addr));
+                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id, action, addr));
             }
         }
         _ => return Err(get_error()),
@@ -150,7 +184,7 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
                         ))
                 )
             })
-            .collect::<Vec<((u32, usize), u32, Option<(String, usize)>)>>();
+            .collect::<Vec<_>>();
 
     breakpoints.sort_by_key(|(_, addr, _)| *addr);
 
