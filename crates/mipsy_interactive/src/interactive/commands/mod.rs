@@ -37,11 +37,15 @@ pub(crate) use step2syscall::step2syscall_command;
 
 use super::{error::CommandResult, State};
 
+// TODO(joshh): remove once if-let chaining is in
+#[derive(Clone)]
 pub(crate) enum Arguments {
     Exactly { required: Vec<String>, optional: Vec<String> },
     VarArgs { required: Vec<String>, format: String, },
 }
 
+// TODO(joshh): remove once if-let chaining is in
+#[derive(Clone)]
 pub(crate) struct Command {
     pub(crate) name: String,
     pub(crate) aliases: Vec<String>,

@@ -5,6 +5,12 @@ use super::*;
 use colored::*;
 use mipsy_parser::*;
 
+enum BpState {
+    Enable,
+    Disable,
+    Toggle,
+}
+
 pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
@@ -39,11 +45,16 @@ pub(crate) fn breakpoint_command() -> Command {
         |state, label, args| {
             // TODO(joshh): match on label for breakpoints aliases?
             return match &*args[0] {
-                "list" =>
+                "l" | "list" =>
                     breakpoint_list  (state, label, &args[1..]),
-                // reserving e/d for enable/disable
                 "del" | "delete" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true),
+                "e" | "enable" =>
+                    breakpoint_toggle(state, label, &args[1..], BpState::Enable),
+                "d" | "disable" =>
+                    breakpoint_toggle(state, label, &args[1..], BpState::Disable),
+                "toggle" =>
+                    breakpoint_toggle(state, label, &args[1..], BpState::Toggle),
                 _ =>
                     breakpoint_insert(state, label, &args, false),
             }
@@ -207,5 +218,84 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
     }
     println!();
 
+    Ok(())
+}
+
+fn breakpoint_toggle(state: &mut State, _label: &str, mut args: &[String], enabled: BpState) -> Result<(), CommandError> {
+    // TODO(joshh): reduce repetition
+    let get_error = || CommandError::WithTip { 
+        error: Box::new(CommandError::BadArgument { arg: "<addr>".magenta().to_string(), instead: args[0].to_string() }),
+        tip: format!("try `{}`", "help breakpoint".bold()),
+    };
+
+    let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
+            .map_err(|_| get_error())?;
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+    match arg {
+        MpArgument::Number(MpNumber::Immediate(ref imm)) => {
+            let (addr, is_label) = match imm {
+                MpImmediate::I16(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::U16(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::I32(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::U32(imm) => {
+                    (*imm, false)
+                }
+                MpImmediate::LabelReference(label) => {
+                    (
+                        binary.get_label(label)
+                            .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
+                        true
+                    )
+                }
+            };
+
+            if addr % 4 != 0 {
+                prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
+                return Ok(());
+            }
+
+            let id;
+            if let Some(x) = state.breakpoints.iter().find(|&i| i.1.addr == addr) {
+                id = *x.0;
+                let mut br = state.breakpoints.get_mut(&id).unwrap();
+                br.enabled = match enabled {
+                    BpState::Enable  => true,
+                    BpState::Disable => false,
+                    BpState::Toggle  => !br.enabled,
+                }
+            } else {
+                prompt::error_nl(format!(
+                    "breakpoint at {} doesn't exist",
+                    if is_label {
+                        args[0].yellow().bold().to_string()
+                    } else {
+                        args[0].to_string()
+                    }
+                ));
+                return Ok(());
+            }
+
+            // already ruled out possibility of entry not existing
+            let action = match state.breakpoints.get(&id).unwrap().enabled {
+                true  => "enabled",
+                false => "disabled",
+            };
+
+            if is_label {
+                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, action, args[0].yellow().bold(), addr));
+            } else {
+                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id, action, addr));
+            }
+        }
+        _ => return Err(get_error()),
+    }
     Ok(())
 }

@@ -38,6 +38,8 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
+// TODO(joshh): remove once if-let chaining is in
+#[derive(Clone, Default)]
 pub(crate) struct Breakpoint {
     addr: u32,
     enabled: bool,
@@ -463,7 +465,13 @@ impl State {
                 let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
                 let binary = self.binary.as_ref().unwrap();
 
-                if breakpoint || self.breakpoints.values().find(|bp| bp.addr == pc).is_some() {
+                // TODO(joshh): make this less ugly when
+                // https://github.com/rust-lang/rust/pull/94927 is released
+                // if let Some(bp) = self.breakpoints.values().find(|bp| bp.addr == pc) || breakpoint {
+                //     if !bp.enabled { trapped }
+
+                let bp = self.breakpoints.values().find(|bp| bp.addr == pc).cloned().unwrap_or_default();
+                if breakpoint || bp.enabled {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
                             .map(|(name, _)| name.yellow().bold().to_string());
