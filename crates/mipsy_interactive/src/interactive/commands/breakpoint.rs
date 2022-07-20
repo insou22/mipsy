@@ -102,10 +102,7 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String], remov
                 return Ok(());
             }
 
-
-
             let id;
-
             let action = if remove {
                 if let Some(br) = state.breakpoints.iter().find(|&i| i.1.addr == addr) {
                     id = *br.0;
@@ -140,7 +137,6 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String], remov
                 }
             };
 
-            // TODO(joshh): "inserted" kinda cringe
             if is_label {
                 prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, action, args[0].yellow().bold(), addr));
             } else {
@@ -205,7 +201,7 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
                 println!("{}{}: {}{} ({}{:08x})", " ".repeat(max_id_len - id.1), id.0, name, " ".repeat(max_label_len - len), "0x".yellow(), addr);
             }
             None => {
-                println!("{}{}: {}  {}{:08x}", " ".repeat(max_id_len - id.1), id.0, " ".repeat(max_label_len), "0x".yellow(), addr);
+                println!("{}{}: {}  {}{:08x}",    " ".repeat(max_id_len - id.1), id.0, " ".repeat(max_label_len), "0x".yellow(), addr);
             }
         }
     }
