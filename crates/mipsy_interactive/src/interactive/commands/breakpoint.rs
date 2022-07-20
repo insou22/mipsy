@@ -1,4 +1,5 @@
 use crate::interactive::{Breakpoint, error::CommandError, prompt};
+use std::iter::successors;
 
 use super::*;
 use colored::*;
@@ -108,18 +109,14 @@ fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String]) -> Re
                 return Ok(());
             }
 
-            // TODO(joshh): kinda cringe
-            let action = {
-                let id = state.generate_breakpoint_id();
-                state.breakpoints.insert(id, Breakpoint::new(addr));
+            let id = state.generate_breakpoint_id();
+            state.breakpoints.insert(id, Breakpoint::new(addr));
 
-                "inserted"
-            };
-
+            // TODO(joshh): "inserted" kinda cringe
             if is_label {
-                prompt::success_nl(format!("breakpoint {} at {} (0x{:08x})", action, args[0].yellow().bold(), addr));
+                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, "inserted", args[0].yellow().bold(), addr));
             } else {
-                prompt::success_nl(format!("breakpoint {} at 0x{:08x}", action, addr));
+                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}", id, "inserted", addr));
             }
         }
         _ => return Err(get_error()),
@@ -135,9 +132,15 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
         return Ok(());
     }
 
-    let mut breakpoints = state.breakpoints.values()
-            .map(|bp| {
+    let mut breakpoints = state.breakpoints.iter()
+            .map(|x| {
+                let (&id, bp) = x;
+
                 (
+                    (
+                        id,
+                        successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
+                    ),
                     bp.addr,
                     binary.labels.iter()
                         .find(|(_, &val)| val == bp.addr)
@@ -147,12 +150,12 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
                         ))
                 )
             })
-            .collect::<Vec<(u32, Option<(String, usize)>)>>();
+            .collect::<Vec<((u32, usize), u32, Option<(String, usize)>)>>();
 
-    breakpoints.sort_by_key(|(addr, _)| *addr);
+    breakpoints.sort_by_key(|(_, addr, _)| *addr);
 
-    let max_len = breakpoints.iter()
-            .map(|(_, lbl)| {
+    let max_label_len = breakpoints.iter()
+            .map(|(_, _, lbl)| {
                 lbl.as_ref()
                     .map(|(_, len)| *len)
                     .unwrap_or(0)
@@ -160,14 +163,21 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
             .max()
             .unwrap_or(0);
 
+    let max_id_len = breakpoints.iter()
+            .map(|&(id, _, _)| {
+                id.1
+            })
+            .max()
+            .unwrap_or(0);
+
     println!("\n{}", "[breakpoints]".green().bold());
-    for (addr, text) in breakpoints {
+    for (id, addr, text) in breakpoints {
         match text {
             Some((name, len)) => {
-                println!("{}{} ({}{:08x})", name, " ".repeat(max_len - len), "0x".yellow(), addr);
+                println!("{}{}: {}{} ({}{:08x})", " ".repeat(max_id_len - id.1), id.0, name, " ".repeat(max_label_len - len), "0x".yellow(), addr);
             }
             None => {
-                println!("{}  {}{:08x}", " ".repeat(max_len), "0x".yellow(), addr);
+                println!("{}{}: {}  {}{:08x}", " ".repeat(max_id_len - id.1), id.0, " ".repeat(max_label_len), "0x".yellow(), addr);
             }
         }
     }
