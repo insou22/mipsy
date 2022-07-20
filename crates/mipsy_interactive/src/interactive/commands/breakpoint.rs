@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt};
+use crate::interactive::{Breakpoint, error::CommandError, prompt};
 
 use super::*;
 use colored::*;
@@ -8,7 +8,7 @@ pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
         vec!["br", "brk", "break"],
-        vec!["i|d", "addr"],
+        vec!["addr"],
         vec![],
         &format!(
             "{}nserts or {}eletes a breakpoint at an {}ess",
@@ -36,103 +36,142 @@ pub(crate) fn breakpoint_command() -> Command {
              "break".bold(),
         ),
         |state, _label, args| {
-            let remove = match &*args[0] {
-                "i" | "in" | "ins" | "insert" => false,
-                "d" | "del" | "delete" | "remove" => true,
-                _ => return Err(
-                    CommandError::WithTip {
-                        error: Box::new(CommandError::BadArgument {
-                            arg: "<i|d>".magenta().to_string(),
-                            instead: args[0].to_string()
-                        }),
-                        tip: format!("try `{}`", "help breakpoint".bold())
-                }),
-            };
-
-            let get_error = || CommandError::WithTip { 
-                error: Box::new(CommandError::BadArgument { arg: "<addr>".magenta().to_string(), instead: args[0].to_string() }),
-                tip: format!("try `{}`", "help breakpoint".bold()),
-            };
-
-            let arg = mipsy_parser::parse_argument(&args[1], state.config.tab_size)
-                    .map_err(|_| get_error())?;
-
-            let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
-
-            match arg {
-                MpArgument::Number(MpNumber::Immediate(ref imm)) => {
-                    let (addr, is_label) = match imm {
-                        MpImmediate::I16(imm) => {
-                            (*imm as u32, false)
-                        }
-                        MpImmediate::U16(imm) => {
-                            (*imm as u32, false)
-                        }
-                        MpImmediate::I32(imm) => {
-                            (*imm as u32, false)
-                        }
-                        MpImmediate::U32(imm) => {
-                            (*imm, false)
-                        }
-                        MpImmediate::LabelReference(label) => {
-                            (
-                                binary.get_label(label)
-                                    .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
-                                true
-                            )
-                        }
-                    };
-
-                    if addr % 4 != 0 {
-                        prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
-                        return Ok(());
-                    }
-
-                    if remove {
-                        if !binary.breakpoints.contains(&addr) {
-                            prompt::error_nl(format!(
-                                "breakpoint at {} doesn't exist", 
-                                if is_label {
-                                    args[1].yellow().bold().to_string()
-                                } else {
-                                    args[1].to_string()
-                                }
-                            ));
-
-                            return Ok(());
-                        }
-                    } else if binary.breakpoints.contains(&addr) {
-                        prompt::error_nl(format!(
-                            "breakpoint at {} already exists", 
-                            if is_label {
-                                args[1].yellow().bold().to_string()
-                            } else {
-                                args[1].to_string()
-                            }
-                        ));
-
-                        return Ok(());
-                    }
-
-                    let action = 
-                        if remove {
-                            binary.breakpoints.retain(|&x| addr != x);
-                            "removed"
-                        } else {
-                            binary.breakpoints.push(addr);
-                            "inserted"
-                        };
-
-                    if is_label {
-                        prompt::success_nl(format!("breakpoint {} at {} (0x{:08x})", action, args[1].yellow().bold(), addr));
-                    } else {
-                        prompt::success_nl(format!("breakpoint {} at 0x{:08x}", action, addr));
-                    }
-                }
-                _ => return Err(get_error()),
+            return match &*args[0] {
+                "list" => breakpoint_list(state, _label, &args[1..]),
+                _      => breakpoint_insert(state, _label, &args),
             }
-
-            Ok(())
         }
     )
+}
+
+fn breakpoint_insert(state: &mut State, _label: &str, mut args: &[String]) -> Result<(), CommandError> {
+    // todo(joshh): try to allow breakpoints to be inserted at labels sharing names with reserved
+    // keywords
+    
+    let temporary = if &*args[0] == "temporary" {
+        args = &args[1..];
+        true
+    } else {
+        false
+    };
+
+    let get_error = || CommandError::WithTip { 
+        // TODO(joshh): fix error msgs
+        error: Box::new(CommandError::BadArgument { arg: "<addr>".magenta().to_string(), instead: args[0].to_string() }),
+        tip: format!("try `{}`", "help breakpoint".bold()),
+    };
+
+    let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
+            .map_err(|_| get_error())?;
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+    match arg {
+        MpArgument::Number(MpNumber::Immediate(ref imm)) => {
+            let (addr, is_label) = match imm {
+                MpImmediate::I16(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::U16(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::I32(imm) => {
+                    (*imm as u32, false)
+                }
+                MpImmediate::U32(imm) => {
+                    (*imm, false)
+                }
+                MpImmediate::LabelReference(label) => {
+                    (
+                        binary.get_label(label)
+                            .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
+                        true
+                    )
+                }
+            };
+
+            if addr % 4 != 0 {
+                prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
+                return Ok(());
+            }
+
+            if state.breakpoints.contains_key(&addr) {
+                prompt::error_nl(format!(
+                    "breakpoint at {} already exists", 
+                    if is_label {
+                        args[0].yellow().bold().to_string()
+                    } else {
+                        args[0].to_string()
+                    }
+                ));
+
+                return Ok(());
+            }
+
+            // TODO(joshh): kinda cringe
+            let action = {
+                let id = state.generate_breakpoint_id();
+                state.breakpoints.insert(id, Breakpoint::new(addr));
+
+                "inserted"
+            };
+
+            if is_label {
+                prompt::success_nl(format!("breakpoint {} at {} (0x{:08x})", action, args[0].yellow().bold(), addr));
+            } else {
+                prompt::success_nl(format!("breakpoint {} at 0x{:08x}", action, addr));
+            }
+        }
+        _ => return Err(get_error()),
+    }
+    Ok(())
+}
+
+fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<(), CommandError> {
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+    if state.breakpoints.is_empty() {
+        prompt::error_nl("no breakpoints set");
+        return Ok(());
+    }
+
+    let mut breakpoints = state.breakpoints.values()
+            .map(|bp| {
+                (
+                    bp.addr,
+                    binary.labels.iter()
+                        .find(|(_, &val)| val == bp.addr)
+                        .map(|(name, _)| (
+                            format!("{}", name.yellow().bold()),
+                            name.len()
+                        ))
+                )
+            })
+            .collect::<Vec<(u32, Option<(String, usize)>)>>();
+
+    breakpoints.sort_by_key(|(addr, _)| *addr);
+
+    let max_len = breakpoints.iter()
+            .map(|(_, lbl)| {
+                lbl.as_ref()
+                    .map(|(_, len)| *len)
+                    .unwrap_or(0)
+            })
+            .max()
+            .unwrap_or(0);
+
+    println!("\n{}", "[breakpoints]".green().bold());
+    for (addr, text) in breakpoints {
+        match text {
+            Some((name, len)) => {
+                println!("{}{} ({}{:08x})", name, " ".repeat(max_len - len), "0x".yellow(), addr);
+            }
+            None => {
+                println!("{}  {}{:08x}", " ".repeat(max_len), "0x".yellow(), addr);
+            }
+        }
+    }
+    println!();
+
+    Ok(())
 }

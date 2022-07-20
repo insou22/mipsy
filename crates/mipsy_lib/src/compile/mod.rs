@@ -40,7 +40,7 @@ pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
@@ -48,7 +48,6 @@ pub struct Binary {
     pub kdata:   Vec<Safe<u8>>,
     pub labels:  LinkedHashMap<String, u32>,
     pub constants: HashMap<String, i64>,
-    pub breakpoints:  Vec<u32>,
     pub globals: Vec<String>,
     pub line_numbers: HashMap<u32, (Rc<str>, u32)>,
 }
@@ -128,17 +127,7 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, opti
         // TODO: Deal with warnings here
     }
 
-    let mut binary = Binary {
-        text: vec![],
-        data: vec![],
-        ktext: vec![],
-        kdata: vec![],
-        labels: LinkedHashMap::new(),
-        constants: HashMap::new(),
-        breakpoints: vec![],
-        globals: vec![],
-        line_numbers: HashMap::new(),
-    };
+    let mut binary = Binary::default();
     
     populate_labels_and_data(&mut binary, config, iset, kernel)?;
 

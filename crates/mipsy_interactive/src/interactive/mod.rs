@@ -4,6 +4,7 @@ mod helper;
 mod error;
 mod runtime_handler;
 
+use std::collections::HashMap;
 use std::{ops::Deref, rc::Rc};
 
 use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
@@ -37,12 +38,33 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
+pub(crate) struct Breakpoint {
+    addr: u32,
+    enabled: bool,
+    ignore_count: u32,
+    commands: Vec<Command>,
+    // TODO(joshh): conditionals
+    // condition: ???, // mpconst, eval_constant
+}
+
+impl Breakpoint {
+    fn new(addr: u32) -> Self {
+        Self {
+            addr,
+            enabled: true,
+            ignore_count: 0,
+            commands: Default::default()
+        }
+    }
+}
+
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<Vec<(String, String)>>,
     pub(crate) binary:  Option<Binary>,
+    pub(crate) breakpoints: HashMap<u32, Breakpoint>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
@@ -57,6 +79,7 @@ impl State {
             commands: vec![],
             program: None,
             binary:  None,
+            breakpoints: HashMap::new(),
             runtime: None,
             exited: false,
             prev_command: None,
@@ -439,15 +462,17 @@ impl State {
             } else {
                 let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
                 let binary = self.binary.as_ref().unwrap();
-    
-                if breakpoint || binary.breakpoints.contains(&pc) {
+
+                if breakpoint || self.breakpoints.values().find(|bp| bp.addr == pc).is_some() {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
                             .map(|(name, _)| name.yellow().bold().to_string());
                     
                     runtime_handler::breakpoint(label.as_deref(), pc);
-    
+
                     true
+
+                // todo(joshh): add watchpoints
                 } else {
                     trapped
                 }
@@ -498,6 +523,37 @@ impl State {
         if let Some(cmd) = self.prev_command.take() {
             self.exec_command(cmd);
         }
+    }
+
+    fn generate_breakpoint_id(&self) -> u32 {
+        // TODO(joshh): reuses old breakpoint ids
+        // this diverges from gdb behaviour but is it a problem?
+        let mut id = self.breakpoints
+                    .keys()
+                    .fold(std::u32::MIN, |x, y| x.max(*y))
+                    .wrapping_add(1);
+
+        if self.breakpoints.contains_key(&id) {
+            // find a free id to use
+            // there's probably a neater way to do this,
+            // but realistically if someone is using enough breakpoints
+            // to fill a u32, they have bigger problems
+
+            let mut ids = self.breakpoints
+                    .keys()
+                    .map(|x| *x)
+                    .collect::<Vec<u32>>();
+
+            ids.sort_unstable();
+
+            id = ids.into_iter()
+                    .enumerate()
+                    .find(|x| x.0 != x.1 as usize)
+                    .expect("you've run out of breakpoints! why are you using so many")
+                    .1;
+        }
+
+        id
     }
 }
 
