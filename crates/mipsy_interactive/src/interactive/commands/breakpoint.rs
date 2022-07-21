@@ -140,9 +140,9 @@ fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: b
             };
 
             if is_label {
-                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, action, args[0].yellow().bold(), addr));
+                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id.to_string().blue(), action, args[0].yellow().bold(), addr));
             } else {
-                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id, action, addr));
+                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id.to_string().blue(), action, addr));
             }
         }
         _ => return Err(get_error()),
@@ -190,10 +190,10 @@ fn breakpoint_list(state: &mut State, _label: &str, _args: &[String]) -> Result<
     for (id, addr, text) in breakpoints {
         match text {
             Some(name) => {
-                println!("{}{}: {}{:08x} ({})", " ".repeat(max_id_len - id.1), id.0, "0x".magenta(), addr, name.yellow().bold());
+                println!("{}{}: {}{:08x} ({})", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold());
             }
             None => {
-                println!("{}{}: {}{:08x}",      " ".repeat(max_id_len - id.1), id.0, "0x".magenta(), addr);
+                println!("{}{}: {}{:08x}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr);
             }
         }
     }
@@ -277,9 +277,9 @@ fn breakpoint_toggle(state: &mut State, _label: &str, args: &[String], enabled: 
             };
 
             if is_label {
-                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id, action, args[0].yellow().bold(), addr));
+                prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", id.to_string().blue(), action, args[0].yellow().bold(), addr));
             } else {
-                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id, action, addr));
+                prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      id.to_string().blue(), action, addr));
             }
         }
         _ => return Err(get_error()),

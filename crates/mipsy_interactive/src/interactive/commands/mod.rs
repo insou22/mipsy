@@ -1,6 +1,5 @@
 mod back;
 mod breakpoint;
-mod breakpoints;
 mod context;
 mod disassemble;
 mod dot;
@@ -19,7 +18,6 @@ pub(crate) mod util;
 
 pub(crate) use back::back_command;
 pub(crate) use breakpoint::breakpoint_command;
-pub(crate) use breakpoints::breakpoints_command;
 pub(crate) use context::context_command;
 pub(crate) use disassemble::disassemble_command;
 pub(crate) use dot::dot_command;
