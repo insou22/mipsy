@@ -43,10 +43,6 @@ use self::error::{CommandError, CommandResult};
 pub(crate) struct Breakpoint {
     addr: u32,
     enabled: bool,
-    ignore_count: u32,
-    commands: Vec<Command>,
-    // TODO(joshh): conditionals
-    // condition: ???, // mpconst, eval_constant
 }
 
 impl Breakpoint {
@@ -54,8 +50,6 @@ impl Breakpoint {
         Self {
             addr,
             enabled: true,
-            ignore_count: 0,
-            commands: Default::default()
         }
     }
 }
@@ -140,6 +134,7 @@ impl State {
         };
 
         if (parts.len() - 1) < required.len() {
+            // TODO(joshh): turn into CommandError::MissingArgument
             let mut err_msg = String::from("missing required parameter");
 
             if required.len() - (parts.len() - 1) > 1 {
@@ -549,8 +544,8 @@ impl State {
 
             let mut ids = self.breakpoints
                     .keys()
-                    .map(|x| *x)
-                    .collect::<Vec<u32>>();
+                    .copied()
+                    .collect::<Vec<_>>();
 
             ids.sort_unstable();
 
