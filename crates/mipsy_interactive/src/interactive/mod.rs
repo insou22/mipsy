@@ -41,14 +41,14 @@ use self::error::{CommandError, CommandResult};
 // TODO(joshh): remove once if-let chaining is in
 #[derive(Clone, Default)]
 pub(crate) struct Breakpoint {
-    addr: u32,
+    id: u32,
     enabled: bool,
 }
 
 impl Breakpoint {
-    fn new(addr: u32) -> Self {
+    fn new(id: u32) -> Self {
         Self {
-            addr,
+            id,
             enabled: true,
         }
     }
@@ -134,25 +134,13 @@ impl State {
         };
 
         if (parts.len() - 1) < required.len() {
-            // TODO(joshh): turn into CommandError::MissingArgument
-            let mut err_msg = String::from("missing required parameter");
-
-            if required.len() - (parts.len() - 1) > 1 {
-                err_msg.push('s');
-            }
-
-            err_msg.push(' ');
-
-            err_msg.push_str(
-                &required[(parts.len() - 1)..(required.len())]
-                    .iter()
-                    .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            );
-
-            prompt::error(err_msg);
-            prompt::tip_nl(format!("try `{} {}`", "help".bold(), command_name.bold()));
+            self.handle_error(CommandError::WithTip {
+                error: Box::new(CommandError::MissingArguments {
+                    args: required.to_vec(),
+                    instead: parts.to_vec(),
+                }),
+                tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
+            }, true);
             return;
         }
 
@@ -165,10 +153,29 @@ impl State {
 
     fn handle_error(&self, err: CommandError, nl: bool) {
         match err {
+            CommandError::MissingArguments { args, instead } => {
+                let mut err_msg = String::from("missing required parameter");
+
+                if args.len() - (instead.len().saturating_sub(1)) > 1 {
+                    err_msg.push('s');
+                }
+
+                err_msg.push(' ');
+
+                err_msg.push_str(
+                    &args[(instead.len().saturating_sub(1))..(args.len())]
+                        .iter()
+                        .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                );
+
+                prompt::error(err_msg);
+            }
             CommandError::BadArgument { arg, instead, } => {
                 prompt::error(
                     format!("bad argument `{}` for {}", instead, arg)
-                )
+                );
             }
             CommandError::ArgExpectedI32 { arg, instead, } => {
                 prompt::error(
@@ -180,6 +187,9 @@ impl State {
                     format!("parameter {} expected positive integer, got `{}` instead", arg, instead)
                 );
             }
+            CommandError::InvalidBpId { arg } => {
+                prompt::error(format!("breakpoint with id {} does not exist", arg.blue()));
+            },
             CommandError::HelpUnknownCommand { command, } => {
                 prompt::error(format!("unknown command `{}`", command));
             }
@@ -462,10 +472,10 @@ impl State {
 
                 // TODO(joshh): make this less ugly when
                 // https://github.com/rust-lang/rust/pull/94927 is released
-                // if let Some(bp) = self.breakpoints.values().find(|bp| bp.addr == pc) || breakpoint {
+                // if let Some(bp) = self.breakpoints.get(&pc) || breakpoint {
                 //     if !bp.enabled { trapped }
 
-                let bp = self.breakpoints.values().find(|bp| bp.addr == pc).cloned().unwrap_or_default();
+                let bp = self.breakpoints.get(&pc).cloned().unwrap_or_default();
                 if breakpoint || bp.enabled {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
@@ -532,19 +542,20 @@ impl State {
         // TODO(joshh): reuses old breakpoint ids
         // this diverges from gdb behaviour but is it a problem?
         let mut id = self.breakpoints
-                    .keys()
-                    .fold(std::u32::MIN, |x, y| x.max(*y))
+                    .values()
+                    .map(|bp| bp.id)
+                    .fold(std::u32::MIN, |x, y| x.max(y))
                     .wrapping_add(1);
 
-        if self.breakpoints.contains_key(&id) {
+        if self.breakpoints.values().any(|bp| bp.id == id) {
             // find a free id to use
             // there's probably a neater way to do this,
             // but realistically if someone is using enough breakpoints
             // to fill a u32, they have bigger problems
 
             let mut ids = self.breakpoints
-                    .keys()
-                    .copied()
+                    .values()
+                    .map(|bp| bp.id)
                     .collect::<Vec<_>>();
 
             ids.sort_unstable();
