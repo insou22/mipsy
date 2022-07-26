@@ -505,7 +505,7 @@ impl State {
         self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
     }
 
-    pub(crate) fn run(&mut self) -> CommandResult<()> {
+    pub(crate) fn run(&mut self) -> CommandResult<String> {
         if self.exited {
             return Err(CommandError::ProgramExited);
         }
@@ -516,7 +516,7 @@ impl State {
             }
         }
 
-        Ok(())
+        Ok("".into())
     }
 
     pub(crate) fn reset(&mut self) -> CommandResult<()> {

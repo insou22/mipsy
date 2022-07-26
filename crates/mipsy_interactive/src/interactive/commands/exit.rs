@@ -8,8 +8,13 @@ pub(crate) fn exit_command() -> Command {
         vec![],
         vec![],
         "exit mipsy",
-        "Immediately exits mipsy",
-        |_state, _label, _args| {
+        |_state, label, _args| {
+            if label == "_help" {
+                return Ok(
+                        "Immediately exits mipsy".into()
+                )
+            }
+
             std::process::exit(0)
         }
     )

@@ -14,8 +14,13 @@ pub(crate) fn dot_command() -> Command {
         vec!["instruction"],
         "{args}",
         "execute a MIPS instruction",
-        "Executes a MIPS instruction immediately",
-        |state, _label, args| {
+        |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    "Executes a MIPS instruction immediately".into()
+                )
+            }
+
             let line = args.join(" ");
 
             let inst = mipsy_parser::parse_instruction(&line, state.config.tab_size)
@@ -57,7 +62,7 @@ pub(crate) fn dot_command() -> Command {
                     })?;
             }
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

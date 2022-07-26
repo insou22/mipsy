@@ -10,26 +10,32 @@ pub(crate) fn help_command() -> Command {
         vec![],
         vec!["command"],
         "print this help text, or specific help for a command",
-        &format!(
-            "Prints the general help text for all mipsy commands, or more in-depth\n\
-         \x20 help for a specific {} if specified, including available aliases.",
-             "[command]".magenta()
-        ),
-        |state, _label, args| {
+        |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Prints the general help text for all mipsy commands, or more in-depth\n\
+                     \x20 help for a specific {} if specified, including available aliases.",
+                         "[command]".magenta()
+                    ),
+                )
+            }
+
             if let Some(command) = args.first() {
-                let command = state.commands.iter()
+                let commands = state.commands.clone();
+                let command = commands.iter()
                         .find(|cmd| &cmd.name == command || cmd.aliases.contains(command))
                         .ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
 
                 println!("\n{}\n", get_command_formatted(command));
-                println!("{}", command.long_description);
+                println!("{}", (command.exec)(state, "_help", &args[1..]).unwrap());
+
                 if !command.aliases.is_empty() {
                     prompt::banner("\naliases".green().bold());
                     println!("{}", command.aliases.iter().map(|s| s.yellow().bold().to_string()).collect::<Vec<String>>().join(", "));
                 }
                 println!();
-
-                return Ok(())
+                return Ok("".into())
             }
 
             let mut max_len = 0;
@@ -92,7 +98,7 @@ pub(crate) fn help_command() -> Command {
 
             println!();
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

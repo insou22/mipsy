@@ -22,38 +22,25 @@ pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
         vec!["br", "brk", "break"],
-        vec!["addr"],
+        vec!["subcommand"],
         vec![],
         &format!(
-            "{}nserts or {}eletes a breakpoint at an {}ess",
-            "<i>".magenta(),
-            "<d>".magenta(),
-            "<addr>".magenta()
-        ),
-        &format!(
-            "{0}nserts or {1}eletes a breakpoint at the specified {2}.\n\
-             {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
-             {5} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
-        \x20             `d`, `del`, `delete`, or `remove` to remove the breakpoint.\n\
-             When running or stepping through your program, a breakpoint will cause execution to\n\
-         \x20 pause temporarily, allowing you to debug the current state.\n\
-             May error if provided a label that doesn't exist.\n\
-           \n{6}{7} you can also use the `{8}` MIPS instruction in your program's code!",
-             "<i>".magenta(),
-             "<d>".magenta(),
-             "<address>".magenta(),
-             "0x".yellow(),
-             "main".yellow().bold(),
-             "<i|d>".magenta(),
-             "tip".yellow().bold(),
-             ":".bold(),
-             "break".bold(),
+            "manage breakpoints ({} to list subcommands)",
+            "help breakpoint".bold()
         ),
         |state, label, args| {
+            if label == "_help" && args.is_empty() {
+                return Ok(
+                    get_long_help()
+                )
+            }
+
             // TODO(joshh): match on label for breakpoints aliases?
             match &*args[0] {
                 "l" | "list" =>
                     breakpoint_list  (state, label, &args[1..]),
+                "i" | "in" | "ins" | "insert" | "add" =>
+                    breakpoint_insert(state, label, &args[1..], false),
                 "del" | "delete" | "rm" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true),
                 "e" | "enable" =>
@@ -62,14 +49,45 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label,  args, BpState::Disable),
                 "t" | "toggle" =>
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
-                _ =>
+                 _ =>
                     breakpoint_insert(state, label,  args, false),
             }
         }
     )
 }
 
-fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: bool) -> Result<(), CommandError> {
+fn get_long_help() -> String {
+    // TODO(joshh): improve this
+    format!(
+        ""
+    )
+}
+
+fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
+    if label == "_help" {
+        return Ok(
+            format!(
+                "{0}s or {1}s a breakpoint at the specified {2}.\n\
+                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
+                 {5} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
+            \x20             `d`, `del`, `delete`, or `remove` to remove the breakpoint.\n\
+                 When running or stepping through your program, a breakpoint will cause execution to\n\
+             \x20 pause temporarily, allowing you to debug the current state.\n\
+                 May error if provided a label that doesn't exist.\n\
+               \n{6}{7} you can also use the `{8}` MIPS instruction in your program's code!",
+                 "<insert>".magenta(),
+                 "<delete>".magenta(),
+                 "<address>".magenta(),
+                 "0x".yellow(),
+                 "main".yellow().bold(),
+                 "<i|d>".magenta(),
+                 "tip".yellow().bold(),
+                 ":".bold(),
+                 "break".bold(),
+            )
+        )
+    }
+
     if args.is_empty() {
         return Err(
             generate_err(
@@ -82,12 +100,11 @@ fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: b
         );
     }
 
-    // TODO: id doesn't make any sense if inserting
     let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
 
     if addr % 4 != 0 {
         prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
-        return Ok(());
+        return Ok("".into());
     }
 
     let id;
@@ -104,7 +121,7 @@ fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: b
                     MipsyArgType::Id        => args[0].blue(),
                 }
             ));
-            return Ok(());
+            return Ok("".into());
         }
     } else if !state.breakpoints.contains_key(&addr) {
         id = state.generate_breakpoint_id();
@@ -119,7 +136,7 @@ fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: b
                 MipsyArgType::Id        => args[0].blue(),
             }
         ));
-        return Ok(());
+        return Ok("".into());
     };
 
     let label = match arg_type {
@@ -139,15 +156,30 @@ fn breakpoint_insert(state: &mut State, _label: &str, args: &[String], remove: b
         prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      format!("!{}", id).blue(), action, addr));
     }
 
-    Ok(())
+    Ok("".into())
 }
 
-fn breakpoint_list(state: &State, _label: &str, _args: &[String]) -> Result<(), CommandError> {
+fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "_help" {
+        return Ok(
+            format!(
+                "lists currently set breakpoints.\n\
+                 when running or stepping through your program, a breakpoint will cause execution to\n\
+             \x20 pause temporarily, allowing you to debug the current state.\n\
+                 may error if provided a label that doesn't exist.\n\
+               \n{}{} you can also use the `{}` mips instruction in your program's code!",
+                 "tip".yellow().bold(),
+                 ":".bold(),
+                 "break".bold(),
+            ),
+        )
+    }
+
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
     if state.breakpoints.is_empty() {
         prompt::error_nl("no breakpoints set");
-        return Ok(());
+        return Ok("".into());
     }
 
     let mut breakpoints = state.breakpoints.iter()
@@ -191,10 +223,17 @@ fn breakpoint_list(state: &State, _label: &str, _args: &[String]) -> Result<(), 
     }
     println!();
 
-    Ok(())
+    Ok("".into())
 }
 
-fn breakpoint_toggle(state: &mut State, _label: &str, mut args: &[String], enabled: BpState) -> Result<(), CommandError> {
+fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enabled: BpState) -> Result<String, CommandError> {
+    if label == "_help" {
+        return Ok(
+            // TODO(joshh): improve
+            "toggle stuff".into()
+        )
+    }
+
     if args.len() == 1 {
         return Err(
             generate_err(
@@ -212,7 +251,7 @@ fn breakpoint_toggle(state: &mut State, _label: &str, mut args: &[String], enabl
 
     if addr % 4 != 0 {
         prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
-        return Ok(());
+        return Ok("".into());
     }
 
     let id;
@@ -232,7 +271,7 @@ fn breakpoint_toggle(state: &mut State, _label: &str, mut args: &[String], enabl
                 MipsyArgType::Id        => args[0].blue(),
             }
         ));
-        return Ok(());
+        return Ok("".into());
     }
 
     // already ruled out possibility of entry not existing
@@ -258,8 +297,9 @@ fn breakpoint_toggle(state: &mut State, _label: &str, mut args: &[String], enabl
         prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      format!("!{}", id).blue(), action, addr));
     }
 
-    Ok(())
+    Ok("".into())
 }
+
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");
@@ -280,8 +320,8 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-    if arg.starts_with('!') {
-        let id: u32 = arg[1..].parse().map_err(|_| get_error("<id>"))?;
+    if let Some(id) = arg.strip_prefix('!') {
+        let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
         let addr = state.breakpoints.iter().find(|bp| bp.1.id == id)
                         .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 

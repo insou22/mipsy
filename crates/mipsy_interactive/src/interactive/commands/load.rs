@@ -13,14 +13,18 @@ pub(crate) fn load_command() -> Command {
         vec!["files"],
         "-- {args}".magenta().to_string(),
         "load a MIPS file to run",
-        &format!(
-            "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
-             This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
-            "run".bold(),
-            "step".bold(),
-            "print".bold(),
-        ),
-        |state, _label, args| {
+        |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
+                         This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
+                        "run".bold(),
+                        "step".bold(),
+                        "print".bold(),
+                    ),
+                )
+            }
 
             let (files, arguments) = {
                 if let Some(index) = args.iter().position(|arg| arg == "--") {
@@ -78,7 +82,7 @@ pub(crate) fn load_command() -> Command {
 
             prompt::success_nl(loaded);
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

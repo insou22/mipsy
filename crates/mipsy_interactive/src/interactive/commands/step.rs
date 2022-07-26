@@ -11,15 +11,20 @@ pub(crate) fn step_command() -> Command {
         vec![],
         vec!["times"],
         &format!("step forwards one (or {}) instruction", "[times]".magenta()),
-        &format!(
-            "Steps forwards one instruction, or {} instructions if specified.\n\
-             This will run in \"verbose\" mode, printing out the instruction that was\n\
-         \x20 executed, and verbosely printing any system calls that are executed.\n\
-             To step backwards (i.e. back in time), use `{}`.",
-            "[times]".magenta(),
-            "back".bold(),
-        ),
         |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Steps forwards one instruction, or {} instructions if specified.\n\
+                         This will run in \"verbose\" mode, printing out the instruction that was\n\
+                     \x20 executed, and verbosely printing any system calls that are executed.\n\
+                         To step backwards (i.e. back in time), use `{}`.",
+                        "[times]".magenta(),
+                        "back".bold(),
+                    ),
+                )
+            }
+
             let times = match args.first() {
                 Some(arg) => expect_u32(
                     label,
@@ -51,7 +56,7 @@ pub(crate) fn step_command() -> Command {
                 }
             }
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

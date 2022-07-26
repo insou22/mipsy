@@ -1,7 +1,7 @@
 use crate::interactive::error::CommandError;
 
 use super::*;
-use super::{Command};
+use super::Command;
 use colored::*;
 use mipsy_lib::Register;
 
@@ -12,14 +12,19 @@ pub(crate) fn step2input_command() -> Command {
         vec![],
         vec![],
         "step forwards until next input",
-        &format!(
-            "Steps forwards until your program asks for its next input, or finishes.\n\
-             This will run in \"verbose\" mode, printing out each instruction that was\n\
-         \x20 executed, and verbosely printing any system calls that are executed.\n\
-             To step backwards (i.e. back in time), use `{}`.",
-            "back".bold(),
-        ),
-        |state, _label, _args| {
+        |state, label, _args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Steps forwards until your program asks for its next input, or finishes.\n\
+                         This will run in \"verbose\" mode, printing out each instruction that was\n\
+                     \x20 executed, and verbosely printing any system calls that are executed.\n\
+                         To step backwards (i.e. back in time), use `{}`.",
+                        "back".bold(),
+                    ),
+                )
+            }
+
             if state.exited {
                 return Err(CommandError::ProgramExited);
             }
@@ -49,7 +54,7 @@ pub(crate) fn step2input_command() -> Command {
                 
             }
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

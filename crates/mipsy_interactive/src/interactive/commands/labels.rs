@@ -11,8 +11,13 @@ pub(crate) fn labels_command() -> Command {
         vec![],
         vec![],
         "prints the addresses of all labels",
-        "Prints the addresses of all labels in the currently loaded program.",
-        |state, _label, _args| {
+        |state, label, _args| {
+            if label == "_help" {
+                return Ok(
+                    "Prints the addresses of all labels in the currently loaded program.".into()
+                )
+            }
+
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let max_len = binary.labels.keys()
@@ -41,7 +46,7 @@ pub(crate) fn labels_command() -> Command {
             }
             println!();
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

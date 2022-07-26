@@ -15,40 +15,45 @@ pub(crate) fn print_command() -> Command {
         vec!["item"],
         vec!["format"],
         "print an item - a register, value in memory, etc.",
-        &format!(
-            "Prints the current value of an {0} in the loaded program.\n\
-             {0} can be one of:\n\
-        \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
-        \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
-        \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
-        \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
-             {14} can optionally be specified (default: `{15}`) to specify how the value\n\
-        \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
-        \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
-            "<item>".magenta(),
-            "register".yellow().bold(),
-            "$".yellow(),
-            "t3".bold(),
-            "12".bold(),
-            "special".yellow().bold(),
-            "pc".bold(),
-            "hi".bold(),
-            "lo".bold(),
-            "address".yellow().bold(),
-            "0x".yellow(),
-            "my_label".yellow().bold(),
-            "all registers".yellow().bold(),
-            "all".bold(),
-            "[format]".magenta(),
-            format!("{}{}", "w".yellow().bold(), "ord".bold()),
-            format!("{}{}", "b".yellow().bold(), "yte".bold()),
-            format!("{}{}", "h".yellow().bold(), "alf".bold()),
-            "x".yellow().bold(),
-            "he".bold(),
-            format!("{}{}", "c".yellow().bold(), "har".bold()),
-            format!("{}{}", "s".yellow().bold(), "tring".bold()),
-        ),
-        |state, _label, args| {
+        |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Prints the current value of an {0} in the loaded program.\n\
+                         {0} can be one of:\n\
+                    \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
+                    \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
+                    \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
+                    \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
+                         {14} can optionally be specified (default: `{15}`) to specify how the value\n\
+                    \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
+                    \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
+                        "<item>".magenta(),
+                        "register".yellow().bold(),
+                        "$".yellow(),
+                        "t3".bold(),
+                        "12".bold(),
+                        "special".yellow().bold(),
+                        "pc".bold(),
+                        "hi".bold(),
+                        "lo".bold(),
+                        "address".yellow().bold(),
+                        "0x".yellow(),
+                        "my_label".yellow().bold(),
+                        "all registers".yellow().bold(),
+                        "all".bold(),
+                        "[format]".magenta(),
+                        format!("{}{}", "w".yellow().bold(), "ord".bold()),
+                        format!("{}{}", "b".yellow().bold(), "yte".bold()),
+                        format!("{}{}", "h".yellow().bold(), "alf".bold()),
+                        "x".yellow().bold(),
+                        "he".bold(),
+                        format!("{}{}", "c".yellow().bold(), "har".bold()),
+                        format!("{}{}", "s".yellow().bold(), "tring".bold()),
+                    ),
+                )
+            }
+
             let get_error = || CommandError::WithTip { 
                 error: Box::new(CommandError::BadArgument { arg: "<item>".magenta().to_string(), instead: args[0].to_string() }),
                 tip: format!("try `{}`", "help print".bold()),
@@ -77,7 +82,7 @@ pub(crate) fn print_command() -> Command {
                         "string" | "s" => {
                             prompt::error(format!("{} `string` unsupported for {} `register`", "[format]".magenta(), "<item>".magenta()));
                             prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
-                            return Ok(());
+                            return Ok("".into());
                         }
                         _ => {}
                     }
@@ -129,7 +134,7 @@ pub(crate) fn print_command() -> Command {
                                 Ok(val) => val,
                                 Err(_)  => {
                                     prompt::error_nl(format!("{}{} is uninitialized", "$".yellow(), reg_name.bold()));
-                                    return Ok(());
+                                    return Ok("".into());
                                 }
                             };
 
@@ -201,7 +206,7 @@ pub(crate) fn print_command() -> Command {
                 _ => return Err(get_error()),
             }
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

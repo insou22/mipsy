@@ -10,12 +10,17 @@ pub(crate) fn label_command() -> Command {
         vec!["label"],
         vec![],
         "print the address of a label",
-        &format!(
-            "Prints the address of the specified {0}.\n\
-             May error if the specified {0} doesn't exist.",
-             "<label>".magenta()
-        ),
-        |state, _label, args| {
+        |state, label, args| {
+            if label == "_help" {
+                return Ok(
+                    format!(
+                        "Prints the address of the specified {0}.\n\
+                         May error if the specified {0} doesn't exist.",
+                         "<label>".magenta()
+                    ),
+                )
+            }
+
             let label = &args[0];
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
@@ -24,7 +29,7 @@ pub(crate) fn label_command() -> Command {
                 Err(_)   => prompt::error_nl(format!("could not find label \"{}\"", label)),
             }
 
-            Ok(())
+            Ok("".into())
         }
     )
 }
