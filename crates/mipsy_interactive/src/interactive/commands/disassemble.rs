@@ -13,7 +13,7 @@ pub(crate) fn disassemble_command() -> Command {
         vec![],
         "disassembles the currently loaded file",
         |state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Disassembles the currently loaded file, similar to how `{}` displays instructions.",

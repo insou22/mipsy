@@ -13,7 +13,7 @@ pub(crate) fn step2input_command() -> Command {
         vec![],
         "step forwards until next input",
         |state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Steps forwards until your program asks for its next input, or finishes.\n\

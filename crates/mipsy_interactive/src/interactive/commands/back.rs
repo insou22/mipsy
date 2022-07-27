@@ -12,7 +12,7 @@ pub(crate) fn back_command() -> Command {
         vec!["times"],
         &format!("step backwards one (or {}) instruction", "[times]".magenta()),
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Steps backwards one instruction, or {0} instructions if specified.\n\

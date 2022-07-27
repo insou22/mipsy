@@ -14,7 +14,7 @@ pub(crate) fn load_command() -> Command {
         "-- {args}".magenta().to_string(),
         "load a MIPS file to run",
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\

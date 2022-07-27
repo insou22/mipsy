@@ -16,7 +16,7 @@ pub(crate) fn print_command() -> Command {
         vec!["format"],
         "print an item - a register, value in memory, etc.",
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Prints the current value of an {0} in the loaded program.\n\

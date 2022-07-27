@@ -12,7 +12,7 @@ pub(crate) fn step2syscall_command() -> Command {
         vec![],
         "step forwards until next syscall",
         |state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Steps forwards until your program's next syscall.\n\

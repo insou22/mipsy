@@ -49,8 +49,6 @@ pub(crate) struct Command {
     pub(crate) aliases: Vec<String>,
     pub(crate) args: Arguments,
     pub(crate) description: String,
-    // pub(crate) long_description: String,
-    // pub(crate) get_long_help: fn() -> String,
     pub(crate) exec: fn(&mut State, &str, &[String]) -> CommandResult<String>,
 }
 

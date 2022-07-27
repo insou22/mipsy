@@ -9,7 +9,7 @@ pub(crate) fn exit_command() -> Command {
         vec![],
         "exit mipsy",
         |_state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                         "Immediately exits mipsy".into()
                 )

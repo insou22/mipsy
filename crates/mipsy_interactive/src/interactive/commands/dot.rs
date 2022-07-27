@@ -15,7 +15,7 @@ pub(crate) fn dot_command() -> Command {
         "{args}",
         "execute a MIPS instruction",
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     "Executes a MIPS instruction immediately".into()
                 )

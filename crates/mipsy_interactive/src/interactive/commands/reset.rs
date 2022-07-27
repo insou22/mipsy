@@ -11,7 +11,7 @@ pub(crate) fn reset_command() -> Command {
         vec![],
         "reset the currently loaded program to its initial state",
         |state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Resets the currently loaded program to its inital state. This is\n\

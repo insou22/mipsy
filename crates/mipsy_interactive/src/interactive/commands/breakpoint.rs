@@ -29,7 +29,7 @@ pub(crate) fn breakpoint_command() -> Command {
             "help breakpoint".bold()
         ),
         |state, label, args| {
-            if label == "_help" && args.is_empty() {
+            if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()
                 )
@@ -57,33 +57,57 @@ pub(crate) fn breakpoint_command() -> Command {
 }
 
 fn get_long_help() -> String {
-    // TODO(joshh): improve this
     format!(
-        ""
+        "A collection of commands for managing breakpoints. Available {10}s are:\n\n\
+         {0} {2} : insert/delete a breakpoint\n\
+         {1} {3}\n\
+         {0} {5} : enable/disable an existing breakpoint\n\
+         {1} {6}\n\
+         {1} {7}\n\
+         {0} {4}   : list currently set breakpoints\n\n\
+         {8} {9} will provide more information about the specified subcommand.
+        ",
+        "breakpoint".yellow().bold(),
+        "          ".yellow().bold(),
+        "insert".purple(),
+        "delete".purple(),
+        "list".purple(),
+        "enable".purple(),
+        "disable".purple(),
+        "toggle".purple(),
+        "help breakpoint".bold(),
+        "<subcommand>".purple().bold(),
+        "<subcommand>".purple(),
     )
 }
 
 fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
-    if label == "_help" {
+    if label == "__help__" {
         return Ok(
             format!(
-                "{0}s or {1}s a breakpoint at the specified {2}.\n\
+                "Usage: {10} {11} {2}\n\
+                 {0}s or {1}s a breakpoint at the specified {2}.\n\
                  {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
-                 {5} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
-            \x20             `d`, `del`, `delete`, or `remove` to remove the breakpoint.\n\
+                 If you are removing a breakpoint, you can also use its id (`{5}`).\n\
+                 {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
+            \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
+                 If {6} is none of these option, it defaults to inserting a breakpoint at {6}.\n\
                  When running or stepping through your program, a breakpoint will cause execution to\n\
-             \x20 pause temporarily, allowing you to debug the current state.\n\
+                 pause temporarily, allowing you to debug the current state.\n\
                  May error if provided a label that doesn't exist.\n\
-               \n{6}{7} you can also use the `{8}` MIPS instruction in your program's code!",
-                 "<insert>".magenta(),
-                 "<delete>".magenta(),
-                 "<address>".magenta(),
-                 "0x".yellow(),
-                 "main".yellow().bold(),
-                 "<i|d>".magenta(),
-                 "tip".yellow().bold(),
-                 ":".bold(),
-                 "break".bold(),
+              \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
+                "<insert>".magenta(),
+                "<delete>".magenta(),
+                "<address>".magenta(),
+                "0x".yellow(),
+                "main".yellow().bold(),
+                "!3".blue(),
+                "<subcommand>".magenta(),
+                "tip".yellow().bold(),
+                ":".bold(),
+                "break".bold(),
+                "breakpoint".yellow().bold(),
+                "{insert, delete}".purple(),
             )
         )
     }
@@ -160,13 +184,13 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
 }
 
 fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<String, CommandError> {
-    if label == "_help" {
+    if label == "__help__" {
         return Ok(
             format!(
-                "lists currently set breakpoints.\n\
-                 when running or stepping through your program, a breakpoint will cause execution to\n\
-             \x20 pause temporarily, allowing you to debug the current state.\n\
-                 may error if provided a label that doesn't exist.\n\
+                "Lists currently set breakpoints.\n\
+                 When running or stepping through your program, a breakpoint will cause execution to\n\
+                 pause temporarily, allowing you to debug the current state.\n\
+                 May error if provided a label that doesn't exist.\n\
                \n{}{} you can also use the `{}` mips instruction in your program's code!",
                  "tip".yellow().bold(),
                  ":".bold(),
@@ -227,10 +251,27 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 }
 
 fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enabled: BpState) -> Result<String, CommandError> {
-    if label == "_help" {
+    if label == "__help__" {
         return Ok(
-            // TODO(joshh): improve
-            "toggle stuff".into()
+            format!(
+                "Usage: {8} {9} {3}\n\
+                 {0}s, {1}s, or {2}s a breakpoint at the specified {3}.\n\
+                 {3} may be: a decimal address (`4194304`), a hex address (`{4}400000`),\n\
+        \x20                 a label (`{5}`), or an id (`{6}`).\n\
+                 Breakpoints that are disabled do not trigger when they are hit.\n\
+                 Breakpoints caused by the `{7}` instruction in code cannot be disabled.
+                ",
+                "<enable>".purple(),
+                "<disable>".purple(),
+                "<toggle>".purple(),
+                "<address>".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
+                "!3".blue(),
+                "break".bold(),
+                "breakpoint".yellow().bold(),
+                "{enable, disable, toggle}".purple(),
+            )
         )
     }
 

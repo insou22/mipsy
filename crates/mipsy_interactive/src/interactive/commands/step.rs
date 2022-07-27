@@ -12,7 +12,7 @@ pub(crate) fn step_command() -> Command {
         vec!["times"],
         &format!("step forwards one (or {}) instruction", "[times]".magenta()),
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Steps forwards one instruction, or {} instructions if specified.\n\

@@ -9,7 +9,7 @@ pub(crate) fn run_command() -> Command {
         vec![],
         "run the currently loaded program until it finishes",
         |state, label, _args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Runs the currently loaded program. It will run from wherever execution\n\

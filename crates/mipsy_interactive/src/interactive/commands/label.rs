@@ -11,7 +11,7 @@ pub(crate) fn label_command() -> Command {
         vec![],
         "print the address of a label",
         |state, label, args| {
-            if label == "_help" {
+            if label == "__help__" {
                 return Ok(
                     format!(
                         "Prints the address of the specified {0}.\n\
