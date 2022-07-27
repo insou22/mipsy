@@ -4,7 +4,6 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::collections::HashMap;
 use std::{ops::Deref, rc::Rc};
 
 use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
@@ -38,29 +37,12 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-// TODO(joshh): remove once if-let chaining is in
-#[derive(Clone, Default)]
-pub(crate) struct Breakpoint {
-    id: u32,
-    enabled: bool,
-}
-
-impl Breakpoint {
-    fn new(id: u32) -> Self {
-        Self {
-            id,
-            enabled: true,
-        }
-    }
-}
-
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<Vec<(String, String)>>,
     pub(crate) binary:  Option<Binary>,
-    pub(crate) breakpoints: HashMap<u32, Breakpoint>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
@@ -75,7 +57,6 @@ impl State {
             commands: vec![],
             program: None,
             binary:  None,
-            breakpoints: HashMap::new(),
             runtime: None,
             exited: false,
             prev_command: None,
@@ -475,7 +456,7 @@ impl State {
                 // if let Some(bp) = self.breakpoints.get(&pc) || breakpoint {
                 //     if !bp.enabled { trapped }
 
-                let bp = self.breakpoints.get(&pc).cloned().unwrap_or_default();
+                let bp = binary.breakpoints.get(&pc).cloned().unwrap_or_default();
                 if breakpoint || bp.enabled {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
@@ -536,38 +517,6 @@ impl State {
         if let Some(cmd) = self.prev_command.take() {
             self.exec_command(cmd);
         }
-    }
-
-    fn generate_breakpoint_id(&self) -> u32 {
-        // TODO(joshh): reuses old breakpoint ids
-        // this diverges from gdb behaviour but is it a problem?
-        let mut id = self.breakpoints
-                    .values()
-                    .map(|bp| bp.id)
-                    .fold(std::u32::MIN, |x, y| x.max(y))
-                    .wrapping_add(1);
-
-        if self.breakpoints.values().any(|bp| bp.id == id) {
-            // find a free id to use
-            // there's probably a neater way to do this,
-            // but realistically if someone is using enough breakpoints
-            // to fill a u32, they have bigger problems
-
-            let mut ids = self.breakpoints
-                    .values()
-                    .map(|bp| bp.id)
-                    .collect::<Vec<_>>();
-
-            ids.sort_unstable();
-
-            id = ids.into_iter()
-                    .enumerate()
-                    .find(|x| x.0 != x.1 as usize)
-                    .expect("you've run out of breakpoints! why are you using so many")
-                    .1;
-        }
-
-        id
     }
 }
 
