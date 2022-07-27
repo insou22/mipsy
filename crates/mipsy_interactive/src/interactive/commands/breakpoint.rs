@@ -220,28 +220,34 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                     addr,
                     binary.labels.iter()
                         .find(|(_, &val)| val == addr)
-                        .map(|(name, _)| name)
+                        .map(|(name, _)| name),
+                    bp.enabled,
                 )
             })
             .collect::<Vec<_>>();
 
-    breakpoints.sort_by_key(|(_, addr, _)| *addr);
+    breakpoints.sort_by_key(|(_, addr, _, _)| *addr);
 
     let max_id_len = breakpoints.iter()
-            .map(|&(id, _, _)| {
+            .map(|&(id, _, _, _)| {
                 id.1
             })
             .max()
             .unwrap_or(0);
 
     println!("\n{}", "[breakpoints]".green().bold());
-    for (id, addr, text) in breakpoints {
+    for (id, addr, text, enabled) in breakpoints {
+        let disabled = match enabled {
+            true  => "",
+            false => " (disabled)"
+        };
+
         match text {
             Some(name) => {
-                println!("{}{}: {}{:08x} ({})", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold());
+                println!("{}{}: {}{:08x} ({}){}", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold(), disabled.bright_black());
             }
             None => {
-                println!("{}{}: {}{:08x}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr);
+                println!("{}{}: {}{:08x}{}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, disabled.bright_black());
             }
         }
     }
