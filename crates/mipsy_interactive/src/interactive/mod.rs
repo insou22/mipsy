@@ -543,7 +543,7 @@ impl State {
     }
 }
 
-fn editor() -> Editor<MyHelper> {
+pub(crate) fn editor() -> Editor<MyHelper> {
     let mut rl = Editor::new();
 
     let helper = MyHelper::new();
@@ -574,6 +574,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
     state.add_command(commands::exit_command());
+    state.add_command(commands::commands_command());
 
     state
 }
