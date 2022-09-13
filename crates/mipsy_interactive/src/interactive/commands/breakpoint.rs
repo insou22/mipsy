@@ -1,10 +1,10 @@
-use mipsy_lib::compile::Breakpoint;
-use crate::interactive::{error::CommandError, prompt};
+use crate::interactive::{error::CommandError, prompt, InteractiveBreakpoint, InteractiveCommand};
 use std::iter::successors;
 
 use super::*;
 use colored::*;
 use mipsy_parser::*;
+use mipsy_lib::compile::Breakpoint;
 
 enum BpState {
     Enable,
@@ -44,6 +44,8 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_insert(state, label, &args[1..], false),
                 "del" | "delete" | "rm" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true),
+                "tmp" | "temp" | "temporary" =>
+                    breakpoint_insert(state, label,  args,      false),
                 "e" | "enable" =>
                     breakpoint_toggle(state, label,  args, BpState::Enable),
                 "d" | "disable" =>
@@ -82,7 +84,7 @@ fn get_long_help() -> String {
     )
 }
 
-fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
+fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove: bool) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -113,6 +115,10 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         )
     }
 
+    let temporary = !args.is_empty() &&
+        matches!(args[0].as_ref(), "t" | "tmp" | "temp" | "temporary");
+    if temporary { args = &args[1..]; }
+
     if args.is_empty() {
         return Err(
             generate_err(
@@ -136,8 +142,12 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
 
     let id;
     let action = if remove {
-        if let Some(bp) = binary.breakpoints.remove(&addr) {
-            id = bp.id;
+        if let Some(bp) = state.breakpoints.remove(&addr) {
+            // todo(joshh): removing from binary here is useless
+            // and only exists to make generate_breakpoint_id() work
+            binary.breakpoints.remove(&addr);
+
+            id = bp.breakpoint.id;
             "removed"
         } else {
             prompt::error_nl(format!(
@@ -150,9 +160,24 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             ));
             return Ok("".into());
         }
-    } else if !binary.breakpoints.contains_key(&addr) {
+    } else if !state.breakpoints.contains_key(&addr) {
         id = binary.generate_breakpoint_id();
+        let mut bp = InteractiveBreakpoint::new(id);
+        let args = Box::new(["remove".to_string(), format!("!{id}")]);
+        if temporary {
+            bp.commands.push(InteractiveCommand {
+                command: breakpoint_command(),
+                label: "breakpoint",
+                // TODO(joshh): bother cleaning up args when command is deleted
+                args: Box::leak(args),
+            });
+        }
+        state.breakpoints.insert(addr, bp);
+
+        // todo(joshh): inserting into binary here is useless
+        // and only exists to make generate_breakpoint_id() work
         binary.breakpoints.insert(addr, Breakpoint::new(id));
+
         "inserted"
     } else {
         prompt::error_nl(format!(
@@ -204,14 +229,15 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-    if binary.breakpoints.is_empty() {
+    if state.breakpoints.is_empty() {
         prompt::error_nl("no breakpoints set");
         return Ok("".into());
     }
 
-    let mut breakpoints = binary.breakpoints.iter()
+    let mut breakpoints = state.breakpoints.iter()
             .map(|x| {
                 let (&addr, bp) = x;
+                let bp = &bp.breakpoint;
                 let id = bp.id;
                 (
                     (
@@ -304,10 +330,9 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         return Ok("".into());
     }
 
-    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
-
     let id;
-    if let Some(br) = binary.breakpoints.get_mut(&addr) {
+    if let Some(br) = state.breakpoints.get_mut(&addr) {
+        let br = &mut br.breakpoint;
         id = br.id;
         br.enabled = match enabled {
             BpState::Enable  => true,
@@ -327,7 +352,7 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     }
 
     // already ruled out possibility of entry not existing
-    let action = match binary.breakpoints.get(&addr).unwrap().enabled {
+    let action = match state.breakpoints.get(&addr).unwrap().breakpoint.enabled {
         true  => "enabled",
         false => "disabled",
     };
@@ -374,7 +399,7 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
 
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
-        let addr = binary.breakpoints.iter().find(|bp| bp.1.id == id)
+        let addr = state.breakpoints.iter().find(|bp| bp.1.breakpoint.id == id)
                         .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*addr, MipsyArgType::Id))

@@ -56,7 +56,6 @@ impl Breakpoint {
     }
 }
 
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
