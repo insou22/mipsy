@@ -62,12 +62,13 @@ pub(crate) fn breakpoint_command() -> Command {
 fn get_long_help() -> String {
     format!(
         "A collection of commands for managing breakpoints. Available {10}s are:\n\n\
-         {0} {2} : insert/delete a breakpoint\n\
+         {0} {2}    : insert/delete a breakpoint\n\
          {1} {3}\n\
-         {0} {5} : enable/disable an existing breakpoint\n\
+         {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+         {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
-         {0} {4}   : list currently set breakpoints\n\n\
+         {0} {4}      : list currently set breakpoints\n\n\
          {8} {9} will provide more information about the specified subcommand.
         ",
         "breakpoint".yellow().bold(),
@@ -81,6 +82,7 @@ fn get_long_help() -> String {
         "help breakpoint".bold(),
         "<subcommand>".purple().bold(),
         "<subcommand>".purple(),
+        "temporary".purple(),
     )
 }
 
@@ -88,7 +90,7 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
     if label == "__help__" {
         return Ok(
             format!(
-                "Usage: {10} {11} {2}\n\
+                "Usage: {10} {11} {12} {2}\n\
                  {0}s or {1}s a breakpoint at the specified {2}.\n\
                  {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
                  If you are removing a breakpoint, you can also use its id (`{5}`).\n\
@@ -98,6 +100,8 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
                  When running or stepping through your program, a breakpoint will cause execution to\n\
                  pause temporarily, allowing you to debug the current state.\n\
                  May error if provided a label that doesn't exist.\n\
+                 If temporary is provided as the second argument, the breakpoint will be created as a\n\
+                 temporary breakpoint, which automatically deletes itself after being hit.
               \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
                 "<insert>".magenta(),
                 "<delete>".magenta(),
@@ -111,6 +115,7 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
                 "break".bold(),
                 "breakpoint".yellow().bold(),
                 "{insert, delete}".purple(),
+                "temporary?".purple(),
             )
         )
     }
@@ -163,13 +168,12 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
     } else if !state.breakpoints.contains_key(&addr) {
         id = binary.generate_breakpoint_id();
         let mut bp = InteractiveBreakpoint::new(id);
-        let args = Box::new(["remove".to_string(), format!("!{id}")]);
         if temporary {
             bp.commands.push(InteractiveCommand {
                 command: breakpoint_command(),
                 label: "breakpoint",
                 // TODO(joshh): bother cleaning up args when command is deleted
-                args: Box::leak(args),
+                args: Box::leak(Box::new(["remove".to_string(), format!("!{id}")])),
             });
         }
         state.breakpoints.insert(addr, bp);
@@ -383,7 +387,7 @@ fn generate_err(error: CommandError, command_name: impl Into<String>) -> Command
     let command_name = command_name.into();
     if !command_name.is_empty() { help.push(' ') };
 
-    return CommandError::WithTip {
+    CommandError::WithTip {
         error: Box::new(error),
         tip: format!("try `{}{}`", help.bold(), command_name.bold()),
     } 
