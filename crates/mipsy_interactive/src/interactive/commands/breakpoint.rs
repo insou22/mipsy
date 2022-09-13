@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt, InteractiveBreakpoint, InteractiveCommand};
+use crate::interactive::{error::CommandError, prompt, InteractiveBreakpoint};
 use std::iter::successors;
 
 use super::*;
@@ -169,12 +169,7 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
         id = binary.generate_breakpoint_id();
         let mut bp = InteractiveBreakpoint::new(id);
         if temporary {
-            bp.commands.push(InteractiveCommand {
-                command: breakpoint_command(),
-                label: "breakpoint",
-                // TODO(joshh): bother cleaning up args when command is deleted
-                args: Box::leak(Box::new(["remove".to_string(), format!("!{id}")])),
-            });
+            bp.commands.push(format!("breakpoint remove !{id}"))
         }
         state.breakpoints.insert(addr, bp);
 
