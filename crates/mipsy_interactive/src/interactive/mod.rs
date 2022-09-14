@@ -20,7 +20,7 @@ use rustyline::{
     Modifiers,
     Movement,
     Word,
-    error::ReadlineError,
+    error::ReadlineError, config::Configurer,
 };
 use colored::*;
 use mipsy_lib::{
@@ -502,7 +502,9 @@ impl State {
 }
 
 fn editor() -> Editor<MyHelper> {
-    let mut rl = Editor::new();
+    let mut rl = Editor::new().unwrap();
+
+    rl.set_check_cursor_position(true);
 
     let helper = MyHelper::new();
     rl.set_helper(Some(helper));
