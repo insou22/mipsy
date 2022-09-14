@@ -12,7 +12,7 @@ pub(crate) fn commands_command() -> Command {
         vec![],
         vec!["breakpoint id"],
         "attach commands to a breakpoint",
-        |state, label, args| {
+        |state, label, mut args| {
             let get_error = |expected: &str, instead: &str| generate_err(
                 CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
                 &String::from(""),
@@ -26,9 +26,9 @@ pub(crate) fn commands_command() -> Command {
                 )
             }
 
-            // TODO: give instructions
-            // TODO: decide on behavious when commands already exist
-            // println!("{} ")
+            let list = !args.is_empty() &&
+                matches!(args[0].as_ref(), "l" | "list");
+            if list { args = &args[1..]; }
 
             let id: u32 = if args.is_empty() {
                 state.breakpoints.values()
@@ -40,44 +40,78 @@ pub(crate) fn commands_command() -> Command {
                 return Err(get_error("<id>", &args[0]))
             };
 
-            let commands;
-            if let Some(br) = state.breakpoints.iter_mut().find(|bp| bp.1.breakpoint.id == id) {
-                commands = &mut br.1.commands;
+            if list {
+                list_commands(state, id)
             } else {
-                prompt::error_nl(format!(
-                    "breakpoint at {} doesn't exist",
-                    format!("!{id}").blue(),
-                ));
-                return Ok("".into());
+                add_commands(state, id)
             }
-
-            let mut rl = editor();
-            loop {
-                let readline = rl.readline("");
-
-                match readline {
-                    Ok(line) => {
-                        if line.is_empty() || line == "\n" || line == "end" {
-                            state.confirm_exit = true;
-                            break;
-                        }
-
-                        commands.push(line);
-                    }
-                    Err(ReadlineError::Interrupted) => {}
-                    Err(ReadlineError::Eof) => {
-                        std::process::exit(0);
-                    }
-                    Err(err) => {
-                        println!("Error: {:?}", err);
-                        break;
-                    }
-                }
-            }
-
-            Ok("".into())
         }
     )
+}
+
+fn add_commands(state: &mut State, id: u32) -> CommandResult<String> {
+    println!("[mipsy] enter commands seperated by newlines\n\
+              [mipsy] to run whenever breakpoint {} is hit", format!("!{id}").blue());
+    println!("[mipsy] use an empty line or the command {} to finish", "end".bold().yellow());
+
+    let commands;
+    if let Some(br) = state.breakpoints.iter_mut().find(|bp| bp.1.breakpoint.id == id) {
+        commands = &mut br.1.commands;
+
+        // TODO: decide on behavious when commands already exist
+        commands.clear();
+    } else {
+        prompt::error_nl(format!(
+            "breakpoint at {} doesn't exist",
+            format!("!{id}").blue(),
+        ));
+        return Ok("".into());
+    }
+
+    let mut rl = editor();
+    loop {
+        let readline = rl.readline("");
+
+        match readline {
+            Ok(line) => {
+                if line.is_empty() || line == "\n" || line == "end" {
+                    state.confirm_exit = true;
+                    break;
+                }
+
+                commands.push(line);
+            }
+            Err(ReadlineError::Interrupted) => {
+                std::process::exit(0);
+            }
+            Err(ReadlineError::Eof) => {
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
+        }
+    }
+
+    prompt::success_nl(format!("commands attached to breakpoint {}", format!("!{id}").blue()));
+    Ok("".into())
+}
+
+fn list_commands(state: &mut State, id: u32) -> CommandResult<String> {
+    println!("[mipsy] commands for breakpoint {}:", format!("!{id}").blue());
+
+    if let Some(br) = state.breakpoints.iter_mut().find(|bp| bp.1.breakpoint.id == id) {
+        let commands = &mut br.1.commands;
+        commands.iter().for_each(|command| println!("{command}"));
+    } else {
+        prompt::error_nl(format!(
+            "breakpoint at {} doesn't exist",
+            format!("!{id}").blue(),
+        ));
+    }
+
+    Ok("".into())
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
