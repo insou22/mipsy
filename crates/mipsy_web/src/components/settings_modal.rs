@@ -40,8 +40,8 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             display_modal.set(!*display_modal);
                         })}}
                     class="
-                        rounded text-center cursor-pointer text-6xl border-black 
-                        border-2 hover:bg-red-700 border-none bg-transparent close-modal" 
+                        rounded text-center cursor-pointer text-6xl
+                        border-2 hover:bg-red-700 border-none bg-transparent close-modal"
                     aria-label="close">
                     {"x"}
                     </div>
@@ -207,7 +207,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <Heading title="Font color" subtitle="Font, Icon and Border colors" />
                         <div class="flex flex-row items-center">
-                        <ColorPicker  
+                        <ColorPicker
                             oninput={
                                 let config = config.clone();
                                 Callback::from(move |e: InputEvent| {
@@ -225,7 +225,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         />
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border hover:bg-th-secondary border-current rounded"
+                            class="m-2 p-2 border bg-th-tabunselected hover:bg-th-secondary rounded"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -267,7 +267,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black round"
+                            class="m-2 p-2 border bg-th-tabunselected hover:bg-th-secondary rounded"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -310,7 +310,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black rounde"
+                            class="m-2 p-2 border bg-th-tabunselected hover:bg-th-secondary rounded"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -352,7 +352,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <button
                             type="button"
-                            class="text-black m-2 p-2 border  hover:bg-th-secondary border-black rounded"
+                            class="m-2 p-2 border bg-th-tabunselected hover:bg-th-secondary rounded"
                             onclick={
                                 let config = config.clone();
                                 Callback::from(move |_| {
@@ -410,7 +410,7 @@ pub fn analytics_info(AnalyticsInfoProps { is_opt_out }: &AnalyticsInfoProps) ->
 
         <button class="
             border-2 border-current
-            hover:bg-red-700 
+            hover:bg-red-700
             font-bold py-2 px-4 rounded
             m-2"
             onclick={{
