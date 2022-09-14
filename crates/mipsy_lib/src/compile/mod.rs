@@ -45,6 +45,7 @@ pub const KDATA_BOT:  u32 = 0x90000000;
 pub struct Breakpoint {
     pub id: u32,
     pub enabled: bool,
+    pub commands: Vec<String>,
 }
 
 impl Breakpoint {
@@ -52,6 +53,7 @@ impl Breakpoint {
         Self {
             id,
             enabled: true,
+            commands: Vec::new(),
         }
     }
 }

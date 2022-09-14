@@ -4,8 +4,6 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use mipsy_lib::compile::Breakpoint;
-use std::collections::HashMap;
 use std::{ops::Deref, rc::Rc};
 
 use mipsy_lib::{MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
@@ -39,28 +37,12 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-#[derive(Clone, Default)]
-pub(crate) struct InteractiveBreakpoint {
-    breakpoint: Breakpoint,
-    commands: Vec<String>,
-}
-
-impl InteractiveBreakpoint {
-    pub fn new(id: u32) -> Self {
-        Self {
-            breakpoint: Breakpoint::new(id),
-            commands: Vec::new(),
-        }
-    }
-}
-
 pub struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<Vec<(String, String)>>,
     pub(crate) binary:  Option<Binary>,
-    pub(crate) breakpoints: HashMap<u32, InteractiveBreakpoint>,
     pub(crate) runtime: Option<Runtime>,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
@@ -75,7 +57,6 @@ impl State {
             commands: vec![],
             program: None,
             binary:  None,
-            breakpoints: HashMap::new(),
             runtime: None,
             exited: false,
             prev_command: None,
@@ -472,18 +453,17 @@ impl State {
 
                 // TODO(joshh): make this less ugly when
                 // https://github.com/rust-lang/rust/pull/94927 is released
-                // if let Some(bp) = self.breakpoints.get(&pc) || breakpoint {
+                // if let Some(bp) = binary.breakpoints.get(&pc) || breakpoint {
                 //     if !bp.enabled { trapped }
 
-                let bp = self.breakpoints.get(&pc).cloned().unwrap_or_default();
-                if breakpoint || bp.breakpoint.enabled {
+                let bp = binary.breakpoints.get(&pc).cloned().unwrap_or_default();
+                if breakpoint || bp.enabled {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
                             .map(|(name, _)| name.yellow().bold().to_string());
 
                     runtime_handler::breakpoint(label.as_deref(), pc);
                     bp.commands.iter().for_each(|command| {
-                        // TODO(joshh): check error handling is working
                         self.exec_command(command.to_owned());
                     });
 

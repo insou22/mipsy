@@ -1,4 +1,5 @@
 use colored::Colorize;
+use mipsy_lib::Binary;
 use rustyline::error::ReadlineError;
 
 use crate::{interactive::{editor, error::CommandError}, prompt};
@@ -26,13 +27,15 @@ pub(crate) fn commands_command() -> Command {
                 )
             }
 
+            let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
             let list = !args.is_empty() &&
                 matches!(args[0].as_ref(), "l" | "list");
             if list { args = &args[1..]; }
 
             let id: u32 = if args.is_empty() {
-                state.breakpoints.values()
-                    .map(|bp| bp.breakpoint.id)
+                binary.breakpoints.values()
+                    .map(|bp| bp.id)
                     .fold(u32::MIN, |x, y| x.max(y))
             } else if let Some(id) = args[0].strip_prefix('!') {
                 id.parse().map_err(|_| get_error("<id>", &args[0]))?
@@ -40,22 +43,23 @@ pub(crate) fn commands_command() -> Command {
                 return Err(get_error("<id>", &args[0]))
             };
 
+            state.confirm_exit = true;
             if list {
-                list_commands(state, id)
+                list_commands(binary, id)
             } else {
-                add_commands(state, id)
+                add_commands(binary, id)
             }
         }
     )
 }
 
-fn add_commands(state: &mut State, id: u32) -> CommandResult<String> {
+fn add_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
     println!("[mipsy] enter commands seperated by newlines\n\
               [mipsy] to run whenever breakpoint {} is hit", format!("!{id}").blue());
     println!("[mipsy] use an empty line or the command {} to finish", "end".bold().yellow());
 
     let commands;
-    if let Some(br) = state.breakpoints.iter_mut().find(|bp| bp.1.breakpoint.id == id) {
+    if let Some(br) = binary.breakpoints.iter_mut().find(|bp| bp.1.id == id) {
         commands = &mut br.1.commands;
 
         // TODO: decide on behavious when commands already exist
@@ -75,7 +79,6 @@ fn add_commands(state: &mut State, id: u32) -> CommandResult<String> {
         match readline {
             Ok(line) => {
                 if line.is_empty() || line == "\n" || line == "end" {
-                    state.confirm_exit = true;
                     break;
                 }
 
@@ -98,10 +101,10 @@ fn add_commands(state: &mut State, id: u32) -> CommandResult<String> {
     Ok("".into())
 }
 
-fn list_commands(state: &mut State, id: u32) -> CommandResult<String> {
+fn list_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
     println!("[mipsy] commands for breakpoint {}:", format!("!{id}").blue());
 
-    if let Some(br) = state.breakpoints.iter_mut().find(|bp| bp.1.breakpoint.id == id) {
+    if let Some(br) = binary.breakpoints.iter_mut().find(|bp| bp.1.id == id) {
         let commands = &mut br.1.commands;
         commands.iter().for_each(|command| println!("{command}"));
     } else {
