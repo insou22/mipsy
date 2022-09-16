@@ -52,8 +52,10 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label,  args, BpState::Disable),
                 "t" | "toggle" =>
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
-                 _ =>
+                _ if label != "__help__" =>
                     breakpoint_insert(state, label,  args, false),
+                _ =>
+                    Ok(get_long_help()),
             }
         }
     )
@@ -100,7 +102,7 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
                  When running or stepping through your program, a breakpoint will cause execution to\n\
                  pause temporarily, allowing you to debug the current state.\n\
                  May error if provided a label that doesn't exist.\n\
-                 If temporary is provided as the second argument, the breakpoint will be created as a\n\
+                 If {13} is provided as the second argument, the breakpoint will be created as a\n\
                  temporary breakpoint, which automatically deletes itself after being hit.
               \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
                 "<insert>".magenta(),
@@ -114,8 +116,9 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
                 ":".bold(),
                 "break".bold(),
                 "breakpoint".yellow().bold(),
-                "{insert, delete}".purple(),
+                "{insert, delete, temporary}".purple(),
                 "temporary?".purple(),
+                "temporary".purple(),
             )
         )
     }
