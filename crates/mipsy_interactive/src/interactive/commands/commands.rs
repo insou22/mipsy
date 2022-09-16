@@ -21,9 +21,17 @@ pub(crate) fn commands_command() -> Command {
 
             if label == "__help__" {
                 return Ok(
-                    "TODO: commands help".into()
-                    // make sure to talk about optional specification
-                    // and make the end syntax clear
+                    format!(
+                        "Takes in a list of commands seperated by newlines,\n\
+                         and attaches the commands to the specified {}.\n\
+                         If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
+                         Whenever that breakpoint is hit, the commands will automatically be executed\n\
+                         in the provided order.\n\
+                         The list of commands can be ended using the {} command, EOF, or an empty line.
+                        ",
+                        "[breakpoint id]".purple(),
+                        "end".yellow().bold(),
+                    )
                 )
             }
 
