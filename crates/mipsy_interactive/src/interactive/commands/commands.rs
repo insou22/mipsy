@@ -11,7 +11,7 @@ pub(crate) fn commands_command() -> Command {
         "commands",
         vec![],
         vec![],
-        vec!["breakpoint id"],
+        vec!["list", "breakpoint id"],
         "attach commands to a breakpoint",
         |state, label, mut args| {
             let get_error = |expected: &str, instead: &str| generate_err(
@@ -23,14 +23,17 @@ pub(crate) fn commands_command() -> Command {
                 return Ok(
                     format!(
                         "Takes in a list of commands seperated by newlines,\n\
-                         and attaches the commands to the specified {}.\n\
+                         and attaches the commands to the specified {0}.\n\
                          If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
                          Whenever that breakpoint is hit, the commands will automatically be executed\n\
                          in the provided order.\n\
-                         The list of commands can be ended using the {} command, EOF, or an empty line.
+                         The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                         To view the commands attached to a particular breakpoint,\n\
+                         use {2} {0}
                         ",
-                        "[breakpoint id]".purple(),
+                        "<breakpoint id>".purple(),
                         "end".yellow().bold(),
+                        "commands list".bold().yellow(),
                     )
                 )
             }
