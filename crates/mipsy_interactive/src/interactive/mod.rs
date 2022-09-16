@@ -449,26 +449,27 @@ impl State {
                 true
             } else {
                 let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
-                let binary = self.binary.as_ref().unwrap();
+                let binary = self.binary.as_mut().unwrap();
+                let bp = binary.breakpoints.get_mut(&pc);
 
-                // TODO(joshh): make this less ugly when
-                // https://github.com/rust-lang/rust/pull/94927 is released
-                // if let Some(bp) = binary.breakpoints.get(&pc) || breakpoint {
-                //     if !bp.enabled { trapped }
+                if breakpoint || bp.is_some() {
+                    if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
+                        bp.unwrap().ignore_count -= 1;
+                        trapped
+                    } else {
+                        let label = binary.labels.iter()
+                                .find(|(_, &addr)| addr == pc)
+                                .map(|(name, _)| name.yellow().bold().to_string());
 
-                let bp = binary.breakpoints.get(&pc).cloned().unwrap_or_default();
-                if breakpoint || bp.enabled {
-                    let label = binary.labels.iter()
-                            .find(|(_, &addr)| addr == pc)
-                            .map(|(name, _)| name.yellow().bold().to_string());
+                        runtime_handler::breakpoint(label.as_deref(), pc);
+                        if let Some(bp) = bp {
+                            bp.commands.clone().iter().for_each(|command| {
+                                self.exec_command(command.to_owned());
+                            });
+                        }
 
-                    runtime_handler::breakpoint(label.as_deref(), pc);
-                    bp.commands.iter().for_each(|command| {
-                        self.exec_command(command.to_owned());
-                    });
-
-                    true
-
+                        true
+                    }
                 // TODO(joshh): add watchpoints
                 } else {
                     trapped

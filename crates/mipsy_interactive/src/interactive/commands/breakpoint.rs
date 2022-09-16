@@ -52,6 +52,8 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label,  args, BpState::Disable),
                 "t" | "toggle" =>
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
+                "ignore" =>
+                    breakpoint_ignore(state, label, &args[1..]),
                 _ if label != "__help__" =>
                     breakpoint_insert(state, label,  args, false),
                 _ =>
@@ -70,6 +72,7 @@ fn get_long_help() -> String {
          {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
+         {0} {12}    : ignore a breakpoint for a specified number of hits\n\
          {0} {4}      : list currently set breakpoints\n\n\
          {8} {9} will provide more information about the specified subcommand.
         ",
@@ -85,6 +88,7 @@ fn get_long_help() -> String {
         "<subcommand>".purple().bold(),
         "<subcommand>".purple(),
         "temporary".purple(),
+        "ignore".purple(),
     )
 }
 
@@ -371,6 +375,88 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     Ok("".into())
 }
 
+fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Usage: {6} {7} {1} {0}\n\
+                 {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
+                 {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
+        \x20                 a label (`{3}`), or an id (`{4}`).\n\
+                 Breakpoints that are ignored do not trigger when they are hit.\n\
+                 Breakpoints caused by the `{5}` instruction in code cannot ignored.
+                ",
+                "<ignore count>".purple(),
+                "<address>".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
+                "!3".blue(),
+                "break".bold(),
+                "breakpoint".yellow().bold(),
+                "ignore".purple(),
+            )
+        )
+    }
+
+    if args.is_empty() {
+        return Err(
+            generate_err(
+                CommandError::MissingArguments {
+                    args: vec!["addr".to_string()],
+                    instead: args.to_vec(),
+                },
+                "ignore",
+            )
+        );
+    }
+
+    let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
+
+    if addr % 4 != 0 {
+        prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
+        return Ok("".into());
+    }
+
+    args = &args[1..];
+    if args.is_empty() {
+        return Err(
+            generate_err(
+                CommandError::MissingArguments {
+                    args: vec!["ignore count".to_string()],
+                    instead: args.to_vec(),
+                },
+                "ignore",
+            )
+        );
+    }
+
+    let ignore_count: u32 = args[0].parse()
+        .map_err(|_| generate_err(
+            CommandError::BadArgument {
+                arg: "<ignore count>".into(),
+                instead: args[0].clone(),
+            },
+            ""
+        ))?;
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+    if let Some(br) = binary.breakpoints.get_mut(&addr) {
+        br.ignore_count = ignore_count;
+        prompt::success_nl(format!("skipping breakpoint {} {} times", format!("!{}", br.id).blue(), ignore_count.to_string().yellow()));
+    } else {
+        prompt::error_nl(format!(
+            "breakpoint at {} doesn't exist",
+            match arg_type {
+                MipsyArgType::Immediate => args[0].white(),
+                MipsyArgType::Label     => args[0].yellow().bold(),
+                MipsyArgType::Id        => args[0].blue(),
+            }
+        ));
+    }
+
+    Ok("".into())
+}
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");

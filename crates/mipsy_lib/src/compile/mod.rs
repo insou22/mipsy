@@ -46,6 +46,7 @@ pub struct Breakpoint {
     pub id: u32,
     pub enabled: bool,
     pub commands: Vec<String>,
+    pub ignore_count: u32,
 }
 
 impl Breakpoint {
@@ -54,6 +55,7 @@ impl Breakpoint {
             id,
             enabled: true,
             commands: Vec::new(),
+            ignore_count: 0,
         }
     }
 }
