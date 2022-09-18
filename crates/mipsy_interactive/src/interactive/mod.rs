@@ -452,7 +452,7 @@ impl State {
                 let binary = self.binary.as_mut().unwrap();
                 let bp = binary.breakpoints.get_mut(&pc);
 
-                if breakpoint || bp.is_some() {
+                if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
                     if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
                         bp.unwrap().ignore_count -= 1;
                         trapped
