@@ -9,7 +9,7 @@ use super::*;
 pub(crate) fn commands_command() -> Command {
     command(
         "commands",
-        vec![],
+        vec!["com", "comms", "cmd", "cmds", "command"],
         vec![],
         vec!["list", "breakpoint id"],
         "attach commands to a breakpoint",
