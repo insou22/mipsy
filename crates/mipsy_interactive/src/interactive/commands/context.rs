@@ -31,7 +31,7 @@ pub(crate) fn context_command() -> Command {
             let n = match args.first() {
                 Some(arg) => expect_u32(
                     label,
-                    &"[n]".bright_magenta().to_string(),
+                    &"[n]".bright_magenta(),
                     arg,
                     f
                 ),

@@ -11,9 +11,7 @@ use rustyline::{
         FilenameCompleter, 
         Pair,
     },
-    highlight::{
-        Highlighter,
-    },
+    highlight::Highlighter,
     hint::{
         Hinter,
         HistoryHinter,
@@ -27,7 +25,7 @@ use rustyline::{
 use rustyline_derive::Helper;
 
 #[derive(Helper)]
-pub(super) struct MyHelper {
+pub(crate) struct MyHelper {
     completer: FilenameCompleter,
     hinter: HistoryHinter,
 }

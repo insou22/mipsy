@@ -1,10 +1,10 @@
-use mipsy_lib::compile::Breakpoint;
 use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
 use super::*;
 use colored::*;
 use mipsy_parser::*;
+use mipsy_lib::compile::Breakpoint;
 
 enum BpState {
     Enable,
@@ -41,17 +41,23 @@ pub(crate) fn breakpoint_command() -> Command {
                 "l" | "list" =>
                     breakpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
-                    breakpoint_insert(state, label, &args[1..], false),
+                    breakpoint_insert(state, label, &args[1..], false, false),
                 "del" | "delete" | "rm" | "remove" =>
-                    breakpoint_insert(state, label, &args[1..], true),
+                    breakpoint_insert(state, label, &args[1..], true,  false),
+                "tmp" | "temp" | "temporary" =>
+                    breakpoint_insert(state, label, &args[1..], false, true),
                 "e" | "enable" =>
                     breakpoint_toggle(state, label,  args, BpState::Enable),
                 "d" | "disable" =>
                     breakpoint_toggle(state, label,  args, BpState::Disable),
                 "t" | "toggle" =>
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
-                 _ =>
-                    breakpoint_insert(state, label,  args, false),
+                "ignore" =>
+                    breakpoint_ignore(state, label, &args[1..]),
+                _ if label != "__help__" =>
+                    breakpoint_insert(state, label,  args, false, false),
+                _ =>
+                    Ok(get_long_help()),
             }
         }
     )
@@ -60,12 +66,14 @@ pub(crate) fn breakpoint_command() -> Command {
 fn get_long_help() -> String {
     format!(
         "A collection of commands for managing breakpoints. Available {10}s are:\n\n\
-         {0} {2} : insert/delete a breakpoint\n\
+         {0} {2}    : insert/delete a breakpoint\n\
          {1} {3}\n\
-         {0} {5} : enable/disable an existing breakpoint\n\
+         {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+         {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
-         {0} {4}   : list currently set breakpoints\n\n\
+         {0} {12}    : ignore a breakpoint for a specified number of hits\n\
+         {0} {4}      : list currently set breakpoints\n\n\
          {8} {9} will provide more information about the specified subcommand.
         ",
         "breakpoint".yellow().bold(),
@@ -79,10 +87,12 @@ fn get_long_help() -> String {
         "help breakpoint".bold(),
         "<subcommand>".purple().bold(),
         "<subcommand>".purple(),
+        "temporary".purple(),
+        "ignore".purple(),
     )
 }
 
-fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
+fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -92,6 +102,8 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                  If you are removing a breakpoint, you can also use its id (`{5}`).\n\
                  {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
+                 If {12}, `tmp`, or `temp` is provided as the {6}, the breakpoint will\n\
+                 be created as a temporary breakpoint, which automatically deletes itself after being hit.\n\
                  If {6} is none of these option, it defaults to inserting a breakpoint at {6}.\n\
                  When running or stepping through your program, a breakpoint will cause execution to\n\
                  pause temporarily, allowing you to debug the current state.\n\
@@ -108,7 +120,8 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                 ":".bold(),
                 "break".bold(),
                 "breakpoint".yellow().bold(),
-                "{insert, delete}".purple(),
+                "{insert, delete, temporary}".purple(),
+                "<temporary>".purple(),
             )
         )
     }
@@ -152,7 +165,12 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         }
     } else if !binary.breakpoints.contains_key(&addr) {
         id = binary.generate_breakpoint_id();
-        binary.breakpoints.insert(addr, Breakpoint::new(id));
+        let mut bp = Breakpoint::new(id);
+        if temporary {
+            bp.commands.push(format!("breakpoint remove !{id}"))
+        }
+        binary.breakpoints.insert(addr, bp);
+
         "inserted"
     } else {
         prompt::error_nl(format!(
@@ -352,13 +370,95 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     Ok("".into())
 }
 
+fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Usage: {6} {7} {1} {0}\n\
+                 {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
+                 {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
+        \x20                 a label (`{3}`), or an id (`{4}`).\n\
+                 Breakpoints that are ignored do not trigger when they are hit.\n\
+                 Breakpoints caused by the `{5}` instruction in code cannot ignored.
+                ",
+                "<ignore count>".purple(),
+                "<address>".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
+                "!3".blue(),
+                "break".bold(),
+                "breakpoint".yellow().bold(),
+                "ignore".purple(),
+            )
+        )
+    }
+
+    if args.is_empty() {
+        return Err(
+            generate_err(
+                CommandError::MissingArguments {
+                    args: vec!["addr".to_string()],
+                    instead: args.to_vec(),
+                },
+                "ignore",
+            )
+        );
+    }
+
+    let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
+
+    if addr % 4 != 0 {
+        prompt::error_nl(format!("address 0x{:08x} should be word-aligned", addr));
+        return Ok("".into());
+    }
+
+    args = &args[1..];
+    if args.is_empty() {
+        return Err(
+            generate_err(
+                CommandError::MissingArguments {
+                    args: vec!["ignore count".to_string()],
+                    instead: args.to_vec(),
+                },
+                "ignore",
+            )
+        );
+    }
+
+    let ignore_count: u32 = args[0].parse()
+        .map_err(|_| generate_err(
+            CommandError::BadArgument {
+                arg: "<ignore count>".into(),
+                instead: args[0].clone(),
+            },
+            ""
+        ))?;
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
+    if let Some(br) = binary.breakpoints.get_mut(&addr) {
+        br.ignore_count = ignore_count;
+        prompt::success_nl(format!("skipping breakpoint {} {} times", format!("!{}", br.id).blue(), ignore_count.to_string().yellow()));
+    } else {
+        prompt::error_nl(format!(
+            "breakpoint at {} doesn't exist",
+            match arg_type {
+                MipsyArgType::Immediate => args[0].white(),
+                MipsyArgType::Label     => args[0].yellow().bold(),
+                MipsyArgType::Id        => args[0].blue(),
+            }
+        ));
+    }
+
+    Ok("".into())
+}
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");
     let command_name = command_name.into();
     if !command_name.is_empty() { help.push(' ') };
 
-    return CommandError::WithTip {
+    CommandError::WithTip {
         error: Box::new(error),
         tip: format!("try `{}{}`", help.bold(), command_name.bold()),
     } 

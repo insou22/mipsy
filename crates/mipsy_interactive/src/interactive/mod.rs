@@ -37,7 +37,7 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-pub(crate) struct State {
+pub struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
@@ -449,24 +449,28 @@ impl State {
                 true
             } else {
                 let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
-                let binary = self.binary.as_ref().unwrap();
+                let binary = self.binary.as_mut().unwrap();
+                let bp = binary.breakpoints.get_mut(&pc);
 
-                // TODO(joshh): make this less ugly when
-                // https://github.com/rust-lang/rust/pull/94927 is released
-                // if let Some(bp) = self.breakpoints.get(&pc) || breakpoint {
-                //     if !bp.enabled { trapped }
+                if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
+                    if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
+                        bp.unwrap().ignore_count -= 1;
+                        trapped
+                    } else {
+                        let label = binary.labels.iter()
+                                .find(|(_, &addr)| addr == pc)
+                                .map(|(name, _)| name.yellow().bold().to_string());
 
-                let bp = binary.breakpoints.get(&pc).cloned().unwrap_or_default();
-                if breakpoint || bp.enabled {
-                    let label = binary.labels.iter()
-                            .find(|(_, &addr)| addr == pc)
-                            .map(|(name, _)| name.yellow().bold().to_string());
-                    
-                    runtime_handler::breakpoint(label.as_deref(), pc);
+                        runtime_handler::breakpoint(label.as_deref(), pc);
+                        if let Some(bp) = bp {
+                            bp.commands.clone().iter().for_each(|command| {
+                                self.exec_command(command.to_owned());
+                            });
+                        }
 
-                    true
-
-                // todo(joshh): add watchpoints
+                        true
+                    }
+                // TODO(joshh): add watchpoints
                 } else {
                     trapped
                 }
@@ -520,7 +524,7 @@ impl State {
     }
 }
 
-fn editor() -> Editor<MyHelper> {
+pub(crate) fn editor() -> Editor<MyHelper> {
     let mut rl = Editor::new().unwrap();
 
     rl.set_check_cursor_position(true);
@@ -553,6 +557,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
     state.add_command(commands::exit_command());
+    state.add_command(commands::commands_command());
 
     state
 }

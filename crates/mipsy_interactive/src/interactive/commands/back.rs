@@ -28,7 +28,7 @@ pub(crate) fn back_command() -> Command {
             let times = match args.first() {
                 Some(arg) => expect_u32(
                     label,
-                    &"[times]".bright_magenta().to_string(),
+                    &"[times]".bright_magenta(),
                     arg, 
                     Some(|neg: i32|
                         format!("try `{}{}`", "step ".bold(), (-neg).to_string().bold())
