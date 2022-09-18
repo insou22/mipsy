@@ -41,11 +41,11 @@ pub(crate) fn breakpoint_command() -> Command {
                 "l" | "list" =>
                     breakpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
-                    breakpoint_insert(state, label, &args[1..], false),
+                    breakpoint_insert(state, label, &args[1..], false, false),
                 "del" | "delete" | "rm" | "remove" =>
-                    breakpoint_insert(state, label, &args[1..], true),
+                    breakpoint_insert(state, label, &args[1..], true,  false),
                 "tmp" | "temp" | "temporary" =>
-                    breakpoint_insert(state, label,  args,      false),
+                    breakpoint_insert(state, label, &args[1..], false, true),
                 "e" | "enable" =>
                     breakpoint_toggle(state, label,  args, BpState::Enable),
                 "d" | "disable" =>
@@ -55,7 +55,7 @@ pub(crate) fn breakpoint_command() -> Command {
                 "ignore" =>
                     breakpoint_ignore(state, label, &args[1..]),
                 _ if label != "__help__" =>
-                    breakpoint_insert(state, label,  args, false),
+                    breakpoint_insert(state, label,  args, false, false),
                 _ =>
                     Ok(get_long_help()),
             }
@@ -92,22 +92,22 @@ fn get_long_help() -> String {
     )
 }
 
-fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove: bool) -> Result<String, CommandError> {
+fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
-                "Usage: {10} {11} {12} {2}\n\
+                "Usage: {10} {11} {2}\n\
                  {0}s or {1}s a breakpoint at the specified {2}.\n\
                  {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
                  If you are removing a breakpoint, you can also use its id (`{5}`).\n\
                  {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
+                 If {12}, `tmp`, or `temp` is provided as the {6}, the breakpoint will\n\
+                 be created as a temporary breakpoint, which automatically deletes itself after being hit.\n\
                  If {6} is none of these option, it defaults to inserting a breakpoint at {6}.\n\
                  When running or stepping through your program, a breakpoint will cause execution to\n\
                  pause temporarily, allowing you to debug the current state.\n\
                  May error if provided a label that doesn't exist.\n\
-                 If {13} is provided as the second argument, the breakpoint will be created as a\n\
-                 temporary breakpoint, which automatically deletes itself after being hit.
               \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
                 "<insert>".magenta(),
                 "<delete>".magenta(),
@@ -121,15 +121,10 @@ fn breakpoint_insert(state: &mut State, label: &str, mut args: &[String], remove
                 "break".bold(),
                 "breakpoint".yellow().bold(),
                 "{insert, delete, temporary}".purple(),
-                "temporary?".purple(),
-                "temporary".purple(),
+                "<temporary>".purple(),
             )
         )
     }
-
-    let temporary = !args.is_empty() &&
-        matches!(args[0].as_ref(), "t" | "tmp" | "temp" | "temporary");
-    if temporary { args = &args[1..]; }
 
     if args.is_empty() {
         return Err(
