@@ -150,8 +150,10 @@ impl Agent for Worker {
         }
     }
 
-    fn name_of_resource() -> &'static str {
-        "worker.js"
+	// we need this as we can no longer
+	// assume that worker resources are hosted at root
+    fn resource_path_is_relative() -> bool {
+    	true
     }
 
     fn update(&mut self, _msg: Self::Message) {

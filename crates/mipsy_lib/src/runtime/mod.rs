@@ -632,7 +632,7 @@ impl Runtime {
                     0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
         
                     // SLTU $Rd, $Rs, $Rt
-                    0x2B => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
+                    0x2B => { state.write_register(rd, if (state.read_register(rs)? as u32) < state.read_register(rt)? as u32 { 1 } else { 0 } ); },
         
                     // Unused
                     0x2C..=0x3F => {},
@@ -818,16 +818,18 @@ impl Runtime {
 
                 // BLTZAL $Rs, Im
                 0x10 => {
+                    state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
+
                     if state.read_register(rs)? < 0 {
-                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
                         state.branch(imm);
                     }
                 }
 
                 // BGEZAL $Rs, Im
                 0x11 => {
+                    state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
+
                     if state.read_register(rs)? >= 0 {
-                        state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
                         state.branch(imm);
                     }
                 }
