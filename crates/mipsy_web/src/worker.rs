@@ -1,3 +1,4 @@
+use mipsy_lib::compile::Breakpoint;
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
@@ -344,10 +345,11 @@ impl Agent for Worker {
             Self::Input::ToggleBreakpoint(addr) => {
                 let binary = self.binary.as_mut();
                 if let Some(binary) = binary {
-                    if binary.breakpoints.iter().any(|&x| x == addr) {
-                        binary.breakpoints.retain(|&x| addr != x);
+                    if binary.breakpoints.contains_key(&addr) {
+                        binary.breakpoints.remove(&addr);
                     } else {
-                        binary.breakpoints.push(addr);
+                        let id = binary.generate_breakpoint_id();
+                        binary.breakpoints.insert(addr, Breakpoint::new(id));
                     }
                 }
 
@@ -383,7 +385,7 @@ impl Agent for Worker {
                                             runtime = next_runtime;
                                             // we want to stop at the instruction before the breakpoint
                                             // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains(&pc)
+                                            if binary.breakpoints.contains_key(&pc)
                                                 && !self.config.ignore_breakpoints
                                             {
                                                 breakpoint = true;
@@ -480,7 +482,7 @@ impl Agent for Worker {
                                     runtime = next_runtime;
                                     // we want to stop at the instruction before the breakpoint
                                     // so that the line of breakpoint doesnt get executed
-                                    if binary.breakpoints.contains(&pc)
+                                    if binary.breakpoints.contains_key(&pc)
                                         && !self.config.ignore_breakpoints
                                     {
                                         breakpoint = true;

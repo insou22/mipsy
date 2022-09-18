@@ -63,8 +63,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
                                 } else {
                                     source_instr.expect("none case handled above")
                                 };
-                                //log::info!("{:?}", binary.breakpoints);
-                                binary.breakpoints.iter().any(|&i| i == addr)
+                                binary.breakpoints.contains_key(&addr)
                             }
 
                         };

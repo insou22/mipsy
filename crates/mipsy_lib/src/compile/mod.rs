@@ -40,7 +40,24 @@ pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// TODO(joshh): remove once if-let chaining is in
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct Breakpoint {
+    pub id: u32,
+    pub enabled: bool,
+}
+
+impl Breakpoint {
+    pub fn new(id: u32) -> Self {
+        Self {
+            id,
+            enabled: true,
+        }
+    }
+}
+
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,
     pub data:    Vec<Safe<u8>>,
@@ -48,9 +65,9 @@ pub struct Binary {
     pub kdata:   Vec<Safe<u8>>,
     pub labels:  LinkedHashMap<String, u32>,
     pub constants: HashMap<String, i64>,
-    pub breakpoints:  Vec<u32>,
     pub globals: Vec<String>,
     pub line_numbers: HashMap<u32, (Rc<str>, u32)>,
+    pub breakpoints: HashMap<u32, Breakpoint>,
 }
 
 impl Binary {
@@ -98,6 +115,38 @@ impl Binary {
             })
 
     }
+
+    pub fn generate_breakpoint_id(&self) -> u32 {
+        // TODO(joshh): reuses old breakpoint ids
+        // this diverges from gdb behaviour but is it a problem?
+        let mut id = self.breakpoints
+                    .values()
+                    .map(|bp| bp.id)
+                    .fold(std::u32::MIN, |x, y| x.max(y))
+                    .wrapping_add(1);
+
+        if self.breakpoints.values().any(|bp| bp.id == id) {
+            // find a free id to use
+            // there's probably a neater way to do this,
+            // but realistically if someone is using enough breakpoints
+            // to fill a u32, they have bigger problems
+
+            let mut ids = self.breakpoints
+                    .values()
+                    .map(|bp| bp.id)
+                    .collect::<Vec<_>>();
+
+            ids.sort_unstable();
+
+            id = ids.into_iter()
+                    .enumerate()
+                    .find(|x| x.0 != x.1 as usize)
+                    .expect("you've run out of breakpoints! why are you using so many")
+                    .1;
+        }
+
+        id
+    }
 }
 
 #[derive(Debug, Default)]
@@ -128,17 +177,7 @@ pub fn compile_with_kernel(program: &mut MpProgram, kernel: &mut MpProgram, opti
         // TODO: Deal with warnings here
     }
 
-    let mut binary = Binary {
-        text: vec![],
-        data: vec![],
-        ktext: vec![],
-        kdata: vec![],
-        labels: LinkedHashMap::new(),
-        constants: HashMap::new(),
-        breakpoints: vec![],
-        globals: vec![],
-        line_numbers: HashMap::new(),
-    };
+    let mut binary = Binary::default();
     
     populate_labels_and_data(&mut binary, config, iset, kernel)?;
 

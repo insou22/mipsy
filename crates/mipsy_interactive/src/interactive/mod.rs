@@ -115,24 +115,13 @@ impl State {
         };
 
         if (parts.len() - 1) < required.len() {
-            let mut err_msg = String::from("missing required parameter");
-
-            if required.len() - (parts.len() - 1) > 1 {
-                err_msg.push('s');
-            }
-
-            err_msg.push(' ');
-
-            err_msg.push_str(
-                &required[(parts.len() - 1)..(required.len())]
-                    .iter()
-                    .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            );
-
-            prompt::error(err_msg);
-            prompt::tip_nl(format!("try `{} {}`", "help".bold(), command_name.bold()));
+            self.handle_error(CommandError::WithTip {
+                error: Box::new(CommandError::MissingArguments {
+                    args: required.to_vec(),
+                    instead: parts.to_vec(),
+                }),
+                tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
+            }, true);
             return;
         }
 
@@ -145,10 +134,29 @@ impl State {
 
     fn handle_error(&self, err: CommandError, nl: bool) {
         match err {
+            CommandError::MissingArguments { args, instead } => {
+                let mut err_msg = String::from("missing required parameter");
+
+                if args.len() - (instead.len().saturating_sub(1)) > 1 {
+                    err_msg.push('s');
+                }
+
+                err_msg.push(' ');
+
+                err_msg.push_str(
+                    &args[(instead.len().saturating_sub(1))..(args.len())]
+                        .iter()
+                        .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                );
+
+                prompt::error(err_msg);
+            }
             CommandError::BadArgument { arg, instead, } => {
                 prompt::error(
                     format!("bad argument `{}` for {}", instead, arg)
-                )
+                );
             }
             CommandError::ArgExpectedI32 { arg, instead, } => {
                 prompt::error(
@@ -160,6 +168,9 @@ impl State {
                     format!("parameter {} expected positive integer, got `{}` instead", arg, instead)
                 );
             }
+            CommandError::InvalidBpId { arg } => {
+                prompt::error(format!("breakpoint with id {} does not exist", arg.blue()));
+            },
             CommandError::HelpUnknownCommand { command, } => {
                 prompt::error(format!("unknown command `{}`", command));
             }
@@ -439,15 +450,23 @@ impl State {
             } else {
                 let pc = self.runtime.as_ref().unwrap().timeline().state().pc();
                 let binary = self.binary.as_ref().unwrap();
-    
-                if breakpoint || binary.breakpoints.contains(&pc) {
+
+                // TODO(joshh): make this less ugly when
+                // https://github.com/rust-lang/rust/pull/94927 is released
+                // if let Some(bp) = self.breakpoints.get(&pc) || breakpoint {
+                //     if !bp.enabled { trapped }
+
+                let bp = binary.breakpoints.get(&pc).cloned().unwrap_or_default();
+                if breakpoint || bp.enabled {
                     let label = binary.labels.iter()
                             .find(|(_, &addr)| addr == pc)
                             .map(|(name, _)| name.yellow().bold().to_string());
                     
                     runtime_handler::breakpoint(label.as_deref(), pc);
-    
+
                     true
+
+                // todo(joshh): add watchpoints
                 } else {
                     trapped
                 }
@@ -467,7 +486,7 @@ impl State {
         self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
     }
 
-    pub(crate) fn run(&mut self) -> CommandResult<()> {
+    pub(crate) fn run(&mut self) -> CommandResult<String> {
         if self.exited {
             return Err(CommandError::ProgramExited);
         }
@@ -478,7 +497,7 @@ impl State {
             }
         }
 
-        Ok(())
+        Ok("".into())
     }
 
     pub(crate) fn reset(&mut self) -> CommandResult<()> {
@@ -526,7 +545,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
     state.add_command(commands::breakpoint_command());
-    state.add_command(commands::breakpoints_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());

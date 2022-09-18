@@ -241,7 +241,7 @@ impl Runtime {
 
                     let new_heap_size = match bytes.cmp(&0) {
                         Ordering::Greater => heap_size.saturating_add(bytes as _),
-                        Ordering::Less    => heap_size.saturating_sub(bytes.abs() as _),
+                        Ordering::Less    => heap_size.saturating_sub(bytes.unsigned_abs()),
                         _                 => heap_size
                     };
                     self.timeline.state_mut().set_heap_size(new_heap_size);
@@ -1434,7 +1434,7 @@ impl Runtime {
         }
 
         let total_strings_len = args.iter()
-            .fold(0, |len, string| len + string.bytes().count() + 1)
+            .fold(0, |len, string| len + string.len() + 1)
             as u32;
 
         // allocate total_strings_len on the stack
