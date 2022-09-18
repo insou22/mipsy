@@ -15,8 +15,6 @@ module.exports = {
                 'th-secondary': '#f0f0f0',
                 // used for step highlighting
                 'th-highlighting':'#34d399',
-                // tab hover color
-                'th-tabhover': '#fff0f0',
                 // unselected tab
                 'th-tabunselected': '#d19292',
             }

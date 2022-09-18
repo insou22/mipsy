@@ -1,10 +1,10 @@
-use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
-use yew_agent::UseBridgeHandle;
 use crate::{
     state::state::{ErrorType::RuntimeError, State},
     worker::{Worker, WorkerRequest},
 };
 use derivative::Derivative;
+use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
+use yew_agent::UseBridgeHandle;
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
 pub struct DecompiledProps {
@@ -63,8 +63,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
                                 } else {
                                     source_instr.expect("none case handled above")
                                 };
-                                //log::info!("{:?}", binary.breakpoints);
-                                binary.breakpoints.iter().any(|&i| i == addr)
+                                binary.breakpoints.contains_key(&addr)
                             }
 
                         };

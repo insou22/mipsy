@@ -146,7 +146,7 @@ impl Error {
                 };
 
                 let mut error = String::new();
-                error.push_str("your program tried to read uninitialised memory\n");
+                error.push_str("your program tried to read an uninitialised register\n");
 
                 let state = runtime.timeline().state();
                 let inst = state.read_mem_word(state.pc()).unwrap();
@@ -1146,26 +1146,12 @@ impl Error {
 
                 let rs = (inst >> 21) & 0x1F;
                 let rs_value = runtime.timeline().state().read_register(rs).unwrap();
-                eprintln!("values:");
-                eprintln!(
-                    " - {}{} = {}",
-                    "$".yellow(),
-                    Register::from_u32(rs).unwrap().to_lower_str().bold(),
-                    rs_value,
-                );
 
                 let value = if let Ok(imm) = decompiled.arguments[2].parse::<i16>() {
                     imm as i32
                 } else {
                     let rt = (inst >> 16) & 0x1F;
                     let value = runtime.timeline().state().read_register(rt).unwrap();
-
-                    eprintln!(
-                        " - {}{} = {}",
-                        "$".yellow(),
-                        Register::from_u32(rt).unwrap().to_lower_str().bold(),
-                        value
-                    );
 
                     value
                 };
@@ -1278,7 +1264,7 @@ fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
             return addr;
         }
         
-        if addr < KDATA_BOT && addr >= (KTEXT_BOT + program.ktext.len() as u32) {
+        if addr < KDATA_BOT && addr >= (KTEXT_BOT + (program.ktext.len() / 4 * 4) as u32) {
             return addr;
         }
         
@@ -1286,7 +1272,7 @@ fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
             return addr;
         }
         
-        if addr < DATA_BOT && addr >= (TEXT_BOT + program.text.len() as u32) {
+        if addr < DATA_BOT && addr >= (TEXT_BOT + (program.text.len() / 4 * 4) as u32) {
             return addr;
         }
 

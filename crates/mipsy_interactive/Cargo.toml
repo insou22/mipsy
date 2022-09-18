@@ -10,13 +10,13 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mipsy_lib = { version = "0.1.0", path = "../mipsy_lib" }
-mipsy_parser = { version = "0.1.0", path = "../mipsy_parser" }
-mipsy_utils = { version = "0.1.0", path = "../mipsy_utils" }
+mipsy_lib          = { version = "0.1.0", path = "../mipsy_lib" }
+mipsy_parser       = { version = "0.1.0", path = "../mipsy_parser" }
+mipsy_utils        = { version = "0.1.0", path = "../mipsy_utils" }
 mipsy_instructions = { path = "../mipsy_instructions", features = ["rt_yaml"] }
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see ~/.config/mipsy/config.yaml
-rustyline = "9.1.1"         # readline support for interactive mipsy
+rustyline = "10.0.0"         # readline support for interactive mipsy
 rustyline-derive = "0.3.1"  # for readline derive macro
 colored = "2"               # for ansi colors
 strip-ansi-escapes = "0.1"  # to strip color codes out for strlen calcs

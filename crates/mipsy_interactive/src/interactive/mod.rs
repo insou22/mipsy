@@ -20,7 +20,7 @@ use rustyline::{
     Modifiers,
     Movement,
     Word,
-    error::ReadlineError,
+    error::ReadlineError, config::Configurer,
 };
 use colored::*;
 use commands::{
@@ -32,7 +32,7 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-pub(crate) struct State {
+pub struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
@@ -110,24 +110,13 @@ impl State {
         };
 
         if (parts.len() - 1) < required.len() {
-            let mut err_msg = String::from("missing required parameter");
-
-            if required.len() - (parts.len() - 1) > 1 {
-                err_msg.push('s');
-            }
-
-            err_msg.push(' ');
-
-            err_msg.push_str(
-                &required[(parts.len() - 1)..(required.len())]
-                    .iter()
-                    .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            );
-
-            prompt::error(err_msg);
-            prompt::tip_nl(format!("try `{} {}`", "help".bold(), command_name.bold()));
+            self.handle_error(CommandError::WithTip {
+                error: Box::new(CommandError::MissingArguments {
+                    args: required.to_vec(),
+                    instead: parts.to_vec(),
+                }),
+                tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
+            }, true);
             return;
         }
 
@@ -140,10 +129,29 @@ impl State {
 
     fn handle_error(&self, err: CommandError, nl: bool) {
         match err {
+            CommandError::MissingArguments { args, instead } => {
+                let mut err_msg = String::from("missing required parameter");
+
+                if args.len() - (instead.len().saturating_sub(1)) > 1 {
+                    err_msg.push('s');
+                }
+
+                err_msg.push(' ');
+
+                err_msg.push_str(
+                    &args[(instead.len().saturating_sub(1))..(args.len())]
+                        .iter()
+                        .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                );
+
+                prompt::error(err_msg);
+            }
             CommandError::BadArgument { arg, instead, } => {
                 prompt::error(
                     format!("bad argument `{}` for {}", instead, arg)
-                )
+                );
             }
             CommandError::ArgExpectedI32 { arg, instead, } => {
                 prompt::error(
@@ -155,6 +163,9 @@ impl State {
                     format!("parameter {} expected positive integer, got `{}` instead", arg, instead)
                 );
             }
+            CommandError::InvalidBpId { arg } => {
+                prompt::error(format!("breakpoint with id {} does not exist", arg.blue()));
+            },
             CommandError::HelpUnknownCommand { command, } => {
                 prompt::error(format!("unknown command `{}`", command));
             }
@@ -433,17 +444,29 @@ impl State {
                 true
             } else {
                 let pc = self.runtime.timeline().state().pc();
-                let empty_binary = Binary::default();
-                let binary = self.binary.as_ref().unwrap_or(&empty_binary);
-    
-                if breakpoint || binary.breakpoints.contains(&pc) {
-                    let label = binary.labels.iter()
-                            .find(|(_, &addr)| addr == pc)
-                            .map(|(name, _)| name.yellow().bold().to_string());
-                    
-                    runtime_handler::breakpoint(label.as_deref(), pc);
-    
-                    true
+                let mut empty_binary = Binary::default();
+                let binary = self.binary.as_mut().unwrap_or(&mut empty_binary);
+                let bp = binary.breakpoints.get_mut(&pc);
+
+                if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
+                    if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
+                        bp.unwrap().ignore_count -= 1;
+                        trapped
+                    } else {
+                        let label = binary.labels.iter()
+                                .find(|(_, &addr)| addr == pc)
+                                .map(|(name, _)| name.yellow().bold().to_string());
+
+                        runtime_handler::breakpoint(label.as_deref(), pc);
+                        if let Some(bp) = bp {
+                            bp.commands.clone().iter().for_each(|command| {
+                                self.exec_command(command.to_owned());
+                            });
+                        }
+
+                        true
+                    }
+                // TODO(joshh): add watchpoints
                 } else {
                     trapped
                 }
@@ -461,7 +484,7 @@ impl State {
         self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
     }
 
-    pub(crate) fn run(&mut self) -> CommandResult<()> {
+    pub(crate) fn run(&mut self) -> CommandResult<String> {
         if self.exited {
             return Err(CommandError::ProgramExited);
         }
@@ -472,7 +495,7 @@ impl State {
             }
         }
 
-        Ok(())
+        Ok("".into())
     }
 
     pub(crate) fn reset(&mut self) -> CommandResult<()> {
@@ -494,8 +517,10 @@ impl State {
     }
 }
 
-fn editor() -> Editor<MyHelper> {
-    let mut rl = Editor::new();
+pub(crate) fn editor() -> Editor<MyHelper> {
+    let mut rl = Editor::new().unwrap();
+
+    rl.set_check_cursor_position(true);
 
     let helper = MyHelper::new();
     rl.set_helper(Some(helper));
@@ -517,7 +542,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
     state.add_command(commands::breakpoint_command());
-    state.add_command(commands::breakpoints_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());
@@ -526,6 +550,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
     state.add_command(commands::exit_command());
+    state.add_command(commands::commands_command());
 
     state
 }

@@ -11,19 +11,24 @@ pub(crate) fn back_command() -> Command {
         vec![],
         vec!["times"],
         &format!("step backwards one (or {}) instruction", "[times]".magenta()),
-        &format!(
-            "Steps backwards one instruction, or {0} instructions if specified.\n\
-             It will then print out which instruction will be executed next --\n\
-         \x20 i.e. using `{1}` will immediately execute said printed instruction.\n\
-             To step fowards (i.e. normal stepping), use `{1}`.",
-            "[times]".magenta(),
-            "step".bold(),
-        ),
         |state, label, args| {
+            if label == "__help__" {
+                return Ok(
+                    format!(
+                        "Steps backwards one instruction, or {0} instructions if specified.\n\
+                         It will then print out which instruction will be executed next --\n\
+                     \x20 i.e. using `{1}` will immediately execute said printed instruction.\n\
+                         To step fowards (i.e. normal stepping), use `{1}`.",
+                        "[times]".magenta(),
+                        "step".bold(),
+                    ),
+                )
+            }
+
             let times = match args.first() {
                 Some(arg) => expect_u32(
                     label,
-                    &"[times]".bright_magenta().to_string(),
+                    &"[times]".bright_magenta(),
                     arg, 
                     Some(|neg: i32|
                         format!("try `{}{}`", "step ".bold(), (-neg).to_string().bold())
@@ -74,7 +79,7 @@ pub(crate) fn back_command() -> Command {
             }
             println!();
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

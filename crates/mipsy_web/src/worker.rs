@@ -1,7 +1,7 @@
 use crate::state::config::MipsyWebConfig;
-use crate::{state::state::MipsState, utils::generate_highlighted_line};
+use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::compile::CompilerOptions;
+use mipsy_lib::compile::{Breakpoint, CompilerOptions};
 use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
@@ -35,6 +35,7 @@ pub struct Worker {
     // the link that allows to communicate to main thread
     link: AgentLink<Self>,
     inst_set: InstSet,
+    file: Option<String>,
     // the runtime may not exist if no binary
     runtime: Option<RuntimeState>,
     // the binary will not exist if we have not been sent a file
@@ -145,11 +146,14 @@ impl Agent for Worker {
             runtime: None,
             binary: None,
             config: MipsyWebConfig::default(),
+            file: None,
         }
     }
 
-    fn name_of_resource() -> &'static str {
-        "worker.js"
+	// we need this as we can no longer
+	// assume that worker resources are hosted at root
+    fn resource_path_is_relative() -> bool {
+    	true
     }
 
     fn update(&mut self, _msg: Self::Message) {
@@ -171,16 +175,16 @@ impl Agent for Worker {
 
                 match compiled {
                     Ok(binary) => {
-                        let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
+                        let decompiled = decompile(&binary, &self.inst_set, Some(file.clone()));
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
-                            file: Some(file),
+                            file: Some(file.clone()),
                             binary: binary.to_owned(),
                         });
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
                         self.runtime = Some(RuntimeState::Running(runtime));
-
+                        self.file = Some(file);
                         self.link.respond(id, response)
                     }
 
@@ -232,7 +236,8 @@ impl Agent for Worker {
                             // if we are not running, then just recompile the file (since we have
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
-                                let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
+                                let decompiled =
+                                    decompile(&binary, &self.inst_set, self.file.clone());
                                 let response = Self::Output::DecompiledCode(DecompiledResponse {
                                     decompiled,
                                     file: None,
@@ -246,7 +251,7 @@ impl Agent for Worker {
                     }
                 } else {
                     if let Some(binary) = &self.binary {
-                        let decompiled = mipsy_lib::decompile(&self.inst_set, &binary);
+                        let decompiled = decompile(&binary, &self.inst_set, self.file.clone());
                         let response = Self::Output::DecompiledCode(DecompiledResponse {
                             decompiled,
                             file: None,
@@ -339,10 +344,11 @@ impl Agent for Worker {
             Self::Input::ToggleBreakpoint(addr) => {
                 let binary = self.binary.as_mut();
                 if let Some(binary) = binary {
-                    if binary.breakpoints.iter().any(|&x| x == addr) {
-                        binary.breakpoints.retain(|&x| addr != x);
+                    if binary.breakpoints.contains_key(&addr) {
+                        binary.breakpoints.remove(&addr);
                     } else {
-                        binary.breakpoints.push(addr);
+                        let id = binary.generate_breakpoint_id();
+                        binary.breakpoints.insert(addr, Breakpoint::new(id));
                     }
                 }
 
@@ -373,13 +379,12 @@ impl Agent for Worker {
                                     let stepped_runtime = runtime.step();
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => {
-
                                             let pc = next_runtime.timeline().state().pc();
 
                                             runtime = next_runtime;
                                             // we want to stop at the instruction before the breakpoint
                                             // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains(&pc)
+                                            if binary.breakpoints.contains_key(&pc)
                                                 && !self.config.ignore_breakpoints
                                             {
                                                 breakpoint = true;
@@ -476,7 +481,7 @@ impl Agent for Worker {
                                     runtime = next_runtime;
                                     // we want to stop at the instruction before the breakpoint
                                     // so that the line of breakpoint doesnt get executed
-                                    if binary.breakpoints.contains(&pc)
+                                    if binary.breakpoints.contains_key(&pc)
                                         && !self.config.ignore_breakpoints
                                     {
                                         breakpoint = true;

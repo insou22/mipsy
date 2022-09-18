@@ -12,11 +12,16 @@ pub(crate) fn disassemble_command() -> Command {
         vec![],
         vec![],
         "disassembles the currently loaded file",
-        &format!(
-            "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
-            "step".bold(),
-        ),
-        |state, _label, _args| {
+        |state, label, _args| {
+            if label == "__help__" {
+                return Ok(
+                    format!(
+                        "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
+                        "step".bold(),
+                    ),
+                )
+            }
+
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let mut decompiled = decompile_into_parts(binary, &state.iset)
@@ -42,7 +47,7 @@ pub(crate) fn disassemble_command() -> Command {
 
             println!();
 
-            Ok(())
+            Ok("".into())
         }
     )
 }

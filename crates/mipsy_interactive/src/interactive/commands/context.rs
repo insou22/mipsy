@@ -16,17 +16,22 @@ pub(crate) fn context_command() -> Command {
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
         ),
-        &format!(
-            "prints the current and surrounding 3 (or {}) instructions",
-            "[n]".magenta(),
-        ),
         |state, label, args| {
+            if label == "__help__" {
+                return Ok(
+                    format!(
+                        "prints the current and surrounding 3 (or {}) instructions",
+                        "[n]".magenta(),
+                    ),
+                )
+            }
+
             let f: Option<&dyn Fn(i32) -> String> = None;
 
             let n = match args.first() {
                 Some(arg) => expect_u32(
                     label,
-                    &"[n]".bright_magenta().to_string(),
+                    &"[n]".bright_magenta(),
                     arg,
                     f
                 ),
@@ -69,7 +74,7 @@ pub(crate) fn context_command() -> Command {
             }
 
             println!();
-            Ok(())
+            Ok("".into())
         }
     )
 }

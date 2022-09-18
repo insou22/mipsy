@@ -12,19 +12,18 @@ use crate::{
     },
     worker::{FileInformation, Worker, WorkerRequest},
 };
+use bounce::use_atom;
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
-use std::cell::RefCell;
 use std::ops::Deref;
-use std::rc::Rc;
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
-
+use std::{rc::Rc, cell::RefCell};
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -38,10 +37,9 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
 #[function_component(App)]
 pub fn render_app() -> Html {
+    let worker = Rc::new(RefCell::new(None));
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
-
-    let worker = Rc::new(RefCell::new(None));
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
@@ -61,7 +59,35 @@ pub fn render_app() -> Html {
             .map(|item| !(item.as_str() == "true"))
             .unwrap_or(false)
     });
-    let config: UseStateHandle<MipsyWebConfig> = use_state_eq(MipsyWebConfig::default);
+    
+    if worker.borrow().is_none() {
+        *worker.borrow_mut() = {
+            let state = state.clone();
+            let show_tab = show_code_tab.clone();
+            let show_io = show_io.clone();
+            let file = file.clone();
+            let input_ref = input_ref.clone();
+            let worker = worker.clone();
+            let is_saved = is_saved.clone();
+            let filename = filename.clone();
+            Some(use_bridge(move |response| {
+                let state = state.clone();
+                let show_tab = show_tab.clone();
+                let show_io = show_io.clone();
+                let file = file.clone();
+                let input_ref = input_ref.clone();
+                let worker = worker.clone();
+                let is_saved = is_saved.clone();
+                let filename = filename.clone();
+                update::handle_response_from_worker(
+                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
+                )
+            }))
+        };
+    }
+
+
+    let config = use_atom::<MipsyWebConfig>();
 
     if let State::NoFile = *state {
         is_saved.set(false);
@@ -88,8 +114,7 @@ pub fn render_app() -> Html {
 
                             // if window element is on the page, create, leak, and add the onchange callback
                             // only if we have not already added it
-                            if window().unwrap().get("editor").is_some()
-                            {
+                            if window().unwrap().get("editor").is_some() {
                                 let cb = Closure::wrap(Box::new(move || {
                                     let editor_contents = crate::get_editor_value();
                                     let editor_contents2 = editor_contents.clone();
@@ -98,9 +123,7 @@ pub fn render_app() -> Html {
                                     let last_saved_contents =
                                         crate::get_localstorage_file_contents();
 
-                                    is_saved.set(
-                                        editor_contents == last_saved_contents,
-                                    );
+                                    is_saved.set(editor_contents == last_saved_contents);
                                 })
                                     as Box<dyn Fn()>);
 
@@ -121,7 +144,6 @@ pub fn render_app() -> Html {
                             }
                         }
                         None => {
-                            log!("Could not find element with id 'monaco_editor'");
                         }
                     }
                 };
@@ -129,6 +151,48 @@ pub fn render_app() -> Html {
             },
             (filename.clone(), file2, show_code_tab.clone()), // run use_effect when these dependencies change
         );
+    }
+    // now that we have an editor, restore some config
+    {
+        let config = config.clone();
+        use_effect_with_deps(
+            move |_| {
+                let localstorage_config = crate::get_localstorage("mipsy_web_config");
+                if let Some(localstorage_config) = localstorage_config {
+                    if let Ok(parsed_localstorage) =
+                        serde_json::from_str::<MipsyWebConfig>(&localstorage_config)
+                    {
+                        if parsed_localstorage != MipsyWebConfig::default() {
+                            MipsyWebConfig::apply(&parsed_localstorage);
+                            config.set(parsed_localstorage);
+                        }
+                    }
+                } else {
+                    crate::set_localstorage(
+                        "mipsy_web_config",
+                        &serde_json::to_string(&*config).unwrap(),
+                    );
+                }
+                move || {}
+            },
+            (),
+        )
+    };
+    if web_sys::window().unwrap().get("editor").is_some() {
+        MipsyWebConfig::apply(&*config);
+    }
+
+    {
+        let show_io = show_io.clone();
+        let config = config.clone();
+        let display_modal = display_modal.clone();
+        let settings_modal = settings_modal.clone();
+        let show_code_tab = show_code_tab.clone();
+        let show_register_tab = show_register_tab.clone();
+        use_effect_with_deps(move |_| {
+            MipsyWebConfig::apply(&*config);
+            move || {}
+        }, (show_io, settings_modal, display_modal, show_code_tab, show_register_tab));
     }
 
     // REFACTOR - move to fn/file
@@ -231,33 +295,6 @@ pub fn render_app() -> Html {
         });
     }
 
-    // if we have not yet setup the worker bridge, do so now
-    if worker.borrow().is_none() {
-        *worker.borrow_mut() = {
-            let state = state.clone();
-            let show_tab = show_code_tab.clone();
-            let show_io = show_io.clone();
-            let file = file.clone();
-            let input_ref = input_ref.clone();
-            let worker = worker.clone();
-            let is_saved = is_saved.clone();
-            let filename = filename.clone();
-            Some(use_bridge(move |response| {
-                let state = state.clone();
-                let show_tab = show_tab.clone();
-                let show_io = show_io.clone();
-                let file = file.clone();
-                let input_ref = input_ref.clone();
-                let worker = worker.clone();
-                let is_saved = is_saved.clone();
-                let filename = filename.clone();
-                update::handle_response_from_worker(
-                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
-                )
-            }))
-        };
-    }
-
     /*    CALLBACKS   */
     let load_onchange: Callback<Event> = {
         let worker = worker.clone();
@@ -315,14 +352,10 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_file_contents(&updated_content);
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
-                worker
-                    .borrow()
-                    .as_ref()
-                    .unwrap()
-                    .send(WorkerRequest::CompileCode(FileInformation {
-                        filename: filename.to_string(),
-                        file: clone,
-                    }));
+                worker.borrow().as_ref().unwrap().send(WorkerRequest::CompileCode(FileInformation {
+                    filename: filename.to_string(),
+                    file: clone,
+                }));
             };
         })
     };
@@ -351,7 +384,7 @@ pub fn render_app() -> Html {
             save_keydown,
             is_saved.clone(),
             show_code_tab.clone(),
-            worker.borrow().as_ref().unwrap().clone(),
+            worker.clone(),
         ),
     };
 
@@ -385,7 +418,7 @@ pub fn render_app() -> Html {
 
             DisplayedCodeTab::Decompiled => (tab_left_unselect, tab_select, tab_unselect),
 
-            DisplayedCodeTab::Data => (tab_left_unselect, tab_select, tab_unselect),
+            DisplayedCodeTab::Data => (tab_left_unselect, tab_unselect, tab_select),
         }
     };
 
@@ -450,7 +483,7 @@ pub fn render_app() -> Html {
 
                 <div id="pageContentContainer" class="split flex flex-row" style="height: calc(100vh - 137px)">
                     <div id="file_data" class="pl-2">
-                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
+                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-current">
                             <button class={source_tab_classes} onclick={{
                                 let show_tab = show_code_tab.clone();
                                 Callback::from(move |_| {
@@ -476,14 +509,14 @@ pub fn render_app() -> Html {
                                 {"data"}
                             </button>
                         </div>
-                        <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                        <div style="height: 96%;" class="py-2 overflow-y-auto bg-th-secondary px-2 border-2 border-current">
                                 { text_html_content }
                         </div>
                     </div>
 
 
                     <div id="information" class="split pr-2 ">
-                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-black">
+                        <div style="height: 4%;" class="flex overflow-hidden border-1 border-current">
                             <button class={used_registers_tab_classes} onclick={{
                                 let show_register_tab = show_register_tab.clone();
                                 Callback::from(move |_| {
@@ -502,7 +535,7 @@ pub fn render_app() -> Html {
                             </button>
                         </div>
 
-                        <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-gray-600">
+                        <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
                             <Registers state={state.clone()} tab={show_register_tab} />
                         </div>
 
@@ -521,7 +554,6 @@ pub fn render_app() -> Html {
                     <Banner show_analytics_banner={show_analytics_banner}/>
                 }
             </PageBackground>
-
         </>
     }
 }
@@ -544,7 +576,7 @@ fn render_running(
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
     show_tab: UseStateHandle<DisplayedCodeTab>,
-    worker: UseBridgeHandle<Worker>,
+    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -571,7 +603,7 @@ fn render_running(
                                         current_instr={curr.mips_state.current_instr}
                                         decompiled={curr.decompiled.clone()}
                                         state={state.clone()}
-                                        worker={worker.clone()}
+                                        worker={worker.borrow().as_ref().unwrap().clone()}
                                     />
                                 }
                             },
@@ -590,7 +622,7 @@ fn render_running(
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
                                                         state={state.clone()}
-                                                        worker={worker.clone()}
+                                                        worker={worker.borrow().as_ref().unwrap().clone()}
                                                     />
                                                 </tbody>
                                             </table>
@@ -720,15 +752,15 @@ pub fn process_syscall_response(
 
 fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
     let default_tab_classes =
-        "w-1/2 leading-none float-left border-t-2 border-r-2 border-black cursor-pointer px-1";
+        "w-1/2 leading-none float-left border-t-2 border-r-2 border-current cursor-pointer px-1";
     let left_tab_classes = classes!("border-l-2", default_tab_classes);
     let selected_classes = "bg-th-primary";
-    let unselected_classes = "bg-th-tabunselected hover:bg-th-tabhover";
+    let unselected_classes = "bg-th-tabunselected hover:bg-th-primary";
 
     (
-        classes!(default_tab_classes, selected_classes),        // selected tab
-        classes!(default_tab_classes, unselected_classes),      // unselected tab
-        classes!(left_tab_classes.clone(), selected_classes),   // selected left tab
-        classes!(left_tab_classes, unselected_classes),         // unselected left tab
+        classes!(default_tab_classes, selected_classes), // selected tab
+        classes!(default_tab_classes, unselected_classes), // unselected tab
+        classes!(left_tab_classes.clone(), selected_classes), // selected left tab
+        classes!(left_tab_classes, unselected_classes),  // unselected left tab
     )
 }

@@ -7,8 +7,10 @@ pub type CommandResult<T> = Result<T, CommandError>;
 #[allow(dead_code)]
 pub enum CommandError {
     BadArgument        { arg: String, instead: String, },
+    MissingArguments   { args: Vec<String>, instead: Vec<String> },
     ArgExpectedI32     { arg: String, instead: String, },
     ArgExpectedU32     { arg: String, instead: String, },
+    InvalidBpId        { arg: String, },
     HelpUnknownCommand { command: String },
     CannotReadFile     { path: String, os_error: String, },
     CannotCompile      { mipsy_error: MipsyError },
