@@ -1,3 +1,5 @@
+use crate::interactive::error::CommandError;
+
 use super::*;
 use colored::*;
 
@@ -21,6 +23,10 @@ pub(crate) fn run_command() -> Command {
                         "not".red().bold(),
                     ),
                 )
+            }
+
+            if state.binary.is_none() {
+                return Err(CommandError::MustLoadFile);
             }
 
             state.run()

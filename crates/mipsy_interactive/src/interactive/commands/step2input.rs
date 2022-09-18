@@ -31,7 +31,7 @@ pub(crate) fn step2input_command() -> Command {
 
             loop {
                 let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-                let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+                let runtime = &state.runtime;
 
                 let input = if let Ok(inst) = runtime.next_inst() {
                     util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());

@@ -9,6 +9,7 @@ pub const WRITE_MARKER_HI: u32 = 32;
 pub const TIMELINE_MAX_LEN: usize = 1_000_000;
 
 /// # A timeline of states
+#[derive(Default)]
 pub struct Timeline {
     seed: State,
     timeline: VecDeque<State>,
@@ -461,6 +462,20 @@ impl Clone for State {
             hi: self.hi,
             lo: self.lo,
             heap_size: self.heap_size,
+        }
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            pages: HashMap::new(),
+            pc: KTEXT_BOT,
+            heap_size: 0,
+            registers: Default::default(),
+            write_marker: 0,
+            hi: Default::default(),
+            lo: Default::default(),
         }
     }
 }

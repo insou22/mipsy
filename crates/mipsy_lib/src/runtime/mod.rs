@@ -2,7 +2,7 @@ pub mod state;
 
 pub use self::state::State;
 
-use std::{collections::HashMap, cmp::Ordering};
+use std::cmp::Ordering;
 use crate::{Binary, DATA_BOT, HEAP_BOT, KDATA_BOT, KTEXT_BOT, MipsyError, MipsyResult, Register, RuntimeError, STACK_PTR, Safe, TEXT_BOT, Uninitialised, error::runtime::{AlignmentRequirement, InvalidSyscallReason, SegmentationFaultAccessType, Error}, compile::GLOBAL_PTR};
 use self::state::Timeline;
 
@@ -43,6 +43,7 @@ macro_rules! try_owned_self {
     };
 }
 
+#[derive(Default)]
 pub struct Runtime {
     timeline: Timeline,
 }
@@ -1369,49 +1370,24 @@ impl Truncate<Safe<u32>> for Safe<i32> {
 }
 
 impl Runtime {
+
+    pub fn new_without_binary() -> Self {
+        let mut initial_state = State::default();
+
+        initial_state.registers[Register::Zero.to_number() as usize] = Safe::Valid(0);
+
+        Self {
+            timeline: Timeline::new(initial_state),
+        }
+    }
+
     pub fn new(program: &Binary, args: &[&str]) -> Self {
-        let mut initial_state = 
-            State {
-                pages: HashMap::new(),
-                pc: KTEXT_BOT,
-                heap_size: 0,
-                registers: Default::default(),
-                write_marker: 0,
-                hi: Default::default(),
-                lo: Default::default(),
-            };
+        let mut initial_state = State::default();
 
-        let mut text_addr = TEXT_BOT;
-        for &byte in &program.text {
-            initial_state.write_mem_byte_uninit(text_addr, byte).unwrap();
-            text_addr += 1;
-        }
-
-        let mut data_addr = DATA_BOT;
-        for &byte in &program.data {
-            match byte {
-                Safe::Valid(byte) => initial_state.write_mem_byte(data_addr, byte).unwrap(),
-                Safe::Uninitialised => {}
-            }
-
-            data_addr += 1;
-        }
-
-        let mut ktext_addr = KTEXT_BOT;
-        for &byte in &program.ktext {
-            initial_state.write_mem_byte_uninit(ktext_addr, byte).unwrap();
-            ktext_addr += 1;
-        }
-
-        let mut kdata_addr = KDATA_BOT;
-        for &byte in &program.kdata {
-            match byte {
-                Safe::Valid(byte) => initial_state.write_mem_byte(kdata_addr, byte).unwrap(),
-                Safe::Uninitialised => {}
-            }
-
-            kdata_addr += 1;
-        }
+        Self::fill_all_state(TEXT_BOT, &program.text, &mut initial_state);
+        Self::fill_valid_state(DATA_BOT, &program.data, &mut initial_state);
+        Self::fill_all_state(KTEXT_BOT, &program.ktext, &mut initial_state);
+        Self::fill_valid_state(KDATA_BOT, &program.kdata, &mut initial_state);
 
         initial_state.registers[Register::Zero.to_number() as usize] = Safe::Valid(0);
         initial_state.write_register(Register::Sp.to_number() as _, STACK_PTR  as _);
@@ -1422,6 +1398,23 @@ impl Runtime {
 
         Self {
             timeline: Timeline::new(initial_state),
+        }
+    }
+
+    fn fill_all_state(mut starting_addr: u32, data: &[Safe<u8>], state: &mut State) {
+        for &byte in data {
+            state.write_mem_byte_uninit(starting_addr, byte).unwrap();
+            starting_addr += 1;
+        }
+    }
+
+    fn fill_valid_state(mut starting_addr: u32, data: &[Safe<u8>], state: &mut State) {
+        for &byte in data {
+            if let Safe::Valid(byte) = byte {
+                state.write_mem_byte(starting_addr, byte).unwrap();
+            }
+
+            starting_addr += 1;
         }
     }
 

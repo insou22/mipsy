@@ -4,7 +4,7 @@ use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
 use colored::*;
-use mipsy_lib::Register;
+use mipsy_lib::{Binary, Register};
 use mipsy_parser::*;
 
 #[allow(clippy::format_in_format_args)]
@@ -73,8 +73,9 @@ pub(crate) fn print_command() -> Command {
                 }
             }
 
-            let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = state.runtime.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let empty_binary = Binary::default();
+            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
+            let runtime = &state.runtime;
 
             match arg {
                 MpArgument::Register(MpRegister::Normal(ident)) => {
