@@ -173,6 +173,11 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             )
         };
 
+        if register == Register::Zero {
+            prompt::error_nl("the zero register cannot be changed, and watching for reads will generate false positives");
+            return Ok("".into());
+        }
+
         let task = if state.watchpoints.contains_key(&register) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
         let wp = Watchpoint::new(id, action);
