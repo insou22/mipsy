@@ -174,7 +174,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             prompt::error_nl(format!(
                 "watchpoint at {} doesn't exist",
                 match arg_type {
-                    MipsyArgType::Register => register.to_str().into(),
+                    MipsyArgType::Register => register.to_string().as_str().into(),
                     MipsyArgType::Id       => args[0].blue(),
                 }
             ));
@@ -248,9 +248,9 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             false => " (disabled)"
         };
 
-        println!("{}{}: {}{} ({}){}", 
+        println!("{}{}: {} ({}){}", 
             " ".repeat(max_id_len - id.1), id.0.to_string().blue(),
-            "$".yellow(), register.to_lower_str().bold(),
+            register,
             wp.action.to_string().purple(), disabled.bright_black());
     }
     println!();
@@ -296,50 +296,39 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     }
     args = &args[1..];
 
-    // let (addr, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
-    // let id;
-    // if let Some(br) = binary.watchpoints.get_mut(&addr) {
-    //     id = br.id;
-    //     br.enabled = match enabled {
-    //         WpState::Enable  => true,
-    //         WpState::Disable => false,
-    //         WpState::Toggle  => !br.enabled,
-    //     }
-    // } else {
-    //     prompt::error_nl(format!(
-    //         "watchpoint at {} doesn't exist",
-    //         match arg_type {
-    //             MipsyArgType::Immediate => args[0].white(),
-    //             MipsyArgType::Label     => args[0].yellow().bold(),
-    //             MipsyArgType::Id        => args[0].blue(),
-    //         }
-    //     ));
-    //     return Ok("".into());
-    // }
+    let id;
+    if let Some(wp) = state.watchpoints.get_mut(&register) {
+        id = wp.id;
+        wp.enabled = match enabled {
+            WpState::Enable  => true,
+            WpState::Disable => false,
+            WpState::Toggle  => !wp.enabled,
+        }
+    } else {
+        prompt::error_nl(format!(
+            "watchpoint at {} doesn't exist",
+            match arg_type {
+                MipsyArgType::Register => register.to_string().as_str().into(),
+                MipsyArgType::Id       => args[0].blue(),
+            }
+        ));
+        return Ok("".into());
+    }
 
-    // // already ruled out possibility of entry not existing
-    // let action = match binary.watchpoints.get(&addr).unwrap().enabled {
-    //     true  => "enabled",
-    //     false => "disabled",
-    // };
+    // already ruled out possibility of entry not existing
+    let action = match state.watchpoints.get(&register).unwrap().enabled {
+        true  => "enabled",
+        false => "disabled",
+    };
 
-    // let label = match arg_type {
-    //     MipsyArgType::Immediate => None,
-    //     MipsyArgType::Label     => Some(&args[0]),
-    //     MipsyArgType::Id        => {
-    //         let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-    //         binary.labels.iter()
-    //             .find(|(_, &_addr)| _addr == addr)
-    //             .map(|(name, _)| name)
-    //     },
-    // };
-
-    // if let Some(label) = label {
-    //     prompt::success_nl(format!("watchpoint {} {} at {} (0x{:08x})", format!("!{}", id).blue(), action, label.yellow().bold(), addr));
-    // } else {
-    //     prompt::success_nl(format!("watchpoint {} {} at 0x{:08x}",      format!("!{}", id).blue(), action, addr));
-    // }
+    prompt::success_nl(format!("watchpoint {} {} for {} ({})",
+        format!("!{}", id).blue(),
+        action,
+        register,
+        action
+    ));
 
     Ok("".into())
 }
