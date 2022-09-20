@@ -16,6 +16,7 @@ mod step;
 mod step2input;
 mod step2syscall;
 pub(crate) mod util;
+mod watchpoint;
 
 pub(crate) use back::back_command;
 pub(crate) use breakpoint::breakpoint_command;
@@ -34,6 +35,7 @@ pub(crate) use run::run_command;
 pub(crate) use step::step_command;
 pub(crate) use step2input::step2input_command;
 pub(crate) use step2syscall::step2syscall_command;
+pub(crate) use watchpoint::watchpoint_command;
 
 use super::{error::CommandResult, State};
 

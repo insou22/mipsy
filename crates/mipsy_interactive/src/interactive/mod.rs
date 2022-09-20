@@ -4,7 +4,7 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc};
+use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap, fmt::Display};
 
 use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
@@ -32,6 +32,7 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
+#[derive(Copy, Clone)]
 pub(crate) enum RegisterAction {
     ReadOnly,
     WriteOnly,
@@ -52,6 +53,18 @@ impl PartialEq for RegisterAction {
     }
 }
 
+impl Display for RegisterAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}",
+            match *self {
+                RegisterAction::ReadOnly  => "read",
+                RegisterAction::WriteOnly => "write",
+                RegisterAction::ReadWrite => "read/write",
+            }
+        )
+    }
+}
+
 #[derive(PartialEq)]
 pub(crate) struct RegisterWatch {
     register: Register,
@@ -59,8 +72,21 @@ pub(crate) struct RegisterWatch {
 }
 
 pub(crate) struct Watchpoint {
-    watch: RegisterWatch,
+    id: u32,
+    action: RegisterAction,
+    enabled: bool,
 }
+
+impl Watchpoint {
+    pub(crate) fn new(id: u32, action: RegisterAction) -> Self {
+        Self {
+            id,
+            action,
+            enabled: true,
+        }
+    }
+}
+
 
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
@@ -72,7 +98,7 @@ pub(crate) struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
-    pub(crate) watchpoints: Vec<Watchpoint>,
+    pub(crate) watchpoints: HashMap<Register, Watchpoint>,
 }
 
 impl State {
@@ -87,7 +113,7 @@ impl State {
             exited: false,
             prev_command: None,
             confirm_exit: false,
-            watchpoints: vec![],
+            watchpoints: HashMap::new(),
         }
     }
 
@@ -501,7 +527,7 @@ impl State {
                         true
                     }
                 } else if let Some(watchpoint) = affected_registers.iter()
-                        .find(|&wp| self.watchpoints.iter().any(|x| x.watch == *wp)) {
+                        .find(|&wp| self.watchpoints.get(&wp.register).map_or(false, |watch| watch.action == wp.action)) {
                     runtime_handler::watchpoint(watchpoint, pc);
                     true
                 } else {
@@ -588,6 +614,36 @@ impl State {
             self.exec_command(cmd);
         }
     }
+
+    pub fn generate_watchpoint_id(&self) -> u32 {
+        let mut id = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .fold(std::u32::MIN, |x, y| x.max(y))
+                    .wrapping_add(1);
+
+        if self.watchpoints.values().any(|wp| wp.id == id) {
+            // find a free id to use
+            // there's probably a neater way to do this,
+            // but realistically if someone is using enough watchpoints
+            // to fill a u32, they have bigger problems
+
+            let mut ids = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .collect::<Vec<_>>();
+
+            ids.sort_unstable();
+
+            id = ids.into_iter()
+                    .enumerate()
+                    .find(|x| x.0 != x.1 as usize)
+                    .expect("you've run out of watchpoints! why are you using so many")
+                    .1;
+        }
+
+        id
+    }
 }
 
 pub(crate) fn editor() -> Editor<MyHelper> {
@@ -615,6 +671,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
     state.add_command(commands::breakpoint_command());
+    state.add_command(commands::watchpoint_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());

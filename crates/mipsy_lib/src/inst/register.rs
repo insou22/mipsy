@@ -1,8 +1,9 @@
+use colored::Colorize;
 use serde::{Serialize, Deserialize};
 use crate::error::{InternalError, MipsyInternalResult, compiler};
-use std::str::FromStr;
+use std::{str::FromStr, fmt::Display};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
 pub enum Register {
     Zero,
     At,
@@ -92,6 +93,12 @@ impl FromStr for Register {
                 }
             )
         )
+    }
+}
+
+impl Display for Register {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", "$".yellow(), self.to_lower_str().bold())
     }
 }
 
