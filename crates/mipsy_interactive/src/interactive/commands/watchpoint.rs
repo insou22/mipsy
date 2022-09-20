@@ -136,36 +136,11 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     }
 
     let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
-
     let args = &args[1..];
-    if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["action".to_string()],
-                    instead: args.to_vec(),
-                },
-                "rm",
-            )
-        );
-    }
-
-    let action = match args[0].as_str() {
-        "r" | "read"  => RegisterAction::ReadOnly,
-        "w" | "write" => RegisterAction::WriteOnly,
-        "rw" | "r/w" | "r+w" | "w/r" | "w+r" | "read/write" | "read+write"
-            => RegisterAction::ReadWrite,
-        _ => return Err(
-                generate_err(CommandError::BadArgument {
-                    arg: "action".to_owned(),
-                    instead: args[0].clone(),
-                },
-                "rm",
-            )
-        )
-    };
 
     let id;
+    let mut action = RegisterAction::ReadWrite; // this should always be overwritten but the compiler
+    // doesn't know that
     let wp_action = if remove {
         if let Some(wp) = state.watchpoints.remove(&register) {
             id = wp.id;
@@ -181,6 +156,33 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             return Ok("".into());
         }
     } else {
+        if args.is_empty() {
+            return Err(
+                generate_err(
+                    CommandError::MissingArguments {
+                        args: vec!["action".to_string()],
+                        instead: args.to_vec(),
+                    },
+                    "rm",
+                )
+            );
+        }
+
+        action = match args[0].as_str() {
+            "r" | "read"  => RegisterAction::ReadOnly,
+            "w" | "write" => RegisterAction::WriteOnly,
+            "rw" | "r/w" | "r+w" | "w/r" | "w+r" | "read/write" | "read+write"
+                => RegisterAction::ReadWrite,
+            _ => return Err(
+                    generate_err(CommandError::BadArgument {
+                        arg: "action".to_owned(),
+                        instead: args[0].clone(),
+                    },
+                    "insert",
+                )
+            )
+        };
+
         let task = if state.watchpoints.contains_key(&register) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
         let wp = Watchpoint::new(id, action);
@@ -189,12 +191,20 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         task
     };
 
-    prompt::success_nl(format!("watchpoint {} {} for {} ({})",
-        format!("!{}", id).blue(),
-        wp_action,
-        register,
-        action
-    ));
+    if remove {
+        prompt::success_nl(format!("watchpoint {} {} for {}",
+            format!("!{}", id).blue(),
+            wp_action,
+            register,
+        ));
+    } else {
+        prompt::success_nl(format!("watchpoint {} {} for {} ({})",
+            format!("!{}", id).blue(),
+            wp_action,
+            register,
+            action
+        ));
+    }
 
     Ok("".into())
 }
