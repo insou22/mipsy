@@ -74,6 +74,7 @@ pub(crate) struct RegisterWatch {
 pub(crate) struct Watchpoint {
     id: u32,
     action: RegisterAction,
+    ignore_count: u32,
     enabled: bool,
 }
 
@@ -82,6 +83,7 @@ impl Watchpoint {
         Self {
             id,
             action,
+            ignore_count: 0,
             enabled: true,
         }
     }

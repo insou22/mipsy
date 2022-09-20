@@ -248,10 +248,17 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             false => " (disabled)"
         };
 
-        println!("{}{}: {} ({}){}", 
+        let ignored = match wp.ignore_count {
+            0 => "".to_string(),
+            i => format!(" (ignored for the next {} hits)", i.to_string().bold()),
+        };
+
+        println!("{}{}: {} ({}){}{}",
             " ".repeat(max_id_len - id.1), id.0.to_string().blue(),
             register,
-            wp.action.to_string().purple(), disabled.bright_black());
+            wp.action.to_string().purple(), disabled.bright_black(),
+            ignored,
+        );
     }
     println!();
 
