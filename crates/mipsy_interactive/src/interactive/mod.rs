@@ -529,9 +529,16 @@ impl State {
                         true
                     }
                 } else if let Some(watchpoint) = affected_registers.iter()
-                        .find(|&wp| self.watchpoints.get(&wp.register).map_or(false, |watch| watch.action == wp.action)) {
-                    runtime_handler::watchpoint(watchpoint, pc);
-                    true
+                        .find(|&wp| self.watchpoints.get(&wp.register)
+                            .map_or(false, |watch| watch.action == wp.action && watch.enabled)) {
+                    let mut wp = self.watchpoints.get_mut(&watchpoint.register).expect("I got the condition wrong");
+                    if wp.ignore_count > 0 {
+                        wp.ignore_count -= 1;
+                        trapped
+                    } else {
+                        runtime_handler::watchpoint(watchpoint, pc);
+                        true
+                    }
                 } else {
                     trapped
                 }
