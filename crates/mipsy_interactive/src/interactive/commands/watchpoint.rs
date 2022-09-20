@@ -375,7 +375,7 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
         );
     }
 
-    // let (addr, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     args = &args[1..];
     if args.is_empty() {
@@ -390,30 +390,27 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
         );
     }
 
-    // let ignore_count: u32 = args[0].parse()
-    //     .map_err(|_| generate_err(
-    //         CommandError::BadArgument {
-    //             arg: "<ignore count>".into(),
-    //             instead: args[0].clone(),
-    //         },
-    //         ""
-    //     ))?;
+    let ignore_count: u32 = args[0].parse()
+        .map_err(|_| generate_err(
+            CommandError::BadArgument {
+                arg: "<ignore count>".into(),
+                instead: args[0].clone(),
+            },
+            ""
+        ))?;
 
-    // let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
-
-    // if let Some(br) = binary.watchpoints.get_mut(&addr) {
-    //     br.ignore_count = ignore_count;
-    //     prompt::success_nl(format!("skipping watchpoint {} {} times", format!("!{}", br.id).blue(), ignore_count.to_string().yellow()));
-    // } else {
-    //     prompt::error_nl(format!(
-    //         "watchpoint at {} doesn't exist",
-    //         match arg_type {
-    //             MipsyArgType::Immediate => args[0].white(),
-    //             MipsyArgType::Label     => args[0].yellow().bold(),
-    //             MipsyArgType::Id        => args[0].blue(),
-    //         }
-    //     ));
-    // }
+    if let Some(wp) = state.watchpoints.get_mut(&register) {
+        wp.ignore_count = ignore_count;
+        prompt::success_nl(format!("skipping watchpoint {} {} times", format!("!{}", wp.id).blue(), ignore_count.to_string().yellow()));
+    } else {
+        prompt::error_nl(format!(
+            "watchpoint at {} doesn't exist",
+            match arg_type {
+                MipsyArgType::Register => register.to_string().as_str().into(),
+                MipsyArgType::Id       => args[0].blue(),
+            }
+        ));
+    }
 
     Ok("".into())
 }
