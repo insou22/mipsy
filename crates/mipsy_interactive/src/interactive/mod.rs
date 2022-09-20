@@ -6,7 +6,7 @@ mod runtime_handler;
 
 use std::{mem::take, ops::Deref, rc::Rc};
 
-use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
+use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
@@ -32,7 +32,37 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-pub struct State {
+pub(crate) enum RegisterAction {
+    ReadOnly,
+    WriteOnly,
+    ReadWrite,
+}
+
+impl PartialEq for RegisterAction {
+    // eq is used to check if a watchpoint should trigger based on the action,
+    // so a watchpoint checking for both reads and writes should always trigger
+    fn eq(&self, other: &Self) -> bool {
+        match *self {
+            RegisterAction::ReadWrite => true,
+            _ => match other {
+                    RegisterAction::ReadWrite => true,
+                    _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+            }
+        }
+    }
+}
+
+#[derive(PartialEq)]
+pub(crate) struct RegisterWatch {
+    register: Register,
+    action: RegisterAction,
+}
+
+pub(crate) struct Watchpoint {
+    watch: RegisterWatch,
+}
+
+pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
@@ -42,6 +72,7 @@ pub struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
+    pub(crate) watchpoints: Vec<Watchpoint>,
 }
 
 impl State {
@@ -56,6 +87,7 @@ impl State {
             exited: false,
             prev_command: None,
             confirm_exit: false,
+            watchpoints: vec![],
         }
     }
 
@@ -308,7 +340,7 @@ impl State {
         }
     }
 
-    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>) -> CommandResult<bool> {
+    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>, inst: u32) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
 
@@ -439,6 +471,8 @@ impl State {
             }
         };
 
+        let affected_registers = Self::get_affected_registers(inst);
+
         Ok(
             if self.exited {
                 true
@@ -466,7 +500,10 @@ impl State {
 
                         true
                     }
-                // TODO(joshh): add watchpoints
+                } else if let Some(watchpoint) = affected_registers.iter()
+                        .find(|&wp| self.watchpoints.iter().any(|x| x.watch == *wp)) {
+                    runtime_handler::watchpoint(watchpoint, pc);
+                    true
                 } else {
                     trapped
                 }
@@ -474,14 +511,50 @@ impl State {
         )
     }
 
+    fn get_affected_registers(inst: u32) -> Vec<RegisterWatch> {
+        let opcode =  inst >> 26;
+        let rs     = (inst >> 21) & 0x1F;
+        let rt     = (inst >> 16) & 0x1F;
+        let rd     = (inst >> 11) & 0x1F;
+
+        match opcode {
+            SPECIAL | SPECIAL2 | SPECIAL3 => vec![
+                RegisterWatch {
+                    register: Register::from_u32(rd).unwrap(),
+                    action: RegisterAction::WriteOnly,
+                },
+                RegisterWatch {
+                    register: Register::from_u32(rs).unwrap(),
+                    action: RegisterAction::ReadOnly,
+                },
+                RegisterWatch {
+                    register: Register::from_u32(rt).unwrap(),
+                    action: RegisterAction::ReadOnly,
+                },
+            ],
+            JUMP | JAL => vec![],
+            _ => vec![
+                RegisterWatch {
+                    register: Register::from_u32(rs).unwrap(),
+                    action: RegisterAction::ReadOnly,
+                },
+                RegisterWatch {
+                    register: Register::from_u32(rt).unwrap(),
+                    action: RegisterAction::WriteOnly,
+                },
+            ],
+        }
+    }
+
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
-        self.eval_stepped_runtime(verbose, runtime.step())
+        let inst = runtime.current_inst();
+        self.eval_stepped_runtime(verbose, runtime.step(), inst)
     }
 
     pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
-        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
+        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode), opcode)
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<String> {
