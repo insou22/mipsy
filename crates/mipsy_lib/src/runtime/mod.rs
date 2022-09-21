@@ -62,12 +62,7 @@ impl Runtime {
 
     pub fn current_inst(&self) -> u32 {
         let state = self.timeline.state();
-        match state.read_mem_word(state.pc()) {
-            Ok(inst) => inst,
-            Err(_) => {
-                0
-            }
-        }
+        state.read_mem_word(state.pc()).unwrap_or(0)
     }
 
     pub fn step(mut self) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
