@@ -1,7 +1,7 @@
-use std::{borrow::Cow, path::{Path, PathBuf}};
+use std::{borrow::Cow, path::Path};
 
 #[cfg(unix)]
-use {dirs::home_dir, users::os::unix::UserExt};
+use {dirs::home_dir, users::os::unix::UserExt, std::path::PathBuf};
 
 #[cfg(not(unix))]
 pub fn expand_tilde<P: AsRef<Path> + ?Sized>(path: &'_ P) -> Cow<'_, Path> {

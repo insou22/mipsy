@@ -13,6 +13,8 @@ pub struct SecondaryColor(pub String);
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 pub struct TertiaryColor(pub String);
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+pub struct HighlightColor(pub String);
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
 pub struct FontColor(pub String);
 
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
@@ -23,6 +25,7 @@ pub struct MipsyWebConfig {
     pub primary_color: PrimaryColor,
     pub secondary_color: SecondaryColor,
     pub tertiary_color: TertiaryColor,
+    pub highlight_color: HighlightColor,
     pub font_color: FontColor,
     pub tab_size: u32,
     pub font_size: u32,
@@ -67,6 +70,18 @@ impl Default for TertiaryColor {
 impl From<std::string::String> for TertiaryColor {
     fn from(value: std::string::String) -> Self {
         TertiaryColor(value)
+    }
+}
+
+impl Default for HighlightColor {
+    fn default() -> Self {
+        HighlightColor("#34d399".to_string())
+    }
+}
+
+impl From<std::string::String> for HighlightColor {
+    fn from(value: std::string::String) -> Self {
+        HighlightColor(value)
     }
 }
 
@@ -118,6 +133,7 @@ impl Default for MipsyWebConfig {
             primary_color: PrimaryColor::default(),
             secondary_color: SecondaryColor::default(),
             tertiary_color: TertiaryColor::default(),
+            highlight_color: HighlightColor::default(),
             font_color: FontColor::default(),
             tab_size: 8,
             font_size: 14,
@@ -145,6 +161,7 @@ impl MipsyWebConfig {
         crate::update_primary_color(&self.primary_color.0);
         crate::update_secondary_color(&self.secondary_color.0);
         crate::update_tertiary_color(&self.tertiary_color.0);
+        crate::update_highlight_color(&self.highlight_color.0);
         crate::update_editor_options(
             JsValue::from_serde(&EditorOptions {
                 font_size: self.font_size,
