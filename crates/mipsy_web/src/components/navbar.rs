@@ -373,7 +373,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                 href="https://cgi.cse.unsw.edu.au/~cs1521/current/resources/mips-guide.html"
                 target="_blank"
                 class="mr-2 flex place-items-center flex-row inline-block cursor-pointer \
-                       text-sm px-2 py-2 border rounded  border-current \
+                       text-sm px-2 py-2 border rounded button border-current \
                        hover:border-transparent hover:text-teal-500 hover:bg-white"
             >
                 {"MIPS Docs"}

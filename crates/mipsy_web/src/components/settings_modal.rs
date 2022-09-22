@@ -41,7 +41,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         })}}
                     class="
                         rounded text-center cursor-pointer text-6xl
-                        border-2 hover:bg-red-700 border-none bg-transparent close-modal"
+                        border-2 hover:bg-th-secondary border-none bg-transparent close-modal"
                     aria-label="close">
                     {"x"}
                     </div>

@@ -6,5 +6,9 @@ module.exports = {
         "./src/**/*.rs",
         "./index.html",
     ],
+    theme: {
+        extend: {},
+    },
+    variants: {},
     plugins: [],
 };

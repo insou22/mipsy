@@ -31,13 +31,13 @@
         var changeStatus = false;
         mainCSS = mainCSS.sheet;
         if (property !== undefined && style !== undefined && value !== undefined) {
-            for (var index = 0; index < mainCSS.cssRules.length; index++) {
-                if (mainCSS.cssRules[index].selectorText === property.toString()) {
-                    mainCSS.cssRules[index].style[style.toString()] = value.toString();
-                    changeStatus = true;
-                    break;
-                }
+          for (var index = 0; index < mainCSS.cssRules.length; index++) {
+            if (mainCSS.cssRules[index].selectorText.toString() === property.toString()) {
+              mainCSS.cssRules[index].style[style.toString()] = value.toString();
+              changeStatus = true;
+              break;
             }
+          }
         }
         return changeStatus;
       }
@@ -160,19 +160,20 @@
       }
 
       function update_primary_color(color) {
-        changeCSS(".bg-th-primary", "background-color", color, "mainCSS")
+        changeCSS(".bg-th-primary, .hover\\:bg-th-primary:hover", "background-color", color, "mainCSS")
       }
 
       function update_secondary_color(color) {
-        changeCSS(".bg-th-secondary", "background-color", color, "mainCSS")
+        changeCSS(".bg-th-secondary, .hover\\:bg-th-secondary:hover", "background-color", color, "mainCSS")
       }
 
       function update_tertiary_color(color) {
-        changeCSS(".bg-th-tabunselected", "background-color", color, "mainCSS")
+        changeCSS(".bg-th-tabunselected, .hover\\:bg-th-tabunselected:hover", "background-color", color, "mainCSS")
       }
 
       function update_highlight_color(color) {
-        changeCSS(".bg-th-highlighting", "background-color", color, "mainCSS")
+        changeCSS(".bg-th-highlighting, .hover\\:bg-th-highlighting:hover", "background-color", color, "mainCSS")
+        changeCSS("a:link:not(.button), a:visited:not(.button), a:hover:not(.button), a:active:not(.button)", "color", color, "mainCSS")
       }
 
       function update_font_color(color) {
@@ -217,24 +218,33 @@
         cursor: col-resize;
       }
 
-      .bg-th-primary {
+      .bg-th-primary, .hover\:bg-th-primary:hover {
         --tw-bg-opacity: 1;
         background-color: rgb(254 226 226 / var(--tw-bg-opacity));
       }
 
-      .bg-th-secondary {
+      .bg-th-secondary, .hover\:bg-th-secondary:hover {
         --tw-bg-opacity: 1;
         background-color: rgb(240 240 240 / var(--tw-bg-opacity));
       }
 
-      .bg-th-tabunselected {
+      .bg-th-tabunselected, .hover\:bg-th-tabunselected:hover {
         --tw-bg-opacity: 1;
         background-color: rgb(209 146 146 / var(--tw-bg-opacity));
       }
 
-      .bg-th-highlighting {
+      .bg-th-highlighting, .hover\:bg-th-highlighting:hover {
         --tw-bg-opacity: 1;
         background-color: rgb(52 211 153 / var(--tw-bg-opacity));
+      }
+
+      .modal-content {
+        max-height: calc(100vh - 210px);
+        overflow-y: auto;
+      }
+
+      a:link:not(.button), a:visited:not(.button), a:hover:not(.button), a:active:not(.button) {
+        color: rgb(52 211 153 / var(--tw-bg-opacity));
       }
     </style>
     <link data-trunk rel="rust" href="Cargo.toml" data-bin="app"  data-wasm-opt="z" data-type="main" />

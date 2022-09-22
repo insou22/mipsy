@@ -59,7 +59,7 @@ pub fn render_app() -> Html {
             .map(|item| !(item.as_str() == "true"))
             .unwrap_or(false)
     });
-    
+
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
             let state = state.clone();
@@ -585,7 +585,7 @@ fn render_running(
             <h3 class="flex flex-row justify-between">
                 <p class="text-lg">{display_filename}</p>
                 if !*is_saved {
-                    <p style="color: #E06969">{"(unsaved file changes)"}</p>
+                    <p>{"(unsaved file changes)"}</p>
                 }
             </h3>
             {
@@ -755,7 +755,7 @@ fn get_tab_classes() -> (Classes, Classes, Classes, Classes) {
         "w-1/2 leading-none float-left border-t-2 border-r-2 border-current cursor-pointer px-1";
     let left_tab_classes = classes!("border-l-2", default_tab_classes);
     let selected_classes = "bg-th-primary";
-    let unselected_classes = "bg-th-tabunselected hover:bg-th-primary";
+    let unselected_classes = "bg-th-tabunselected hover:bg-th-secondary";
 
     (
         classes!(default_tab_classes, selected_classes), // selected tab
