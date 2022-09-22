@@ -93,7 +93,8 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             format!(
                 "Usage: {5} {6} {2} {7}\n\
                  {0}s or {1}s a watchpoint at the specified {2}.\n\
-                 {2} may be: a register name (`$t0`, `t0`), or a register number (`$14`, `14`).\n\
+                 {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, `14`),\n\
+                 a decimal address (`4194304`), a hex address (`{8}400000`), or a label (`{9}`).\n\
                  If you are removing a watchpoint, you can also use its id (`{3}`).\n\
                  {4} must be `i`, `in`, `ins`, `insert`, or `add` to insert the watchpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the watchpoint.\n\
@@ -101,15 +102,17 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                  When running or stepping through your program, a watchpoint will cause execution to\n\
                  pause temporarily when the specified register is read from or written to,\n\
                  allowing you to debug the current state.\n\
-                 May error if provided a register that doesn't exist.",
+                 May error if provided a {2} that doesn't exist.",
                 "<insert>".magenta(),
                 "<delete>".magenta(),
-                "<register>".magenta(),
+                "<target>".magenta(),
                 "!3".blue(),
                 "<subcommand>".magenta(),
                 "watchpoint".yellow().bold(),
                 "{insert, delete}".purple(),
                 "{read, write, read/write}".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
             )
         )
     }
@@ -130,8 +133,8 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let args = &args[1..];
 
     let id;
-    let mut action = TargetAction::ReadWrite; // this should always be overwritten but the compiler
-    // doesn't know that
+    // this should always be overwritten but the compiler doesn't know that
+    let mut action = TargetAction::ReadWrite;
     let wp_action = if remove {
         if let Some(wp) = state.watchpoints.remove(&target) {
             id = wp.id;
@@ -173,11 +176,6 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                 )
             )
         };
-
-        if target == WatchpointTarget::Register(Register::Zero) {
-            prompt::error_nl("the zero register cannot be changed, and watching for reads will generate false positives");
-            return Ok("".into());
-        }
 
         let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
@@ -275,14 +273,17 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
                 "Usage: {5} {6} {3}\n\
                  {0}s, {1}s, or {2}s a watchpoint at the specified {3}.\n\
                  {3} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14), or an id (`{4}`).\n\
+                 a decimal address (`4194304`), a hex address (`{7}400000`), or a label (`{8}`).\n\
                  watchpoints that are disabled do not trigger when they are hit.",
                 "<enable>".purple(),
                 "<disable>".purple(),
                 "<toggle>".purple(),
-                "<register>".purple(),
+                "<target>".purple(),
                 "!3".blue(),
                 "watchpoint".yellow().bold(),
                 "{enable, disable, toggle}".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
             )
         )
     }
@@ -344,13 +345,16 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
                 "Usage: {3} {4} {1} {0}\n\
                  {4}s a watchpoint at the specified {1} for the next {0} hits.\n\
                  {1} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14), or an id (`{2}`).\n\
+                 a decimal address (`4194304`), a hex address (`{5}400000`), or a label (`{6}`).\n\
                  watchpoints that are ignored do not trigger when they are hit.\n\
                 ",
                 "<ignore count>".purple(),
-                "<register>".purple(),
+                "<target>".purple(),
                 "!3".blue(),
                 "watchpoint".yellow().bold(),
                 "ignore".purple(),
+                "0x".yellow(),
+                "main".yellow().bold(),
             )
         )
     }
@@ -432,8 +436,7 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget
         return Ok((*target, MipsyArgType::Id))
     }
 
-    let arg = arg.strip_prefix('$').unwrap_or(arg);
-    let target = if let Ok(register) = Register::from_str(arg) {
+    let target = if let Ok(register) = Register::from_str(arg.strip_prefix('$').unwrap_or(arg)) {
         WatchpointTarget::Register(register)
     } else {
         let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
@@ -441,18 +444,10 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget
 
         if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
             WatchpointTarget::MemAddr(match imm {
-                MpImmediate::I16(imm) => {
-                    *imm as u32
-                }
-                MpImmediate::U16(imm) => {
-                    *imm as u32
-                }
-                MpImmediate::I32(imm) => {
-                    *imm as u32
-                }
-                MpImmediate::U32(imm) => {
-                    *imm
-                }
+                MpImmediate::I16(imm) =>  *imm as u32,
+                MpImmediate::U16(imm) =>  *imm as u32,
+                MpImmediate::I32(imm) =>  *imm as u32,
+                MpImmediate::U32(imm) =>  *imm,
                 MpImmediate::LabelReference(label) => {
                     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                     binary.get_label(label)
