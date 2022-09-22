@@ -16,6 +16,7 @@ pub enum CommandError {
     CannotCompile      { mipsy_error: MipsyError },
     CannotParseLine    { line: String, error: ErrorLocation },
     CannotCompileLine  { line: String, error: MipsyError },
+    CannotBreakOnLine  { line_number: u32 },
     UnknownRegister    { register: String },
     UnknownLabel       { label: String },
     UninitialisedPrint { addr: u32 },

@@ -211,6 +211,9 @@ impl State {
                 prompt::error("failed to compile instruction");
                 self.mipsy_error(error, ErrorContext::Repl, Some(line));
             }
+            CommandError::CannotBreakOnLine { line_number } => {
+                prompt::error(format!("line :{line_number} does not contain an instruction"));
+            }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
             }

@@ -14,6 +14,7 @@ enum BpState {
 
 #[derive(PartialEq)]
 enum MipsyArgType {
+    LineNumber,
     Immediate,
     Label,
     Id,
@@ -156,9 +157,10 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             prompt::error_nl(format!(
                 "breakpoint at {} doesn't exist",
                 match arg_type {
-                    MipsyArgType::Immediate => args[0].white(),
-                    MipsyArgType::Label     => args[0].yellow().bold(),
-                    MipsyArgType::Id        => args[0].blue(),
+                    MipsyArgType::LineNumber => args[0].as_str().into(),
+                    MipsyArgType::Immediate  => args[0].white(),
+                    MipsyArgType::Label      => args[0].yellow().bold(),
+                    MipsyArgType::Id         => args[0].blue(),
                 }
             ));
             return Ok("".into());
@@ -176,9 +178,10 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         prompt::error_nl(format!(
             "breakpoint at {} already exists",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -187,7 +190,7 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let label = match arg_type {
         MipsyArgType::Immediate => None,
         MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             binary.labels.iter()
                 .find(|(_, &_addr)| _addr == addr)
@@ -336,9 +339,10 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -353,7 +357,7 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     let label = match arg_type {
         MipsyArgType::Immediate => None,
         MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             binary.labels.iter()
                 .find(|(_, &_addr)| _addr == addr)
@@ -443,9 +447,10 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
     }
@@ -478,6 +483,15 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
                         .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*addr, MipsyArgType::Id))
+    }
+
+    if let Some(line_number) = arg.strip_prefix(':') {
+        let line_number: u32 = line_number.parse().map_err(|_| get_error("<line number>"))?;
+        let addr = binary.line_numbers.iter()
+            .find(|(_, &(_, _line_number))| _line_number == line_number)
+            .ok_or_else(|| CommandError::CannotBreakOnLine { line_number })?.0;
+
+        return Ok((*addr, MipsyArgType::LineNumber))
     }
 
     let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
