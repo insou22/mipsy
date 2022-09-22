@@ -4,7 +4,7 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc};
+use std::{mem::take, ops::Deref, rc::Rc, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
 use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
@@ -42,6 +42,7 @@ pub struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
+    pub(crate) interrupted: Arc<AtomicBool>,
 }
 
 impl State {
@@ -56,6 +57,7 @@ impl State {
             exited: false,
             prev_command: None,
             confirm_exit: false,
+            interrupted: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -489,7 +491,8 @@ impl State {
             return Err(CommandError::ProgramExited);
         }
 
-        loop {
+        self.interrupted.store(false, Ordering::SeqCst);
+        while !self.interrupted.load(Ordering::SeqCst) {
             if self.step(false)? {
                 break;
             }
@@ -558,6 +561,8 @@ fn state(config: MipsyConfig) -> State {
 pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
     let mut state = state(config);
+    let interrupted = state.interrupted.clone();
+    ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst)).expect("Failed to set signal handler!");
 
     loop {
         let readline = rl.readline(state.prompt());

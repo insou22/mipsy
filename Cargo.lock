@@ -179,6 +179,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b37feaa84e6861e00a1f5e5aa8da3ee56d605c9992d33e082786754828e20865"
+dependencies = [
+ "nix 0.24.2",
+ "winapi",
+]
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -645,6 +655,7 @@ name = "mipsy_interactive"
 version = "0.1.0"
 dependencies = [
  "colored",
+ "ctrlc",
  "dirs",
  "mipsy_instructions",
  "mipsy_lib",
