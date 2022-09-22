@@ -32,54 +32,82 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
+const LB : u32 = 0b100000;
+const LBU: u32 = 0b100100;
+const LH : u32 = 0b100001;
+const LHU: u32 = 0b100101;
+const LUI: u32 = 0b001111;
+const LW : u32 = 0b100011;
+const LWU: u32 = 0b100111;
+const SB : u32 = 0b101000;
+const SH : u32 = 0b101001;
+const SW : u32 = 0b101011;
+
 #[derive(Copy, Clone)]
-pub(crate) enum RegisterAction {
+pub(crate) enum TargetAction {
     ReadOnly,
     WriteOnly,
     ReadWrite,
 }
 
-impl PartialEq for RegisterAction {
+impl PartialEq for TargetAction {
     // eq is used to check if a watchpoint should trigger based on the action,
     // so a watchpoint checking for both reads and writes should always trigger
     fn eq(&self, other: &Self) -> bool {
         match *self {
-            RegisterAction::ReadWrite => true,
+            TargetAction::ReadWrite => true,
             _ => match other {
-                    RegisterAction::ReadWrite => true,
+                    TargetAction::ReadWrite => true,
                     _ => core::mem::discriminant(self) == core::mem::discriminant(other),
             }
         }
     }
 }
 
-impl Display for RegisterAction {
+impl Display for TargetAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}",
             match *self {
-                RegisterAction::ReadOnly  => "read",
-                RegisterAction::WriteOnly => "write",
-                RegisterAction::ReadWrite => "read/write",
+                TargetAction::ReadOnly  => "read",
+                TargetAction::WriteOnly => "write",
+                TargetAction::ReadWrite => "read/write",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum WatchpointTarget {
+    Register(Register),
+    MemAddr(u32),
+}
+
+impl Display for WatchpointTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}",
+            match self {
+                WatchpointTarget::Register(r) => r.to_string(),
+                WatchpointTarget::MemAddr(m)  => format!("{}{:08x}", "0x".yellow(), m),
             }
         )
     }
 }
 
 #[derive(PartialEq)]
-pub(crate) struct RegisterWatch {
-    register: Register,
-    action: RegisterAction,
+pub(crate) struct TargetWatch {
+    target: WatchpointTarget,
+    action: TargetAction,
 }
 
 pub(crate) struct Watchpoint {
     id: u32,
-    action: RegisterAction,
+    action: TargetAction,
     ignore_count: u32,
     enabled: bool,
 }
 
 impl Watchpoint {
-    pub(crate) fn new(id: u32, action: RegisterAction) -> Self {
+    pub(crate) fn new(id: u32, action: TargetAction) -> Self {
         Self {
             id,
             action,
@@ -100,7 +128,7 @@ pub(crate) struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
-    pub(crate) watchpoints: HashMap<Register, Watchpoint>,
+    pub(crate) watchpoints: HashMap<WatchpointTarget, Watchpoint>,
 }
 
 impl State {
@@ -499,7 +527,7 @@ impl State {
             }
         };
 
-        let affected_registers = Self::get_affected_registers(inst);
+        let affected_registers = Self::get_affected_registers(self, inst);
 
         Ok(
             if self.exited {
@@ -529,9 +557,9 @@ impl State {
                         true
                     }
                 } else if let Some(watchpoint) = affected_registers.iter()
-                        .find(|&wp| self.watchpoints.get(&wp.register)
+                        .find(|&wp| self.watchpoints.get(&wp.target)
                             .map_or(false, |watch| watch.action == wp.action && watch.enabled)) {
-                    let mut wp = self.watchpoints.get_mut(&watchpoint.register).expect("I got the condition wrong");
+                    let mut wp = self.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
                     if wp.ignore_count > 0 {
                         wp.ignore_count -= 1;
                         trapped
@@ -546,36 +574,74 @@ impl State {
         )
     }
 
-    fn get_affected_registers(inst: u32) -> Vec<RegisterWatch> {
+    fn get_affected_registers(&self, inst: u32) -> Vec<TargetWatch> {
         let opcode =  inst >> 26;
+        let rb     = (inst >> 21) & 0x1F;
         let rs     = (inst >> 21) & 0x1F;
         let rt     = (inst >> 16) & 0x1F;
         let rd     = (inst >> 11) & 0x1F;
+        let offset = (inst & 0xFF) as i32;
 
         match opcode {
+            LB | LBU | LH | LHU | LW | LWU | LUI => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (self.runtime.timeline().prev_state().expect("there should be a previous state")
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            SB | SH | SW => vec![
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (self.runtime.timeline().state()
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
             SPECIAL | SPECIAL2 | SPECIAL3 => vec![
-                RegisterWatch {
-                    register: Register::from_u32(rd).unwrap(),
-                    action: RegisterAction::WriteOnly,
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rd).unwrap()),
+                    action: TargetAction::WriteOnly,
                 },
-                RegisterWatch {
-                    register: Register::from_u32(rs).unwrap(),
-                    action: RegisterAction::ReadOnly,
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
                 },
-                RegisterWatch {
-                    register: Register::from_u32(rt).unwrap(),
-                    action: RegisterAction::ReadOnly,
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
                 },
             ],
             JUMP | JAL => vec![],
             _ => vec![
-                RegisterWatch {
-                    register: Register::from_u32(rs).unwrap(),
-                    action: RegisterAction::ReadOnly,
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
                 },
-                RegisterWatch {
-                    register: Register::from_u32(rt).unwrap(),
-                    action: RegisterAction::WriteOnly,
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
                 },
             ],
         }

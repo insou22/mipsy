@@ -1,9 +1,10 @@
-use crate::interactive::{error::CommandError, prompt, RegisterAction, Watchpoint};
+use crate::interactive::{error::CommandError, prompt, TargetAction, Watchpoint, WatchpointTarget};
 use std::{iter::successors, str::FromStr};
 
 use super::*;
 use colored::*;
 use mipsy_lib::Register;
+use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
 
 enum WpState {
     Enable,
@@ -13,7 +14,7 @@ enum WpState {
 
 #[derive(PartialEq)]
 enum MipsyArgType {
-    Register,
+    Target,
     Id,
 }
 
@@ -125,22 +126,22 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         );
     }
 
-    let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
     let args = &args[1..];
 
     let id;
-    let mut action = RegisterAction::ReadWrite; // this should always be overwritten but the compiler
+    let mut action = TargetAction::ReadWrite; // this should always be overwritten but the compiler
     // doesn't know that
     let wp_action = if remove {
-        if let Some(wp) = state.watchpoints.remove(&register) {
+        if let Some(wp) = state.watchpoints.remove(&target) {
             id = wp.id;
             "removed"
         } else {
             prompt::error_nl(format!(
                 "watchpoint at {} doesn't exist",
                 match arg_type {
-                    MipsyArgType::Register => register.to_string().as_str().into(),
-                    MipsyArgType::Id       => args[0].blue(),
+                    MipsyArgType::Target => target.to_string().as_str().into(),
+                    MipsyArgType::Id     => args[0].blue(),
                 }
             ));
             return Ok("".into());
@@ -159,10 +160,10 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         }
 
         action = match args[0].as_str() {
-            "r" | "read"  => RegisterAction::ReadOnly,
-            "w" | "write" => RegisterAction::WriteOnly,
+            "r" | "read"  => TargetAction::ReadOnly,
+            "w" | "write" => TargetAction::WriteOnly,
             "rw" | "r/w" | "r+w" | "w/r" | "w+r" | "read/write" | "read+write"
-                => RegisterAction::ReadWrite,
+                => TargetAction::ReadWrite,
             _ => return Err(
                     generate_err(CommandError::BadArgument {
                         arg: "action".to_owned(),
@@ -173,15 +174,15 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             )
         };
 
-        if register == Register::Zero {
+        if target == WatchpointTarget::Register(Register::Zero) {
             prompt::error_nl("the zero register cannot be changed, and watching for reads will generate false positives");
             return Ok("".into());
         }
 
-        let task = if state.watchpoints.contains_key(&register) { "updated" } else { "inserted" };
+        let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
         let wp = Watchpoint::new(id, action);
-        state.watchpoints.insert(register, wp);
+        state.watchpoints.insert(target, wp);
 
         task
     };
@@ -190,13 +191,13 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         prompt::success_nl(format!("watchpoint {} {} for {}",
             format!("!{}", id).blue(),
             wp_action,
-            register,
+            target,
         ));
     } else {
         prompt::success_nl(format!("watchpoint {} {} for {} ({})",
             format!("!{}", id).blue(),
             wp_action,
-            register,
+            target,
             action
         ));
     }
@@ -244,7 +245,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 
     println!("\n{}", "[watchpoints]".green().bold());
     for (id, wp) in watchpoints {
-        let (register, wp) = wp;
+        let (target, wp) = wp;
         let disabled = match wp.enabled {
             true  => "",
             false => " (disabled)"
@@ -257,7 +258,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 
         println!("{}{}: {} ({}){}{}",
             " ".repeat(max_id_len - id.1), id.0.to_string().blue(),
-            register,
+            target,
             wp.action.to_string().purple(), disabled.bright_black(),
             ignored,
         );
@@ -299,10 +300,10 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     }
     args = &args[1..];
 
-    let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     let id;
-    if let Some(wp) = state.watchpoints.get_mut(&register) {
+    if let Some(wp) = state.watchpoints.get_mut(&target) {
         id = wp.id;
         wp.enabled = match enabled {
             WpState::Enable  => true,
@@ -313,15 +314,15 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         prompt::error_nl(format!(
             "watchpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Register => register.to_string().as_str().into(),
-                MipsyArgType::Id       => args[0].blue(),
+                MipsyArgType::Target => target.to_string().as_str().into(),
+                MipsyArgType::Id     => args[0].blue(),
             }
         ));
         return Ok("".into());
     }
 
     // already ruled out possibility of entry not existing
-    let action = match state.watchpoints.get(&register).unwrap().enabled {
+    let action = match state.watchpoints.get(&target).unwrap().enabled {
         true  => "enabled",
         false => "disabled",
     };
@@ -329,7 +330,7 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     prompt::success_nl(format!("watchpoint {} {} for {} ({})",
         format!("!{}", id).blue(),
         action,
-        register,
+        target,
         action
     ));
 
@@ -366,7 +367,7 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
         );
     }
 
-    let (register, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     args = &args[1..];
     if args.is_empty() {
@@ -390,15 +391,15 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
             ""
         ))?;
 
-    if let Some(wp) = state.watchpoints.get_mut(&register) {
+    if let Some(wp) = state.watchpoints.get_mut(&target) {
         wp.ignore_count = ignore_count;
         prompt::success_nl(format!("skipping watchpoint {} {} times", format!("!{}", wp.id).blue(), ignore_count.to_string().yellow()));
     } else {
         prompt::error_nl(format!(
             "watchpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Register => register.to_string().as_str().into(),
-                MipsyArgType::Id       => args[0].blue(),
+                MipsyArgType::Target => target.to_string().as_str().into(),
+                MipsyArgType::Id     => args[0].blue(),
             }
         ));
     }
@@ -417,7 +418,7 @@ fn generate_err(error: CommandError, command_name: impl Into<String>) -> Command
     } 
 }
 
-fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(Register, MipsyArgType), CommandError> {
+fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget, MipsyArgType), CommandError> {
     let get_error = |expected: &str| generate_err(
         CommandError::BadArgument { arg: expected.magenta().to_string(), instead: arg.into() },
         &String::from(""),
@@ -425,15 +426,43 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(Register, MipsyA
 
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
-        let register = state.watchpoints.iter().find(|wp| wp.1.id == id)
+        let target = state.watchpoints.iter().find(|wp| wp.1.id == id)
                         .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
-        return Ok((*register, MipsyArgType::Id))
+        return Ok((*target, MipsyArgType::Id))
     }
 
     let arg = arg.strip_prefix('$').unwrap_or(arg);
-    let register = Register::from_str(arg)
-            .map_err(|_| get_error("<register>"))?;
+    let target = if let Ok(register) = Register::from_str(arg) {
+        WatchpointTarget::Register(register)
+    } else {
+        let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
+                .map_err(|_| get_error("<addr>"))?;
 
-    Ok((register, MipsyArgType::Register))
+        if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
+            WatchpointTarget::MemAddr(match imm {
+                MpImmediate::I16(imm) => {
+                    *imm as u32
+                }
+                MpImmediate::U16(imm) => {
+                    *imm as u32
+                }
+                MpImmediate::I32(imm) => {
+                    *imm as u32
+                }
+                MpImmediate::U32(imm) => {
+                    *imm
+                }
+                MpImmediate::LabelReference(label) => {
+                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+                    binary.get_label(label)
+                        .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?
+                }
+            })
+        } else {
+            return Err(get_error("<addr>"))
+        }
+    };
+
+    Ok((target, MipsyArgType::Target))
 }
