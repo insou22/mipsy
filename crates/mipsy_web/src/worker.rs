@@ -156,6 +156,13 @@ impl Agent for Worker {
     	true
     }
 
+	/// Represents the name of loading resorce for remote workers which
+    /// have to live in a separate files.
+    fn name_of_resource() -> &'static str {
+        "worker.js"
+    }
+   
+	
     fn update(&mut self, _msg: Self::Message) {
         // no messaging exists
     }
