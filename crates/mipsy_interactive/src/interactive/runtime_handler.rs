@@ -1,5 +1,7 @@
 use std::{fmt::{Debug, Display}, str::FromStr};
-use super::{prompt};
+use crate::interactive::TargetAction;
+
+use super::{prompt, TargetWatch};
 use colored::*;
 use mipsy_lib::runtime::{OpenArgs, ReadArgs, WriteArgs, CloseArgs};
 use text_io::try_read;
@@ -317,5 +319,20 @@ pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
         "\n[BREAKPOINT ".cyan().bold(), 
         label.unwrap_or(&format!("{}{:08x}", "0x".yellow(), pc)), 
         "]".cyan().bold()
+    );
+}
+
+pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32) {
+    println!(
+        "{}{}{} - {} was {}\n",
+        "\n[WATCHPOINT ".cyan().bold(), 
+        format!("{}{:08x}", "0x".yellow(), pc),
+        "]".cyan().bold(),
+        watchpoint.target.to_string(),
+        match watchpoint.action {
+            TargetAction::ReadOnly => "read from",
+            TargetAction::WriteOnly => "written to",
+            TargetAction::ReadWrite => "written to",
+        }
     );
 }

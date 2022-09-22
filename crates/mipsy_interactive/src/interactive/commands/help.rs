@@ -83,8 +83,7 @@ pub(crate) fn help_command() -> Command {
                             "".magenta()       .to_string().len() * required.len() +
                             "".bright_magenta().to_string().len() * optional.len()
                         }
-                        Arguments::VarArgs { required, format: _ } => {
-                            "".magenta()       .to_string().len() * required.len() +
+                        Arguments::VarArgs { required: _, format: _ } => {
                             "".bright_magenta().to_string().len()
                         }
                     };
