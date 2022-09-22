@@ -15,6 +15,7 @@ enum WpState {
 #[derive(PartialEq)]
 enum MipsyArgType {
     Target,
+    Label,
     Id,
 }
 
@@ -130,7 +131,6 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     }
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
-    let args = &args[1..];
 
     let id;
     // this should always be overwritten but the compiler doesn't know that
@@ -144,12 +144,14 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                 "watchpoint at {} doesn't exist",
                 match arg_type {
                     MipsyArgType::Target => target.to_string().as_str().into(),
+                    MipsyArgType::Label  => args[0].yellow().bold(),
                     MipsyArgType::Id     => args[0].blue(),
                 }
             ));
             return Ok("".into());
         }
     } else {
+        let args = &args[1..];
         if args.is_empty() {
             return Err(
                 generate_err(
@@ -185,6 +187,28 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         task
     };
 
+    let label = match arg_type {
+        MipsyArgType::Target    => None,
+        MipsyArgType::Label     => Some(&args[0]),
+        MipsyArgType::Id        => {
+            match target {
+                WatchpointTarget::Register(_) => None,
+                WatchpointTarget::MemAddr(addr) => {
+                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+                    binary.labels.iter()
+                        .find(|(_, &_addr)| _addr == addr)
+                        .map(|(name, _)| name)
+                },
+            }
+        },
+    };
+
+    let target = if let Some(label) = label {
+        format!("{} ({})", label.yellow().bold(), target)
+    } else {
+        format!("{}", target)
+    };
+
     if remove {
         prompt::success_nl(format!("watchpoint {} {} for {}",
             format!("!{}", id).blue(),
@@ -217,8 +241,14 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
         return Ok("".into());
     }
 
+    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+
     let mut watchpoints = state.watchpoints.iter()
             .map(|wp| {
+                let addr = match wp.0 {
+                    WatchpointTarget::Register(_) => None,
+                    WatchpointTarget::MemAddr(m) => Some(*m),
+                };
                 let id = wp.1.id;
                 (
                     (
@@ -228,21 +258,26 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                         successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
                     ),
                     wp,
+                    if let Some(addr) = addr {
+                        binary.labels.iter()
+                            .find(|(_, &val)| val == addr)
+                            .map(|(name, _)| name)
+                    } else { None },
                 )
             })
             .collect::<Vec<_>>();
 
-    watchpoints.sort_by_key(|(id, _)| id.0);
+    watchpoints.sort_by_key(|(id, _, _)| id.0);
 
     let max_id_len = watchpoints.iter()
-            .map(|(id, _)| {
+            .map(|(id, _, _)| {
                 id.1
             })
             .max()
             .unwrap_or(0);
 
     println!("\n{}", "[watchpoints]".green().bold());
-    for (id, wp) in watchpoints {
+    for (id, wp, label) in watchpoints {
         let (target, wp) = wp;
         let disabled = match wp.enabled {
             true  => "",
@@ -252,6 +287,12 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
         let ignored = match wp.ignore_count {
             0 => "".to_string(),
             i => format!(" (ignored for the next {} hits)", i.to_string().bold()),
+        };
+
+        let target = if let Some(label) = label {
+            format!("{} ({})", label.yellow().bold(), target)
+        } else {
+            format!("{}", target)
         };
 
         println!("{}{}: {} ({}){}{}",
@@ -316,6 +357,7 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
             "watchpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::Target => target.to_string().as_str().into(),
+                MipsyArgType::Label  => args[0].yellow().bold(),
                 MipsyArgType::Id     => args[0].blue(),
             }
         ));
@@ -326,6 +368,28 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     let action = match state.watchpoints.get(&target).unwrap().enabled {
         true  => "enabled",
         false => "disabled",
+    };
+
+    let label = match arg_type {
+        MipsyArgType::Target    => None,
+        MipsyArgType::Label     => Some(&args[0]),
+        MipsyArgType::Id        => {
+            match target {
+                WatchpointTarget::Register(_) => None,
+                WatchpointTarget::MemAddr(addr) => {
+                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+                    binary.labels.iter()
+                        .find(|(_, &_addr)| _addr == addr)
+                        .map(|(name, _)| name)
+                },
+            }
+        },
+    };
+
+    let target = if let Some(label) = label {
+        format!("{} ({})", label.yellow().bold(), target)
+    } else {
+        format!("{}", target)
     };
 
     prompt::success_nl(format!("watchpoint {} {} for {} ({})",
@@ -403,6 +467,7 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
             "watchpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::Target => target.to_string().as_str().into(),
+                MipsyArgType::Label  => args[0].yellow().bold(),
                 MipsyArgType::Id     => args[0].blue(),
             }
         ));
@@ -450,8 +515,12 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget
                 MpImmediate::U32(imm) =>  *imm,
                 MpImmediate::LabelReference(label) => {
                     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-                    binary.get_label(label)
-                        .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?
+                    let addr = binary.get_label(label)
+                            .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?;
+                    return Ok((
+                        WatchpointTarget::MemAddr(addr),
+                        MipsyArgType::Label
+                    ));
                 }
             })
         } else {
