@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt, TargetAction, Watchpoint, WatchpointTarget};
+use crate::interactive::{error::CommandError, prompt};
 use std::{iter::successors, str::FromStr};
 
 use super::*;

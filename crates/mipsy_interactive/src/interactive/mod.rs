@@ -4,7 +4,7 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap, fmt::Display};
+use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap};
 
 use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
@@ -30,7 +30,7 @@ use commands::{
 
 use mipsy_utils::MipsyConfig;
 
-use self::error::{CommandError, CommandResult};
+use self::{error::{CommandError, CommandResult}, commands::{Watchpoint, WatchpointTarget, TargetWatch, TargetAction}};
 
 const LB : u32 = 0b100000;
 const LBU: u32 = 0b100100;
@@ -42,81 +42,6 @@ const LWU: u32 = 0b100111;
 const SB : u32 = 0b101000;
 const SH : u32 = 0b101001;
 const SW : u32 = 0b101011;
-
-#[derive(Copy, Clone)]
-pub(crate) enum TargetAction {
-    ReadOnly,
-    WriteOnly,
-    ReadWrite,
-}
-
-impl PartialEq for TargetAction {
-    // eq is used to check if a watchpoint should trigger based on the action,
-    // so a watchpoint checking for both reads and writes should always trigger
-    fn eq(&self, other: &Self) -> bool {
-        match *self {
-            TargetAction::ReadWrite => true,
-            _ => match other {
-                    TargetAction::ReadWrite => true,
-                    _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-            }
-        }
-    }
-}
-
-impl Display for TargetAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
-            match *self {
-                TargetAction::ReadOnly  => "read",
-                TargetAction::WriteOnly => "write",
-                TargetAction::ReadWrite => "read/write",
-            }
-        )
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum WatchpointTarget {
-    Register(Register),
-    MemAddr(u32),
-}
-
-impl Display for WatchpointTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
-            match self {
-                WatchpointTarget::Register(r) => r.to_string(),
-                WatchpointTarget::MemAddr(m)  => format!("{}{:08x}", "0x".yellow(), m),
-            }
-        )
-    }
-}
-
-#[derive(PartialEq)]
-pub(crate) struct TargetWatch {
-    target: WatchpointTarget,
-    action: TargetAction,
-}
-
-pub(crate) struct Watchpoint {
-    id: u32,
-    action: TargetAction,
-    ignore_count: u32,
-    enabled: bool,
-}
-
-impl Watchpoint {
-    pub(crate) fn new(id: u32, action: TargetAction) -> Self {
-        Self {
-            id,
-            action,
-            ignore_count: 0,
-            enabled: true,
-        }
-    }
-}
-
 
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
