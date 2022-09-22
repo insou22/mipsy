@@ -21,7 +21,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
     let runtime_instr = props.current_instr.unwrap_or(0);
     let decompiled = &props.decompiled;
     html! {
-            <pre class="text-xs whitespace-pre-wrap">
+            <pre class="text-xs">
             <table>
             { html! {
                 for decompiled.as_str().split("\n").into_iter().map(|item| {
