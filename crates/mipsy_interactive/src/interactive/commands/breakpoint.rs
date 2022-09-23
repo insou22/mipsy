@@ -99,7 +99,8 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             format!(
                 "Usage: {10} {11} {2}\n\
                  {0}s or {1}s a breakpoint at the specified {2}.\n\
-                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
+                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+            \x20             a label (`{4}`), or a line number (`:14`).\n\
                  If you are removing a breakpoint, you can also use its id (`{5}`).\n\
                  {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
@@ -287,7 +288,7 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
                 "Usage: {8} {9} {3}\n\
                  {0}s, {1}s, or {2}s a breakpoint at the specified {3}.\n\
                  {3} may be: a decimal address (`4194304`), a hex address (`{4}400000`),\n\
-        \x20                 a label (`{5}`), or an id (`{6}`).\n\
+        \x20                 a label (`{5}`), a line number (`:14`), or an id (`{6}`).\n\
                  Breakpoints that are disabled do not trigger when they are hit.\n\
                  Breakpoints caused by the `{7}` instruction in code cannot be disabled.
                 ",
@@ -381,7 +382,7 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
                 "Usage: {6} {7} {1} {0}\n\
                  {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
                  {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
-        \x20                 a label (`{3}`), or an id (`{4}`).\n\
+        \x20                 a label (`{3}`), a line number (`:14`), or an id (`{4}`).\n\
                  Breakpoints that are ignored do not trigger when they are hit.\n\
                  Breakpoints caused by the `{5}` instruction in code cannot ignored.
                 ",
@@ -503,25 +504,16 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
 
     if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
         Ok(match imm {
-            MpImmediate::I16(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::U16(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::I32(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::U32(imm) => {
-                (*imm, MipsyArgType::Immediate)
-            }
-            MpImmediate::LabelReference(label) => {
+            MpImmediate::I16(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::U16(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::I32(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::U32(imm) => (*imm, MipsyArgType::Immediate),
+            MpImmediate::LabelReference(label) =>
                 (
                     binary.get_label(label)
                         .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
                     MipsyArgType::Label,
-                )
-            }
+                ),
         })
     } else {
         Err(get_error("<addr>"))
