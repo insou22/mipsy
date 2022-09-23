@@ -23,6 +23,7 @@ pub enum CommandError {
     UnterminatedString { good_parts: String },
 
     MustLoadFile,
+    MustSpecifyFile,
     ProgramExited,
 
     CannotStepFurtherBack,

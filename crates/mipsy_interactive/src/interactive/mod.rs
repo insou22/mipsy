@@ -220,6 +220,9 @@ impl State {
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
             }
+            CommandError::MustSpecifyFile => {
+                prompt::error("there are multiple files loaded, you must specify which file to use");
+            }
             CommandError::ProgramExited => {
                 prompt::error("program has exited");
                 prompt::tip(format!("try using `{}` or `{}`", "back".bold(), "reset".bold()));

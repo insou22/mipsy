@@ -486,10 +486,23 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
         return Ok((*addr, MipsyArgType::Id))
     }
 
-    if let Some(line_number) = arg.strip_prefix(':') {
-        let line_number: u32 = line_number.parse().map_err(|_| get_error("<line number>"))?;
-        let mut lines = binary.line_numbers.iter().collect::<Vec<_>>();
-        lines.sort_by(|a, b| a.1.1.cmp(&b.1.1));
+    if arg.contains(':') {
+        // parts contains at least 2 elements
+        let mut parts = arg.split(':');
+        let mut file = parts.next().unwrap();
+        if file.is_empty() {
+            let mut filenames = binary.line_numbers.values()
+                    .map(|(filename, _)| filename);
+            file = filenames.next().unwrap();
+            if !filenames.all(|f| f.as_ref() == file) {
+                return Err(CommandError::MustSpecifyFile);
+            }
+        }
+
+        let line_number: u32 = parts.next().unwrap().parse().map_err(|_| get_error("<line number>"))?;
+        let mut lines = binary.line_numbers.iter()
+            .filter(|(_, (filename, _))| filename.as_ref() == file).collect::<Vec<_>>();
+        lines.sort_unstable_by(|a, b| a.1.1.cmp(&b.1.1));
 
         // use first line after the specified line that contains an instruction
         let addr = lines.iter()
