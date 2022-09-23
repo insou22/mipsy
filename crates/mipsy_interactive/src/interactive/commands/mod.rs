@@ -36,10 +36,6 @@ pub(crate) use step2input::step2input_command;
 pub(crate) use step2syscall::step2syscall_command;
 pub(crate) use watchpoint::watchpoint_command;
 
-use colored::Colorize;
-use mipsy_lib::{Register, compile::Point};
-use std::fmt::Display;
-
 use super::{error::CommandResult, State};
 
 // TODO(joshh): remove once if-let chaining is in
@@ -79,91 +75,5 @@ pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, require
         aliases: aliases.into_iter().map(S::into).collect(),
         args: Arguments::VarArgs { required: required_args.into_iter().map(S::into).collect(), format: varargs_format.into() },
         exec,
-    }
-}
-
-#[derive(Copy, Clone)]
-pub(crate) enum TargetAction {
-    ReadOnly,
-    WriteOnly,
-    ReadWrite,
-}
-
-impl PartialEq for TargetAction {
-    // eq is used to check if a watchpoint should trigger based on the action,
-    // so a watchpoint checking for both reads and writes should always trigger
-    fn eq(&self, other: &Self) -> bool {
-        match *self {
-            TargetAction::ReadWrite => true,
-            _ => match other {
-                    TargetAction::ReadWrite => true,
-                    _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-            }
-        }
-    }
-}
-
-impl Display for TargetAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
-            match *self {
-                TargetAction::ReadOnly  => "read",
-                TargetAction::WriteOnly => "write",
-                TargetAction::ReadWrite => "read/write",
-            }
-        )
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum WatchpointTarget {
-    Register(Register),
-    MemAddr(u32),
-}
-
-impl Display for WatchpointTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
-            match self {
-                WatchpointTarget::Register(r) => r.to_string(),
-                WatchpointTarget::MemAddr(m)  => format!("{}{:08x}", "0x".yellow(), m),
-            }
-        )
-    }
-}
-
-#[derive(PartialEq)]
-pub(crate) struct TargetWatch {
-    pub(crate) target: WatchpointTarget,
-    pub(crate) action: TargetAction,
-}
-
-pub(crate) struct Watchpoint {
-    pub(crate) id: u32,
-    pub(crate) action: TargetAction,
-    pub(crate) ignore_count: u32,
-    pub(crate) enabled: bool,
-    pub(crate) commands: Vec<String>,
-}
-
-impl Watchpoint {
-    pub(crate) fn new(id: u32, action: TargetAction) -> Self {
-        Self {
-            id,
-            action,
-            ignore_count: 0,
-            enabled: true,
-            commands: Vec::new(),
-        }
-    }
-}
-
-impl Point for Watchpoint {
-    fn get_id(&self) -> u32 {
-        self.id
-    }
-
-    fn get_commands(&'_ mut self) -> &'_ mut Vec<String> {
-        &mut self.commands
     }
 }

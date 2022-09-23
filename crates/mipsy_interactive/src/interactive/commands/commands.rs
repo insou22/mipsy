@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use colored::Colorize;
+use mipsy_lib::compile::breakpoints::Point;
 use rustyline::error::ReadlineError;
 
 use crate::{interactive::{editor, error::CommandError}, prompt};

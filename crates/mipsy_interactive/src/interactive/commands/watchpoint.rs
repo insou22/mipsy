@@ -3,7 +3,7 @@ use std::{iter::successors, str::FromStr};
 
 use super::{*, commands::handle_commands};
 use colored::*;
-use mipsy_lib::Register;
+use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}};
 use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
 
 enum WpState {
@@ -70,8 +70,8 @@ fn get_long_help() -> String {
         "A collection of commands for managing watchpoints. Available {10}s are:\n\n\
          {0} {2}    : insert/delete a watchpoint\n\
          {1} {3}\n\
-         {0} {12} : insert a temporary breakpoint that deletes itself after being hit\n\
-         {0} {13}  : attach commands to a breakpoint\n\
+         {0} {12} : insert a temporary watchpoint that deletes itself after being hit\n\
+         {0} {13}  : attach commands to a watchpoint\n\
          {0} {5}    : enable/disable an existing watchpoint\n\
          {1} {6}\n\
          {1} {7}\n\
@@ -107,6 +107,8 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                  If you are removing a watchpoint, you can also use its id (`{3}`).\n\
                  {4} must be `i`, `in`, `ins`, `insert`, or `add` to insert the watchpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the watchpoint.\n\
+                 If {10}, `tmp`, or `temp` is provided as the {4}, the watchpoint will\n\
+                 be created as a temporary watchpoint, which automatically deletes itself after being hit.\n\
                  If {4} is none of these option, it defaults to inserting a watchpoint at {4}.\n\
                  When running or stepping through your program, a watchpoint will cause execution to\n\
                  pause temporarily when the specified register is read from or written to,\n\
@@ -118,10 +120,11 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                 "!3".blue(),
                 "<subcommand>".magenta(),
                 "watchpoint".yellow().bold(),
-                "{insert, delete}".purple(),
+                "{insert, delete, temporary}".purple(),
                 "{read, write, read/write}".purple(),
                 "0x".yellow(),
                 "main".yellow().bold(),
+                "<temporary>".purple(),
             )
         )
     }
@@ -258,7 +261,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             .map(|wp| {
                 let addr = match wp.0 {
                     WatchpointTarget::Register(_) => None,
-                    WatchpointTarget::MemAddr(m) => Some(*m),
+                    WatchpointTarget::MemAddr(m) => Some(m),
                 };
                 let id = wp.1.id;
                 (
@@ -269,7 +272,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                         successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
                     ),
                     wp,
-                    if let Some(addr) = addr {
+                    if let Some(&addr) = addr {
                         binary.labels.iter()
                             .find(|(_, &val)| val == addr)
                             .map(|(name, _)| name)

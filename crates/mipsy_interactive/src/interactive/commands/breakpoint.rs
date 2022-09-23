@@ -3,8 +3,8 @@ use std::iter::successors;
 
 use super::{*, commands::handle_commands};
 use colored::*;
+use mipsy_lib::compile::breakpoints::Breakpoint;
 use mipsy_parser::*;
-use mipsy_lib::compile::Breakpoint;
 
 enum BpState {
     Enable,
