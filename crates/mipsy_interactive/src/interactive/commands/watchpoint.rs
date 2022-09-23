@@ -41,9 +41,11 @@ pub(crate) fn watchpoint_command() -> Command {
                 "l" | "list" =>
                     watchpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
-                    watchpoint_insert(state, label, &args[1..], false),
+                    watchpoint_insert(state, label, &args[1..], false, false),
                 "del" | "delete" | "r" | "rm" | "remove" =>
-                    watchpoint_insert(state, label, &args[1..], true),
+                    watchpoint_insert(state, label, &args[1..], true, false),
+                "tmp" | "temp" | "temporary" =>
+                    watchpoint_insert(state, label, &args[1..], false, true),
                 "e" | "enable" =>
                     watchpoint_toggle(state, label,  args, WpState::Enable),
                 "d" | "disable" =>
@@ -55,7 +57,7 @@ pub(crate) fn watchpoint_command() -> Command {
                 "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
                     watchpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
-                    watchpoint_insert(state, label,  args, false),
+                    watchpoint_insert(state, label,  args, false, false),
                 _ =>
                     Ok(get_long_help()),
             }
@@ -94,7 +96,7 @@ fn get_long_help() -> String {
     )
 }
 
-fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
+fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -187,16 +189,19 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
 
         let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
-        let wp = Watchpoint::new(id, action);
+        let mut wp = Watchpoint::new(id, action);
+        if temporary {
+            wp.commands.push(format!("watchpoint remove !{id}"))
+        }
         state.watchpoints.insert(target, wp);
 
         task
     };
 
     let label = match arg_type {
-        MipsyArgType::Target    => None,
-        MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Target => None,
+        MipsyArgType::Label  => Some(&args[0]),
+        MipsyArgType::Id     => {
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {
@@ -377,9 +382,9 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     };
 
     let label = match arg_type {
-        MipsyArgType::Target    => None,
-        MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Target => None,
+        MipsyArgType::Label  => Some(&args[0]),
+        MipsyArgType::Id     => {
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {

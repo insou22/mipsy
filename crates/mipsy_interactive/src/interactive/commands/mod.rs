@@ -163,7 +163,7 @@ impl Point for Watchpoint {
         self.id
     }
 
-    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String> {
+    fn get_commands(&'_ mut self) -> &'_ mut Vec<String> {
         &mut self.commands
     }
 }

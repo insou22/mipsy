@@ -515,7 +515,7 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
         let addr = binary.breakpoints.iter().find(|bp| bp.1.id == id)
-                        .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
+                        .ok_or(CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*addr, MipsyArgType::Id))
     }
