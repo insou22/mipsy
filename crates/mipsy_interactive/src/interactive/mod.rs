@@ -226,11 +226,17 @@ impl State {
                 prompt::error("failed to compile instruction");
                 self.mipsy_error(error, ErrorContext::Repl, Some(line));
             }
+            CommandError::LineDoesNotExist { line_number } => {
+                prompt::error(format!("line :{line_number} does not exist in this program"));
+            }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
             }
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
+            }
+            CommandError::MustSpecifyFile => {
+                prompt::error("there are multiple files loaded, you must specify which file to use");
             }
             CommandError::ProgramExited => {
                 prompt::error("program has exited");
