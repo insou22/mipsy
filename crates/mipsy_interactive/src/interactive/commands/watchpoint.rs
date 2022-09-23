@@ -1,7 +1,7 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::{iter::successors, str::FromStr};
 
-use super::*;
+use super::{*, commands::handle_commands};
 use colored::*;
 use mipsy_lib::Register;
 use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
@@ -42,7 +42,7 @@ pub(crate) fn watchpoint_command() -> Command {
                     watchpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
                     watchpoint_insert(state, label, &args[1..], false),
-                "del" | "delete" | "rm" | "remove" =>
+                "del" | "delete" | "r" | "rm" | "remove" =>
                     watchpoint_insert(state, label, &args[1..], true),
                 "e" | "enable" =>
                     watchpoint_toggle(state, label,  args, WpState::Enable),
@@ -52,6 +52,8 @@ pub(crate) fn watchpoint_command() -> Command {
                     watchpoint_toggle(state, label,  args, WpState::Toggle),
                 "ignore" =>
                     watchpoint_ignore(state, label, &args[1..]),
+                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
+                    watchpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
                     watchpoint_insert(state, label,  args, false),
                 _ =>
@@ -474,6 +476,11 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     }
 
     Ok("".into())
+}
+
+fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    state.confirm_exit = true;
+    handle_commands(label, args, &mut state.watchpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {

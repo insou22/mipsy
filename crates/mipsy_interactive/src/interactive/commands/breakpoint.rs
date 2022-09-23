@@ -1,7 +1,7 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
-use super::*;
+use super::{*, commands::handle_commands};
 use colored::*;
 use mipsy_parser::*;
 use mipsy_lib::compile::Breakpoint;
@@ -23,7 +23,7 @@ enum MipsyArgType {
 pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
-        vec!["br", "brk", "break"],
+        vec!["bp", "br", "brk", "break"],
         vec!["subcommand"],
         vec![],
         &format!(
@@ -43,7 +43,7 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
                     breakpoint_insert(state, label, &args[1..], false, false),
-                "del" | "delete" | "rm" | "remove" =>
+                "del" | "delete" | "r" | "rm" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true,  false),
                 "tmp" | "temp" | "temporary" =>
                     breakpoint_insert(state, label, &args[1..], false, true),
@@ -55,6 +55,8 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
                 "ignore" =>
                     breakpoint_ignore(state, label, &args[1..]),
+                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
+                    breakpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
                     breakpoint_insert(state, label,  args, false, false),
                 _ =>
@@ -462,6 +464,12 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     }
 
     Ok("".into())
+}
+
+fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+    state.confirm_exit = true;
+    handle_commands(label, args, &mut binary.breakpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {

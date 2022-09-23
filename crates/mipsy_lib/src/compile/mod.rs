@@ -60,6 +60,21 @@ impl Breakpoint {
     }
 }
 
+pub trait Point {
+    fn get_id(&self) -> u32;
+    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String>;
+}
+
+impl Point for Breakpoint {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+
+    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String> {
+        &mut self.commands
+    }
+}
+
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {
     pub text:    Vec<Safe<u8>>,

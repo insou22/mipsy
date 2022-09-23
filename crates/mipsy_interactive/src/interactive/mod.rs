@@ -498,6 +498,9 @@ impl State {
                         trapped
                     } else {
                         runtime_handler::watchpoint(watchpoint, pc);
+                        wp.commands.clone().iter().for_each(|command| {
+                            self.exec_command(command.to_owned());
+                        });
                         true
                     }
                 } else {

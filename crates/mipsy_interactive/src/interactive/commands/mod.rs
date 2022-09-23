@@ -38,7 +38,7 @@ pub(crate) use step2syscall::step2syscall_command;
 pub(crate) use watchpoint::watchpoint_command;
 
 use colored::Colorize;
-use mipsy_lib::Register;
+use mipsy_lib::{Register, compile::Point};
 use std::fmt::Display;
 
 use super::{error::CommandResult, State};
@@ -144,6 +144,7 @@ pub(crate) struct Watchpoint {
     pub(crate) action: TargetAction,
     pub(crate) ignore_count: u32,
     pub(crate) enabled: bool,
+    pub(crate) commands: Vec<String>,
 }
 
 impl Watchpoint {
@@ -153,7 +154,17 @@ impl Watchpoint {
             action,
             ignore_count: 0,
             enabled: true,
+            commands: Vec::new(),
         }
     }
 }
 
+impl Point for Watchpoint {
+    fn get_id(&self) -> u32 {
+        self.id
+    }
+
+    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String> {
+        &mut self.commands
+    }
+}
