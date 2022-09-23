@@ -1,10 +1,10 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
-use super::*;
+use super::{*, commands::handle_commands};
 use colored::*;
+use mipsy_lib::compile::breakpoints::Breakpoint;
 use mipsy_parser::*;
-use mipsy_lib::compile::Breakpoint;
 
 enum BpState {
     Enable,
@@ -23,7 +23,7 @@ enum MipsyArgType {
 pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
-        vec!["br", "brk", "break"],
+        vec!["bp", "br", "brk", "break"],
         vec!["subcommand"],
         vec![],
         &format!(
@@ -43,7 +43,7 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
                     breakpoint_insert(state, label, &args[1..], false, false),
-                "del" | "delete" | "rm" | "remove" =>
+                "del" | "delete" | "r" | "rm" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true,  false),
                 "tmp" | "temp" | "temporary" =>
                     breakpoint_insert(state, label, &args[1..], false, true),
@@ -55,6 +55,8 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label,  args, BpState::Toggle),
                 "ignore" =>
                     breakpoint_ignore(state, label, &args[1..]),
+                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
+                    breakpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
                     breakpoint_insert(state, label,  args, false, false),
                 _ =>
@@ -70,6 +72,7 @@ fn get_long_help() -> String {
          {0} {2}    : insert/delete a breakpoint\n\
          {1} {3}\n\
          {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+         {0} {13}  : attach commands to a breakpoint\n\
          {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
@@ -90,6 +93,7 @@ fn get_long_help() -> String {
         "<subcommand>".purple(),
         "temporary".purple(),
         "ignore".purple(),
+        "commands".purple(),
     )
 }
 
@@ -464,6 +468,31 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     Ok("".into())
 }
 
+fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Takes in a list of commands seperated by newlines,\n\
+                 and attaches the commands to the specified {0}.\n\
+                 If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
+                 Whenever that breakpoint is hit, the commands will automatically be executed\n\
+                 in the provided order.\n\
+                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                 To view the commands attached to a particular breakpoint,\n\
+                 use {2} {0}
+                ",
+                "<breakpoint id>".purple(),
+                "end".yellow().bold(),
+                "commands list".bold().yellow(),
+            )
+        )
+    }
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+    state.confirm_exit = true;
+    handle_commands(args, &mut binary.breakpoints)
+}
+
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");
     let command_name = command_name.into();
@@ -486,7 +515,7 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
         let addr = binary.breakpoints.iter().find(|bp| bp.1.id == id)
-                        .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
+                        .ok_or(CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*addr, MipsyArgType::Id))
     }

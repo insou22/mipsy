@@ -1,9 +1,9 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::{iter::successors, str::FromStr};
 
-use super::*;
+use super::{*, commands::handle_commands};
 use colored::*;
-use mipsy_lib::Register;
+use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}};
 use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
 
 enum WpState {
@@ -41,9 +41,11 @@ pub(crate) fn watchpoint_command() -> Command {
                 "l" | "list" =>
                     watchpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
-                    watchpoint_insert(state, label, &args[1..], false),
-                "del" | "delete" | "rm" | "remove" =>
-                    watchpoint_insert(state, label, &args[1..], true),
+                    watchpoint_insert(state, label, &args[1..], false, false),
+                "del" | "delete" | "r" | "rm" | "remove" =>
+                    watchpoint_insert(state, label, &args[1..], true, false),
+                "tmp" | "temp" | "temporary" =>
+                    watchpoint_insert(state, label, &args[1..], false, true),
                 "e" | "enable" =>
                     watchpoint_toggle(state, label,  args, WpState::Enable),
                 "d" | "disable" =>
@@ -52,8 +54,10 @@ pub(crate) fn watchpoint_command() -> Command {
                     watchpoint_toggle(state, label,  args, WpState::Toggle),
                 "ignore" =>
                     watchpoint_ignore(state, label, &args[1..]),
+                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
+                    watchpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
-                    watchpoint_insert(state, label,  args, false),
+                    watchpoint_insert(state, label,  args, false, false),
                 _ =>
                     Ok(get_long_help()),
             }
@@ -66,6 +70,8 @@ fn get_long_help() -> String {
         "A collection of commands for managing watchpoints. Available {10}s are:\n\n\
          {0} {2}    : insert/delete a watchpoint\n\
          {1} {3}\n\
+         {0} {12} : insert a temporary watchpoint that deletes itself after being hit\n\
+         {0} {13}  : attach commands to a watchpoint\n\
          {0} {5}    : enable/disable an existing watchpoint\n\
          {1} {6}\n\
          {1} {7}\n\
@@ -85,10 +91,12 @@ fn get_long_help() -> String {
         "<subcommand>".purple().bold(),
         "<subcommand>".purple(),
         "ignore".purple(),
+        "temporary".purple(),
+        "commands".purple(),
     )
 }
 
-fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool) -> Result<String, CommandError> {
+fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -99,6 +107,8 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                  If you are removing a watchpoint, you can also use its id (`{3}`).\n\
                  {4} must be `i`, `in`, `ins`, `insert`, or `add` to insert the watchpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the watchpoint.\n\
+                 If {10}, `tmp`, or `temp` is provided as the {4}, the watchpoint will\n\
+                 be created as a temporary watchpoint, which automatically deletes itself after being hit.\n\
                  If {4} is none of these option, it defaults to inserting a watchpoint at {4}.\n\
                  When running or stepping through your program, a watchpoint will cause execution to\n\
                  pause temporarily when the specified register is read from or written to,\n\
@@ -110,10 +120,11 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                 "!3".blue(),
                 "<subcommand>".magenta(),
                 "watchpoint".yellow().bold(),
-                "{insert, delete}".purple(),
+                "{insert, delete, temporary}".purple(),
                 "{read, write, read/write}".purple(),
                 "0x".yellow(),
                 "main".yellow().bold(),
+                "<temporary>".purple(),
             )
         )
     }
@@ -181,16 +192,19 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
 
         let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
-        let wp = Watchpoint::new(id, action);
+        let mut wp = Watchpoint::new(id, action);
+        if temporary {
+            wp.commands.push(format!("watchpoint remove !{id}"))
+        }
         state.watchpoints.insert(target, wp);
 
         task
     };
 
     let label = match arg_type {
-        MipsyArgType::Target    => None,
-        MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Target => None,
+        MipsyArgType::Label  => Some(&args[0]),
+        MipsyArgType::Id     => {
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {
@@ -247,7 +261,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             .map(|wp| {
                 let addr = match wp.0 {
                     WatchpointTarget::Register(_) => None,
-                    WatchpointTarget::MemAddr(m) => Some(*m),
+                    WatchpointTarget::MemAddr(m) => Some(m),
                 };
                 let id = wp.1.id;
                 (
@@ -258,7 +272,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                         successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
                     ),
                     wp,
-                    if let Some(addr) = addr {
+                    if let Some(&addr) = addr {
                         binary.labels.iter()
                             .find(|(_, &val)| val == addr)
                             .map(|(name, _)| name)
@@ -371,9 +385,9 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     };
 
     let label = match arg_type {
-        MipsyArgType::Target    => None,
-        MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Target => None,
+        MipsyArgType::Label  => Some(&args[0]),
+        MipsyArgType::Id     => {
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {
@@ -474,6 +488,30 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     }
 
     Ok("".into())
+}
+
+fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Takes in a list of commands seperated by newlines,\n\
+                 and attaches the commands to the specified {0}.\n\
+                 If no watchpoint is specified, the most recently created watchpoint is chosen.\n\
+                 Whenever that watchpoint is hit, the commands will automatically be executed\n\
+                 in the provided order.\n\
+                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                 To view the commands attached to a particular watchpoint,\n\
+                 use {2} {0}
+                ",
+                "<watchpoint id>".purple(),
+                "end".yellow().bold(),
+                "commands list".bold().yellow(),
+            )
+        )
+    }
+
+    state.confirm_exit = true;
+    handle_commands(args, &mut state.watchpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {

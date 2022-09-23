@@ -328,7 +328,7 @@ pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32) {
         "\n[WATCHPOINT ".cyan().bold(), 
         format!("{}{:08x}", "0x".yellow(), pc),
         "]".cyan().bold(),
-        watchpoint.target.to_string(),
+        watchpoint.target,
         match watchpoint.action {
             TargetAction::ReadOnly => "read from",
             TargetAction::WriteOnly => "written to",

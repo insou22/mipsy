@@ -6,7 +6,7 @@ mod runtime_handler;
 
 use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
-use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register};
+use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register, compile::breakpoints::{WatchpointTarget, TargetWatch, Watchpoint, TargetAction}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
@@ -30,7 +30,7 @@ use commands::{
 
 use mipsy_utils::MipsyConfig;
 
-use self::{error::{CommandError, CommandResult}, commands::{Watchpoint, WatchpointTarget, TargetWatch, TargetAction}};
+use self::error::{CommandError, CommandResult};
 
 const LB : u32 = 0b100000;
 const LBU: u32 = 0b100100;
@@ -498,6 +498,9 @@ impl State {
                         trapped
                     } else {
                         runtime_handler::watchpoint(watchpoint, pc);
+                        wp.commands.clone().iter().for_each(|command| {
+                            self.exec_command(command.to_owned());
+                        });
                         true
                     }
                 } else {
@@ -681,7 +684,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::reset_command());
     state.add_command(commands::watchpoint_command());
     state.add_command(commands::breakpoint_command());
-    state.add_command(commands::commands_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());

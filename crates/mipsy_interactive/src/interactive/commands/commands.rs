@@ -1,77 +1,44 @@
+use std::collections::HashMap;
+
 use colored::Colorize;
-use mipsy_lib::Binary;
+use mipsy_lib::compile::breakpoints::Point;
 use rustyline::error::ReadlineError;
 
 use crate::{interactive::{editor, error::CommandError}, prompt};
 
 use super::*;
 
-pub(crate) fn commands_command() -> Command {
-    command(
-        "commands",
-        vec!["com", "comms", "cmd", "cmds", "command"],
-        vec![],
-        vec!["list", "breakpoint id"],
-        "attach commands to a breakpoint",
-        |state, label, mut args| {
-            let get_error = |expected: &str, instead: &str| generate_err(
-                CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
-                &String::from(""),
-            );
+pub fn handle_commands<K, V: Point>(mut args: &[String], points: &mut HashMap<K, V>) -> Result<String, CommandError> {
+        let get_error = |expected: &str, instead: &str| generate_err(
+            CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
+            &String::from(""),
+        );
 
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Takes in a list of commands seperated by newlines,\n\
-                         and attaches the commands to the specified {0}.\n\
-                         If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
-                         Whenever that breakpoint is hit, the commands will automatically be executed\n\
-                         in the provided order.\n\
-                         The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
-                         To view the commands attached to a particular breakpoint,\n\
-                         use {2} {0}
-                        ",
-                        "<breakpoint id>".purple(),
-                        "end".yellow().bold(),
-                        "commands list".bold().yellow(),
-                    )
-                )
-            }
+        let list = !args.is_empty() &&
+            matches!(args[0].as_ref(), "l" | "list");
+        if list { args = &args[1..]; }
 
-            let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+        let id: u32 = if args.is_empty() {
+            points.values()
+                .map(|bp| bp.get_id())
+                .fold(u32::MIN, |x, y| x.max(y))
+        } else if let Some(id) = args[0].strip_prefix('!') {
+            id.parse().map_err(|_| get_error("<id>", &args[0]))?
+        } else {
+            return Err(get_error("<id>", &args[0]))
+        };
 
-            let list = !args.is_empty() &&
-                matches!(args[0].as_ref(), "l" | "list");
-            if list { args = &args[1..]; }
-
-            let id: u32 = if args.is_empty() {
-                binary.breakpoints.values()
-                    .map(|bp| bp.id)
-                    .fold(u32::MIN, |x, y| x.max(y))
-            } else if let Some(id) = args[0].strip_prefix('!') {
-                id.parse().map_err(|_| get_error("<id>", &args[0]))?
-            } else {
-                return Err(get_error("<id>", &args[0]))
-            };
-
-            state.confirm_exit = true;
-            if list {
-                list_commands(binary, id)
-            } else {
-                add_commands(binary, id)
-            }
+        if list {
+            list_commands(points, id)
+        } else {
+            add_commands(points, id)
         }
-    )
 }
 
-fn add_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
-    println!("[mipsy] enter commands seperated by newlines\n\
-              [mipsy] to run whenever breakpoint {} is hit", format!("!{id}").blue());
-    println!("[mipsy] use an empty line or the command {} to finish", "end".bold().yellow());
-
+fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResult<String> {
     let commands;
-    if let Some(br) = binary.breakpoints.iter_mut().find(|bp| bp.1.id == id) {
-        commands = &mut br.1.commands;
+    if let Some(br) = points.iter_mut().find(|bp| bp.1.get_id() == id) {
+        commands = br.1.get_commands();
 
         // TODO: decide on behavious when commands already exist
         commands.clear();
@@ -82,6 +49,10 @@ fn add_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
         ));
         return Ok("".into());
     }
+
+    println!("[mipsy] enter commands seperated by newlines\n\
+              [mipsy] to run whenever breakpoint {} is hit", format!("!{id}").blue());
+    println!("[mipsy] use an empty line or the command {} to finish", "end".bold().yellow());
 
     let mut rl = editor();
     loop {
@@ -112,11 +83,11 @@ fn add_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
     Ok("".into())
 }
 
-fn list_commands(binary: &mut Binary, id: u32) -> CommandResult<String> {
+fn list_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResult<String> {
     println!("[mipsy] commands for breakpoint {}:", format!("!{id}").blue());
 
-    if let Some(br) = binary.breakpoints.iter_mut().find(|bp| bp.1.id == id) {
-        let commands = &mut br.1.commands;
+    if let Some(br) = points.iter_mut().find(|bp| bp.1.get_id() == id) {
+        let commands = br.1.get_commands();
         commands.iter().for_each(|command| println!("{command}"));
     } else {
         prompt::error_nl(format!(
