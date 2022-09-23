@@ -62,7 +62,7 @@ impl Breakpoint {
 
 pub trait Point {
     fn get_id(&self) -> u32;
-    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String>;
+    fn get_commands(&'_ mut self) -> &'_ mut Vec<String>;
 }
 
 impl Point for Breakpoint {
@@ -70,7 +70,7 @@ impl Point for Breakpoint {
         self.id
     }
 
-    fn get_commands<'a>(&'a mut self) -> &'a mut Vec<String> {
+    fn get_commands(&'_ mut self) -> &'_ mut Vec<String> {
         &mut self.commands
     }
 }
