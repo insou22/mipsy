@@ -684,7 +684,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::reset_command());
     state.add_command(commands::watchpoint_command());
     state.add_command(commands::breakpoint_command());
-    state.add_command(commands::commands_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());

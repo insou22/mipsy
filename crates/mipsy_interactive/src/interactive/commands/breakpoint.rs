@@ -72,6 +72,7 @@ fn get_long_help() -> String {
          {0} {2}    : insert/delete a breakpoint\n\
          {1} {3}\n\
          {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+         {0} {13}  : attach commands to a breakpoint\n\
          {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
@@ -92,6 +93,7 @@ fn get_long_help() -> String {
         "<subcommand>".purple(),
         "temporary".purple(),
         "ignore".purple(),
+        "commands".purple(),
     )
 }
 
@@ -467,9 +469,28 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
 }
 
 fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Takes in a list of commands seperated by newlines,\n\
+                 and attaches the commands to the specified {0}.\n\
+                 If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
+                 Whenever that breakpoint is hit, the commands will automatically be executed\n\
+                 in the provided order.\n\
+                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                 To view the commands attached to a particular breakpoint,\n\
+                 use {2} {0}
+                ",
+                "<breakpoint id>".purple(),
+                "end".yellow().bold(),
+                "commands list".bold().yellow(),
+            )
+        )
+    }
+
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
     state.confirm_exit = true;
-    handle_commands(label, args, &mut binary.breakpoints)
+    handle_commands(args, &mut binary.breakpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {

@@ -7,44 +7,11 @@ use crate::{interactive::{editor, error::CommandError}, prompt};
 
 use super::*;
 
-pub(crate) fn commands_command() -> Command {
-    command(
-        "commands",
-        vec!["com", "comms", "cmd", "cmds", "command"],
-        vec![],
-        vec!["list", "breakpoint id"],
-        "attach commands to a breakpoint",
-        |state, label, mut args| {
-            Ok("".into())
-        }
-    )
-}
-
-pub fn handle_commands<K, V: Point>(label: &str, mut args: &[String], points: &mut HashMap<K, V>) -> Result<String, CommandError> {
+pub fn handle_commands<K, V: Point>(mut args: &[String], points: &mut HashMap<K, V>) -> Result<String, CommandError> {
         let get_error = |expected: &str, instead: &str| generate_err(
             CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
             &String::from(""),
         );
-
-        if label == "__help__" {
-            return Ok(
-                format!(
-                    "Takes in a list of commands seperated by newlines,\n\
-                     and attaches the commands to the specified {0}.\n\
-                     If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
-                     Whenever that breakpoint is hit, the commands will automatically be executed\n\
-                     in the provided order.\n\
-                     The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
-                     To view the commands attached to a particular breakpoint,\n\
-                     use {2} {0}
-                    ",
-                    "<breakpoint id>".purple(),
-                    "end".yellow().bold(),
-                    "commands list".bold().yellow(),
-                )
-            )
-        }
-
 
         let list = !args.is_empty() &&
             matches!(args[0].as_ref(), "l" | "list");
