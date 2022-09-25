@@ -34,6 +34,9 @@ pub const SPECIAL:  u32 = 0b000000;
 pub const SPECIAL2: u32 = 0b011100;
 pub const SPECIAL3: u32 = 0b011111;
 
+pub const JUMP    : u32 = 0b000010;
+pub const JAL     : u32 = 0b000011;
+
 macro_rules! try_owned_self {
     ($self:ident, $res:expr) => {
         match $res {
@@ -55,6 +58,11 @@ impl Runtime {
 
     pub fn timeline_mut(&mut self) -> &mut Timeline {
         &mut self.timeline
+    }
+
+    pub fn current_inst(&self) -> u32 {
+        let state = self.timeline.state();
+        state.read_mem_word(state.pc()).unwrap_or(0)
     }
 
     pub fn step(mut self) -> Result<SteppedRuntime, (Runtime, MipsyError)> {
@@ -134,7 +142,7 @@ impl Runtime {
                 // R-Type
                 self.execute_r(opcode, funct, rd, rs, rt, shamt)
             }
-            0b000010 | 0b000011 => {
+            JUMP | JAL => {
                 // J-Type
                 self.execute_j(opcode, addr);
 

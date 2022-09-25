@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::interactive::error::CommandError;
 
 use super::*;
@@ -28,7 +30,8 @@ pub(crate) fn step2syscall_command() -> Command {
                 return Err(CommandError::ProgramExited);
             }
 
-            loop {
+            state.interrupted.store(false, Ordering::SeqCst);
+            while !state.interrupted.load(Ordering::SeqCst) {
                 let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                 let runtime = &state.runtime;
 

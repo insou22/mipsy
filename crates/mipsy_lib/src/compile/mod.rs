@@ -1,9 +1,11 @@
+use crate::compile::breakpoints::Breakpoint;
 use std::{collections::HashMap, rc::Rc};
 use crate::{InstSet, MpProgram, MipsyResult, error::{InternalError, MipsyInternalResult, compiler}, util::Safe};
 use serde::{Serialize, Deserialize};
 mod bytes;
 
 mod checker;
+pub mod breakpoints;
 pub use checker::{
     check_pre,
     check_post_data_label,
@@ -39,26 +41,6 @@ pub const STACK_PTR:  u32 = 0x7FFFFFFC;
 pub const STACK_TOP:  u32 = 0x7FFFFFFF;
 pub const KTEXT_BOT:  u32 = 0x80000000;
 pub const KDATA_BOT:  u32 = 0x90000000;
-
-// TODO(joshh): remove once if-let chaining is in
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct Breakpoint {
-    pub id: u32,
-    pub enabled: bool,
-    pub commands: Vec<String>,
-    pub ignore_count: u32,
-}
-
-impl Breakpoint {
-    pub fn new(id: u32) -> Self {
-        Self {
-            id,
-            enabled: true,
-            commands: Vec::new(),
-            ignore_count: 0,
-        }
-    }
-}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Binary {

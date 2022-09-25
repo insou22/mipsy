@@ -1,7 +1,8 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::compile::{Breakpoint, CompilerOptions};
+use mipsy_lib::compile::CompilerOptions;
+use mipsy_lib::compile::breakpoints::Breakpoint;
 use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
@@ -156,6 +157,13 @@ impl Agent for Worker {
     	true
     }
 
+	/// Represents the name of loading resorce for remote workers which
+    /// have to live in a separate files.
+    fn name_of_resource() -> &'static str {
+        "worker.js"
+    }
+   
+	
     fn update(&mut self, _msg: Self::Message) {
         // no messaging exists
     }

@@ -1,10 +1,10 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
-use super::*;
+use super::{*, commands::handle_commands};
 use colored::*;
+use mipsy_lib::compile::breakpoints::Breakpoint;
 use mipsy_parser::*;
-use mipsy_lib::compile::Breakpoint;
 
 enum EnableOp {
     Enable,
@@ -20,6 +20,7 @@ enum InsertOp {
 }
 
 enum MipsyArgType {
+    LineNumber,
     Immediate,
     Label,
     Id,
@@ -28,7 +29,7 @@ enum MipsyArgType {
 pub(crate) fn breakpoint_command() -> Command {
     command(
         "breakpoint",
-        vec!["br", "brk", "break"],
+        vec!["bp", "br", "brk", "break"],
         vec!["subcommand"],
         vec![],
         &format!(
@@ -48,7 +49,7 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
                     breakpoint_insert(state, label, &args[1..], false, InsertOp::Insert),
-                "del" | "delete" | "rm" | "remove" =>
+                "del" | "delete" | "r" | "rm" | "remove" =>
                     breakpoint_insert(state, label, &args[1..], true,  InsertOp::Delete),
                 "tmp" | "temp" | "temporary" =>
                     breakpoint_insert(state, label, &args[1..], false, InsertOp::Temporary),
@@ -60,6 +61,8 @@ pub(crate) fn breakpoint_command() -> Command {
                     breakpoint_toggle(state, label, &args[1..], EnableOp::Toggle),
                 "ignore" =>
                     breakpoint_ignore(state, label, &args[1..]),
+                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
+                    breakpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
                     breakpoint_insert(state, label,  args, false, InsertOp::Insert),
                 _ =>
@@ -75,6 +78,7 @@ fn get_long_help() -> String {
          {0} {2}    : insert/delete a breakpoint\n\
          {1} {3}\n\
          {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+         {0} {13}  : attach commands to a breakpoint\n\
          {0} {5}    : enable/disable an existing breakpoint\n\
          {1} {6}\n\
          {1} {7}\n\
@@ -95,6 +99,7 @@ fn get_long_help() -> String {
         "<subcommand>".purple(),
         "temporary".purple(),
         "ignore".purple(),
+        "commands".purple(),
     )
 }
 
@@ -104,7 +109,8 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             format!(
                 "Usage: {10} {11} {2}\n\
                  {0}s or {1}s a breakpoint at the specified {2}.\n\
-                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`), or a label (`{4}`).\n\
+                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+            \x20             a label (`{4}`), or a line number (`:14`, `prog.s:7`).\n\
                  If you are removing a breakpoint, you can also use its id (`{5}`).\n\
                  {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
             \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
@@ -166,9 +172,10 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
             prompt::error_nl(format!(
                 "breakpoint at {} doesn't exist",
                 match arg_type {
-                    MipsyArgType::Immediate => args[0].white(),
-                    MipsyArgType::Label     => args[0].yellow().bold(),
-                    MipsyArgType::Id        => args[0].blue(),
+                    MipsyArgType::LineNumber => args[0].as_str().into(),
+                    MipsyArgType::Immediate  => args[0].white(),
+                    MipsyArgType::Label      => args[0].yellow().bold(),
+                    MipsyArgType::Id         => args[0].blue(),
                 }
             ));
             return Ok("".into());
@@ -186,9 +193,10 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         prompt::error_nl(format!(
             "breakpoint at {} already exists",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -197,7 +205,7 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let label = match arg_type {
         MipsyArgType::Immediate => None,
         MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             binary.labels.iter()
                 .find(|(_, &_addr)| _addr == addr)
@@ -252,7 +260,7 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                     binary.labels.iter()
                         .find(|(_, &val)| val == addr)
                         .map(|(name, _)| name),
-                    bp.enabled,
+                    bp,
                 )
             })
             .collect::<Vec<_>>();
@@ -267,18 +275,23 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             .unwrap_or(0);
 
     println!("\n{}", "[breakpoints]".green().bold());
-    for (id, addr, text, enabled) in breakpoints {
-        let disabled = match enabled {
+    for (id, addr, text, bp) in breakpoints {
+        let disabled = match bp.enabled {
             true  => "",
-            false => " (disabled)"
+            false => " (disabled)",
+        };
+
+        let ignored = match bp.ignore_count {
+            0 => "".to_string(),
+            i => format!(" (ignored for the next {} hits)", i.to_string().bold()),
         };
 
         match text {
             Some(name) => {
-                println!("{}{}: {}{:08x} ({}){}", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold(), disabled.bright_black());
+                println!("{}{}: {}{:08x} ({}){}{}", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold(), disabled.bright_black(), ignored);
             }
             None => {
-                println!("{}{}: {}{:08x}{}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, disabled.bright_black());
+                println!("{}{}: {}{:08x}{}{}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, disabled.bright_black(), ignored);
             }
         }
     }
@@ -294,7 +307,7 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
                 "Usage: {8} {9} {3}\n\
                  {0}s, {1}s, or {2}s a breakpoint at the specified {3}.\n\
                  {3} may be: a decimal address (`4194304`), a hex address (`{4}400000`),\n\
-        \x20                 a label (`{5}`), or an id (`{6}`).\n\
+        \x20                 a label (`{5}`), a line number (`:14`, `prog.s:7`), or an id (`{6}`).\n\
                  Breakpoints that are disabled do not trigger when they are hit.\n\
                  Breakpoints caused by the `{7}` instruction in code cannot be disabled.
                 ",
@@ -349,9 +362,10 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -366,7 +380,7 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
     let label = match arg_type {
         MipsyArgType::Immediate => None,
         MipsyArgType::Label     => Some(&args[0]),
-        MipsyArgType::Id        => {
+        MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             binary.labels.iter()
                 .find(|(_, &_addr)| _addr == addr)
@@ -390,7 +404,7 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
                 "Usage: {6} {7} {1} {0}\n\
                  {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
                  {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
-        \x20                 a label (`{3}`), or an id (`{4}`).\n\
+        \x20                 a label (`{3}`), a line number (`:14`, `prog.s:7`), or an id (`{4}`).\n\
                  Breakpoints that are ignored do not trigger when they are hit.\n\
                  Breakpoints caused by the `{5}` instruction in code cannot ignored.
                 ",
@@ -456,14 +470,40 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
-                MipsyArgType::Immediate => args[0].white(),
-                MipsyArgType::Label     => args[0].yellow().bold(),
-                MipsyArgType::Id        => args[0].blue(),
+                MipsyArgType::LineNumber => args[0].as_str().into(),
+                MipsyArgType::Immediate  => args[0].white(),
+                MipsyArgType::Label      => args[0].yellow().bold(),
+                MipsyArgType::Id         => args[0].blue(),
             }
         ));
     }
 
     Ok("".into())
+}
+
+fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Takes in a list of commands seperated by newlines,\n\
+                 and attaches the commands to the specified {0}.\n\
+                 If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
+                 Whenever that breakpoint is hit, the commands will automatically be executed\n\
+                 in the provided order.\n\
+                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                 To view the commands attached to a particular breakpoint,\n\
+                 use {2} {0}
+                ",
+                "<breakpoint id>".purple(),
+                "end".yellow().bold(),
+                "commands list".bold().yellow(),
+            )
+        )
+    }
+
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+    state.confirm_exit = true;
+    handle_commands(args, &mut binary.breakpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
@@ -488,9 +528,35 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
         let addr = binary.breakpoints.iter().find(|bp| bp.1.id == id)
-                        .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
+                        .ok_or(CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*addr, MipsyArgType::Id))
+    }
+
+    if arg.contains(':') {
+        // parts contains at least 2 elements
+        let mut parts = arg.split(':');
+        let mut file = parts.next().unwrap();
+        if file.is_empty() {
+            let mut filenames = binary.line_numbers.values()
+                    .map(|(filename, _)| filename);
+            file = filenames.next().unwrap();
+            if !filenames.all(|f| f.as_ref() == file) {
+                return Err(CommandError::MustSpecifyFile);
+            }
+        }
+
+        let line_number: u32 = parts.next().unwrap().parse().map_err(|_| get_error("<line number>"))?;
+        let mut lines = binary.line_numbers.iter()
+            .filter(|(_, (filename, _))| filename.as_ref() == file).collect::<Vec<_>>();
+        lines.sort_unstable_by(|a, b| a.1.1.cmp(&b.1.1));
+
+        // use first line after the specified line that contains an instruction
+        let addr = lines.iter()
+            .find(|(_, &(_, _line_number))| _line_number >= line_number)
+            .ok_or_else(|| CommandError::LineDoesNotExist { line_number })?.0;
+
+        return Ok((*addr, MipsyArgType::LineNumber))
     }
 
     let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
@@ -498,25 +564,16 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
 
     if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
         Ok(match imm {
-            MpImmediate::I16(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::U16(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::I32(imm) => {
-                (*imm as u32, MipsyArgType::Immediate)
-            }
-            MpImmediate::U32(imm) => {
-                (*imm, MipsyArgType::Immediate)
-            }
-            MpImmediate::LabelReference(label) => {
+            MpImmediate::I16(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::U16(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::I32(imm) => (*imm as u32, MipsyArgType::Immediate),
+            MpImmediate::U32(imm) => (*imm, MipsyArgType::Immediate),
+            MpImmediate::LabelReference(label) =>
                 (
                     binary.get_label(label)
                         .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
                     MipsyArgType::Label,
-                )
-            }
+                ),
         })
     } else {
         Err(get_error("<addr>"))

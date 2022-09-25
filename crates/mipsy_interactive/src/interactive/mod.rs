@@ -4,9 +4,9 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc};
+use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
-use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}};
+use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register, compile::breakpoints::{WatchpointTarget, TargetWatch, Watchpoint, TargetAction}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
@@ -32,7 +32,18 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-pub struct State {
+const LB : u32 = 0b100000;
+const LBU: u32 = 0b100100;
+const LH : u32 = 0b100001;
+const LHU: u32 = 0b100101;
+const LUI: u32 = 0b001111;
+const LW : u32 = 0b100011;
+const LWU: u32 = 0b100111;
+const SB : u32 = 0b101000;
+const SH : u32 = 0b101001;
+const SW : u32 = 0b101011;
+
+pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
@@ -42,6 +53,8 @@ pub struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
+    pub(crate) watchpoints: HashMap<WatchpointTarget, Watchpoint>,
+    pub(crate) interrupted: Arc<AtomicBool>,
 }
 
 impl State {
@@ -56,6 +69,8 @@ impl State {
             exited: false,
             prev_command: None,
             confirm_exit: false,
+            watchpoints: HashMap::new(),
+            interrupted: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -211,11 +226,17 @@ impl State {
                 prompt::error("failed to compile instruction");
                 self.mipsy_error(error, ErrorContext::Repl, Some(line));
             }
+            CommandError::LineDoesNotExist { line_number } => {
+                prompt::error(format!("line :{line_number} does not exist in this program"));
+            }
             CommandError::UnknownRegister { register } => {
                 prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
             }
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
+            }
+            CommandError::MustSpecifyFile => {
+                prompt::error("there are multiple files loaded, you must specify which file to use");
             }
             CommandError::ProgramExited => {
                 prompt::error("program has exited");
@@ -308,7 +329,7 @@ impl State {
         }
     }
 
-    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>) -> CommandResult<bool> {
+    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>, inst: u32) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
 
@@ -439,6 +460,8 @@ impl State {
             }
         };
 
+        let affected_registers = Self::get_affected_registers(self, inst);
+
         Ok(
             if self.exited {
                 true
@@ -466,7 +489,20 @@ impl State {
 
                         true
                     }
-                // TODO(joshh): add watchpoints
+                } else if let Some(watchpoint) = affected_registers.iter()
+                        .find(|&wp| self.watchpoints.get(&wp.target)
+                            .map_or(false, |watch| watch.action == wp.action && watch.enabled)) {
+                    let mut wp = self.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
+                    if wp.ignore_count > 0 {
+                        wp.ignore_count -= 1;
+                        trapped
+                    } else {
+                        runtime_handler::watchpoint(watchpoint, pc);
+                        wp.commands.clone().iter().for_each(|command| {
+                            self.exec_command(command.to_owned());
+                        });
+                        true
+                    }
                 } else {
                     trapped
                 }
@@ -474,14 +510,88 @@ impl State {
         )
     }
 
+    fn get_affected_registers(&self, inst: u32) -> Vec<TargetWatch> {
+        let opcode =  inst >> 26;
+        let rb     = (inst >> 21) & 0x1F;
+        let rs     = (inst >> 21) & 0x1F;
+        let rt     = (inst >> 16) & 0x1F;
+        let rd     = (inst >> 11) & 0x1F;
+        let offset = (inst & 0xFF) as i32;
+
+        match opcode {
+            LB | LBU | LH | LHU | LW | LWU | LUI => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (self.runtime.timeline().prev_state().expect("there should be a previous state")
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            SB | SH | SW => vec![
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (self.runtime.timeline().state()
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            SPECIAL | SPECIAL2 | SPECIAL3 => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rd).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            JUMP | JAL => vec![],
+            _ => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+            ],
+        }
+    }
+
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
-        self.eval_stepped_runtime(verbose, runtime.step())
+        let inst = runtime.current_inst();
+        self.eval_stepped_runtime(verbose, runtime.step(), inst)
     }
 
     pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
-        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode))
+        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode), opcode)
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<String> {
@@ -489,7 +599,8 @@ impl State {
             return Err(CommandError::ProgramExited);
         }
 
-        loop {
+        self.interrupted.store(false, Ordering::SeqCst);
+        while !self.interrupted.load(Ordering::SeqCst) {
             if self.step(false)? {
                 break;
             }
@@ -514,6 +625,36 @@ impl State {
         if let Some(cmd) = self.prev_command.take() {
             self.exec_command(cmd);
         }
+    }
+
+    pub fn generate_watchpoint_id(&self) -> u32 {
+        let mut id = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .fold(std::u32::MIN, |x, y| x.max(y))
+                    .wrapping_add(1);
+
+        if self.watchpoints.values().any(|wp| wp.id == id) {
+            // find a free id to use
+            // there's probably a neater way to do this,
+            // but realistically if someone is using enough watchpoints
+            // to fill a u32, they have bigger problems
+
+            let mut ids = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .collect::<Vec<_>>();
+
+            ids.sort_unstable();
+
+            id = ids.into_iter()
+                    .enumerate()
+                    .find(|x| x.0 != x.1 as usize)
+                    .expect("you've run out of watchpoints! why are you using so many")
+                    .1;
+        }
+
+        id
     }
 }
 
@@ -541,6 +682,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::step2syscall_command());
     state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
+    state.add_command(commands::watchpoint_command());
     state.add_command(commands::breakpoint_command());
     state.add_command(commands::disassemble_command());
     state.add_command(commands::context_command());
@@ -550,7 +692,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
     state.add_command(commands::exit_command());
-    state.add_command(commands::commands_command());
 
     state
 }
@@ -558,6 +699,8 @@ fn state(config: MipsyConfig) -> State {
 pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
     let mut state = state(config);
+    let interrupted = state.interrupted.clone();
+    ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst)).expect("Failed to set signal handler!");
 
     loop {
         let readline = rl.readline(state.prompt());

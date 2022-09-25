@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use crate::interactive::error::CommandError;
 
 use super::*;
@@ -41,6 +43,7 @@ pub(crate) fn step_command() -> Command {
                 return Err(CommandError::ProgramExited);
             }
 
+            state.interrupted.store(false, Ordering::SeqCst);
             for _ in 0..times {
                 let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                 let runtime = &state.runtime;
@@ -51,7 +54,7 @@ pub(crate) fn step_command() -> Command {
 
                 let step = state.step(true)?;
 
-                if step {
+                if step | state.interrupted.load(Ordering::SeqCst) {
                     break;
                 }
             }
