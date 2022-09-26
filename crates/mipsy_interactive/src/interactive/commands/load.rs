@@ -12,8 +12,9 @@ pub(crate) fn load_command() -> Command {
         vec!["l"],
         vec!["files"],
         "-- {args}".magenta().to_string(),
+        vec![],
         "load a MIPS file to run",
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(

@@ -9,8 +9,9 @@ pub(crate) fn help_command() -> Command {
         vec!["h", "?"],
         vec![],
         vec!["command"],
+        vec![],
         "print this help text, or specific help for a command",
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(
@@ -23,15 +24,28 @@ pub(crate) fn help_command() -> Command {
 
             if let Some(command) = args.first() {
                 let commands = state.commands.clone();
-                let command = commands.iter()
+                let mut command = commands.iter()
                         .find(|cmd| &cmd.name == command || cmd.aliases.contains(command))
                         .ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
 
                 let args = &args[1..];
-                println!("\n{}\n", get_command_formatted(command, args));
-                println!("{}", (command.exec)(state, "__help__", args).unwrap());
+                let mut parts = vec![
+                    command.name.yellow().bold().to_string(),
+                ];
 
-                // TODO(joshh): get aliases of subcommand for subcommands e.g. `help breakpoint delete`?
+                // TODO(joshh): include optional/required args for subcommands?
+                if !args.is_empty() {
+                    let subcmd = command.subcommands.iter()
+                            .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+                    if let Some(subcmd) = subcmd {
+                        command = subcmd;
+                        parts.push(command.name.yellow().bold().to_string());
+                    }
+                }
+
+                println!("\n{}\n", get_command_formatted(command, parts));
+                println!("{}", command.exec(state, "__help__", args).unwrap());
+
                 if !command.aliases.is_empty() {
                     prompt::banner("\naliases".green().bold());
                     println!("{}", command.aliases.iter().map(|s| s.yellow().bold().to_string()).collect::<Vec<String>>().join(", "));
@@ -83,12 +97,16 @@ pub(crate) fn help_command() -> Command {
                             "".magenta()       .to_string().len() * required.len() +
                             "".bright_magenta().to_string().len() * optional.len()
                         }
-                        Arguments::VarArgs { required: _, format: _ } => {
+                        Arguments::VarArgs { required, format: _ } => {
+                            "".magenta()       .to_string().len() * required.len() +
                             "".bright_magenta().to_string().len()
                         }
                     };
 
-                let name_args = get_command_formatted(command, &[]);
+                let parts = vec![
+                    command.name.yellow().bold().to_string(),
+                ];
+                let name_args = get_command_formatted(command, parts);
 
                 let char_len = name_args.len() - extra_color_len;
                 let extra_padding = max_len - char_len;
@@ -104,20 +122,7 @@ pub(crate) fn help_command() -> Command {
     )
 }
 
-fn get_command_formatted(cmd: &Command, args: &[String]) -> String {
-    let mut parts = vec![
-        cmd.name.yellow().bold().to_string(),
-    ];
-
-    // TODO(joshh): include optional/required args for subcommands?
-    // solution will probably be related to including subcommand aliases
-    if !args.is_empty() {
-        parts.append(&mut Vec::from(args).iter()
-                .map(|arg| arg.yellow().bold().to_string())
-                .collect());
-        return parts.join(" ");
-    }
-
+fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
     match &cmd.args {
         Arguments::Exactly { required, optional } => {
             parts.append(

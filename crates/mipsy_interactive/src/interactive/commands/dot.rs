@@ -1,3 +1,4 @@
+use colored::Colorize;
 use mipsy_lib::Binary;
 use std::rc::Rc;
 
@@ -13,9 +14,10 @@ pub(crate) fn dot_command() -> Command {
         ".",
         vec![],
         vec!["instruction"],
-        "{args}",
+        "{args}".magenta().to_string(),
+        vec![],
         "execute a MIPS instruction",
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     "Executes a MIPS instruction immediately".into()

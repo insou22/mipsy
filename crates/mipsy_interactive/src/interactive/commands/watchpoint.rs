@@ -13,6 +13,12 @@ enum WpState {
 }
 
 #[derive(PartialEq)]
+enum InsertOp {
+    Insert,
+    Delete,
+    Temporary,
+}
+
 enum MipsyArgType {
     Target,
     Label,
@@ -20,46 +26,85 @@ enum MipsyArgType {
 }
 
 pub(crate) fn watchpoint_command() -> Command {
+    let subcommands = vec![
+        command(
+            "list",
+            vec!["l"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_list(state, label, args)
+        ),
+        command(
+            "insert",
+            vec!["i", "in", "ins", "add"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Insert)
+        ),
+        command(
+            "remove",
+            vec!["del", "delete", "r", "rm"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Delete)
+        ),
+        command(
+            "temporary",
+            vec!["tmp", "temp"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Temporary)
+        ),
+        command(
+            "enable",
+            vec!["e"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Enable)
+        ),
+        command(
+            "disable",
+            vec!["d"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Disable)
+        ),
+        command(
+            "toggle",
+            vec!["t"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Toggle)
+        ),
+        command(
+            "ignore",
+            vec![],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_ignore(state, label, args)
+        ),
+        command(
+            "commands",
+            vec!["com", "comms", "cmd", "cmds", "command"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_commands(state, label, args)
+        ),
+    ];
+
     command(
         "watchpoint",
         vec!["w", "wa", "wp", "watch"],
         vec!["subcommand"],
         vec![],
+        subcommands,
         &format!(
             "manage watchpoints ({} to list subcommands)",
             "help watchpoint".bold()
         ),
-        |state, label, args| {
+        |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()
                 )
             }
 
-            // TODO(joshh): match on label for watchpoints aliases?
-            match &*args[0] {
-                "l" | "list" =>
-                    watchpoint_list  (state, label, &args[1..]),
-                "i" | "in" | "ins" | "insert" | "add" =>
-                    watchpoint_insert(state, label, &args[1..], false, false),
-                "del" | "delete" | "r" | "rm" | "remove" =>
-                    watchpoint_insert(state, label, &args[1..], true, false),
-                "tmp" | "temp" | "temporary" =>
-                    watchpoint_insert(state, label, &args[1..], false, true),
-                "e" | "enable" =>
-                    watchpoint_toggle(state, label,  args, WpState::Enable),
-                "d" | "disable" =>
-                    watchpoint_toggle(state, label,  args, WpState::Disable),
-                "t" | "toggle" =>
-                    watchpoint_toggle(state, label,  args, WpState::Toggle),
-                "ignore" =>
-                    watchpoint_ignore(state, label, &args[1..]),
-                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
-                    watchpoint_commands(state, label, &args[1..]),
-                _ if label != "__help__" =>
-                    watchpoint_insert(state, label,  args, false, false),
-                _ =>
-                    Ok(get_long_help()),
+            let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+            match cmd {
+                None if label == "__help__" => Ok(get_long_help()),
+                Some(cmd) => cmd.exec(state, label, &args[1..]),
+                None => watchpoint_insert(state, label, args, InsertOp::Insert),
             }
         }
     )
@@ -96,7 +141,7 @@ fn get_long_help() -> String {
     )
 }
 
-fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
+fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: InsertOp) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -133,10 +178,14 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         return Err(
             generate_err(
                 CommandError::MissingArguments {
-                    args: vec!["register".to_string()],
+                    args: vec!["target".to_string()],
                     instead: args.to_vec(),
                 },
-                "rm",
+                match op {
+                    InsertOp::Insert    => "insert",
+                    InsertOp::Delete    => "delete",
+                    InsertOp::Temporary => "temporary",
+                }
             )
         );
     }
@@ -146,7 +195,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let id;
     // this should always be overwritten but the compiler doesn't know that
     let mut action = TargetAction::ReadWrite;
-    let wp_action = if remove {
+    let wp_action = if op == InsertOp::Delete {
         if let Some(wp) = state.watchpoints.remove(&target) {
             id = wp.id;
             "removed"
@@ -193,7 +242,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
         let mut wp = Watchpoint::new(id, action);
-        if temporary {
+        if op == InsertOp::Temporary {
             wp.commands.push(format!("watchpoint remove !{id}"))
         }
         state.watchpoints.insert(target, wp);
@@ -223,7 +272,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         format!("{}", target)
     };
 
-    if remove {
+    if op == InsertOp::Delete {
         prompt::success_nl(format!("watchpoint {} {} for {}",
             format!("!{}", id).blue(),
             wp_action,
@@ -321,7 +370,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enabled: WpState) -> Result<String, CommandError> {
+fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpState) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -343,25 +392,28 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         )
     }
 
-    if args.len() == 1 {
+    if args.is_empty() {
         return Err(
             generate_err(
                 CommandError::MissingArguments {
                     args: vec!["addr".to_string()],
                     instead: args.to_vec(),
                 },
-                &args[0],
+                match op {
+                    WpState::Enable  => "enable",
+                    WpState::Disable => "disable",
+                    WpState::Toggle  => "toggle",
+                },
             )
         );
     }
-    args = &args[1..];
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     let id;
     if let Some(wp) = state.watchpoints.get_mut(&target) {
         id = wp.id;
-        wp.enabled = match enabled {
+        wp.enabled = match op {
             WpState::Enable  => true,
             WpState::Disable => false,
             WpState::Toggle  => !wp.enabled,

@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError};
+use crate::interactive::error::CommandError;
 use mipsy_lib::DATA_BOT;
 
 use super::*;
@@ -10,8 +10,9 @@ pub(crate) fn labels_command() -> Command {
         vec!["ls", "las", "lbls"],
         vec![],
         vec![],
+        vec![],
         "prints the addresses of all labels",
-        |state, label, _args| {
+        |_, state, label, _args| {
             if label == "__help__" {
                 return Ok(
                     "Prints the addresses of all labels in the currently loaded program.".into()

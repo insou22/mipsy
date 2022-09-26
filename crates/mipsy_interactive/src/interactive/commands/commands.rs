@@ -9,30 +9,30 @@ use crate::{interactive::{editor, error::CommandError}, prompt};
 use super::*;
 
 pub fn handle_commands<K, V: Point>(mut args: &[String], points: &mut HashMap<K, V>) -> Result<String, CommandError> {
-        let get_error = |expected: &str, instead: &str| generate_err(
-            CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
-            &String::from(""),
-        );
+    let get_error = |expected: &str, instead: &str| generate_err(
+        CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
+        &String::from(""),
+    );
 
-        let list = !args.is_empty() &&
-            matches!(args[0].as_ref(), "l" | "list");
-        if list { args = &args[1..]; }
+    let list = !args.is_empty() &&
+        matches!(args[0].as_ref(), "l" | "list");
+    if list { args = &args[1..]; }
 
-        let id: u32 = if args.is_empty() {
-            points.values()
-                .map(|bp| bp.get_id())
-                .fold(u32::MIN, |x, y| x.max(y))
-        } else if let Some(id) = args[0].strip_prefix('!') {
-            id.parse().map_err(|_| get_error("<id>", &args[0]))?
-        } else {
-            return Err(get_error("<id>", &args[0]))
-        };
+    let id: u32 = if args.is_empty() {
+        points.values()
+            .map(|bp| bp.get_id())
+            .fold(u32::MIN, |x, y| x.max(y))
+    } else if let Some(id) = args[0].strip_prefix('!') {
+        id.parse().map_err(|_| get_error("<id>", &args[0]))?
+    } else {
+        return Err(get_error("<id>", &args[0]))
+    };
 
-        if list {
-            list_commands(points, id)
-        } else {
-            add_commands(points, id)
-        }
+    if list {
+        list_commands(points, id)
+    } else {
+        add_commands(points, id)
+    }
 }
 
 fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResult<String> {

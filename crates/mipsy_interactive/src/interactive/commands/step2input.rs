@@ -13,8 +13,9 @@ pub(crate) fn step2input_command() -> Command {
         vec!["s2i"],
         vec![],
         vec![],
+        vec![],
         "step forwards until next input",
-        |state, label, _args| {
+        |_, state, label, _args| {
             if label == "__help__" {
                 return Ok(
                     format!(

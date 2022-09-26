@@ -10,8 +10,9 @@ pub(crate) fn back_command() -> Command {
         vec!["b"],
         vec![],
         vec!["times"],
+        vec![],
         &format!("step backwards one (or {}) instruction", "[times]".magenta()),
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(

@@ -6,13 +6,19 @@ use colored::*;
 use mipsy_lib::compile::breakpoints::Breakpoint;
 use mipsy_parser::*;
 
-enum BpState {
+enum EnableOp {
     Enable,
     Disable,
     Toggle,
 }
 
 #[derive(PartialEq)]
+enum InsertOp {
+    Insert,
+    Delete,
+    Temporary,
+}
+
 enum MipsyArgType {
     LineNumber,
     Immediate,
@@ -21,46 +27,85 @@ enum MipsyArgType {
 }
 
 pub(crate) fn breakpoint_command() -> Command {
+    let subcommands = vec![
+        command(
+            "list",
+            vec!["l"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_list(state, label, args)
+        ),
+        command(
+            "insert",
+            vec!["i", "in", "ins", "add"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert)
+        ),
+        command(
+            "remove",
+            vec!["del", "delete", "r", "rm"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete)
+        ),
+        command(
+            "temporary",
+            vec!["tmp", "temp"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary)
+        ),
+        command(
+            "enable",
+            vec!["e"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable)
+        ),
+        command(
+            "disable",
+            vec!["d"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable)
+        ),
+        command(
+            "toggle",
+            vec!["t"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle)
+        ),
+        command(
+            "ignore",
+            vec![],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_ignore(state, label, args)
+        ),
+        command(
+            "commands",
+            vec!["com", "comms", "cmd", "cmds", "command"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| breakpoint_commands(state, label, args)
+        ),
+    ];
+
     command(
         "breakpoint",
         vec!["bp", "br", "brk", "break"],
         vec!["subcommand"],
         vec![],
+        subcommands,
         &format!(
             "manage breakpoints ({} to list subcommands)",
             "help breakpoint".bold()
         ),
-        |state, label, args| {
+        |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()
                 )
             }
 
-            // TODO(joshh): match on label for breakpoints aliases?
-            match &*args[0] {
-                "l" | "list" =>
-                    breakpoint_list  (state, label, &args[1..]),
-                "i" | "in" | "ins" | "insert" | "add" =>
-                    breakpoint_insert(state, label, &args[1..], false, false),
-                "del" | "delete" | "r" | "rm" | "remove" =>
-                    breakpoint_insert(state, label, &args[1..], true,  false),
-                "tmp" | "temp" | "temporary" =>
-                    breakpoint_insert(state, label, &args[1..], false, true),
-                "e" | "enable" =>
-                    breakpoint_toggle(state, label,  args, BpState::Enable),
-                "d" | "disable" =>
-                    breakpoint_toggle(state, label,  args, BpState::Disable),
-                "t" | "toggle" =>
-                    breakpoint_toggle(state, label,  args, BpState::Toggle),
-                "ignore" =>
-                    breakpoint_ignore(state, label, &args[1..]),
-                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
-                    breakpoint_commands(state, label, &args[1..]),
-                _ if label != "__help__" =>
-                    breakpoint_insert(state, label,  args, false, false),
-                _ =>
-                    Ok(get_long_help()),
+            let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+            match cmd {
+                None if label == "__help__" => Ok(get_long_help()),
+                Some(cmd) => cmd.exec(state, label, &args[1..]),
+                None => breakpoint_insert(state, label, args, InsertOp::Insert),
             }
         }
     )
@@ -97,7 +142,7 @@ fn get_long_help() -> String {
     )
 }
 
-fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
+fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: InsertOp) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -139,7 +184,11 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
                     args: vec!["addr".to_string()],
                     instead: args.to_vec(),
                 },
-                "rm",
+                match op {
+                    InsertOp::Insert    => "insert",
+                    InsertOp::Delete    => "delete",
+                    InsertOp::Temporary => "temporary",
+                },
             )
         );
     }
@@ -154,7 +203,7 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
     let id;
-    let action = if remove {
+    let action = if op == InsertOp::Delete {
         if let Some(bp) = binary.breakpoints.remove(&addr) {
             id = bp.id;
             "removed"
@@ -173,7 +222,7 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     } else if !binary.breakpoints.contains_key(&addr) {
         id = binary.generate_breakpoint_id();
         let mut bp = Breakpoint::new(id);
-        if temporary {
+        if op == InsertOp::Temporary {
             bp.commands.push(format!("breakpoint remove !{id}"))
         }
         binary.breakpoints.insert(addr, bp);
@@ -290,7 +339,7 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enabled: BpState) -> Result<String, CommandError> {
+fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: EnableOp) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -315,18 +364,21 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         )
     }
 
-    if args.len() == 1 {
+    if args.is_empty() {
         return Err(
             generate_err(
                 CommandError::MissingArguments {
                     args: vec!["addr".to_string()],
                     instead: args.to_vec(),
                 },
-                &args[0],
+                match op {
+                    EnableOp::Enable  => "enable",
+                    EnableOp::Disable => "disable",
+                    EnableOp::Toggle  => "toggle",
+                },
             )
         );
     }
-    args = &args[1..];
 
     let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
 
@@ -340,10 +392,10 @@ fn breakpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
     let id;
     if let Some(br) = binary.breakpoints.get_mut(&addr) {
         id = br.id;
-        br.enabled = match enabled {
-            BpState::Enable  => true,
-            BpState::Disable => false,
-            BpState::Toggle  => !br.enabled,
+        br.enabled = match op {
+            EnableOp::Enable  => true,
+            EnableOp::Disable => false,
+            EnableOp::Toggle  => !br.enabled,
         }
     } else {
         prompt::error_nl(format!(
