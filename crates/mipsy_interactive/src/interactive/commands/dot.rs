@@ -14,6 +14,7 @@ pub(crate) fn dot_command() -> Command {
         vec![],
         vec!["instruction"],
         "{args}",
+        vec![],
         "execute a MIPS instruction",
         |state, label, args| {
             if label == "__help__" {

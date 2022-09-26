@@ -11,6 +11,7 @@ pub(crate) fn disassemble_command() -> Command {
         vec!["d", "dis", "disasm", "dec", "decompile"],
         vec![],
         vec![],
+        vec![],
         "disassembles the currently loaded file",
         |state, label, _args| {
             if label == "__help__" {

@@ -12,6 +12,7 @@ pub(crate) fn context_command() -> Command {
         vec!["c", "ctx"],
         vec![],
         vec!["n"],
+        vec![],
         &format!(
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),

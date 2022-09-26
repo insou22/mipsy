@@ -9,6 +9,7 @@ pub(crate) fn reset_command() -> Command {
         vec!["re"],
         vec![],
         vec![],
+        vec![],
         "reset the currently loaded program to its initial state",
         |state, label, _args| {
             if label == "__help__" {

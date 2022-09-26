@@ -7,6 +7,7 @@ pub(crate) fn exit_command() -> Command {
         vec!["ex", "quit", "q"],
         vec![],
         vec![],
+        vec![],
         "exit mipsy",
         |_state, label, _args| {
             if label == "__help__" {

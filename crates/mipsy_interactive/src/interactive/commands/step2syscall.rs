@@ -12,6 +12,7 @@ pub(crate) fn step2syscall_command() -> Command {
         vec!["s2s"],
         vec![],
         vec![],
+        vec![],
         "step forwards until next syscall",
         |state, label, _args| {
             if label == "__help__" {

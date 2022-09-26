@@ -53,9 +53,11 @@ pub(crate) struct Command {
     pub(crate) args: Arguments,
     pub(crate) description: String,
     pub(crate) exec: fn(&mut State, &str, &[String]) -> CommandResult<String>,
+    subcommands: Vec<Command>,
+    // TODO(joshh): vec of Command for subcommands?
 }
 
-pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, optional_args: Vec<S>, desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<String>) -> Command {
+pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, optional_args: Vec<S>, subcommands: Vec<Command>, desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<String>) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
@@ -65,15 +67,17 @@ pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: 
             optional: optional_args.into_iter().map(S::into).collect(),
         },
         exec,
+        subcommands,
     }
 }
 
-pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, varargs_format: impl Into<String>, desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<String>) -> Command {
+pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, varargs_format: impl Into<String>, subcommands: Vec<Command>, desc: S, exec: fn(&mut State, &str, &[String]) -> CommandResult<String>) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
         aliases: aliases.into_iter().map(S::into).collect(),
         args: Arguments::VarArgs { required: required_args.into_iter().map(S::into).collect(), format: varargs_format.into() },
         exec,
+        subcommands,
     }
 }

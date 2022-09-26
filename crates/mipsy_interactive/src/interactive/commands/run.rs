@@ -9,6 +9,7 @@ pub(crate) fn run_command() -> Command {
         vec!["r"],
         vec![],
         vec![],
+        vec![],
         "run the currently loaded program until it finishes",
         |state, label, _args| {
             if label == "__help__" {

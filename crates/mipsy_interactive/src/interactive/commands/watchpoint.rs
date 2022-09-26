@@ -25,6 +25,7 @@ pub(crate) fn watchpoint_command() -> Command {
         vec!["w", "wa", "wp", "watch"],
         vec!["subcommand"],
         vec![],
+        vec![],
         &format!(
             "manage watchpoints ({} to list subcommands)",
             "help watchpoint".bold()
