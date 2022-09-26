@@ -54,11 +54,11 @@ pub(crate) fn watchpoint_command() -> Command {
                 "tmp" | "temp" | "temporary" =>
                     watchpoint_insert(state, label, &args[1..], InsertOp::Temporary),
                 "e" | "enable" =>
-                    watchpoint_toggle(state, label,  args, WpState::Enable),
+                    watchpoint_toggle(state, label, &args[1..], WpState::Enable),
                 "d" | "disable" =>
-                    watchpoint_toggle(state, label,  args, WpState::Disable),
+                    watchpoint_toggle(state, label, &args[1..], WpState::Disable),
                 "t" | "toggle" =>
-                    watchpoint_toggle(state, label,  args, WpState::Toggle),
+                    watchpoint_toggle(state, label, &args[1..], WpState::Toggle),
                 "ignore" =>
                     watchpoint_ignore(state, label, &args[1..]),
                 "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
@@ -332,7 +332,7 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enabled: WpState) -> Result<String, CommandError> {
+fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpState) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -354,25 +354,28 @@ fn watchpoint_toggle(state: &mut State, label: &str, mut args: &[String], enable
         )
     }
 
-    if args.len() == 1 {
+    if args.is_empty() {
         return Err(
             generate_err(
                 CommandError::MissingArguments {
                     args: vec!["addr".to_string()],
                     instead: args.to_vec(),
                 },
-                &args[0],
+                match op {
+                    WpState::Enable  => "enable",
+                    WpState::Disable => "disable",
+                    WpState::Toggle  => "toggle",
+                },
             )
         );
     }
-    args = &args[1..];
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     let id;
     if let Some(wp) = state.watchpoints.get_mut(&target) {
         id = wp.id;
-        wp.enabled = match enabled {
+        wp.enabled = match op {
             WpState::Enable  => true,
             WpState::Disable => false,
             WpState::Toggle  => !wp.enabled,

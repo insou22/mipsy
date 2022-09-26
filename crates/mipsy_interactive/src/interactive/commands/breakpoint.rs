@@ -32,55 +32,55 @@ pub(crate) fn breakpoint_command() -> Command {
             "list", 
             vec!["l"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_list(state, label, &args[1..])
+            |_, state, label, args| breakpoint_list(state, label, args)
         ),
         command(
             "insert", 
             vec!["i", "in", "ins", "add"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Insert)
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert)
         ),
         command(
             "remove", 
             vec!["del", "delete", "r", "rm"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Delete)
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete)
         ),
         command(
             "temporary", 
             vec!["tmp", "temp"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Temporary)
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary)
         ),
         command(
             "enable", 
             vec!["e"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Enable)
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable)
         ),
         command(
             "disable", 
             vec!["d"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Disable)
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable)
         ),
         command(
             "toggle", 
             vec!["t"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Toggle)
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle)
         ),
         command(
             "ignore", 
             vec![],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_ignore(state, label, &args[1..])
+            |_, state, label, args| breakpoint_ignore(state, label, args)
         ),
         command(
             "commands", 
             vec!["com", "comms", "cmd", "cmds", "command"],
             vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_commands(state, label, &args[1..])
+            |_, state, label, args| breakpoint_commands(state, label, args)
         ),
     ];
 
@@ -104,7 +104,7 @@ pub(crate) fn breakpoint_command() -> Command {
             let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
             match cmd {
                 None if label == "__help__" => Ok(get_long_help()),
-                Some(cmd) => cmd.exec(state, label, args),
+                Some(cmd) => cmd.exec(state, label, &args[1..]),
                 None => breakpoint_insert(state, label, args, InsertOp::Insert),
             }
         }
