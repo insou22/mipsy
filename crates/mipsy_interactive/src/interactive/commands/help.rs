@@ -36,7 +36,7 @@ pub(crate) fn help_command() -> Command {
                 // TODO(joshh): include optional/required args for subcommands?
                 if !args.is_empty() {
                     let subcmd = command.subcommands.iter()
-                            .find(|c| c.aliases.contains(&args[0]));
+                            .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
                     if let Some(subcmd) = subcmd {
                         command = subcmd;
                         parts.push(command.name.yellow().bold().to_string());
