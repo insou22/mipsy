@@ -30,7 +30,7 @@ pub(crate) fn watchpoint_command() -> Command {
             "manage watchpoints ({} to list subcommands)",
             "help watchpoint".bold()
         ),
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()

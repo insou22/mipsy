@@ -12,7 +12,7 @@ pub(crate) fn labels_command() -> Command {
         vec![],
         vec![],
         "prints the addresses of all labels",
-        |state, label, _args| {
+        |_, state, label, _args| {
             if label == "__help__" {
                 return Ok(
                     "Prints the addresses of all labels in the currently loaded program.".into()

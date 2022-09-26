@@ -11,7 +11,7 @@ pub(crate) fn help_command() -> Command {
         vec!["command"],
         vec![],
         "print this help text, or specific help for a command",
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(
@@ -44,7 +44,7 @@ pub(crate) fn help_command() -> Command {
                 }
 
                 println!("\n{}\n", get_command_formatted(command, parts));
-                println!("{}", (command.exec)(state, "__help__", args).unwrap());
+                println!("{}", command.exec(state, "__help__", args).unwrap());
 
                 // TODO(joshh): get aliases of subcommand for subcommands e.g. `help breakpoint delete`?
                 if !command.aliases.is_empty() {

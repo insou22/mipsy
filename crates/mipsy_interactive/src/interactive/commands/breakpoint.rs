@@ -33,65 +33,66 @@ pub(crate) fn breakpoint_command() -> Command {
             vec!["l", "list"],
             vec![], vec![], vec![],
             "lists breakpoints", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_list(state, label, &args[1..])
+            |_, state, label, args| breakpoint_list(state, label, &args[1..])
         ),
         command(
             "insert", 
             vec!["i", "in", "ins", "insert", "add"],
             vec![], vec![], vec![],
             "inserts a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Insert)
+            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Insert)
         ),
         command(
             "remove", 
             vec!["del", "delete", "r", "rm", "remove"],
             vec![], vec![], vec![],
             "removes a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Delete)
+            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Delete)
         ),
         command(
             "temporary", 
             vec!["tmp", "temp", "temporary"],
             vec![], vec![], vec![],
             "creates a temporary breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Temporary)
+            |_, state, label, args| breakpoint_insert(state, label, &args[1..], InsertOp::Temporary)
         ),
         command(
             "enable", 
             vec!["e", "enable"],
             vec![], vec![], vec![],
             "enables a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Enable)
+            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Enable)
         ),
         command(
             "disable", 
             vec!["d", "disable"],
             vec![], vec![], vec![],
             "disables a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Disable)
+            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Disable)
         ),
         command(
             "toggle", 
             vec!["t", "toggle"],
             vec![], vec![], vec![],
             "toggles a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Toggle)
+            |_, state, label, args| breakpoint_toggle(state, label, &args[1..], EnableOp::Toggle)
         ),
         command(
             "ignore", 
             vec!["ignore"],
             vec![], vec![], vec![],
             "ignores a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_ignore(state, label, &args[1..])
+            |_, state, label, args| breakpoint_ignore(state, label, &args[1..])
         ),
         command(
             "commands", 
             vec!["com", "comms", "cmd", "cmds", "command", "commands"],
             vec![], vec![], vec![],
             "adds commands to a breakpoint", // TODO(joshh): make use of this in long help?
-            |state, label, args| breakpoint_commands(state, label, &args[1..])
+            |_, state, label, args| breakpoint_commands(state, label, &args[1..])
         ),
     ];
+
     command(
         "breakpoint",
         vec!["bp", "br", "brk", "break"],
@@ -102,37 +103,18 @@ pub(crate) fn breakpoint_command() -> Command {
             "manage breakpoints ({} to list subcommands)",
             "help breakpoint".bold()
         ),
-        |state, label, args| {
+        |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()
                 )
             }
 
-            // TODO(joshh): match on label for breakpoints aliases?
-            match &*args[0] {
-                "l" | "list" =>
-                    breakpoint_list  (state, label, &args[1..]),
-                "i" | "in" | "ins" | "insert" | "add" =>
-                    breakpoint_insert(state, label, &args[1..], InsertOp::Insert),
-                "del" | "delete" | "r" | "rm" | "remove" =>
-                    breakpoint_insert(state, label, &args[1..], InsertOp::Delete),
-                "tmp" | "temp" | "temporary" =>
-                    breakpoint_insert(state, label, &args[1..], InsertOp::Temporary),
-                "e" | "enable" =>
-                    breakpoint_toggle(state, label, &args[1..], EnableOp::Enable),
-                "d" | "disable" =>
-                    breakpoint_toggle(state, label, &args[1..], EnableOp::Disable),
-                "t" | "toggle" =>
-                    breakpoint_toggle(state, label, &args[1..], EnableOp::Toggle),
-                "ignore" =>
-                    breakpoint_ignore(state, label, &args[1..]),
-                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
-                    breakpoint_commands(state, label, &args[1..]),
-                _ if label != "__help__" =>
-                    breakpoint_insert(state, label,  args, InsertOp::Insert),
-                _ =>
-                    Ok(get_long_help()),
+            let cmd = cmd.subcommands.iter().find(|c| c.aliases.contains(&args[0]));
+            match cmd {
+                None if label == "__help__" => Ok(get_long_help()),
+                Some(cmd) => cmd.exec(state, label, args),
+                None => breakpoint_insert(state, label, args, InsertOp::Insert),
             }
         }
     )

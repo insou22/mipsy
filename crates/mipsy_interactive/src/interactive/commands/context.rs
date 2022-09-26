@@ -17,7 +17,7 @@ pub(crate) fn context_command() -> Command {
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
         ),
-        |state, label, args| {
+        |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(

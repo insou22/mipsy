@@ -111,7 +111,7 @@ impl State {
             None => return,
         };
 
-        let command = self.find_command(&command_name.to_ascii_lowercase());
+        let command = self.find_command(&command_name.to_ascii_lowercase()).cloned();
 
         if command.is_none() {
             prompt::unknown_command(command_name);
@@ -135,7 +135,7 @@ impl State {
             return;
         }
 
-        let result = (command.exec)(self, command_name, &parts[1..]);
+        let result = command.exec(self, command_name, &parts[1..]);
         match result {
             Ok(_)    => {}
             Err(err) => self.handle_error(err, true),
