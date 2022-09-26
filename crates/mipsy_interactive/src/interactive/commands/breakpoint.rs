@@ -27,7 +27,7 @@ enum MipsyArgType {
 }
 
 pub(crate) fn breakpoint_command() -> Command {
-    let subcommands: Vec<Command> = vec![
+    let subcommands = vec![
         command(
             "list", 
             vec!["l"],

@@ -26,47 +26,85 @@ enum MipsyArgType {
 }
 
 pub(crate) fn watchpoint_command() -> Command {
+    let subcommands = vec![
+        command(
+            "list",
+            vec!["l"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_list(state, label, args)
+        ),
+        command(
+            "insert",
+            vec!["i", "in", "ins", "add"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Insert)
+        ),
+        command(
+            "remove",
+            vec!["del", "delete", "r", "rm"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Delete)
+        ),
+        command(
+            "temporary",
+            vec!["tmp", "temp"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Temporary)
+        ),
+        command(
+            "enable",
+            vec!["e"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Enable)
+        ),
+        command(
+            "disable",
+            vec!["d"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Disable)
+        ),
+        command(
+            "toggle",
+            vec!["t"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Toggle)
+        ),
+        command(
+            "ignore",
+            vec![],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_ignore(state, label, args)
+        ),
+        command(
+            "commands",
+            vec!["com", "comms", "cmd", "cmds", "command"],
+            vec![], vec![], vec![], "",
+            |_, state, label, args| watchpoint_commands(state, label, args)
+        ),
+    ];
+
     command(
         "watchpoint",
         vec!["w", "wa", "wp", "watch"],
         vec!["subcommand"],
         vec![],
-        vec![],
+        subcommands,
         &format!(
             "manage watchpoints ({} to list subcommands)",
             "help watchpoint".bold()
         ),
-        |_, state, label, args| {
+        |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(
                     get_long_help()
                 )
             }
 
-            // TODO(joshh): match on label for watchpoints aliases?
-            match &*args[0] {
-                "l" | "list" =>
-                    watchpoint_list  (state, label, &args[1..]),
-                "i" | "in" | "ins" | "insert" | "add" =>
-                    watchpoint_insert(state, label, &args[1..], InsertOp::Insert),
-                "del" | "delete" | "r" | "rm" | "remove" =>
-                    watchpoint_insert(state, label, &args[1..], InsertOp::Delete),
-                "tmp" | "temp" | "temporary" =>
-                    watchpoint_insert(state, label, &args[1..], InsertOp::Temporary),
-                "e" | "enable" =>
-                    watchpoint_toggle(state, label, &args[1..], WpState::Enable),
-                "d" | "disable" =>
-                    watchpoint_toggle(state, label, &args[1..], WpState::Disable),
-                "t" | "toggle" =>
-                    watchpoint_toggle(state, label, &args[1..], WpState::Toggle),
-                "ignore" =>
-                    watchpoint_ignore(state, label, &args[1..]),
-                "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
-                    watchpoint_commands(state, label, &args[1..]),
-                _ if label != "__help__" =>
-                    watchpoint_insert(state, label,  args, InsertOp::Insert),
-                _ =>
-                    Ok(get_long_help()),
+            let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+            match cmd {
+                None if label == "__help__" => Ok(get_long_help()),
+                Some(cmd) => cmd.exec(state, label, &args[1..]),
+                None => watchpoint_insert(state, label, args, InsertOp::Insert),
             }
         }
     )
