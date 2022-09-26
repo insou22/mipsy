@@ -51,10 +51,9 @@ pub(crate) struct Command {
     pub(crate) name: String,
     pub(crate) aliases: Vec<String>,
     pub(crate) args: Arguments,
-    pub(crate) description: String,
-    pub(crate) _internal_exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>,
+    description: String,
+    _internal_exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>,
     subcommands: Vec<Command>,
-    // TODO(joshh): vec of Command for subcommands?
 }
 
 impl Command {

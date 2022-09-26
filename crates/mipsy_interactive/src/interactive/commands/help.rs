@@ -46,7 +46,6 @@ pub(crate) fn help_command() -> Command {
                 println!("\n{}\n", get_command_formatted(command, parts));
                 println!("{}", command.exec(state, "__help__", args).unwrap());
 
-                // TODO(joshh): get aliases of subcommand for subcommands e.g. `help breakpoint delete`?
                 if !command.aliases.is_empty() {
                     prompt::banner("\naliases".green().bold());
                     println!("{}", command.aliases.iter().map(|s| s.yellow().bold().to_string()).collect::<Vec<String>>().join(", "));
