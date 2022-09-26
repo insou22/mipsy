@@ -13,6 +13,12 @@ enum WpState {
 }
 
 #[derive(PartialEq)]
+enum InsertOp {
+    Insert,
+    Delete,
+    Temporary,
+}
+
 enum MipsyArgType {
     Target,
     Label,
@@ -42,11 +48,11 @@ pub(crate) fn watchpoint_command() -> Command {
                 "l" | "list" =>
                     watchpoint_list  (state, label, &args[1..]),
                 "i" | "in" | "ins" | "insert" | "add" =>
-                    watchpoint_insert(state, label, &args[1..], false, false),
+                    watchpoint_insert(state, label, &args[1..], InsertOp::Insert),
                 "del" | "delete" | "r" | "rm" | "remove" =>
-                    watchpoint_insert(state, label, &args[1..], true, false),
+                    watchpoint_insert(state, label, &args[1..], InsertOp::Delete),
                 "tmp" | "temp" | "temporary" =>
-                    watchpoint_insert(state, label, &args[1..], false, true),
+                    watchpoint_insert(state, label, &args[1..], InsertOp::Temporary),
                 "e" | "enable" =>
                     watchpoint_toggle(state, label,  args, WpState::Enable),
                 "d" | "disable" =>
@@ -58,7 +64,7 @@ pub(crate) fn watchpoint_command() -> Command {
                 "com" | "comms" | "cmd" | "cmds" | "command" | "commands" =>
                     watchpoint_commands(state, label, &args[1..]),
                 _ if label != "__help__" =>
-                    watchpoint_insert(state, label,  args, false, false),
+                    watchpoint_insert(state, label,  args, InsertOp::Insert),
                 _ =>
                     Ok(get_long_help()),
             }
@@ -97,7 +103,7 @@ fn get_long_help() -> String {
     )
 }
 
-fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bool, temporary: bool) -> Result<String, CommandError> {
+fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: InsertOp) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -134,10 +140,14 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         return Err(
             generate_err(
                 CommandError::MissingArguments {
-                    args: vec!["register".to_string()],
+                    args: vec!["target".to_string()],
                     instead: args.to_vec(),
                 },
-                "rm",
+                match op {
+                    InsertOp::Insert    => "insert",
+                    InsertOp::Delete    => "delete",
+                    InsertOp::Temporary => "temporary",
+                }
             )
         );
     }
@@ -147,7 +157,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
     let id;
     // this should always be overwritten but the compiler doesn't know that
     let mut action = TargetAction::ReadWrite;
-    let wp_action = if remove {
+    let wp_action = if op == InsertOp::Delete {
         if let Some(wp) = state.watchpoints.remove(&target) {
             id = wp.id;
             "removed"
@@ -194,7 +204,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
         id = state.generate_watchpoint_id();
         let mut wp = Watchpoint::new(id, action);
-        if temporary {
+        if op == InsertOp::Temporary {
             wp.commands.push(format!("watchpoint remove !{id}"))
         }
         state.watchpoints.insert(target, wp);
@@ -224,7 +234,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], remove: bo
         format!("{}", target)
     };
 
-    if remove {
+    if op == InsertOp::Delete {
         prompt::success_nl(format!("watchpoint {} {} for {}",
             format!("!{}", id).blue(),
             wp_action,
