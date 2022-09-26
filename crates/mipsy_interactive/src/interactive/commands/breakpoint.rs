@@ -29,55 +29,55 @@ enum MipsyArgType {
 pub(crate) fn breakpoint_command() -> Command {
     let subcommands = vec![
         command(
-            "list", 
+            "list",
             vec!["l"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_list(state, label, args)
         ),
         command(
-            "insert", 
+            "insert",
             vec!["i", "in", "ins", "add"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert)
         ),
         command(
-            "remove", 
+            "remove",
             vec!["del", "delete", "r", "rm"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete)
         ),
         command(
-            "temporary", 
+            "temporary",
             vec!["tmp", "temp"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary)
         ),
         command(
-            "enable", 
+            "enable",
             vec!["e"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable)
         ),
         command(
-            "disable", 
+            "disable",
             vec!["d"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable)
         ),
         command(
-            "toggle", 
+            "toggle",
             vec!["t"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle)
         ),
         command(
-            "ignore", 
+            "ignore",
             vec![],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_ignore(state, label, args)
         ),
         command(
-            "commands", 
+            "commands",
             vec!["com", "comms", "cmd", "cmds", "command"],
             vec![], vec![], vec![], "",
             |_, state, label, args| breakpoint_commands(state, label, args)
