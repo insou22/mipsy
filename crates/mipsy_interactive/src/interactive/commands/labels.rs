@@ -22,14 +22,14 @@ pub(crate) fn labels_command() -> Command {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let max_len = binary.labels.keys()
-                .filter(|label| !label.starts_with("kernel__"))
+                .filter(|&label| !(label.starts_with("kernel__") || label == &String::from("_start")))
                 .map(|label| label.len())
                 .max()
                 .unwrap_or(0);
             
             let mut entries: Vec<(String, u32)> = binary.labels.iter()
                     .map(|(key, &val)| (key.to_string(), val))
-                    .filter(|(key, _)| !key.starts_with("kernel__"))
+                    .filter(|(key, _)| !(key.starts_with("kernel__") || key == &String::from("_start")))
                     .collect();
 
             entries.sort_by_key(|(_, val)| *val);

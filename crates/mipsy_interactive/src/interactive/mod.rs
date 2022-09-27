@@ -461,6 +461,11 @@ impl State {
         };
 
         let affected_registers = Self::get_affected_registers(self, inst);
+        // TODO(joshh): move this into else if once let-chains are stabilised (1.64 baited me smh)
+        let watchpoints = affected_registers.iter()
+            .filter(|&wp| self.watchpoints.get(&wp.target)
+                .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+            .collect::<Vec<_>>();
 
         Ok(
             if self.exited {
@@ -489,20 +494,22 @@ impl State {
 
                         true
                     }
-                } else if let Some(watchpoint) = affected_registers.iter()
-                        .find(|&wp| self.watchpoints.get(&wp.target)
-                            .map_or(false, |watch| watch.action == wp.action && watch.enabled)) {
-                    let mut wp = self.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
-                    if wp.ignore_count > 0 {
-                        wp.ignore_count -= 1;
-                        trapped
-                    } else {
-                        runtime_handler::watchpoint(watchpoint, pc);
-                        wp.commands.clone().iter().for_each(|command| {
-                            self.exec_command(command.to_owned());
-                        });
-                        true
+                } else if !watchpoints.is_empty() {
+                    let mut all_ignored = true;
+                    for watchpoint in watchpoints {
+                        let mut wp = self.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
+                        if wp.ignore_count > 0 {
+                            wp.ignore_count -= 1;
+                        } else {
+                            runtime_handler::watchpoint(watchpoint, pc - 4);
+                            wp.commands.clone().iter().for_each(|command| {
+                                self.exec_command(command.to_owned());
+                            });
+                            all_ignored = false;
+                        }
                     }
+
+                    if all_ignored { trapped } else { true }
                 } else {
                     trapped
                 }
