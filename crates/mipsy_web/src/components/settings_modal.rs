@@ -5,6 +5,7 @@ use crate::state::config::{
 use bounce::use_atom;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
+use gloo_utils::format::JsValueSerdeExt;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::{prelude::*, Properties};
 

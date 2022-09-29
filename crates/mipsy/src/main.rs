@@ -11,39 +11,42 @@ use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
 #[derive(Parser, Debug)]
-#[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
+#[command(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
 struct Opts {
     /// Just output compilation errors, if any
-    #[clap(long)]
+    #[arg(long)]
     check: bool,
 
     /// Implies --check: Ignore missing main label
-    #[clap(long)]
+    #[arg(long)]
     check_no_main: bool,
 
     /// Just compile program instead of executing
-    #[clap(long)]
+    #[arg(long)]
     compile: bool,
 
     /// Just compile program and output hexcodes
-    #[clap(long)]
+    #[arg(long)]
     hex: bool,
 
     /// Implies --hex: pad to 8 hex digits with zeroes
-    #[clap(long)]
+    #[arg(long)]
     hex_pad_zero: bool,
 
     /// Enable some SPIM compatibility options
-    #[clap(long)]
+    #[arg(long)]
     spim: bool,
 
     /// Move a label to point to a different label
-    #[clap(long)]
+    #[arg(long, hide = true)]
     move_label: Vec<String>,
 
+    /// File(s) to be loaded and executed
+    #[arg()]
     files: Vec<String>,
 
-    #[clap(last = true)]
+    /// Command line argument(s) to be passed to the program
+    #[arg(last = true, requires = "files")]
     args:  Vec<String>,
 }
 
@@ -56,7 +59,7 @@ where
         let result: Result<T, _> = if line {
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
-            
+
             input.parse()
                 .map_err(|_| ())
         } else {
@@ -174,7 +177,7 @@ fn main() {
             );
 
             prompt::warning_nl(warning);
-            
+
             config
         }
     };
@@ -199,7 +202,7 @@ fn main() {
                     Ok(contents) => contents,
                     Err(err) => {
                         prompt::error_nl(format!("failed to read file `{}`: {}", name.bold(), err.to_string().bright_red()));
-            
+
                         process::exit(1);
                     },
                 };
@@ -207,7 +210,7 @@ fn main() {
                 (name, file_contents)
             })
             .collect::<Vec<_>>();
-    
+
     let args = opts.args.iter()
             .map(|arg| &**arg)
             .collect::<Vec<_>>();
@@ -326,7 +329,7 @@ fn main() {
                             PrintString(args, new_runtime) => {
                                 print!("{}", String::from_utf8_lossy(&args.value));
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             ReadInt(guard) => {
@@ -354,7 +357,7 @@ fn main() {
                             PrintChar(args, new_runtime) => {
                                 print!("{}", args.value as char);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             ReadChar(guard) => {
@@ -502,4 +505,4 @@ fn compile_with_kernel(options: &CompilerOptions, config: &MipsyConfig, files: &
     Ok((iset, binary, runtime))
 }
 
-pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));
+pub const VERSION: &str = concat!(env!("VERGEN_GIT_COMMIT_DATE"), " ", env!("VERGEN_GIT_SHA_SHORT"));
