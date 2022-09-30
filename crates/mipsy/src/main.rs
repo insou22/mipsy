@@ -38,7 +38,7 @@ struct Opts {
     spim: bool,
 
     /// Move a label to point to a different label
-    #[arg(long, hide = true)]
+    #[arg(long)]
     move_label: Vec<String>,
 
     /// File(s) to be loaded and executed
