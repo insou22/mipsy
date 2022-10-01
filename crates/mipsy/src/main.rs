@@ -56,7 +56,7 @@ where
         let result: Result<T, _> = if line {
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
-            
+
             input.parse()
                 .map_err(|_| ())
         } else {
@@ -174,7 +174,7 @@ fn main() {
             );
 
             prompt::warning_nl(warning);
-            
+
             config
         }
     };
@@ -199,7 +199,7 @@ fn main() {
                     Ok(contents) => contents,
                     Err(err) => {
                         prompt::error_nl(format!("failed to read file `{}`: {}", name.bold(), err.to_string().bright_red()));
-            
+
                         process::exit(1);
                     },
                 };
@@ -207,7 +207,7 @@ fn main() {
                 (name, file_contents)
             })
             .collect::<Vec<_>>();
-    
+
     let args = opts.args.iter()
             .map(|arg| &**arg)
             .collect::<Vec<_>>();
@@ -326,7 +326,7 @@ fn main() {
                             PrintString(args, new_runtime) => {
                                 print!("{}", String::from_utf8_lossy(&args.value));
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             ReadInt(guard) => {
@@ -354,12 +354,12 @@ fn main() {
                             PrintChar(args, new_runtime) => {
                                 print!("{}", args.value as char);
                                 std::io::stdout().flush().unwrap();
-                                
+
                                 runtime = new_runtime;
                             }
                             ReadChar(guard) => {
-                                let number: char = get_input_eof("character").unwrap_or('\0');
-                                runtime = guard(number as u8);
+                                let character: char = get_input_eof("character").unwrap_or('\0');
+                                runtime = guard(character as u8);
                             }
                             Open(_args, guard) => {
                                 // TODO: implement file open for mipsy cli frontend
