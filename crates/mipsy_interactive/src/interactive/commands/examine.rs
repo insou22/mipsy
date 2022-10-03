@@ -34,7 +34,7 @@ pub(crate) fn examine_command() -> Command {
             if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok()) {
                 args = &args[1..];
                 // allow the default limit to be overridden but not past the end of data segment
-                dump_len = dump_len.max(pages.len().min(len));
+                dump_len = pages.len().min(len);
             }
 
             // TODO: make this work for labels above the region
@@ -71,7 +71,9 @@ pub(crate) fn examine_command() -> Command {
                     let index = nth * row_size + offset;
                     if index >= dump_len { break };
 
-                    let byte = pages[index];
+                    let byte = state.runtime.timeline().state()
+                        .read_mem_byte_uninit((base_addr + index) as u32)
+                        .unwrap();
                     byte_repr.push_str(render_data(byte).as_ref());
                     printable_repr.push_str(byte.as_option()
                         .map(|&value| value as u32)
