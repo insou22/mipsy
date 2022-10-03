@@ -16,7 +16,7 @@ mipsy_utils        = { version = "0.1.0", path = "../mipsy_utils" }
 mipsy_instructions = { path = "../mipsy_instructions", features = ["rt_yaml"] }
 serde = { version = "1.0", features = ["derive"] }  # for data deserialization
 serde_yaml = "0.8"                                  #   - see ~/.config/mipsy/config.yaml
-rustyline = "10.0.0"         # readline support for interactive mipsy
+rustyline = "10.0.0"        # readline support for interactive mipsy
 rustyline-derive = "0.3.1"  # for readline derive macro
 colored = "2"               # for ansi colors
 strip-ansi-escapes = "0.1"  # to strip color codes out for strlen calcs
@@ -24,6 +24,7 @@ shlex = "0.1.0"             # 0.1.1 is latest, but I don't want # comments
 text_io = "0.1.8"           # to read values in, w/out per line
 dirs = "3.0"                # for user config directory
 ctrlc = { version = "3.0", features = ["termination"] } # for interrupt handling during execution
+termsize = "0.1"            # to get terminal width info
 
 [build-dependencies]
 vergen = "3"

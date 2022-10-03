@@ -48,21 +48,27 @@ pub(crate) fn examine_command() -> Command {
             pages = &not_inlined;
             dump_len = dump_len.min(pages.len());
 
-            const ROW_SIZE: usize = 16;
-            let mut rows: usize = dump_len / ROW_SIZE;
-            if dump_len % ROW_SIZE != 0 { rows += 1; }
-            let offset: usize = ROW_SIZE * 5 / 2;
+            let default_size = 16;
+            let row_size: usize = termsize::get().map_or(default_size, |size|
+                // subtract "0x{:8x}: " length and allow for extra length in representation
+                // TODO: allow longer than 16? can be done by removing .min() but not very readable
+                (((size.cols - 12 - 1) * 2 / 7) as usize).min(default_size)
+            ).max(1);
+
+            let mut rows: usize = dump_len / row_size;
+            if dump_len % row_size != 0 { rows += 1; }
+            let offset: usize = row_size * 5 / 2;
 
             for nth in 0..rows {
-                let mut byte_repr = String::with_capacity(ROW_SIZE * 2);
-                let mut printable_repr = String::with_capacity(ROW_SIZE);
+                let mut byte_repr = String::with_capacity(row_size * 2);
+                let mut printable_repr = String::with_capacity(row_size);
 
-                for offset in 0..ROW_SIZE {
+                for offset in 0..row_size {
                     // print in groups of 2 (`xxd` format)
                     if offset % 2 == 0 { byte_repr.push(' '); }
 
                     // reached end of dump and/or allocated memory
-                    let index = nth * ROW_SIZE + offset;
+                    let index = nth * row_size + offset;
                     if index >= dump_len { break };
 
                     let byte = pages[index];
@@ -77,7 +83,7 @@ pub(crate) fn examine_command() -> Command {
                 }
 
                 println!("{}{:08x}:{:offset$}  {}",
-                    "0x".yellow(), base_addr as usize + nth * ROW_SIZE,
+                    "0x".yellow(), base_addr as usize + nth * row_size,
                     byte_repr,
                     printable_repr,
                 );
