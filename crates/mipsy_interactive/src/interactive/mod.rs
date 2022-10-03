@@ -168,6 +168,11 @@ impl State {
                     format!("bad argument `{}` for {}", instead, arg)
                 );
             }
+            CommandError::AddressNotInSection => {
+                prompt::error(
+                    format!("the address you provided does not lie in the specified section")
+                );
+            }
             CommandError::ArgExpectedI32 { arg, instead, } => {
                 prompt::error(
                     format!("parameter {} expected integer, got `{}` instead", arg, instead)
