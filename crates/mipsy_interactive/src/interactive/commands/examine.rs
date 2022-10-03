@@ -56,9 +56,9 @@ pub(crate) fn examine_command() -> Command {
                 let mut byte_repr = String::with_capacity(ROW_SIZE * 2);
                 let mut printable_repr = String::with_capacity(ROW_SIZE);
 
-                for (i, offset) in (0..ROW_SIZE).enumerate() {
+                for offset in 0..ROW_SIZE {
                     // print in groups of 2 (`xxd` format)
-                    if i % 2 == 0 { byte_repr.push(' '); }
+                    if offset % 2 == 0 { byte_repr.push(' '); }
 
                     // reached end of dump and/or allocated memory
                     let index = nth * ROW_SIZE + offset;
@@ -129,33 +129,6 @@ fn parse_arg(state: &State, arg: &String) -> Result<u32, CommandError> {
     );
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-
-    if arg.contains(':') {
-        // parts contains at least 2 elements
-        let mut parts = arg.split(':');
-        let mut file = parts.next().unwrap();
-        if file.is_empty() {
-            let mut filenames = binary.line_numbers.values()
-                    .map(|(filename, _)| filename);
-            file = filenames.next().unwrap();
-            if !filenames.all(|f| f.as_ref() == file) {
-                return Err(CommandError::MustSpecifyFile);
-            }
-        }
-
-        let line_number: u32 = parts.next().unwrap().parse().map_err(|_| get_error("<line number>"))?;
-        let mut lines = binary.line_numbers.iter()
-            .filter(|(_, (filename, _))| filename.as_ref() == file).collect::<Vec<_>>();
-        lines.sort_unstable_by(|a, b| a.1.1.cmp(&b.1.1));
-
-        // use first line after the specified line that contains an instruction
-        let addr = lines.iter()
-            .find(|(_, &(_, _line_number))| _line_number >= line_number)
-            .ok_or_else(|| CommandError::LineDoesNotExist { line_number })?.0;
-
-        return Ok(*addr)
-    }
-
     let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
             .map_err(|_| get_error("<addr>"))?;
 
