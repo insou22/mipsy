@@ -29,11 +29,12 @@ pub(crate) fn examine_command() -> Command {
             let mut pages = &binary.data;
             let section_base = DATA_BOT as usize;
             let mut base_addr = DATA_BOT as usize;
-            let mut dump_len = pages.len();
+            let mut dump_len = pages.len().min(256);
 
             if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok()) {
                 args = &args[1..];
-                dump_len = dump_len.min(len);
+                // allow the default limit to be overridden but not past the end of data segment
+                dump_len = dump_len.max(pages.len().min(len));
             }
 
             // TODO: make this work for labels above the region
