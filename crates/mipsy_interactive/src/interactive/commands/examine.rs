@@ -60,7 +60,8 @@ pub(crate) fn examine_command() -> Command {
             let offset: usize = row_size * 5 / 2;
 
             for nth in 0..rows {
-                let mut byte_repr = String::with_capacity(row_size * 2);
+                let mut label_repr = String::with_capacity(row_size * 3);
+                let mut byte_repr  = String::with_capacity(row_size * 3);
                 let mut printable_repr = String::with_capacity(row_size);
 
                 for offset in 0..row_size {
@@ -71,9 +72,16 @@ pub(crate) fn examine_command() -> Command {
                     let index = nth * row_size + offset;
                     if index >= dump_len { break };
 
+                    let address = base_addr + index;
                     let byte = state.runtime.timeline().state()
-                        .read_mem_byte_uninit((base_addr + index) as u32)
+                        .read_mem_byte_uninit(address as u32)
                         .unwrap();
+
+                    if let Some((label, _)) = binary.labels.iter().find(|(_, &addr)| addr == address as u32) {
+                        label_repr.push_str(" ".repeat(byte_repr.len() - label_repr.len()).as_ref());
+                        label_repr.push_str(format!("{}", label).as_ref());
+                    }
+
                     byte_repr.push_str(render_data(byte).as_ref());
                     printable_repr.push_str(byte.as_option()
                         .map(|&value| value as u32)
@@ -84,6 +92,9 @@ pub(crate) fn examine_command() -> Command {
                     );
                 }
 
+                if !label_repr.is_empty() {
+                    println!("{} {}", " ".repeat(10), label_repr.yellow().bold());
+                }
                 println!("{}{:08x}:{:offset$}  {}",
                     "0x".yellow(), base_addr as usize + nth * row_size,
                     byte_repr,
