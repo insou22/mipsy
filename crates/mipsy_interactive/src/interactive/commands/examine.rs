@@ -48,7 +48,8 @@ pub(crate) fn examine_command() -> Command {
             dump_len = dump_len.min(pages.len());
 
             const ROW_SIZE: usize = 16;
-            let rows: usize = dump_len / ROW_SIZE + if dump_len == 0 {0} else {1};
+            let mut rows: usize = dump_len / ROW_SIZE;
+            if dump_len % ROW_SIZE != 0 { rows += 1; }
             let offset: usize = ROW_SIZE * 5 / 2;
 
             for nth in 0..rows {
