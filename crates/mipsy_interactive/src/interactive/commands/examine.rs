@@ -15,17 +15,30 @@ pub(crate) fn examine_command() -> Command {
         vec![],
         "examine memory contents",
         |_, state, label, mut args| {
-            // TODO:
-            // - long help
-            // - <enter> to examine the next chunk of memory
+            // TODO: <enter> to examine the next chunk of memory
             if label == "__help__" {
                 return Ok(
-                    "TODO: long form help".into()
+                    format!(
+                        "Examine memory contents in a format akin to the tool `xxd`.\n\
+                         {0} may be: `.data` (default), `.text`, `.stack`, `.kdata`, `.ktext`.\n\
+                         {1} controls the maximum number of bytes displayed.\n\
+                         {2} controls where the memory dump starts (by default the start of the section).\n\
+                         {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+                    \x20             or a label (`{4}`).\n\
+                         Unprintable bytes are displayed as {5}, and uninitialized bytes are displayed as {6}.\n\
+                        ",
+                        "<section>".magenta(),
+                        "<length>".magenta(),
+                        "<addr>".magenta(),
+                        "0x".yellow(),
+                        "main".yellow().bold(),
+                        ".".bright_black(),
+                        "_".bright_black(),
+                    )
                 )
             }
 
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-
 
             let segment = if let Some(segment) = args.get(0).and_then(|segment| match segment.as_ref() {
                 ".data"  => Some(Segment::Data),
