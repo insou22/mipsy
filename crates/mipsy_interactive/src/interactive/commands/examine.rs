@@ -15,11 +15,11 @@ pub(crate) fn examine_command() -> Command {
         vec![],
         "examine memory contents",
         |_, state, label, mut args| {
+            // TODO:
+            // - long help
+            // - ability to select section being printed
+            // - <enter> to examine the next chunk of memory
             if label == "__help__" {
-                // TODO:
-                // - long help
-                // - include labels where relevant?
-                // - ability to select section being printed
                 return Ok(
                     "TODO: long form help".into()
                 )
@@ -78,8 +78,14 @@ pub(crate) fn examine_command() -> Command {
                         .unwrap();
 
                     if let Some((label, _)) = binary.labels.iter().find(|(_, &addr)| addr == address as u32) {
-                        label_repr.push_str(" ".repeat(byte_repr.len() - label_repr.len()).as_ref());
-                        label_repr.push_str(format!("{}", label).as_ref());
+                        if let Some(padding) = byte_repr.len().checked_sub(label_repr.len()) {
+                            label_repr.push_str(" ".repeat(padding).as_ref());
+                        } else {
+                            // labels overlap - truncate previous label
+                            label_repr.truncate(byte_repr.len() - 1);
+                            label_repr.push(' ');
+                        }
+                        label_repr.push_str(label);
                     }
 
                     byte_repr.push_str(render_data(byte).as_ref());

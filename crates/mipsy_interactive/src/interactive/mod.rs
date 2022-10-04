@@ -91,13 +91,14 @@ impl State {
         self.prev_command = Some(cmd);
     }
 
-    fn find_command(&self, cmd: &str) -> Option<&Command> {
+    fn find_command(&self, cmd: &str) -> Option<Command>
+    {
         self.commands.iter()
                 .find(|command| {
                     command.name == cmd || 
                         command.aliases.iter()
                                 .any(|alias| alias == cmd)
-                })
+                }).cloned()
     }
 
     fn do_exec(&mut self, line: &str) {
@@ -111,7 +112,7 @@ impl State {
             None => return,
         };
 
-        let command = self.find_command(&command_name.to_ascii_lowercase()).cloned();
+        let command = self.find_command(&command_name.to_ascii_lowercase());
 
         if command.is_none() {
             prompt::unknown_command(command_name);

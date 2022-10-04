@@ -23,10 +23,7 @@ pub(crate) fn help_command() -> Command {
             }
 
             if let Some(command) = args.first() {
-                let commands = state.commands.clone();
-                let mut command = commands.iter()
-                        .find(|cmd| &cmd.name == command || cmd.aliases.contains(command))
-                        .ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
+                let mut command = &state.find_command(command).ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
 
                 let args = &args[1..];
                 let mut parts = vec![
