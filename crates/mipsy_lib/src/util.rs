@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     TEXT_TOP,
     TEXT_BOT,
+    DATA_BOT,
     GLOBAL_BOT,
     STACK_BOT,
     STACK_TOP,
@@ -92,6 +93,19 @@ pub enum Segment {
     Stack,
     KText,
     KData,
+}
+
+impl Segment {
+    pub fn get_lower_bound(&self) -> u32 {
+        match self {
+            Segment::None  => 0,
+            Segment::Text  => TEXT_BOT,
+            Segment::Data  => DATA_BOT,
+            Segment::Stack => STACK_TOP,
+            Segment::KText => KTEXT_BOT,
+            Segment::KData => KDATA_BOT,
+        }
+    }
 }
 
 pub fn get_segment(address: u32) -> Segment {

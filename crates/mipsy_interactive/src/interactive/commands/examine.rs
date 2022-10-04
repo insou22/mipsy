@@ -1,5 +1,5 @@
 use colored::Colorize;
-use mipsy_lib::{DATA_BOT, Safe};
+use mipsy_lib::{Safe, util::Segment};
 use mipsy_parser::{MpArgument, MpImmediate, MpNumber};
 
 use crate::interactive::error::CommandError;
@@ -11,13 +11,12 @@ pub(crate) fn examine_command() -> Command {
         "examine",
         vec!["e", "ex", "x", "dump"],
         vec![],
-        vec![],
+        vec!["section", "length", "addr"],
         vec![],
         "examine memory contents",
         |_, state, label, mut args| {
             // TODO:
             // - long help
-            // - ability to select section being printed
             // - <enter> to examine the next chunk of memory
             if label == "__help__" {
                 return Ok(
@@ -26,32 +25,39 @@ pub(crate) fn examine_command() -> Command {
             }
 
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let mut pages = &binary.data;
-            let section_base = DATA_BOT as usize;
-            let mut base_addr = DATA_BOT as usize;
-            let mut dump_len = pages.len().min(256);
 
-            if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok()) {
+
+            let segment = if let Some(segment) = args.get(0).and_then(|segment| match segment.as_ref() {
+                ".data"  => Some(Segment::Data),
+                ".text"  => Some(Segment::Text),
+                ".stack" => Some(Segment::Stack),
+                ".kdata" => Some(Segment::KData),
+                ".ktext" => Some(Segment::KText),
+                _ => None,
+            }) {
                 args = &args[1..];
-                // allow the default limit to be overridden but not past the end of data segment
-                dump_len = pages.len().min(len);
-            }
+                segment
+            } else {
+                Segment::Data
+            };
 
-            // TODO: make this work for labels above the region
-            // TODO: more informative error
-            if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
-                base_addr = base? as usize;
-            }
-            let base_diff = base_addr.checked_sub(section_base).ok_or(CommandError::AddressNotInSection)?;
+            let dump_len = if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok()) {
+                args = &args[1..];
+                len
+            } else {
+                128
+            };
 
-            let not_inlined = pages[base_diff..].to_vec();
-            pages = &not_inlined;
-            dump_len = dump_len.min(pages.len());
+            let base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
+                base?
+            } else {
+                segment.get_lower_bound()
+            } as usize;
 
             let default_size = 16;
             let row_size: usize = termsize::get().map_or(default_size, |size|
                 // subtract "0x{:8x}: " length and allow for extra length in representation
-                // TODO: allow longer than 16? can be done by removing .min() but not very readable
+                // TODO: allow rows longer than 16 bytes? can be done by removing .min() but not very readable
                 (((size.cols - 12 - 1) * 2 / 7) as usize).min(default_size)
             ).max(1);
 
@@ -72,9 +78,15 @@ pub(crate) fn examine_command() -> Command {
                     let index = nth * row_size + offset;
                     if index >= dump_len { break };
 
-                    let address = base_addr + index;
+                    // automatically move upwards when displaying stack
+                    let address = if segment == Segment::Stack {
+                        base_addr - index
+                    } else {
+                        base_addr + index
+                    };
+
                     let byte = state.runtime.timeline().state()
-                        .read_mem_byte_uninit(address as u32)
+                        .read_mem_byte_uninit_unchecked(address as u32)
                         .unwrap();
 
                     if let Some((label, _)) = binary.labels.iter().find(|(_, &addr)| addr == address as u32) {
@@ -98,11 +110,17 @@ pub(crate) fn examine_command() -> Command {
                     );
                 }
 
+                let marker = if segment == Segment::Stack {
+                    base_addr as usize - nth * row_size
+                } else {
+                    base_addr as usize + nth * row_size
+                };
+
                 if !label_repr.is_empty() {
                     println!("{} {}", " ".repeat(10), label_repr.yellow().bold());
                 }
                 println!("{}{:08x}:{:offset$}  {}",
-                    "0x".yellow(), base_addr as usize + nth * row_size,
+                    "0x".yellow(), marker,
                     byte_repr,
                     printable_repr,
                 );
