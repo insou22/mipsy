@@ -262,6 +262,9 @@ impl State {
             CommandError::UnknownLabel { label } => {
                 prompt::error(format!("unknown label: \"{}\"", label));
             }
+            CommandError::UninitialisedRegister { register } => {
+                prompt::error(format!("register {register} is uninitialized"));
+            }
             CommandError::UninitialisedPrint { addr } => {
                 prompt::error(format!("memory at address 0x{:08x} is uninitialized", addr));
             }
