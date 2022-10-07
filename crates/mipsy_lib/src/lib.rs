@@ -23,7 +23,7 @@ pub use inst::instruction::{
     ArgumentType,
 };
 pub use inst::register::Register;
-pub use compile::{Binary};
+pub use compile::Binary;
 use mipsy_parser::TaggedFile;
 use mipsy_utils::MipsyConfig;
 pub use runtime::{

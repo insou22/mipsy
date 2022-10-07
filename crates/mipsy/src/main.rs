@@ -361,8 +361,8 @@ fn main() {
                                 runtime = new_runtime;
                             }
                             ReadChar(guard) => {
-                                let number: char = get_input_eof("character").unwrap_or('\0');
-                                runtime = guard(number as u8);
+                                let character: char = get_input_eof("character").unwrap_or('\0');
+                                runtime = guard(character as u8);
                             }
                             Open(_args, guard) => {
                                 // TODO: implement file open for mipsy cli frontend

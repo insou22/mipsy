@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use crate::error::{InternalError, MipsyInternalResult, compiler};
 use std::{str::FromStr, fmt::Display};
 
-#[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Hash, Eq)]
+#[derive(Copy, Clone, Serialize, Debug, Deserialize, PartialEq, Hash, Eq)]
 pub enum Register {
     Zero,
     At,

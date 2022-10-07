@@ -12,7 +12,7 @@ where
     T: FromStr + Display,
     <T as FromStr>::Err: Debug,
 {
-    let prompt: Box<dyn Fn()> = 
+    let prompt: Box<dyn Fn()> =
         if verbose {
             Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
         } else {
@@ -23,7 +23,7 @@ where
         let result: Result<T, _> = if line {
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
-            
+
             input.parse()
                 .map_err(|_| ())
         } else {
@@ -47,7 +47,7 @@ where
     T: FromStr + Display,
     <T as FromStr>::Err: Debug,
 {
-    let prompt: Box<dyn Fn()> = 
+    let prompt: Box<dyn Fn()> =
         if verbose {
             Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
         } else {
@@ -134,7 +134,7 @@ pub(crate) fn sys1_print_int(verbose: bool, val: i32) {
     } else {
         print!("{}", val);
     }
-    
+
     std::io::stdout().flush().unwrap();
 }
 
@@ -144,7 +144,7 @@ pub(crate) fn sys2_print_float(verbose: bool, val: f32) {
     } else {
         print!("{}", val);
     }
-    
+
     std::io::stdout().flush().unwrap();
 }
 
@@ -154,7 +154,7 @@ pub(crate) fn sys3_print_double(verbose: bool, val: f64) {
     } else {
         print!("{}", val);
     }
-    
+
     std::io::stdout().flush().unwrap();
 }
 
@@ -256,7 +256,7 @@ pub(crate) fn sys11_print_char(verbose: bool, val: u8) {
     } else {
         print!("{}", val);
     }
-    
+
     std::io::stdout().flush().unwrap();
 }
 
@@ -266,8 +266,8 @@ pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
         std::io::stdout().flush().unwrap();
     }
 
-    get_input_eof("character", verbose)
-        .unwrap_or(0)
+    let character: char = get_input_eof("character", verbose).unwrap_or('\0');
+    return character as u8;
 }
 
 // TODO: implement file handling in mipsy interactive
@@ -315,9 +315,9 @@ pub(crate) fn trap(_verbose: bool) {
 
 pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
     println!(
-        "{}{}{}\n", 
-        "\n[BREAKPOINT ".cyan().bold(), 
-        label.unwrap_or(&format!("{}{:08x}", "0x".yellow(), pc)), 
+        "{}{}{}\n",
+        "\n[BREAKPOINT ".cyan().bold(),
+        label.unwrap_or(&format!("{}{:08x}", "0x".yellow(), pc)),
         "]".cyan().bold()
     );
 }
@@ -325,7 +325,7 @@ pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
 pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32) {
     println!(
         "{}{}{} - {} was {}\n",
-        "\n[WATCHPOINT ".cyan().bold(), 
+        "\n[WATCHPOINT ".cyan().bold(),
         format!("{}{:08x}", "0x".yellow(), pc),
         "]".cyan().bold(),
         watchpoint.target,

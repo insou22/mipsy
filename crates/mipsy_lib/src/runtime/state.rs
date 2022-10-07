@@ -257,7 +257,10 @@ impl State {
 
     pub fn read_mem_byte_uninit(&self, address: u32) -> MipsyResult<Safe<u8>> {
         self.check_segfault(address, SegmentationFaultAccessType::Read)?;
+        self.read_mem_byte_uninit_unchecked(address)
+    }
 
+    pub fn read_mem_byte_uninit_unchecked(&self, address: u32) -> MipsyResult<Safe<u8>> {
         Ok(
             self.get_page(address)
                 .and_then(|page| {

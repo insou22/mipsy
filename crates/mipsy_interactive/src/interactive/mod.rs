@@ -91,13 +91,14 @@ impl State {
         self.prev_command = Some(cmd);
     }
 
-    fn find_command(&self, cmd: &str) -> Option<&Command> {
+    fn find_command(&self, cmd: &str) -> Option<Command>
+    {
         self.commands.iter()
                 .find(|command| {
                     command.name == cmd || 
                         command.aliases.iter()
                                 .any(|alias| alias == cmd)
-                })
+                }).cloned()
     }
 
     fn do_exec(&mut self, line: &str) {
@@ -111,7 +112,7 @@ impl State {
             None => return,
         };
 
-        let command = self.find_command(&command_name.to_ascii_lowercase()).cloned();
+        let command = self.find_command(&command_name.to_ascii_lowercase());
 
         if command.is_none() {
             prompt::unknown_command(command_name);
@@ -260,6 +261,9 @@ impl State {
             }
             CommandError::UnknownLabel { label } => {
                 prompt::error(format!("unknown label: \"{}\"", label));
+            }
+            CommandError::UninitialisedRegister { register } => {
+                prompt::error(format!("register {register} is uninitialized"));
             }
             CommandError::UninitialisedPrint { addr } => {
                 prompt::error(format!("memory at address 0x{:08x} is uninitialized", addr));
@@ -695,6 +699,7 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::context_command());
     state.add_command(commands::label_command());
     state.add_command(commands::labels_command());
+    state.add_command(commands::examine_command());
     state.add_command(commands::print_command());
     state.add_command(commands::dot_command());
     state.add_command(commands::help_command());
