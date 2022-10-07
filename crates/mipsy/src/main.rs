@@ -11,39 +11,42 @@ use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
 use text_io::try_read;
 
 #[derive(Parser, Debug)]
-#[clap(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
+#[command(version = VERSION, author = "Zac K. <zac.kologlu@gmail.com>")]
 struct Opts {
     /// Just output compilation errors, if any
-    #[clap(long)]
+    #[arg(long)]
     check: bool,
 
     /// Implies --check: Ignore missing main label
-    #[clap(long)]
+    #[arg(long)]
     check_no_main: bool,
 
     /// Just compile program instead of executing
-    #[clap(long)]
+    #[arg(long)]
     compile: bool,
 
     /// Just compile program and output hexcodes
-    #[clap(long)]
+    #[arg(long)]
     hex: bool,
 
     /// Implies --hex: pad to 8 hex digits with zeroes
-    #[clap(long)]
+    #[arg(long)]
     hex_pad_zero: bool,
 
     /// Enable some SPIM compatibility options
-    #[clap(long)]
+    #[arg(long)]
     spim: bool,
 
     /// Move a label to point to a different label
-    #[clap(long)]
+    #[arg(long)]
     move_label: Vec<String>,
 
+    /// File(s) to be loaded and executed
+    #[arg()]
     files: Vec<String>,
 
-    #[clap(last = true)]
+    /// Command line argument(s) to be passed to the program
+    #[arg(last = true, requires = "files")]
     args:  Vec<String>,
 }
 
@@ -502,4 +505,4 @@ fn compile_with_kernel(options: &CompilerOptions, config: &MipsyConfig, files: &
     Ok((iset, binary, runtime))
 }
 
-pub const VERSION: &str = concat!(env!("VERGEN_COMMIT_DATE"), " ", env!("VERGEN_SHA_SHORT"));
+pub const VERSION: &str = concat!(env!("VERGEN_GIT_COMMIT_DATE"), " ", env!("VERGEN_GIT_SHA_SHORT"));
