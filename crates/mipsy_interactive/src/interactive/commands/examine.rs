@@ -15,7 +15,7 @@ pub(crate) fn examine_command() -> Command {
         "examine",
         vec!["e", "ex", "x", "dump"],
         vec![],
-        vec!["section", "length", "addr"],
+        vec!["section", "len", "addr", "-labels"],
         vec![],
         "examine memory contents",
         |_, state, label, mut args| {
@@ -30,6 +30,7 @@ pub(crate) fn examine_command() -> Command {
                          {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14),\n\
                     \x20             a decimal address (`4194304`), a hex address (`{3}400000`),\n\
                     \x20             or a label (`{4}`).\n\
+                         If {7} is provided, then label names will be included in the output.\n\
                          Unprintable bytes are displayed as {5}, and uninitialized bytes are displayed as {6}.\n\
                         ",
                         "<section>".magenta(),
@@ -39,6 +40,7 @@ pub(crate) fn examine_command() -> Command {
                         "main".yellow().bold(),
                         ".".bright_black(),
                         "_".bright_black(),
+                        "-labels".magenta(),
                     )
                 );
             }
@@ -68,11 +70,22 @@ pub(crate) fn examine_command() -> Command {
                 128
             };
 
-            let base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
-                base?
+            let mut base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
+                if base.is_ok() {
+                    args = &args[1..];
+                }
+                base
             } else {
-                segment.get_lower_bound()
-            } as usize;
+                Ok(segment.get_lower_bound())
+            };
+
+            let show_labels = args.get(0).map_or(false, |a| a == &String::from("-labels"));
+            if show_labels {
+                // if -labels was provided,
+                base_addr = Ok(segment.get_lower_bound());
+            }
+
+            let base_addr = base_addr? as usize;
 
             // for most cases this is a no-op, but if given an address in the stack we should
             // reverse the order of the scan
@@ -124,24 +137,27 @@ pub(crate) fn examine_command() -> Command {
                         .read_mem_byte_uninit_unchecked(address as u32)
                         .unwrap();
 
-                    if let Some((label, addr)) = binary
-                        .labels
-                        .iter()
-                        .find(|(_, &addr)| addr == address as u32)
-                    {
-                        let offset = byte_repr.len();
-                        label_strs.push(arrow_tips.clone());
-                        label_strs.last_mut().unwrap().pad_insert(
-                            offset,
-                            format!(
-                                "{}: {}{}",
-                                label.bold().yellow(),
-                                "0x".yellow(),
-                                format!("{addr:08x}").purple()
-                            )
-                            .as_ref(),
-                        );
-                        arrow_tips.pad_insert(offset, "|");
+                    // TODO: combine these when if-let chaining is stabilised
+                    if show_labels {
+                        if let Some((label, addr)) = binary
+                            .labels
+                            .iter()
+                            .find(|(_, &addr)| addr == address as u32)
+                        {
+                            let offset = byte_repr.len();
+                            label_strs.push(arrow_tips.clone());
+                            label_strs.last_mut().unwrap().pad_insert(
+                                offset,
+                                format!(
+                                    "{}: {}{}",
+                                    label.bold().yellow(),
+                                    "0x".yellow(),
+                                    format!("{addr:08x}").purple()
+                                )
+                                .as_ref(),
+                            );
+                            arrow_tips.pad_insert(offset, "|");
+                        }
                     }
 
                     byte_repr.push_str(render_data(byte).as_ref());
