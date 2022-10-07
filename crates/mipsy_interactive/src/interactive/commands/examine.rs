@@ -1,7 +1,10 @@
 use colored::Colorize;
-use mipsy_lib::{util::Segment, Safe};
+use mipsy_lib::{
+    util::{get_segment, Segment},
+    Register, Safe,
+};
 use mipsy_parser::{MpArgument, MpImmediate, MpNumber};
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::interactive::error::CommandError;
 
@@ -24,7 +27,8 @@ pub(crate) fn examine_command() -> Command {
                          {0} may be: `.data` (default), `.text`, `.stack`, `.kdata`, `.ktext`.\n\
                          {1} controls the maximum number of bytes displayed.\n\
                          {2} controls where the memory dump starts (by default the start of the section).\n\
-                         {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+                         {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14),\n\
+                    \x20             a decimal address (`4194304`), a hex address (`{3}400000`),\n\
                     \x20             or a label (`{4}`).\n\
                          Unprintable bytes are displayed as {5}, and uninitialized bytes are displayed as {6}.\n\
                         ",
@@ -41,7 +45,7 @@ pub(crate) fn examine_command() -> Command {
 
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-            let segment = if let Some(segment) =
+            let mut segment = if let Some(segment) =
                 args.get(0).and_then(|segment| match segment.as_ref() {
                     ".data" => Some(Segment::Data),
                     ".text" => Some(Segment::Text),
@@ -69,6 +73,10 @@ pub(crate) fn examine_command() -> Command {
             } else {
                 segment.get_lower_bound()
             } as usize;
+
+            // for most cases this is a no-op, but if given an address in the stack we should
+            // reverse the order of the scan
+            segment = get_segment(base_addr as u32);
 
             let default_size = 16;
             let row_size: usize = termsize::get()
@@ -241,6 +249,16 @@ fn parse_arg(state: &State, arg: &String) -> Result<u32, CommandError> {
             &String::from(""),
         )
     };
+
+    if let Ok(register) = Register::from_str(arg.strip_prefix('$').unwrap_or(arg)) {
+        return Ok(state
+            .runtime
+            .timeline()
+            .state()
+            .read_register(register.to_u32())
+            .map_err(|_| CommandError::UninitialisedRegister { register })?
+            as u32);
+    }
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
     let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)

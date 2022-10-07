@@ -1,4 +1,4 @@
-use mipsy_lib::MipsyError;
+use mipsy_lib::{MipsyError, Register};
 use mipsy_parser::ErrorLocation;
 
 pub type CommandResult<T> = Result<T, CommandError>;
@@ -19,6 +19,7 @@ pub enum CommandError {
     LineDoesNotExist   { line_number: u32 },
     UnknownRegister    { register: String },
     UnknownLabel       { label: String },
+    UninitialisedRegister { register: Register },
     UninitialisedPrint { addr: u32 },
     UnterminatedString { good_parts: String },
 
