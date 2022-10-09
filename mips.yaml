@@ -1,6 +1,6 @@
 instructions:
   # R-Type Instructions
-  
+
   # SPECIAL
   - name: SLL
     desc_short: Shifts the value in $Rt left by Sa logically, storing the result in $Rd
@@ -455,7 +455,7 @@ instructions:
       type: R
       funct: 0x2B
       reads: [Rs, Rt]
-      
+
   # I-Type instructions
 
   - name: BLTZ
@@ -770,7 +770,7 @@ instructions:
       reads: [Rt]
 
   - name: LWC1
-    desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register) 
+    desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register)
     compile:
       format: [Rt, OffRs]
     runtime:
@@ -779,7 +779,7 @@ instructions:
       reads: [OffRs]
 
   - name: SWC1
-    desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs 
+    desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs
     compile:
       format: [Rt, OffRs]
     runtime:
@@ -789,7 +789,7 @@ instructions:
 
   # J-Type Instructions
   - name: J
-    desc_short: Jump to the immediate address 
+    desc_short: Jump to the immediate address
     compile:
       format: [J]
     runtime:
@@ -798,7 +798,7 @@ instructions:
       reads: []
 
   - name: JAL
-    desc_short: Jump-and-link to the immediate address 
+    desc_short: Jump-and-link to the immediate address
     compile:
       format: [J]
     runtime:
@@ -809,7 +809,7 @@ instructions:
 
 pseudoinstructions:
 # R-Type Instructions
-  
+
   # SPECIAL
   - name: SLL
     compile:
@@ -1783,7 +1783,7 @@ pseudoinstructions:
           register: Rs
           imm_types: [I16, U16, I32, U32]
           sign_extend: true
-      
+
   # I-Type instructions
 
   - name: BLTZ
@@ -2180,6 +2180,13 @@ pseudoinstructions:
         data: [$Rt, $U16]
     only_derive: true
 
+  - name: LUI
+    compile:
+      format: [Rt, I16]
+    expand:
+      - inst: LUI
+        data: [$Rt, $I16asU16]
+
   - name: LB
     compile:
       format: [Rt, U32]
@@ -2404,7 +2411,7 @@ pseudoinstructions:
       - inst: JAL
         data: [$J]
     only_derive: true
-  
+
   # True pseudo-instructions
   - name: LI
     compile:
@@ -3118,13 +3125,7 @@ pseudoinstructions:
         data: [$a0, ($sp)]
       - inst: ADDIU
         data: [$sp, $sp, 4]
-
-  # - name: DBG_PRINT_STR
-  #   desc_short: Print the value of $Rs as a string without modifying any registers
-  #   compile:
-  #     format: [OffRt]
-
-  # - name: DBG_PRINT_STR
-  #   desc_short: Print the value of $Rs as a string without modifying any registers
-  #   compile:
-  #     format: [Off32Rt]
+    derives:
+      - Imm2Reg:
+          register: Rs
+          imm_types: [U32]

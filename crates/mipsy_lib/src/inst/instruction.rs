@@ -153,7 +153,7 @@ impl ReadsRegisterType {
             (Self::OffRs, ArgumentType::OffRs) |
             (Self::OffRt, ArgumentType::OffRt)
         )
-    }   
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -302,19 +302,19 @@ impl InstSignature {
             RuntimeSignature::R { opcode, funct, shamt, rs, rt, rd } => {
                 inst |= (opcode as u32 & 0x3F) << 26;
                 inst |=  funct  as u32 & 0x3F;
-                
+
                 if let Some(shamt) = shamt {
                     inst |= (shamt as u32 & 0x1F) << 6;
                 }
-                
+
                 if let Some(rs) = rs {
                     inst |= (rs as u32 & 0x1F) << 21;
                 }
-                
+
                 if let Some(rt) = rt {
                     inst |= (rt as u32 & 0x1F) << 16;
                 }
-                
+
                 if let Some(rd) = rd {
                     inst |= (rd as u32 & 0x1F) << 11;
                 }
@@ -445,7 +445,7 @@ impl InstSignature {
                 }
             );
         }
-        
+
         for (arg, val) in self.compile.format.iter().zip(arg_bits) {
             match arg {
                 ArgumentType::Rs     => inst |= (val & 0x1F) << 21,
@@ -610,7 +610,7 @@ impl PseudoVariable {
             Self::F32   => "f32",
             Self::F64   => "f64",
             Self::Off   => "off",
-        
+
             // pseudo
             Self::I32   => "i32",
             Self::U32   => "u32",
@@ -631,7 +631,7 @@ impl PseudoVariable {
             ArgumentType::OffRt => Self::OffRt,
             ArgumentType::F32   => Self::F32,
             ArgumentType::F64   => Self::F64,
-        
+
             // pseudo
             ArgumentType::I32 | ArgumentType::U32 | ArgumentType::Off32Rs | ArgumentType::Off32Rt => panic!("Bad arg type from mips.yaml"),
         }
@@ -646,7 +646,7 @@ impl PseudoSignature {
                 MpRegister::BinaryOpOffset(i1, op, i2, _) => {
                     let (lower1, upper1) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(i1.clone())), last)?;
                     let (lower2, upper2) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(i2.clone())), last)?;
-                    
+
                     let i1 = (((upper1 as u32) << 16) | lower1 as u32) as i32;
                     let i2 = (((upper2 as u32) << 16) | lower2 as u32) as i32;
 
@@ -696,7 +696,7 @@ impl PseudoSignature {
                 MpNumber::BinaryOpImmediate(imm1, op, imm2) => {
                     let (lower1, upper1) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(imm1.clone())), last)?;
                     let (lower2, upper2) = self.lower_upper(program, &MpArgument::Number(MpNumber::Immediate(imm2.clone())), last)?;
-                    
+
                     let i1 = (((upper1 as u32) << 16) | lower1 as u32) as i32;
                     let i2 = (((upper2 as u32) << 16) | lower2 as u32) as i32;
 
@@ -723,20 +723,43 @@ impl PseudoSignature {
         ]
     }
 
+    fn expand_16_var(var: &PseudoVariable, value: u16) -> Vec<(String, MpArgument)> {
+        match var {
+            PseudoVariable::U16 => {
+                vec![
+                    (var.name(), MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(value)))),
+                    (format!("{}{}", var.name(), "asi16"), MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(value as _)))),
+                ]
+            }
+            PseudoVariable::I16 => {
+                vec![
+                    (var.name(), MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(value as _)))),
+                    (format!("{}{}", var.name(), "asu16"), MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(value)))),
+                ]
+            }
+            _ => panic!("Must be a 16 bit PseudoVariable")
+        }
+    }
+
     fn new_variable(
-        &self, 
-        program: &Binary, 
-        var_type: PseudoVariable, 
-        value: MpArgument, 
-        variables: &mut HashMap<String, MpArgument>, 
+        &self,
+        program: &Binary,
+        var_type: PseudoVariable,
+        value: MpArgument,
+        variables: &mut HashMap<String, MpArgument>,
         used: &mut HashMap<String, usize>, last: bool
     ) -> MipsyInternalResult<()> {
 
         let mappings: Vec<(String, MpArgument)> = match var_type {
             PseudoVariable::I32 | PseudoVariable::U32 | PseudoVariable::Off32 => {
                 let (lower, upper) = self.lower_upper(program, &value, last)?;
-                
+
                 Self::expand_32_var(&var_type, lower, upper)
+            }
+            PseudoVariable::I16 | PseudoVariable::U16 => {
+                let (lower, _) = self.lower_upper(program, &value, last)?;
+
+                Self::expand_16_var(&var_type, lower)
             }
             _ => {
                 vec![(var_type.name(), value)]
@@ -746,7 +769,7 @@ impl PseudoSignature {
         for (name, value) in mappings {
             if let Some(&amt) = used.get(&name) {
                 used.insert(name.clone(), amt + 1);
-    
+
                 if amt == 1 {
                     let old = variables.remove(&name).unwrap();
                     variables.insert(format!("{}#{}", name, 1), old);
@@ -758,7 +781,7 @@ impl PseudoSignature {
                 used.insert(name.clone(), 1);
                 variables.insert(name, value);
             }
-    
+
         }
 
 
@@ -878,7 +901,7 @@ impl PseudoSignature {
 
                     let end = {
                         let mut end = find;
-                        
+
                         loop {
                             let char = data.chars().nth(end);
                             match char {
