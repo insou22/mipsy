@@ -502,6 +502,8 @@ impl Agent for Worker {
                                     use RuntimeSyscallGuard::*;
                                     match guard {
                                         PrintInt(print_int_args, next_runtime) => {
+                                            let pc = next_runtime.timeline().state().pc();
+
                                             info!("printing integer {}", print_int_args.value);
 
                                             mips_state
@@ -509,9 +511,20 @@ impl Agent for Worker {
                                                 .push(print_int_args.value.to_string());
 
                                             runtime = next_runtime;
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
                                         PrintFloat(print_float_args, next_runtime) => {
+                                            let pc = next_runtime.timeline().state().pc();
+
                                             info!("printing float {}", print_float_args.value);
 
                                             mips_state
@@ -519,9 +532,21 @@ impl Agent for Worker {
                                                 .push(print_float_args.value.to_string());
 
                                             runtime = next_runtime;
+
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
                                         PrintDouble(print_double_args, next_runtime) => {
+                                            let pc = next_runtime.timeline().state().pc();
+
                                             info!("printing double {}", print_double_args.value);
 
                                             mips_state
@@ -529,9 +554,20 @@ impl Agent for Worker {
                                                 .push(print_double_args.value.to_string());
 
                                             runtime = next_runtime;
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
                                         PrintString(print_string_args, next_runtime) => {
+                                            let pc = next_runtime.timeline().state().pc();
+
                                             let string_value =
                                                 String::from_utf8_lossy(&print_string_args.value)
                                                     .to_string();
@@ -541,9 +577,29 @@ impl Agent for Worker {
                                             mips_state.stdout.push(string_value);
 
                                             runtime = next_runtime;
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
                                         PrintChar(print_char_args, next_runtime) => {
+                                            let pc = next_runtime.timeline().state().pc();
+
                                             let string =
                                                 String::from_utf8_lossy(&[print_char_args.value])
                                                     .to_string();
@@ -553,6 +609,15 @@ impl Agent for Worker {
                                             mips_state.stdout.push(string);
 
                                             runtime = next_runtime;
+
+                                            // we want to stop at the instruction before the breakpoint
+                                            // so that the line of breakpoint doesnt get executed
+                                            if binary.breakpoints.contains_key(&pc)
+                                                && !self.config.ignore_breakpoints
+                                            {
+                                                breakpoint = true;
+                                                break;
+                                            }
                                         }
 
                                         ReadInt(guard) => {
@@ -644,6 +709,9 @@ impl Agent for Worker {
                                             mips_state.exit_status =
                                                 Some(exit_status_args.exit_code);
                                             runtime = next_runtime;
+                                            
+                                            // Can't have a breakpoint
+                                            // after the exit instruction
                                         }
 
                                         Breakpoint(next_runtime) => {
@@ -652,6 +720,9 @@ impl Agent for Worker {
                                                 breakpoint = true;
                                                 break;
                                             }
+
+                                            // Can't have a breakpoint
+                                            // after the break instruction 
                                         }
 
                                         _ => unreachable!("Invalid Syscall"), /*
