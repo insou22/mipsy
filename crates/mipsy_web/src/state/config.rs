@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use bounce::prelude::*;
+use gloo_utils::format::JsValueSerdeExt;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use gloo_utils::format::JsValueSerdeExt;
 
 // i should probably write a macro for this
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
@@ -181,5 +181,22 @@ impl MipsyWebConfig {
             })
             .unwrap(),
         );
+    }
+}
+
+#[derive(Atom, Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MonacoCursor {
+    #[serde(rename = "lineNumber")]
+    pub line: u32,
+    pub column: u32,
+}
+
+impl From<JsValue> for MonacoCursor {
+    fn from(value: JsValue) -> Self {
+        let position = value.into_serde::<MonacoCursor>().unwrap();
+        MonacoCursor {
+            line: position.line,
+            column: position.column,
+        }
     }
 }
