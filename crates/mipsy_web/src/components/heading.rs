@@ -15,7 +15,7 @@ pub fn heading(HeadingProps { title, subtitle }: &HeadingProps) -> Html {
                     {title}
                 </strong>
             </h3>
-            <p class="text-gray-700 text-base"> {subtitle.as_ref().unwrap_or(&"".to_string())} </p>
+            <p> {subtitle.as_ref().unwrap_or(&"".to_string())} </p>
         </div>
     }
 }

@@ -1,6 +1,6 @@
 use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
 use crate::state::config::{
-    MipsyWebConfig, FontColor, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor,
+    MipsyWebConfig, FontColor, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor, HighlightColor,
 };
 use bounce::use_atom;
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         })}}
                     class="
                         rounded text-center cursor-pointer text-6xl
-                        border-2 hover:bg-red-700 border-none bg-transparent close-modal"
+                        border-2 hover:bg-th-secondary border-none bg-transparent close-modal"
                     aria-label="close">
                     {"x"}
                     </div>
@@ -369,6 +369,49 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             {"reset"}
                         </button>
                         </div>
+
+                        <Heading
+                            title="Highlight color"
+                            subtitle="Used for highlighting information"
+                        />
+
+                        <div class="flex flex-row items-center">
+                        <ColorPicker
+                            oninput={
+                                let config = config.clone();
+                                Callback::from(move |e: InputEvent| {
+                                    let input: HtmlInputElement = e.target_unchecked_into();
+                                    let val = input.value();
+                                    let color = val.parse::<String>().unwrap();
+                                    config.set(MipsyWebConfig {
+                                        highlight_color: color.into(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_highlight_color(&val);
+                                })
+                            }
+                            color={(&*config.highlight_color.0).to_string()}
+                        />
+
+                        <button
+                            type="button"
+                            class="m-2 p-2 border bg-th-tabunselected hover:bg-th-secondary rounded"
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        highlight_color: HighlightColor::default(),
+                                        ..(*config).clone()
+                                    });
+                                    crate::update_highlight_color(&*HighlightColor::default().0);
+                                })
+                            }
+                        >
+
+                            {"reset"}
+                        </button>
+                        </div>
+
                         <Heading
                             title="Analytics"
                             subtitle="Analytics is currently not implemented"

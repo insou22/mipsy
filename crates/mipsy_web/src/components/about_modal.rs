@@ -57,17 +57,17 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         <p>
                             {"mipsy web, alongside the mipsy platform, is fully open source "}
-                            <a class="hover:underline text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
+                            <a class="hover:underline" target="_blank" href="https://github.com/insou22/mipsy/">{"here"}</a>
                         </p>
                         <p class="mb-2">
                             {"Please leave any relevant feedback, issues or concerns on the "}
-                            <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
+                            <a class="hover:underline" href="https://github.com/insou22/mipsy/issues" target="_blank">
                                 {"Github Issues page"}
                             </a>
                         </p>
                         <p class="mb-2">
                             {"You can also check the current and future items being worked on at "}
-                            <a class="text-blue-600 hover:text-blue-800 visited:text-purple-600 hover:underline" href="https://github.com/insou22/mipsy/projects/2" target="_blank">
+                            <a class="hover:underline" href="https://github.com/insou22/mipsy/projects/2" target="_blank">
                                 {"this project board"}
                             </a>
 
