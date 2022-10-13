@@ -262,8 +262,8 @@ impl Error {
                                     for (index, argument) in inst_sig.format().iter().enumerate() {
                                         if read.eq_argument_type(argument) {
                                             let value = match read {
-                                                ReadsRegisterType::Rs | ReadsRegisterType::OffRs => state.read_register_uninit(rs),
-                                                ReadsRegisterType::Rt | ReadsRegisterType::OffRt => state.read_register_uninit(rt),
+                                                ReadsRegisterType::Rs | ReadsRegisterType::OffRs => last_mod.read_register_uninit(rs),
+                                                ReadsRegisterType::Rt | ReadsRegisterType::OffRt => last_mod.read_register_uninit(rt),
                                             };
 
                                             let name = match read {
