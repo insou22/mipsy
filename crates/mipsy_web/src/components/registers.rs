@@ -1,4 +1,4 @@
-use crate::state::config::{RegisterBase, MipsyWebConfig};
+use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
 use bounce::use_atom;
 use mipsy_lib::{Register, Safe};
@@ -8,10 +8,6 @@ pub struct RegisterProps {
     pub state: UseStateHandle<State>,
     pub tab: UseStateHandle<RegisterTab>,
 }
-
-const K0_INDEX: usize = 26;
-const K1_INDEX: usize = 27;
-const GP_INDEX: usize = 28;
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
@@ -37,7 +33,6 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
         .map(|state| state.previous_registers.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
-    
     html! {
         <table class="w-full border-collapse table-auto">
             <thead>
@@ -54,8 +49,12 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             {
                 for registers.iter().enumerate().map(|(index, item)| {
                     if config.hide_uncommon_registers &&
-                        (index == K0_INDEX || index == K1_INDEX || index == GP_INDEX) {
-                        html!{} 
+                        (index == usize::from(Register::K0.to_number()) ||
+                         index == usize::from(Register::K1.to_number()) ||
+                         index == usize::from(Register::Gp.to_number())
+                        )
+                    {
+                        html!{}
                     }
                     else if !show_uninitialised_registers && item == &Safe::Uninitialised {
                         html!{}
