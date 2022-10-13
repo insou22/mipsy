@@ -1,8 +1,8 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::compile::breakpoints::Breakpoint;
+use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
@@ -151,19 +151,18 @@ impl Agent for Worker {
         }
     }
 
-	// we need this as we can no longer
-	// assume that worker resources are hosted at root
+    // we need this as we can no longer
+    // assume that worker resources are hosted at root
     fn resource_path_is_relative() -> bool {
-    	true
+        true
     }
 
-	/// Represents the name of loading resorce for remote workers which
+    /// Represents the name of loading resorce for remote workers which
     /// have to live in a separate files.
     fn name_of_resource() -> &'static str {
         "worker.js"
     }
-   
-	
+
     fn update(&mut self, _msg: Self::Message) {
         // no messaging exists
     }
@@ -475,7 +474,19 @@ impl Agent for Worker {
 
                         // now let's us step the right number of times
                         for _ in 1..=step_size {
-                            if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
+                            let pc = runtime.timeline().state().pc();
+                            if pc >= mipsy_lib::KTEXT_BOT {
+                                break;
+                            } else if mips_state.breakpoint_switch
+                                && binary.breakpoints.contains_key(&pc)
+                            {
+                                // the previous instruction was a read syscall
+                                // and indicated that the current instruction 
+                                // is a breakpoint, so break here
+                                // set state to say the next run can ignore
+                                // the breakpoint (since we are breaking here)
+                                breakpoint = true;
+                                mips_state.breakpoint_switch = false;
                                 break;
                             }
 
@@ -532,7 +543,6 @@ impl Agent for Worker {
                                                 .push(print_float_args.value.to_string());
 
                                             runtime = next_runtime;
-
 
                                             // we want to stop at the instruction before the breakpoint
                                             // so that the line of breakpoint doesnt get executed
@@ -624,6 +634,7 @@ impl Agent for Worker {
                                             info!("reading int");
                                             self.runtime = Some(RuntimeState::WaitingInt(guard));
 
+                                            mips_state.breakpoint_switch = true;
                                             self.link
                                                 .respond(id, WorkerResponse::NeedInt(mips_state));
 
@@ -633,6 +644,7 @@ impl Agent for Worker {
                                         ReadFloat(guard) => {
                                             info!("reading float");
                                             self.runtime = Some(RuntimeState::WaitingFloat(guard));
+                                            mips_state.breakpoint_switch = true;
 
                                             self.link
                                                 .respond(id, WorkerResponse::NeedFloat(mips_state));
@@ -643,6 +655,7 @@ impl Agent for Worker {
                                         ReadString(_str_args, guard) => {
                                             info!("reading string");
                                             self.runtime = Some(RuntimeState::WaitingString(guard));
+                                            mips_state.breakpoint_switch = true;
 
                                             self.link.respond(
                                                 id,
@@ -655,6 +668,7 @@ impl Agent for Worker {
                                         ReadChar(guard) => {
                                             info!("Reading char");
                                             self.runtime = Some(RuntimeState::WaitingChar(guard));
+                                            mips_state.breakpoint_switch = true;
 
                                             self.link
                                                 .respond(id, WorkerResponse::NeedChar(mips_state));
@@ -709,7 +723,7 @@ impl Agent for Worker {
                                             mips_state.exit_status =
                                                 Some(exit_status_args.exit_code);
                                             runtime = next_runtime;
-                                            
+
                                             // Can't have a breakpoint
                                             // after the exit instruction
                                         }
@@ -722,7 +736,7 @@ impl Agent for Worker {
                                             }
 
                                             // Can't have a breakpoint
-                                            // after the break instruction 
+                                            // after the break instruction
                                         }
 
                                         _ => unreachable!("Invalid Syscall"), /*
