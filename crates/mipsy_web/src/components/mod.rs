@@ -1,5 +1,6 @@
 pub mod about_modal;
 pub mod banner;
+pub mod color_picker;
 pub mod data_segment;
 pub mod decompiled;
 pub mod dropdown;
@@ -11,4 +12,3 @@ pub mod registers;
 pub mod settings_modal;
 pub mod sourcecode;
 pub mod toggle;
-pub mod color_picker;

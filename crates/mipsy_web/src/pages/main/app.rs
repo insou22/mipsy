@@ -19,11 +19,11 @@ use gloo_file::File;
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
 use std::ops::Deref;
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_agent::{use_bridge, UseBridgeHandle};
-use std::{rc::Rc, cell::RefCell};
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -86,7 +86,6 @@ pub fn render_app() -> Html {
         };
     }
 
-
     let config = use_atom::<MipsyWebConfig>();
 
     if let State::NoFile = *state {
@@ -143,8 +142,7 @@ pub fn render_app() -> Html {
                                 }
                             }
                         }
-                        None => {
-                        }
+                        None => {}
                     }
                 };
                 move || {} //do stuff when your componet is unmounted
@@ -189,10 +187,19 @@ pub fn render_app() -> Html {
         let settings_modal = settings_modal.clone();
         let show_code_tab = show_code_tab.clone();
         let show_register_tab = show_register_tab.clone();
-        use_effect_with_deps(move |_| {
-            MipsyWebConfig::apply(&*config);
-            move || {}
-        }, (show_io, settings_modal, display_modal, show_code_tab, show_register_tab));
+        use_effect_with_deps(
+            move |_| {
+                MipsyWebConfig::apply(&*config);
+                move || {}
+            },
+            (
+                show_io,
+                settings_modal,
+                display_modal,
+                show_code_tab,
+                show_register_tab,
+            ),
+        );
     }
 
     // REFACTOR - move to fn/file
@@ -352,10 +359,14 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_file_contents(&updated_content);
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
-                worker.borrow().as_ref().unwrap().send(WorkerRequest::CompileCode(FileInformation {
-                    filename: filename.to_string(),
-                    file: clone,
-                }));
+                worker
+                    .borrow()
+                    .as_ref()
+                    .unwrap()
+                    .send(WorkerRequest::CompileCode(FileInformation {
+                        filename: filename.to_string(),
+                        file: clone,
+                    }));
             };
         })
     };

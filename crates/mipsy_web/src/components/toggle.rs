@@ -7,17 +7,12 @@ pub struct ToggleSwitchProps {
 }
 
 #[function_component(ToggleSwitch)]
-pub fn toggle_switch(
-    ToggleSwitchProps {
-        onclick,
-        checked,
-    }: &ToggleSwitchProps,
-) -> Html {
+pub fn toggle_switch(ToggleSwitchProps { onclick, checked }: &ToggleSwitchProps) -> Html {
     html! {
         <label for="checkbox-toggle" class="relative inline-flex items-center mb-4 cursor-pointer">
             <input type="checkbox" checked={*checked} {onclick} id="checkbox-toggle" class="sr-only peer" />
             // Lord bless tailwindcss
-            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 
+            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4
                         peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 
                         dark:bg-gray-700 peer-checked:after:translate-x-full 
                         peer-checked:after:border-white after:content-[''] 

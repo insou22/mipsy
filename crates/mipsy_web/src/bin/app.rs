@@ -1,6 +1,6 @@
+use bounce::BounceRoot;
 use mipsy_web::pages;
 use yew::prelude::*;
-use bounce::BounceRoot;
 
 #[function_component(AppWrapper)]
 pub fn app_wrapper() -> Html {

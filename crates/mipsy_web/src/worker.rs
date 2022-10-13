@@ -481,7 +481,7 @@ impl Agent for Worker {
                                 && binary.breakpoints.contains_key(&pc)
                             {
                                 // the previous instruction was a read syscall
-                                // and indicated that the current instruction 
+                                // and indicated that the current instruction
                                 // is a breakpoint, so break here
                                 // set state to say the next run can ignore
                                 // the breakpoint (since we are breaking here)

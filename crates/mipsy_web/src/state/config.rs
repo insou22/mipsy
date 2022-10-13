@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
 use bounce::prelude::*;
+use gloo_utils::format::JsValueSerdeExt;
 use mipsy_utils::MipsyConfig;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use gloo_utils::format::JsValueSerdeExt;
 
 // i should probably write a macro for this
 #[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
