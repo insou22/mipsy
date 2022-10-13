@@ -46,6 +46,7 @@ pub fn handle_response_from_worker(
                     memory: HashMap::new(),
                     is_stepping: true,
                     binary: Some(response_struct.binary),
+                    breakpoint_switch: false,
                 },
                 input_needed: None,
                 should_kill: false,

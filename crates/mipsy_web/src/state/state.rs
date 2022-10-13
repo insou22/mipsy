@@ -30,6 +30,10 @@ pub struct MipsState {
     pub memory: HashMap<u32, Vec<Safe<u8> /*; PAGE_SIZE] */>>,
     pub is_stepping: bool,
     pub binary: Option<Binary>,
+    /// used to tell us if we have already exited from a breakpoint
+    /// and if the next run should continue or not
+    /// ONLY worker.rs should ever set this
+    pub breakpoint_switch: bool,
 }
 
 impl MipsState {
