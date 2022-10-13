@@ -1,4 +1,4 @@
-use crate::state::config::{RegisterBase, MipsyWebConfig};
+use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
 use bounce::use_atom;
 use mipsy_lib::{Register, Safe};
@@ -48,8 +48,18 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <tbody>
             {
                 for registers.iter().enumerate().map(|(index, item)| {
-
-                    if show_uninitialised_registers || item != &Safe::Uninitialised {
+                    if config.hide_uncommon_registers &&
+                        (index == usize::from(Register::K0.to_number()) ||
+                         index == usize::from(Register::K1.to_number()) ||
+                         index == usize::from(Register::Gp.to_number())
+                        )
+                    {
+                        html!{}
+                    }
+                    else if !show_uninitialised_registers && item == &Safe::Uninitialised {
+                        html!{}
+                    }
+                    else {
                         html! {
                                 <tr class={if registers[index] != previous_registers[index] {
                                         "bg-th-highlighting"
@@ -109,8 +119,6 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     </td>
                             </tr>
                         }
-                    } else {
-                        html! {}
                     }
                 })
             }

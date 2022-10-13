@@ -32,6 +32,8 @@ pub struct MipsyWebConfig {
     pub font_size: u32,
     pub monaco_theme: String,
     pub register_base: RegisterBase,
+    // TODO: should this be abstracted to hide N registers?
+    pub hide_uncommon_registers: bool,
 }
 
 impl Observed for MipsyWebConfig {
@@ -45,6 +47,7 @@ impl Default for PrimaryColor {
         PrimaryColor("#fee2e2".to_string())
     }
 }
+
 impl From<std::string::String> for PrimaryColor {
     fn from(value: std::string::String) -> Self {
         PrimaryColor(value)
@@ -140,6 +143,8 @@ impl Default for MipsyWebConfig {
             font_size: 14,
             monaco_theme: "vs".to_string(),
             register_base: RegisterBase::Hexadecimal,
+            // This is true as most CS1521 students don't need to see them
+            hide_uncommon_registers: true,
         }
     }
 }

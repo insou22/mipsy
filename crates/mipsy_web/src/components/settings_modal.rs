@@ -1,4 +1,5 @@
-use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading};
+use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading,
+toggle::ToggleSwitch};
 use crate::state::config::{
     MipsyWebConfig, FontColor, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor, HighlightColor,
 };
@@ -412,11 +413,29 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </button>
                         </div>
 
+
+                        <Heading
+                            title="Uncommon Registers"
+                            subtitle="Hide $k0, $k1 and $gp"
+                        />
+                        <ToggleSwitch 
+                            checked= {config.hide_uncommon_registers}
+                            onclick={
+                                let config = config.clone();
+                                Callback::from(move |_| {
+                                    config.set(MipsyWebConfig {
+                                        hide_uncommon_registers: !config.hide_uncommon_registers,
+                                        ..(*config).clone()
+                                    });
+                                })
+                            }
+                        />
+
                         <Heading
                             title="Analytics"
                             subtitle="Analytics is currently not implemented"
                         />
-
+                        
                         // disable analytics info until implemented
                         if false {
                             <AnalyticsInformation {is_opt_out} />
