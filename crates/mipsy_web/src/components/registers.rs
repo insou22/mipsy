@@ -9,6 +9,10 @@ pub struct RegisterProps {
     pub tab: UseStateHandle<RegisterTab>,
 }
 
+const K0_INDEX: usize = 26;
+const K1_INDEX: usize = 27;
+const GP_INDEX: usize = 28;
+
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
     let mips_state = match &*props.state {
@@ -33,6 +37,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
         .map(|state| state.previous_registers.clone())
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
+    
     html! {
         <table class="w-full border-collapse table-auto">
             <thead>
@@ -48,8 +53,14 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <tbody>
             {
                 for registers.iter().enumerate().map(|(index, item)| {
-
-                    if show_uninitialised_registers || item != &Safe::Uninitialised {
+                    if config.hide_uncommon_registers &&
+                        (index == K0_INDEX || index == K1_INDEX || index == GP_INDEX) {
+                        html!{} 
+                    }
+                    else if !show_uninitialised_registers && item == &Safe::Uninitialised {
+                        html!{}
+                    }
+                    else {
                         html! {
                                 <tr class={if registers[index] != previous_registers[index] {
                                         "bg-th-highlighting"
@@ -109,8 +120,6 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     </td>
                             </tr>
                         }
-                    } else {
-                        html! {}
                     }
                 })
             }
