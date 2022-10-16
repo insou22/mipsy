@@ -6,7 +6,7 @@ use crate::{
         registers::Registers, settings_modal::SettingsModal, sourcecode::SourceCode,
     },
     state::{
-        config::MipsyWebConfig,
+        config::{MipsyWebConfig, MonacoCursor},
         state::{DisplayedCodeTab, ErrorType, MipsState, RegisterTab, RunningState, State},
         update,
     },
@@ -59,6 +59,7 @@ pub fn render_app() -> Html {
             .map(|item| !(item.as_str() == "true"))
             .unwrap_or(false)
     });
+    let monaco_cursor = use_atom::<MonacoCursor>();
 
     if worker.borrow().is_none() {
         *worker.borrow_mut() = {
@@ -70,6 +71,7 @@ pub fn render_app() -> Html {
             let worker = worker.clone();
             let is_saved = is_saved.clone();
             let filename = filename.clone();
+            let monaco_cursor = monaco_cursor.clone();
             Some(use_bridge(move |response| {
                 let state = state.clone();
                 let show_tab = show_tab.clone();
@@ -79,13 +81,13 @@ pub fn render_app() -> Html {
                 let worker = worker.clone();
                 let is_saved = is_saved.clone();
                 let filename = filename.clone();
+                let monaco_cursor = monaco_cursor.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved,
+                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved, monaco_cursor,
                 )
             }))
         };
     }
-
 
     let config = use_atom::<MipsyWebConfig>();
 
@@ -102,51 +104,51 @@ pub fn render_app() -> Html {
         let filename2 = filename.clone();
         use_effect_with_deps(
             move |_| {
-                unsafe {
-                    let document = web_sys::window().unwrap().document().unwrap();
-                    let element: Option<Element> = document.get_element_by_id("monaco_editor");
-                    match element {
-                        Some(e) => {
-                            // if the editor does not exist, create it
-                            if e.child_element_count() == 0 {
-                                crate::init_editor();
-                            }
-
-                            // if window element is on the page, create, leak, and add the onchange callback
-                            // only if we have not already added it
-                            if window().unwrap().get("editor").is_some() {
-                                let cb = Closure::wrap(Box::new(move || {
-                                    let editor_contents = crate::get_editor_value();
-                                    let editor_contents2 = editor_contents.clone();
-                                    file3.set(Some(editor_contents2));
-
-                                    let last_saved_contents =
-                                        crate::get_localstorage_file_contents();
-
-                                    is_saved.set(editor_contents == last_saved_contents);
-                                })
-                                    as Box<dyn Fn()>);
-
-                                crate::set_model_change_listener(&cb);
-                                cb.forget();
-                            }
-
-                            if let Some(file) = &*file {
-                                crate::set_editor_value(file.as_str())
-                            } else {
-                                let local_editor_contents = crate::get_localstorage_file_contents();
-                                if local_editor_contents.is_empty() {
-                                    crate::set_editor_value("")
-                                } else {
-                                    crate::set_editor_value(local_editor_contents.as_str());
-                                    filename2.set(Some(crate::get_localstorage_filename()));
-                                }
-                            }
+                let document = web_sys::window().unwrap().document().unwrap();
+                let element: Option<Element> = document.get_element_by_id("monaco_editor");
+                match element {
+                    Some(e) => {
+                        //info!("rendering monaco editor");
+                        // if the editor does not exist, create it
+                        if e.child_element_count() == 0 {
+                            crate::init_editor();
                         }
-                        None => {
+
+                        // if window element is on the page, create, leak, and add the onchange callback
+                        // only if we have not already added it
+                        if window().unwrap().get("editor").is_some() {
+                            let cb = Closure::wrap(Box::new(move || {
+                                let editor_contents = crate::get_editor_value();
+                                let editor_contents2 = editor_contents.clone();
+                                file3.set(Some(editor_contents2));
+
+                                let last_saved_contents =
+                                    crate::get_localstorage_file_contents();
+
+                                is_saved.set(editor_contents == last_saved_contents);
+                            })
+                                as Box<dyn Fn()>);
+
+                            crate::set_model_change_listener(&cb);
+                            cb.forget();
+                        }
+
+                        if let Some(file) = &*file {
+                            crate::set_editor_value(file.as_str())
+                        } else {
+                            let local_editor_contents = crate::get_localstorage_file_contents();
+                            if local_editor_contents.is_empty() {
+                                crate::set_editor_value("")
+                            } else {
+                                crate::set_editor_value(local_editor_contents.as_str());
+                                filename2.set(Some(crate::get_localstorage_filename()));
+                            }
                         }
                     }
-                };
+                    None => {
+                    }
+                }
+                
                 move || {} //do stuff when your componet is unmounted
             },
             (filename.clone(), file2, show_code_tab.clone()), // run use_effect when these dependencies change
@@ -341,10 +343,14 @@ pub fn render_app() -> Html {
         let worker = worker.clone();
         let is_saved = is_saved.clone();
         let filename = filename.clone();
+        let monaco_cursor = monaco_cursor.clone();
         Callback::from(move |e: KeyboardEvent| {
             if e.key() == "s" && (e.ctrl_key() || e.meta_key()) {
                 e.prevent_default();
                 log!("ctrl+s save pressed");
+                let cursor_pos = crate::get_cursor_position();
+                monaco_cursor.set(cursor_pos.into());
+
                 is_saved.set(true);
                 let updated_content = crate::get_editor_value();
                 let clone = updated_content.clone();
@@ -388,7 +394,6 @@ pub fn render_app() -> Html {
         ),
     };
 
-    trace!("rendering");
 
     let file_loaded = match *state {
         State::NoFile | State::Error(_) => false,
