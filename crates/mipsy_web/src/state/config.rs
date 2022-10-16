@@ -183,3 +183,20 @@ impl MipsyWebConfig {
         );
     }
 }
+
+#[derive(Atom, Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MonacoCursor {
+    #[serde(rename = "lineNumber")]
+    pub line: u32,
+    pub column: u32,
+}
+
+impl From<JsValue> for MonacoCursor {
+    fn from(value: JsValue) -> Self {
+        let position = value.into_serde::<MonacoCursor>().unwrap();
+        MonacoCursor {
+            line: position.line,
+            column: position.column,
+        }
+    }
+}

@@ -2,14 +2,15 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::state::{
+    state::{config::MonacoCursor, state::{
         DisplayedCodeTab, ErrorState, ErrorType, MipsState, RunningState, RuntimeErrorState, State,
-    },
+    }},
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
     },
 };
+use bounce::prelude::UseAtomHandle;
 use gloo_console::log;
 use log::{error, info};
 use mipsy_lib::Safe;
@@ -30,6 +31,7 @@ pub fn handle_response_from_worker(
     worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
     is_saved: UseStateHandle<bool>,
+    monaco_cursor: UseAtomHandle<MonacoCursor>,
 ) {
     match response {
         WorkerResponse::DecompiledCode(response_struct) => {
@@ -57,6 +59,7 @@ pub fn handle_response_from_worker(
                 crate::set_editor_value(&response_struct.file.clone().unwrap());
                 crate::set_localstorage_file_contents(&response_struct.file.unwrap());
                 is_saved.set(true);
+                crate::set_cursor_position(monaco_cursor.line, monaco_cursor.column);
             }
         }
 

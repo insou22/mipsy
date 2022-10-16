@@ -181,6 +181,13 @@
         html.style.color = color;
         html.style.borderColor = color;
       }
+
+      function get_cursor_position() {
+        return window.editor.getPosition();
+      }
+      function set_cursor_position(line, column) {
+        window.editor.setPosition({lineNumber: line, column: column});
+      }
     </script>
 
     <style id="mainCSS">

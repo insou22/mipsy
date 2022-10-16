@@ -35,6 +35,9 @@ extern "C" {
     pub fn update_editor_options(options: JsValue);
     pub fn update_editor_model_options(options: JsValue);
 
+    pub fn set_cursor_position(line: u32, column: u32);
+    pub fn get_cursor_position() -> JsValue;
+
     pub fn update_primary_color(color: &str);
     pub fn update_secondary_color(color: &str);
     pub fn update_tertiary_color(color: &str);
