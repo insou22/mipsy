@@ -15,11 +15,11 @@ use gloo_console::log;
 use log::{error, info};
 use mipsy_lib::Safe;
 use std::collections::HashMap;
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_agent::UseBridgeHandle;
-use std::{rc::Rc, cell::RefCell};
 
 pub fn handle_response_from_worker(
     state: UseStateHandle<State>,

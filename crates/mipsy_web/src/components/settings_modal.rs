@@ -1,12 +1,14 @@
-use crate::components::{color_picker::ColorPicker, dropdown::Dropdown, heading::Heading,
-toggle::ToggleSwitch};
+use crate::components::{
+    color_picker::ColorPicker, dropdown::Dropdown, heading::Heading, toggle::ToggleSwitch,
+};
 use crate::state::config::{
-    MipsyWebConfig, FontColor, PrimaryColor, RegisterBase, SecondaryColor, TertiaryColor, HighlightColor,
+    FontColor, HighlightColor, MipsyWebConfig, PrimaryColor, RegisterBase, SecondaryColor,
+    TertiaryColor,
 };
 use bounce::use_atom;
+use gloo_utils::format::JsValueSerdeExt;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
-use gloo_utils::format::JsValueSerdeExt;
 use web_sys::{HtmlInputElement, HtmlSelectElement};
 use yew::{prelude::*, Properties};
 
@@ -418,7 +420,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             title="Uncommon Registers"
                             subtitle="Hide $k0, $k1 and $gp"
                         />
-                        <ToggleSwitch 
+                        <ToggleSwitch
                             checked= {config.hide_uncommon_registers}
                             onclick={
                                 let config = config.clone();
@@ -435,7 +437,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             title="Analytics"
                             subtitle="Analytics is currently not implemented"
                         />
-                        
+
                         // disable analytics info until implemented
                         if false {
                             <AnalyticsInformation {is_opt_out} />
