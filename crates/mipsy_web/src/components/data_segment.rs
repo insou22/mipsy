@@ -77,7 +77,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
 
                                 // render the data
                                 <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
-                                    { render_page(page_addr, page_contents, &registers) }
+                                    { render_page(&props, page_addr, page_contents, &registers) }
                                 </div>
                             </>
                         }
@@ -128,7 +128,7 @@ impl Escape for char {
     }
 }
 
-fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i32>]) -> Html {
+fn render_page(props: &DataSegmentProps, page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i32>]) -> Html {
     const ROWS: usize = 4;
     const ROW_SIZE: usize = PAGE_SIZE / ROWS;
 
@@ -142,6 +142,39 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                 <div style="grid-column: col-start 3 / span 19; display: grid;  grid-template-columns: repeat(19, 1fr)">
                 {
                     for (0..ROW_SIZE).enumerate().map(|(i, offset)| {
+                        let full_offset = nth * ROW_SIZE + offset;
+                        let full_page_addr = page_addr as usize + full_offset;
+                        let class = "cursor-help";
+                        let mut style = "border: 2px solid ".to_string();
+                        let mut title = "".to_string();
+
+                        if let Some((label, _)) = props.state.mips_state.binary.clone().as_ref().unwrap()
+                            .labels
+                            .iter()
+                            .find(|(_, &addr)| addr == full_page_addr as u32)
+                        {
+                            title.push_str(&format!("{}:\n", label));
+                        }
+
+                        title.push_str(&format!("0x{:08X}", full_page_addr));
+
+                        if full_page_addr == registers[29].into_option().unwrap_or(0) as usize &&
+                            full_page_addr == registers[30].into_option().unwrap_or(0) as usize {
+                                style.push_str("blue");
+                                title.push_str("\n$sp & $fp");
+                        }
+                        else if full_page_addr == registers[29].into_option().unwrap_or(0) as usize {
+                            style.push_str("green");
+                            title.push_str("\n$sp");
+                        }
+                        else if full_page_addr == registers[30].into_option().unwrap_or(0) as usize {
+                            style.push_str("red");
+                            title.push_str("\n$fp");
+                        }
+                        else {
+                            style.push_str("transparent");
+                        }
+
                         html! {
                             <>
                                 // add an extra column to gap between 4 bytes
@@ -150,36 +183,12 @@ fn render_page(page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i
                                 }
                                 <div style="text-align: center;">
                                     {
-                                        if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize &&
-                                            page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                            html! {
-                                                <span class="cursor-help" style="border: 1px solid blue; background-color: blue;" title="$sp & $fp">
-                                                {
-                                                    render_data(page_contents[nth * ROW_SIZE + offset])
-                                                }
-                                                </span>
+                                        html! {
+                                            <span class={class} style={style} title={title}>
+                                            {
+                                                    render_data(page_contents[full_offset])
                                             }
-                                        }
-                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[29].into_option().unwrap_or(0) as usize {
-                                            html! {
-                                                <span class="cursor-help" style="border: 1px solid green; background-color: green;" title="$sp">
-                                                {
-                                                    render_data(page_contents[nth * ROW_SIZE + offset])
-                                                }
-                                                </span>
-                                            }
-                                        }
-                                        else if page_addr as usize + nth * ROW_SIZE + offset == registers[30].into_option().unwrap_or(0) as usize {
-                                            html! {
-                                                <span class="cursor-help" style="border: 1px solid red;background-color: red;" title="$fp">
-                                                {
-                                                        render_data(page_contents[nth * ROW_SIZE + offset])
-                                                }
-                                                </span>
-                                            }
-                                        }
-                                        else {
-                                            render_data(page_contents[nth * ROW_SIZE + offset])
+                                            </span>
                                         }
                                     }
                                 </div>
