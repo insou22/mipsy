@@ -489,7 +489,7 @@ impl State {
                                 .find(|(_, &addr)| addr == pc)
                                 .map(|(name, _)| name.yellow().bold().to_string());
 
-                        runtime_handler::breakpoint(label.as_deref(), pc);
+                        runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
                         if let Some(bp) = bp {
                             bp.commands.clone().iter().for_each(|command| {
                                 self.exec_command(command.to_owned());
@@ -505,7 +505,8 @@ impl State {
                         if wp.ignore_count > 0 {
                             wp.ignore_count -= 1;
                         } else {
-                            runtime_handler::watchpoint(watchpoint, pc - 4);
+                            let prev_pc = pc - 4;
+                            runtime_handler::watchpoint(watchpoint, prev_pc, &self.binary.as_ref().unwrap_or(&empty_binary).line_numbers);
                             wp.commands.clone().iter().for_each(|command| {
                                 self.exec_command(command.to_owned());
                             });

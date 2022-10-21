@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}, str::FromStr};
+use std::{fmt::{Debug, Display}, str::FromStr, collections::HashMap, rc::Rc};
 use crate::interactive::TargetAction;
 
 use super::{prompt, TargetWatch};
@@ -313,20 +313,25 @@ pub(crate) fn trap(_verbose: bool) {
     println!("{}\n", "[TRAP]".bright_red().bold());
 }
 
-pub(crate) fn breakpoint(label: Option<&str>, pc: u32) {
+pub(crate) fn breakpoint(label: Option<&str>, pc: u32, line_numbers: &HashMap<u32, (Rc<str>, u32)>) {
+    let (filename, line_num, addr) = get_line_info(line_numbers, pc);
+
     println!(
         "{}{}{}\n",
         "\n[BREAKPOINT ".cyan().bold(),
-        label.unwrap_or(&format!("{}{:08x}", "0x".yellow(), pc)),
+        label.unwrap_or(&format!("{}:{}{}", filename, line_num, addr)),
         "]".cyan().bold()
     );
 }
 
-pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32) {
+pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32, line_numbers: &HashMap<u32, (Rc<str>, u32)>) {
+    let (filename, line_num, addr) = get_line_info(line_numbers, pc);
     println!(
-        "{}{}{} - {} was {}\n",
-        "\n[WATCHPOINT ".cyan().bold(),
-        format!("{}{:08x}", "0x".yellow(), pc),
+        "{} {}:{}{}{} - {} was {}\n",
+        "\n[WATCHPOINT".cyan().bold(),
+        filename,
+        line_num,
+        addr,
         "]".cyan().bold(),
         watchpoint.target,
         match watchpoint.action {
@@ -335,4 +340,29 @@ pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32) {
             TargetAction::ReadWrite => "written to",
         }
     );
+}
+
+fn get_line_info(line_numbers: &HashMap<u32, (Rc<str>, u32)>, pc: u32) -> (&str, u32, String) {
+    // get closest line number (pc may be in the middle of a pseudoinstruction)
+    let mut lines = line_numbers.iter().filter(|&(&addr, _)| addr <= pc).collect::<Vec<_>>();
+    lines.sort_unstable_by_key(|&(&addr, _)| addr);
+    let line_num = lines.last().expect("there should be at least one line");
+    let addr = if line_num.0 != &pc {
+        // we're in the middle of a pseudoinstruction
+        format!(" ({}{:08x})", "0x".yellow(), pc)
+    } else {
+        "".into()
+    };
+
+    // don't show filename when only 1 file is loaded
+    let mut filenames = line_numbers.values()
+            .map(|(filename, _)| filename);
+    let file = filenames.next().unwrap().as_ref();
+    let filename = if !filenames.all(|f| f.as_ref() == file) {
+        line_num.1.0.as_ref()
+    } else {
+        ""
+    };
+
+    (filename, line_num.1.1, addr)
 }
