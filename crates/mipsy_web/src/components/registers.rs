@@ -1,3 +1,4 @@
+use crate::components::data_segment::{FP_COLOR, SP_COLOR};
 use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
 use bounce::use_atom;
@@ -48,7 +49,8 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <tbody>
             {
                 for registers.iter().enumerate().map(|(index, item)| {
-                    if config.hide_uncommon_registers &&
+                    if !show_uninitialised_registers &&
+                        config.hide_uncommon_registers &&
                         (index == usize::from(Register::K0.to_number()) ||
                          index == usize::from(Register::K1.to_number()) ||
                          index == usize::from(Register::Gp.to_number())
@@ -68,19 +70,17 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     }
                                 }>
                                     <td class="border-current border-b-2 pl-4 text-center"> {
-                                            if index == 29 {
-                                                // make stack pointer green
+                                            if index == Register::Sp.to_number() as usize {
                                                 html! {
-                                                    <span style="color: green;">
+                                                    <span style={format!("color: {};", SP_COLOR)}>
                                                             {"$"}
                                                             {Register::from_u32(index as u32).unwrap().to_lower_str()}
                                                     </span>
                                                 }
                                             }
-                                            else if index == 30 {
-                                                // make frame pointer red
+                                            else if index == Register::Fp.to_number() as usize {
                                                 html! {
-                                                    <span style="color: red;">
+                                                    <span style={format!("color: {};", FP_COLOR)}>
                                                             {"$"}
                                                             {Register::from_u32(index as u32).unwrap().to_lower_str()}
                                                     </span>

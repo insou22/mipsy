@@ -1,6 +1,7 @@
 use crate::state::state::RunningState;
 use mipsy_lib::runtime::PAGE_SIZE;
 use mipsy_lib::util::{get_segment, Segment};
+use mipsy_lib::Register;
 use mipsy_lib::Safe;
 use yew::prelude::*;
 use yew::Properties;
@@ -21,6 +22,11 @@ fn should_display_segment(segment: Segment) -> bool {
         Segment::KData => false,
     }
 }
+
+pub const SP_COLOR: &str = "green";
+pub const FP_COLOR: &str = "red";
+pub const SP_FP_COLOR: &str = "blue";
+pub const GP_COLOR: &str = "transparent";
 
 // NOTE to any future adventurers wanting to change the layout of this component:
 // This layout currently makes use of CSS grid crazy semantics
@@ -128,9 +134,17 @@ impl Escape for char {
     }
 }
 
-fn render_page(props: &DataSegmentProps, page_addr: u32, page_contents: Vec<Safe<u8>>, registers: &[Safe<i32>]) -> Html {
+fn render_page(
+    props: &DataSegmentProps,
+    page_addr: u32,
+    page_contents: Vec<Safe<u8>>,
+    registers: &[Safe<i32>],
+) -> Html {
     const ROWS: usize = 4;
     const ROW_SIZE: usize = PAGE_SIZE / ROWS;
+    const SP: usize = Register::Sp.to_number() as usize;
+    const FP: usize = Register::Fp.to_number() as usize;
+    const GP: usize = Register::Gp.to_number() as usize;
 
     html! {
         for (0..ROWS).map(|nth| {
@@ -145,8 +159,8 @@ fn render_page(props: &DataSegmentProps, page_addr: u32, page_contents: Vec<Safe
                         let full_offset = nth * ROW_SIZE + offset;
                         let full_page_addr = page_addr as usize + full_offset;
                         let class = "cursor-help";
-                        let mut style = "border: 2px solid ".to_string();
-                        let mut title = "".to_string();
+                        let mut style = String::new();
+                        let mut title = String::new();
 
                         if let Some((label, _)) = props.state.mips_state.binary.clone().as_ref().unwrap()
                             .labels
@@ -158,21 +172,26 @@ fn render_page(props: &DataSegmentProps, page_addr: u32, page_contents: Vec<Safe
 
                         title.push_str(&format!("0x{:08X}", full_page_addr));
 
-                        if full_page_addr == registers[29].into_option().unwrap_or(0) as usize &&
-                            full_page_addr == registers[30].into_option().unwrap_or(0) as usize {
-                                style.push_str("blue");
-                                title.push_str("\n$sp & $fp");
+                        if full_page_addr == registers[SP].into_option().unwrap_or(0) as usize &&
+                            full_page_addr == registers[FP].into_option().unwrap_or(0) as usize {
+                                style.push_str(&format!("border: 2px solid {};", SP_FP_COLOR));
+                                title.push_str("\n$sp");
+                                title.push_str("\n$fp");
                         }
-                        else if full_page_addr == registers[29].into_option().unwrap_or(0) as usize {
-                            style.push_str("green");
+                        else if full_page_addr == registers[SP].into_option().unwrap_or(0) as usize {
+                            style.push_str(&format!("border: 2px solid {};", SP_COLOR));
                             title.push_str("\n$sp");
                         }
-                        else if full_page_addr == registers[30].into_option().unwrap_or(0) as usize {
-                            style.push_str("red");
+                        else if full_page_addr == registers[FP].into_option().unwrap_or(0) as usize {
+                            style.push_str(&format!("border: 2px solid {};", FP_COLOR));
                             title.push_str("\n$fp");
                         }
+                        else if full_page_addr == registers[GP].into_option().unwrap_or(0) as usize {
+                            style.push_str(&format!("border: 2px solid {};", GP_COLOR));
+                            title.push_str("\n$gp");
+                        }
                         else {
-                            style.push_str("transparent");
+                            style.push_str("border: 2px solid transparent;");
                         }
 
                         html! {
