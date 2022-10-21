@@ -24,7 +24,7 @@ Features you (hopefully) will be pleased to find in mipsy:
 - Runtime checks - uninitialized memory, registers, etc.
 - A powerful and intuitive debugger with readline support
 - Time travel debugging
-- Wasm in-browser client (a la QtSpim) -- NOTE: *currently experimental*
+- Wasm in-browser client (a la QtSpim) 
 - ... more to be included here ...
 
 This project is a work-in-progress, but is in a reasonably usable state -- make sure you understand what mipsy does and does not provide before deciding if it is right for you!
