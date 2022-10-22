@@ -1,7 +1,7 @@
+use crate::error::{compiler, InternalError, MipsyInternalResult};
 use colored::Colorize;
-use serde::{Serialize, Deserialize};
-use crate::error::{InternalError, MipsyInternalResult, compiler};
-use std::{str::FromStr, fmt::Display};
+use serde::{Deserialize, Serialize};
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Copy, Clone, Serialize, Debug, Deserialize, PartialEq, Hash, Eq)]
 pub enum Register {
@@ -39,17 +39,18 @@ pub enum Register {
     Ra,
 }
 
+#[rustfmt::skip]
 pub const REGISTERS: [Register; 32] = [
-    Register::Zero, Register::At, 
-    Register::V0, Register::V1, 
-    Register::A0, Register::A1, Register::A2, Register::A3, 
-    Register::T0, Register::T1, Register::T2, Register::T3, 
-    Register::T4, Register::T5, Register::T6, Register::T7, 
-    Register::S0, Register::S1, Register::S2, Register::S3, 
-    Register::S4, Register::S5, Register::S6, Register::S7, 
-    Register::T8, Register::T9, 
-    Register::K0, Register::K1, 
-    Register::Gp, Register::Sp, Register::Fp, 
+    Register::Zero, Register::At,
+    Register::V0, Register::V1,
+    Register::A0, Register::A1, Register::A2, Register::A3,
+    Register::T0, Register::T1, Register::T2, Register::T3,
+    Register::T4, Register::T5, Register::T6, Register::T7,
+    Register::S0, Register::S1, Register::S2, Register::S3,
+    Register::S4, Register::S5, Register::S6, Register::S7,
+    Register::T8, Register::T9,
+    Register::K0, Register::K1,
+    Register::Gp, Register::Sp, Register::Fp,
     Register::Ra,
 ];
 
@@ -70,29 +71,26 @@ impl FromStr for Register {
         }
 
         // better error reporting
-        if name.starts_with('v') || name.starts_with('a') || 
-           name.starts_with('t') || name.starts_with('s') || 
-           name.starts_with('k') {
+        if name.starts_with('v')
+            || name.starts_with('a')
+            || name.starts_with('t')
+            || name.starts_with('s')
+            || name.starts_with('k')
+        {
             if let Ok(num) = name[1..].parse::<i32>() {
-                return Err(
-                    InternalError::Compiler(
-                        compiler::Error::NamedRegisterOutOfRange {
-                            reg_name: name.chars().next().unwrap(),
-                            reg_index: num
-                        }
-                    )
-                );
+                return Err(InternalError::Compiler(
+                    compiler::Error::NamedRegisterOutOfRange {
+                        reg_name: name.chars().next().unwrap(),
+                        reg_index: num,
+                    },
+                ));
             }
         }
 
         // who knows
-        Err(
-            InternalError::Compiler(
-                compiler::Error::UnknownRegister {
-                    reg_name: name.to_string(),
-                }
-            )
-        )
+        Err(InternalError::Compiler(compiler::Error::UnknownRegister {
+            reg_name: name.to_string(),
+        }))
     }
 }
 
@@ -107,7 +105,8 @@ impl Register {
         REGISTERS
     }
 
-    pub fn to_number(&self) -> u8 {
+    #[rustfmt::skip]
+    pub const fn to_number(&self) -> u8 {
         match self {
             Self::Zero => 0,
             Self::At   => 1,
@@ -144,6 +143,7 @@ impl Register {
         }
     }
 
+    #[rustfmt::skip]
     pub fn from_number(num: i32) -> MipsyInternalResult<Self> {
         match num {
             0  => Ok(Self::Zero),
@@ -200,7 +200,8 @@ impl Register {
         Self::from_u32(num).unwrap().to_str()
     }
 
-    pub fn to_str(&self) -> &'static str {
+    #[rustfmt::skip]
+    pub const fn to_str(&self) -> &'static str {
         match self {
             Self::Zero => "ZERO",
             Self::At   => "AT",
@@ -237,7 +238,8 @@ impl Register {
         }
     }
 
-    pub fn to_lower_str(&self) -> &'static str {
+    #[rustfmt::skip]
+    pub const fn to_lower_str(&self) -> &'static str {
         match self {
             Self::Zero => "zero",
             Self::At   => "at",

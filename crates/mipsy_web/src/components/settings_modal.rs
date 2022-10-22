@@ -169,8 +169,8 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         />
                         </div>
 
-
-                        <Heading title="editor theme" subtitle="pick a theme for the editor!" />
+                        // === Editor Theme ===
+                        <Heading title="Editor Theme" subtitle="pick a theme for the editor!" />
                         <div class="w-3/12">
                         <Dropdown
                             onchange={{
@@ -209,7 +209,8 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         />
                         </div>
 
-                        <Heading title="Font color" subtitle="Font, Icon and Border colors" />
+                        // === Font Color ===
+                        <Heading title="Font Color" subtitle="Font, Icon and Border colors" />
                         <div class="flex flex-row items-center">
                         <ColorPicker
                             oninput={
@@ -248,7 +249,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
 
                         // === Primary Color ===
                         <Heading
-                            title="Primary color"
+                            title="Primary Color"
                             subtitle="Adjust the primary color"
                         />
                         <div class="flex flex-row items-center">
@@ -288,11 +289,11 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </button>
                         </div>
 
+                        // === Secondary Color ===
                         <Heading
-                            title="Secondary color"
+                            title="Secondary Color"
                             subtitle="Used for the background of the editor, register and IO areas"
                         />
-
 
                         <div class="flex flex-row items-center">
                         <ColorPicker
@@ -331,8 +332,9 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </button>
                         </div>
 
+                        // === Tertiary Color ===
                         <Heading
-                            title="Tertiary color"
+                            title="Tertiary Color"
                             subtitle="Used for unselected tabs"
                         />
 
@@ -373,8 +375,9 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </button>
                         </div>
 
+                        // === Highlight Color ===
                         <Heading
-                            title="Highlight color"
+                            title="Highlight Color"
                             subtitle="Used for highlighting information"
                         />
 
@@ -415,9 +418,9 @@ pub fn render_modal(props: &ModalProps) -> Html {
                         </button>
                         </div>
 
-
+                        // === Hide Uncommon Registers ===
                         <Heading
-                            title="Uncommon Registers"
+                            title="Hide Uncommon Registers"
                             subtitle="Hide $k0, $k1 and $gp"
                         />
                         <ToggleSwitch
@@ -433,13 +436,14 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             }
                         />
 
-                        <Heading
-                            title="Analytics"
-                            subtitle="Analytics is currently not implemented"
-                        />
-
+                        // === Analytics ===
                         // disable analytics info until implemented
                         if false {
+                            <Heading
+                                title="Analytics"
+                                subtitle="Analytics is currently not implemented"
+                            />
+
                             <AnalyticsInformation {is_opt_out} />
                         }
                     </div>
