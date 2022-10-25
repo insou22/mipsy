@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::state::state::RunningState;
 use mipsy_lib::runtime::PAGE_SIZE;
 use mipsy_lib::util::{get_segment, Segment};
@@ -146,6 +148,15 @@ fn render_page(
     const FP: usize = Register::Fp.to_number() as usize;
     const GP: usize = Register::Gp.to_number() as usize;
 
+    let binding = props.state.mips_state.binary.clone();
+    let labels = binding
+        .as_ref()
+        .unwrap()
+        .labels
+        .iter()
+        .map(|(label, &addr)| (addr, label))
+        .collect::<HashMap<u32, &String>>();
+
     html! {
         for (0..ROWS).map(|nth| {
             html! {
@@ -162,10 +173,7 @@ fn render_page(
                         let mut style = String::new();
                         let mut title = String::new();
 
-                        if let Some((label, _)) = props.state.mips_state.binary.clone().as_ref().unwrap()
-                            .labels
-                            .iter()
-                            .find(|(_, &addr)| addr == full_page_addr as u32)
+                        if let Some(label) = labels.get(&(full_page_addr as u32))
                         {
                             title.push_str(&format!("{}:\n", label));
                         }
