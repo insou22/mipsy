@@ -159,7 +159,7 @@ impl Runtime {
     #[allow(unreachable_code)]
     fn syscall(mut self) -> Result<RuntimeSyscallGuard, (Runtime, MipsyError)> {
         let syscall = try_owned_self!(self, self.timeline.state().read_register(Register::V0.to_u32()));
-    
+
         Ok(
             match syscall {
                 SYS1_PRINT_INT => {
@@ -231,7 +231,7 @@ impl Runtime {
                                 }
 
                                 string.push(0);
-                                
+
                                 for (i, byte) in string.into_iter().enumerate() {
                                     // if there's a segmentation fault, we just don't end up writing the data
                                     let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, byte);
@@ -294,7 +294,7 @@ impl Runtime {
                     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
                     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as u32;
                     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-                
+
                     RuntimeSyscallGuard::Read(
                         ReadArgs {
                             fd,
@@ -302,13 +302,13 @@ impl Runtime {
                         },
                         Box::new(move |(n_bytes, bytes)| {
                             let len = (len as usize).min(bytes.len());
-                
+
                             bytes[..len].iter().enumerate().for_each(|(i, byte)| {
                                 // if there's a segmentation fault, we just don't end up writing the data
                                 let _ = self.timeline.state_mut().write_mem_byte(buf + i as u32, *byte);
                             });
                             self.timeline.state_mut().write_register(Register::V0.to_u32(), n_bytes);
-                
+
                             self
                         })
                     )
@@ -317,7 +317,7 @@ impl Runtime {
                     let fd  = try_owned_self!(self, self.timeline.state().read_register(Register::A0.to_u32())) as _;
                     let buf = try_owned_self!(self, self.timeline.state().read_register(Register::A1.to_u32())) as _;
                     let len = try_owned_self!(self, self.timeline.state().read_register(Register::A2.to_u32())) as _;
-                
+
                     RuntimeSyscallGuard::Write(
                         WriteArgs {
                             fd,
@@ -325,7 +325,7 @@ impl Runtime {
                         },
                         Box::new(move |written| {
                             self.timeline.state_mut().write_register(Register::V0.to_u32(), written as _);
-                
+
                             self
                         })
                     )
@@ -436,55 +436,55 @@ impl Runtime {
                 match funct {
                     // SLL  $Rd, $Rt, Sa
                     0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) << shamt) as i32); },
-        
+
                     // Unused
                     0x01 => {},
-        
+
                     0x02 => {
                         match rs {
                             // SRL  $Rd, $Rt, Sa
                             0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> shamt) as i32); }
-                            
+
                             // ROTR $Rd, $Rt, Sa
                             0x01 => { state.write_register(rd, ((state.read_register(rt)? as u32).rotate_right(shamt)) as i32); }
 
                             _ => todo!(),
                         }
                     },
-        
+
                     // SRA  $Rd, $Rt, Sa
                     0x03 => { state.write_register(rd, state.read_register(rt)? >> shamt); },
-        
+
                     // SLLV $Rd, $Rt, $Rs
                     0x04 => { state.write_register(rd, ((state.read_register(rt)? as u32) << state.read_register(rs)?) as i32); },
-        
+
                     // Unused
                     0x05 => {},
-        
+
                     0x06 => {
                         match shamt {
                             // SRLV $Rd, $Rt, $Rs
                             0x00 => { state.write_register(rd, ((state.read_register(rt)? as u32) >> state.read_register(rs)?) as i32); },
-                            
+
                             // ROTRV $Rd, $Rt, $Rs
                             0x01 => { state.write_register(rd, ((state.read_register(rt)? as u32).rotate_right(state.read_register(rs)? as u32)) as i32); },
 
                             _ => todo!(),
                         }
                     }
-        
+
                     // SRAV $Rd, $Rt, $Rs
                     0x07 => { state.write_register(rd, state.read_register(rt)? >> state.read_register(rs)?); },
-        
+
                     // JR   $Rs
                     0x08 => { state.set_pc(state.read_register(rs)? as u32); },
-        
+
                     // JALR $Rs
-                    0x09 => { 
-                        state.write_register(rd, state.pc() as _); 
+                    0x09 => {
+                        state.write_register(rd, state.pc() as _);
                         state.set_pc(state.read_register(rs)? as _);
                     },
-                    
+
                     // MOVZ $Rd, $Rs, $Rt
                     0x0A => {
                         if state.read_register(rt)? == 0 {
@@ -498,19 +498,19 @@ impl Runtime {
                             state.write_register(rd, state.read_register(rs)?);
                         }
                     },
-        
+
                     // SYSCALL
                     0x0C => unreachable!("covered above"),
-        
+
                     // BREAK
                     0x0D => unreachable!("covered above"),
-        
+
                     // Unused
                     0x0E => {},
-        
+
                     // Unused
                     0x0F => {},
-        
+
                     0x10 => match shamt {
                         // MFHI $Rd
                         0x00 => { state.write_register(rd, state.read_hi()?); }
@@ -520,135 +520,135 @@ impl Runtime {
 
                         _ => todo!(),
                     }
-        
+
                     0x11 => match shamt {
                         // MTHI $Rs
                         0x00 => { state.write_hi(state.read_register(rs)?); }
-                        
+
                         // CLO $Rd, $Rs
                         0x01 => { state.write_register(rd, state.read_register(rs)?.leading_ones() as i32); }
 
                         _ => todo!(),
                     }
-        
+
                     // MFLO $Rd
                     0x12 => { state.write_register(rd, state.read_lo()?); },
-        
+
                     // MTLO $Rs
                     0x13 => { state.write_lo(state.read_register(rs)?); },
-        
+
                     // Unused
                     0x14 => {},
-        
+
                     // Unused
                     0x15 => {},
-        
+
                     // Unused
                     0x16 => {},
-        
+
                     // Unused
                     0x17 => {},
-        
+
                     // MULT $Rs, $Rt
                     0x18 => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         let result = (rs_val as i64 * rt_val as i64) as u64;
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     },
-        
+
                     // MULTU $Rs, $Rt
                     0x19 => {
                         let rs_val = state.read_register(rs)? as u32;
                         let rt_val = state.read_register(rt)? as u32;
-        
+
                         let result = rs_val as u64 * rt_val as u64;
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     },
-        
+
                     // DIV  $Rs, $Rt
                     0x1A => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         if rt_val == 0 {
                             return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
                         }
-        
+
                         state.write_lo(rs_val / rt_val);
                         state.write_hi(rs_val % rt_val);
                     },
-        
+
                     // DIVU $Rs, $Rt
                     0x1B => {
                         let rs_val = state.read_register(rs)? as u32;
                         let rt_val = state.read_register(rt)? as u32;
-        
+
                         if rt_val == 0 {
                             return Err(MipsyError::Runtime(RuntimeError::new(Error::DivisionByZero)));
                         }
-        
+
                         state.write_lo((rs_val / rt_val) as i32);
                         state.write_hi((rs_val % rt_val) as i32);
                     },
-        
+
                     // Unused
                     0x1C => {},
-        
+
                     // Unused
                     0x1D => {},
-        
+
                     // Unused
                     0x1E => {},
-        
+
                     // Unused
                     0x1F => {},
-        
+
                     // ADD  $Rd, $Rs, $Rt
                     0x20 => { state.write_register(rd, checked_add(state.read_register(rs)?, state.read_register(rt)?)?); },
-        
+
                     // ADDU $Rd, $Rs, $Rt
                     0x21 => { state.write_register(rd, state.read_register(rs)?.wrapping_add(state.read_register(rt)?)); },
-        
+
                     // SUB  $Rd, $Rs, $Rt
                     0x22 => { state.write_register(rd, checked_sub(state.read_register(rs)?, state.read_register(rt)?)?); },
-        
+
                     // SUBU $Rd, $Rs, $Rt
                     0x23 => { state.write_register(rd, state.read_register(rs)?.wrapping_sub(state.read_register(rt)?)); },
-        
+
                     // AND  $Rd, $Rs, $Rt
                     0x24 => { state.write_register(rd, state.read_register(rs)? & state.read_register(rt)?); },
-        
+
                     // OR   $Rd, $Rs, $Rt
                     0x25 => { state.write_register(rd, state.read_register(rs)? | state.read_register(rt)?); },
-        
+
                     // XOR  $Rd, $Rs, $Rt
                     0x26 => { state.write_register(rd, state.read_register(rs)? ^ state.read_register(rt)?); },
-        
+
                     // NOR  $Rd, $Rs, $Rt
                     0x27 => { state.write_register(rd, ! (state.read_register(rs)? | state.read_register(rt)?)); },
-        
+
                     // Unused
                     0x28 => {},
-        
+
                     // Unused
                     0x29 => {},
-        
+
                     // SLT  $Rd, $Rs, $Rt
                     0x2A => { state.write_register(rd, if state.read_register(rs)? < state.read_register(rt)? { 1 } else { 0 } ); },
-        
+
                     // SLTU $Rd, $Rs, $Rt
                     0x2B => { state.write_register(rd, if (state.read_register(rs)? as u32) < state.read_register(rt)? as u32 { 1 } else { 0 } ); },
-        
+
                     // Unused
                     0x2C..=0x3F => {},
-        
+
                     // Doesn't fit in 6 bits
                     _ => unreachable!(),
-                }        
+                }
             }
             SPECIAL2 => {
                 match funct {
@@ -656,43 +656,54 @@ impl Runtime {
                     0x00 => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
                         let result = original + (rs_val as i64 * rt_val as i64) as u64;
 
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     }
-                    
+
                     // MADDU
                     0x01 => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
                         let result = original + rs_val as u64 * rt_val as u64;
 
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     }
-                    
+
+                    // MUL
+                    0x02 => {
+                        let rs_val = state.read_register(rs)?;
+                        let rt_val = state.read_register(rt)?;
+
+                        let result = rs_val * rt_val;
+
+                        state.write_register(rd, result);
+                        // should set HI and LO to UNINITIALIZED
+                    }
+
                     // MSUB
                     0x04 => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
                         let result = original - (rs_val as i64 * rt_val as i64) as u64;
 
                         state.write_hi((result >> 32) as _);
                         state.write_lo((result & 0xFFFF_FFFF) as _);
                     }
-                    
+
                     // MSUBU
                     0x05 => {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
-        
+
                         let original = ((state.read_hi()? as u64) << 32) | state.read_lo()? as u64;
                         let result = original - rs_val as u64 * rt_val as u64;
 
@@ -724,10 +735,10 @@ impl Runtime {
 
                             // SEB  $Rd, $Rt
                             0x10 => { state.write_register(rd, (state.read_register(rt)? as u8 ).extend_sign()); },
-                            
+
                             // SEH  $Rd, $Rt
                             0x18 => { state.write_register(rd, (state.read_register(rt)? as u16).extend_sign()); },
-                        
+
                             _ => todo!(),
                         }
                     }
@@ -849,52 +860,52 @@ impl Runtime {
 
             // Unused
             0x02 => {},
-            
+
             // Unused
             0x03 => {},
-            
+
             // BEQ  $Rs, $Rt, Im
             0x04 => { if state.read_register(rs)? == state.read_register(rt)? { state.branch(imm); } },
-            
+
             // BNE  $Rs, $Rt, Im
             0x05 => { if state.read_register(rs)? != state.read_register(rt)? { state.branch(imm); } },
-            
+
             // BLEZ $Rs, Im
             0x06 => { if state.read_register(rs)? <= 0 { state.branch(imm); } },
-            
+
             // BGTZ $Rs, Im
             0x07 => { if state.read_register(rs)? > 0 { state.branch(imm); } },
-            
+
             // ADDI $Rt, $Rs, Im
             0x08 => { state.write_register(rt, checked_add(state.read_register(rs)?, imm_sign_extend)?) },
-            
+
             // ADDIU $Rt, $Rs, Im
             0x09 => { state.write_register(rt, state.read_register(rs)?.wrapping_add(imm_sign_extend)) },
-            
+
             // SLTI $Rt, $Rs, Im
             0x0A => { if state.read_register(rs)? < imm_sign_extend { state.write_register(rt, 1); } else { state.write_register(rt, 0); } },
-            
+
             // SLTIU $Rt, $Rs, Im
             0x0B => { if (state.read_register(rs)? as u32) < imm_sign_extend as u32 { state.write_register(rt, 1); } else { state.write_register(rt, 0); } },
-            
+
             // ANDI $Rt, $Rs, Im
             0x0C => { state.write_register(rt, state.read_register(rs)? & imm_zero_extend); },
-            
+
             // ORI  $Rt, $Rs, Im
             0x0D => { state.write_register(rt, state.read_register(rs)? | imm_zero_extend); },
-            
+
             // XORI $Rt, $Rs, Im
             0x0E => { state.write_register(rt, state.read_register(rs)? ^ imm_zero_extend); },
-            
+
             // LUI  $Rt, Im
             0x0F => { state.write_register(rt, imm_zero_extend << 16); },
-            
+
             // Unused
             0x10..=0x1F => {},
-            
+
             // LB   $Rt, Im($Rs)
             0x20 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)?.extend_sign()); },
-            
+
             // LH   $Rt, Im($Rs)
             0x21 => {
                 let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
@@ -903,14 +914,14 @@ impl Runtime {
                     return Err(MipsyError::Runtime(RuntimeError::new(Error::UnalignedAccess { addr, alignment_requirement: AlignmentRequirement::Half })));
                 }
 
-                state.write_register_uninit(rt, state.read_mem_half_uninit(addr)?.extend_sign()); 
+                state.write_register_uninit(rt, state.read_mem_half_uninit(addr)?.extend_sign());
             },
-            
+
             // LWL  $Rt, Im($Rs)
             0x22 => {
                 todo!();
             },
-            
+
             // LW   $Rt, Im($Rs)
             0x23 => {
                 let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
@@ -921,10 +932,10 @@ impl Runtime {
 
                 state.write_register_uninit(rt, state.read_mem_word_uninit(addr)?.extend_sign());
             },
-            
+
             // LBU  $Rt, Im($Rs)
             0x24 => { state.write_register_uninit(rt, state.read_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _)?.extend_zero()); },
-            
+
             // LHU  $Rt, Im($Rs)
             0x25 => {
                 let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
@@ -935,18 +946,18 @@ impl Runtime {
 
                 state.write_register_uninit(rt, state.read_mem_half_uninit(addr)?.extend_zero());
             },
-            
+
             // LWR  $Rt, Im($Rs)
             0x26 => {
                 todo!();
             },
-            
+
             // Unused
             0x27 => {},
-            
+
             // SB   $Rt, Im($Rs)
             0x28 => { state.write_mem_byte_uninit(state.read_register(rs)?.wrapping_add(imm_sign_extend) as _, state.read_register_uninit(rt).truncate())?; },
-            
+
             // SH   $Rt, Im($Rs)
             0x29 => {
                 let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
@@ -957,10 +968,10 @@ impl Runtime {
 
                 state.write_mem_half_uninit(addr, state.read_register_uninit(rt).truncate())?;
             },
-            
+
             // Unused
             0x2A => {},
-            
+
             // SW   $Rt, Im($Rs)
             0x2B => {
                 let addr = state.read_register(rs)?.wrapping_add(imm_sign_extend) as _;
@@ -971,64 +982,64 @@ impl Runtime {
 
                 state.write_mem_word_uninit(addr, state.read_register_uninit(rt).truncate())?;
             },
-            
+
             // Unused
             0x2C => {},
-            
+
             // Unused
             0x2D => {},
-            
+
             // Unused
             0x2E => {},
-            
+
             // Unused
             0x2F => {},
-            
+
             // Unused
             0x30 => {},
-            
+
             // LWC1 $Rt, Im($Rs)
             0x31 => { todo!() },
-            
+
             // Unused
             0x32 => {},
-            
+
             // Unused
             0x33 => {},
-            
+
             // Unused
             0x34 => {},
-            
+
             // Unused
             0x35 => {},
-            
+
             // Unused
             0x36 => {},
-            
+
             // Unused
             0x37 => {},
-            
+
             // Unused
             0x38 => {},
-            
+
             // SWC1 $Rt, Im($Rs)
             0x39 => { todo!() },
-            
+
             // Unused
             0x3A => {},
-            
+
             // Unused
             0x3B => {},
-            
+
             // Unused
             0x3C => {},
-            
+
             // Unused
             0x3D => {},
-            
+
             // Unused
             0x3E => {},
-            
+
             // Unused
             0x3F => {},
 
@@ -1049,7 +1060,7 @@ impl Runtime {
             },
 
             // JAL  addr
-            0x03 => { 
+            0x03 => {
                 state.write_register(Register::Ra.to_number() as u32, state.pc() as _);
                 state.set_pc((state.pc() & 0xF000_0000) | (target << 2));
             },
