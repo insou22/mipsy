@@ -307,6 +307,16 @@ instructions:
       funct:  0x01
       reads: [Rs, Rt]
 
+  - name: MUL
+    desc_short: Multiplies the values in $Rs and $Rt, storing the result in $Rd
+    compile:
+      format: [Rd, Rs, Rt]
+    runtime:
+      type: R
+      opcode: 0x1C
+      funct: 0x02
+      reads: [Rs, Rt]
+
   - name: MSUB
     desc_short: todo
     compile:
@@ -2520,14 +2530,12 @@ pseudoinstructions:
           sign_extend: true
 
   - name: MUL
-    desc_short: $Rd = $Rs * $Rt
     compile:
       format: [Rd, Rs, Rt]
     expand:
-      - inst: MULT
-        data: [$Rs, $Rt]
-      - inst: MFLO
-        data: [$Rd]
+      - inst: MUL
+        data: [$Rd, $Rs, $Rt]
+    only_derive: true
     derives:
       - DefaultValue:
           value: Rs
