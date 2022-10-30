@@ -25,7 +25,7 @@ mod extra;
 
 pub use text::compile1;
 
-use self::extra::move_labels;
+use self::{extra::move_labels, breakpoints::{WatchpointTarget, Watchpoint}};
 
 
 static KERN_FILE: &str = include_str!("../../../../kern.s");
@@ -53,6 +53,7 @@ pub struct Binary {
     pub globals: Vec<String>,
     pub line_numbers: HashMap<u32, (Rc<str>, u32)>,
     pub breakpoints: HashMap<u32, Breakpoint>,
+    pub watchpoints: HashMap<WatchpointTarget, Watchpoint>,
 }
 
 impl Binary {
@@ -127,6 +128,37 @@ impl Binary {
                     .enumerate()
                     .find(|x| x.0 != x.1 as usize)
                     .expect("you've run out of breakpoints! why are you using so many")
+                    .1;
+        }
+
+        id
+    }
+
+    // TODO: abstract this over break/watchpoints
+    pub fn generate_watchpoint_id(&self) -> u32 {
+        let mut id = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .fold(std::u32::MIN, |x, y| x.max(y))
+                    .wrapping_add(1);
+
+        if self.watchpoints.values().any(|wp| wp.id == id) {
+            // find a free id to use
+            // there's probably a neater way to do this,
+            // but realistically if someone is using enough watchpoints
+            // to fill a u32, they have bigger problems
+
+            let mut ids = self.watchpoints
+                    .values()
+                    .map(|wp| wp.id)
+                    .collect::<Vec<_>>();
+
+            ids.sort_unstable();
+
+            id = ids.into_iter()
+                    .enumerate()
+                    .find(|x| x.0 != x.1 as usize)
+                    .expect("you've run out of watchpoints! why are you using so many")
                     .1;
         }
 

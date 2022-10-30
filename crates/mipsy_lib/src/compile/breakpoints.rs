@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::Register;
 use std::fmt::Display;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum TargetAction {
     ReadOnly,
     WriteOnly,
@@ -37,7 +37,7 @@ impl Display for TargetAction {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum WatchpointTarget {
     Register(Register),
     MemAddr(u32),
@@ -60,6 +60,7 @@ pub struct TargetWatch {
     pub action: TargetAction,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Watchpoint {
     pub id: u32,
     pub action: TargetAction,
