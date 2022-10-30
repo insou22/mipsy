@@ -681,10 +681,16 @@ impl Runtime {
                         let rs_val = state.read_register(rs)?;
                         let rt_val = state.read_register(rt)?;
 
-                        let result = rs_val * rt_val;
+                        // MIPS ISA states that:
+                        // The least significant 32 bits of the product are written to GPR rd.
+                        let result = rs_val.wrapping_mul(rt_val);
 
                         state.write_register(rd, result);
-                        // should set HI and LO to UNINITIALIZED
+
+                        // MIPS ISA states that:
+                        // HI and LO are UNPREDICTABLE after this instruction
+                        self.timeline.state_mut().hi = Safe::Uninitialised;
+                        self.timeline.state_mut().lo = Safe::Uninitialised;
                     }
 
                     // MSUB
