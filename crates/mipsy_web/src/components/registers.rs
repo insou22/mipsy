@@ -107,7 +107,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                 }>
 
                                     <td class="group w-10 text-center" >
-                                        <button onclick={toggle_watchpoint} style={"margin: 0 auto"}>
+                                        <button onclick={toggle_watchpoint}>
                                             if has_watchpoint {
                                                 <StopIconFilled />
                                             } else {

@@ -359,7 +359,7 @@ impl Agent for Worker {
                     if binary.breakpoints.contains_key(&addr) {
                         binary.breakpoints.remove(&addr);
                     } else {
-                        let id = binary.generate_breakpoint_id();
+                        let id = Binary::generate_id(&binary.breakpoints);
                         binary.breakpoints.insert(addr, Breakpoint::new(id));
                     }
                 }
@@ -376,7 +376,7 @@ impl Agent for Worker {
                     if binary.watchpoints.contains_key(&target) {
                         binary.watchpoints.remove(&target);
                     } else {
-                        let id = binary.generate_watchpoint_id();
+                        let id = Binary::generate_id(&binary.watchpoints);
                         binary.watchpoints.insert(target, Watchpoint::new(id, TargetAction::ReadWrite));
                     }
                 }
@@ -491,7 +491,7 @@ impl Agent for Worker {
                                 for wp in watchpoints {
                                     mips_state
                                         .mipsy_stdout
-                                        .push(format!("WATCHPOINT - {} was {}", wp.target,
+                                        .push(format!("WATCHPOINT - {} was {} at 0x{pc:08x}", wp.target,
                                             match wp.action {
                                                 TargetAction::ReadOnly => "read from",
                                                 TargetAction::WriteOnly => "written to",
@@ -908,7 +908,7 @@ impl Agent for Worker {
                             for wp in watchpoints {
                                 mips_state
                                     .mipsy_stdout
-                                    .push(format!("WATCHPOINT - {} was {}", wp.target,
+                                    .push(format!("WATCHPOINT - {} was {} at 0x{pc:08x}", wp.target,
                                         match wp.action {
                                             TargetAction::ReadOnly => "read from",
                                             TargetAction::WriteOnly => "written to",

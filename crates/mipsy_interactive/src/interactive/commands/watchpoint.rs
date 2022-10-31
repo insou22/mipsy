@@ -3,7 +3,7 @@ use std::{iter::successors, str::FromStr};
 
 use super::{*, commands::handle_commands};
 use colored::*;
-use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}};
+use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}, Binary};
 use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
 
 enum WpState {
@@ -241,7 +241,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
         };
 
         let task = if binary.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
-        id = binary.generate_watchpoint_id();
+        id = Binary::generate_id(&binary.watchpoints);
         let mut wp = Watchpoint::new(id, action);
         if op == InsertOp::Temporary {
             wp.commands.push(format!("watchpoint remove !{id}"))
