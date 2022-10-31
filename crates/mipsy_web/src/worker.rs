@@ -1,7 +1,8 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::compile::breakpoints::Breakpoint;
+use mipsy_lib::Register;
+use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
@@ -84,6 +85,8 @@ pub enum WorkerRequest {
     UpdateConfig(MipsyWebConfig),
     // Toggle a breakpoiint at an address
     ToggleBreakpoint(u32),
+    // Toggle watchpoints on a register
+    ToggleWatchpoint(u32),
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
@@ -356,6 +359,23 @@ impl Agent for Worker {
                     } else {
                         let id = binary.generate_breakpoint_id();
                         binary.breakpoints.insert(addr, Breakpoint::new(id));
+                    }
+                }
+
+                let response = Self::Output::UpdateBinary(self.binary.clone());
+                self.link.respond(id, response)
+            }
+
+            Self::Input::ToggleWatchpoint(register) => {
+                // for now only do read/write
+                let binary = self.binary.as_mut();
+                if let Some(binary) = binary {
+                    let target = WatchpointTarget::Register(Register::from_u32(register).unwrap());
+                    if binary.watchpoints.contains_key(&target) {
+                        binary.watchpoints.remove(&target);
+                    } else {
+                        let id = binary.generate_watchpoint_id();
+                        binary.watchpoints.insert(target, Watchpoint::new(id, TargetAction::ReadWrite));
                     }
                 }
 

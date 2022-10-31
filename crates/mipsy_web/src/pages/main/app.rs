@@ -554,7 +554,7 @@ pub fn render_app() -> Html {
                         </div>
 
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
-                            <Registers state={state.clone()} tab={show_register_tab} />
+                            <Registers state={state.clone()} tab={show_register_tab} worker={worker.borrow().as_ref().unwrap().clone()}/>
                         </div>
 
                         <OutputArea
