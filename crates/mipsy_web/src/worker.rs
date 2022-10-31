@@ -2,10 +2,10 @@ use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::Register;
-use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction, TargetWatch};
+use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction, get_affected_registers};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
-use mipsy_lib::{runtime::{RuntimeSyscallGuard, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Binary, InstSet, MipsyError, Runtime, Safe};
+use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
@@ -965,87 +965,3 @@ impl Worker {
         }
     }
 }
-
-const LB : u32 = 0b100000;
-const LBU: u32 = 0b100100;
-const LH : u32 = 0b100001;
-const LHU: u32 = 0b100101;
-const LUI: u32 = 0b001111;
-const LW : u32 = 0b100011;
-const LWU: u32 = 0b100111;
-const SB : u32 = 0b101000;
-const SH : u32 = 0b101001;
-const SW : u32 = 0b101011;
-
-fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> {
-        let opcode =  inst >> 26;
-        let rb     = (inst >> 21) & 0x1F;
-        let rs     = (inst >> 21) & 0x1F;
-        let rt     = (inst >> 16) & 0x1F;
-        let rd     = (inst >> 11) & 0x1F;
-        let offset = (inst & 0xFF) as i32;
-
-        match opcode {
-            LB | LBU | LH | LHU | LW | LWU | LUI => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::MemAddr(
-                        (runtime.timeline().prev_state().expect("there should be a previous state")
-                            .read_register(rb).expect("uninitialized read should already have been handled")
-                            + offset) as u32
-                    ),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            SB | SH | SW => vec![
-                TargetWatch {
-                    target: WatchpointTarget::MemAddr(
-                        (runtime.timeline().state()
-                            .read_register(rb).expect("uninitialized read should already have been handled")
-                            + offset) as u32
-                    ),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            SPECIAL | SPECIAL2 | SPECIAL3 => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rd).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            JUMP | JAL => vec![],
-            _ => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-            ],
-        }
-    }
