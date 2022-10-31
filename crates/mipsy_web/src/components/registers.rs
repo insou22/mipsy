@@ -6,7 +6,7 @@ use bounce::use_atom;
 use derivative::Derivative;
 use mipsy_lib::compile::breakpoints::WatchpointTarget;
 use mipsy_lib::{Register, Safe};
-use yew::{function_component, html, Properties, UseStateHandle, Callback, classes};
+use yew::{function_component, html, Properties, UseStateHandle, Callback};
 use yew_agent::UseBridgeHandle;
 
 #[derive(Properties, Derivative)]
@@ -47,6 +47,9 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
         <table class="w-full border-collapse table-auto">
             <thead>
                 <tr>
+                    <th class="w-1/16">
+                    {"Watch"}
+                    </th>
                     <th class="w-1/4">
                     {"Register"}
                     </th>
@@ -102,13 +105,16 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                         ""
                                     }
                                 }>
-                                    <button onclick={toggle_watchpoint} class={classes!("text-center", "text-xs", if !has_watchpoint {""} else {""})}>
-                                        if has_watchpoint {
-                                            <StopIconFilled />
-                                        } else {
-                                            <StopIconOutline />
-                                        }
-                                    </button>
+
+                                    <td class="group w-10 text-center" >
+                                        <button onclick={toggle_watchpoint} style={"margin: 0 auto"}>
+                                            if has_watchpoint {
+                                                <StopIconFilled />
+                                            } else {
+                                                <StopIconOutline />
+                                            }
+                                        </button>
+                                    </td>
 
                                     <td class="border-current border-b-2 pl-4 text-center"> {
                                             if index == Register::Sp.to_number() as usize {
