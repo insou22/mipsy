@@ -2,10 +2,10 @@ use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
 use mipsy_lib::Register;
-use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction};
+use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction, TargetWatch};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
-use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
+use mipsy_lib::{runtime::{RuntimeSyscallGuard, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
@@ -172,6 +172,8 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         let mut breakpoint = false;
+        let mut watchpoint = false;
+        let mut watchpoints = Vec::new();
         match msg {
             Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
@@ -404,9 +406,15 @@ impl Agent for Worker {
                                     }
                                 } else {
                                     let stepped_runtime = runtime.step();
+
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => {
                                             let pc = next_runtime.timeline().state().pc();
+                                            let affected_registers = get_affected_registers(&next_runtime, next_runtime.current_inst());
+                                            watchpoints = affected_registers.into_iter()
+                                                .filter(|wp| binary.watchpoints.get(&wp.target)
+                                                    .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+                                                .collect::<Vec<_>>();
 
                                             runtime = next_runtime;
                                             // we want to stop at the instruction before the breakpoint
@@ -415,6 +423,9 @@ impl Agent for Worker {
                                                 && !self.config.ignore_breakpoints
                                             {
                                                 breakpoint = true;
+                                                break;
+                                            } else if !watchpoints.is_empty() {
+                                                watchpoint = true;
                                                 break;
                                             }
                                         }
@@ -458,10 +469,11 @@ impl Agent for Worker {
                             mips_state.update_memory(&runtime);
                             let pc = runtime.timeline().state().pc();
                             let binary = self.binary.as_ref().unwrap();
+
                             self.runtime = Some(RuntimeState::Running(runtime));
+                            let response;
                             if mips_state.exit_status.is_some() {
-                                let response = Self::Output::ProgramExited(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::ProgramExited(mips_state);
                             } else if breakpoint {
                                 // the label or address
                                 let label = binary
@@ -474,15 +486,28 @@ impl Agent for Worker {
                                     .mipsy_stdout
                                     .push(format!("BREAKPOINT - {label}"));
 
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::UpdateMipsState(mips_state);
+                            } else if watchpoint {
+                                for wp in watchpoints {
+                                    mips_state
+                                        .mipsy_stdout
+                                        .push(format!("WATCHPOINT - {} was {}", wp.target,
+                                            match wp.action {
+                                                TargetAction::ReadOnly => "read from",
+                                                TargetAction::WriteOnly => "written to",
+                                                TargetAction::ReadWrite => "written to",
+                                            }
+                                        ));
+                                }
+
+                                response = Self::Output::UpdateMipsState(mips_state);
                             } else if mips_state.is_stepping {
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::UpdateMipsState(mips_state);
                             } else {
-                                let response = Self::Output::InstructionOk(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::InstructionOk(mips_state);
                             }
+
+                            self.link.respond(id, response);
                             return;
                         }
 
@@ -495,6 +520,7 @@ impl Agent for Worker {
                         // now let's us step the right number of times
                         for _ in 1..=step_size {
                             let pc = runtime.timeline().state().pc();
+
                             if pc >= mipsy_lib::KTEXT_BOT {
                                 break;
                             } else if mips_state.breakpoint_switch
@@ -516,6 +542,11 @@ impl Agent for Worker {
                                 // instruction ran okay
                                 Ok(Ok(next_runtime)) => {
                                     let pc = next_runtime.timeline().state().pc();
+                                    let affected_registers = get_affected_registers(&next_runtime, next_runtime.current_inst());
+                                    watchpoints = affected_registers.into_iter()
+                                        .filter(|wp| binary.watchpoints.get(&wp.target)
+                                            .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+                                        .collect::<Vec<_>>();
 
                                     runtime = next_runtime;
                                     // we want to stop at the instruction before the breakpoint
@@ -524,6 +555,9 @@ impl Agent for Worker {
                                         && !self.config.ignore_breakpoints
                                     {
                                         breakpoint = true;
+                                        break;
+                                    } else if !watchpoints.is_empty() {
+                                        watchpoint = true;
                                         break;
                                     }
                                 }
@@ -607,15 +641,6 @@ impl Agent for Worker {
                                             mips_state.stdout.push(string_value);
 
                                             runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
 
                                             // we want to stop at the instruction before the breakpoint
                                             // so that the line of breakpoint doesnt get executed
@@ -879,6 +904,20 @@ impl Agent for Worker {
                                 .push(format!("BREAKPOINT - {label}"));
 
                             response = Self::Output::UpdateMipsState(mips_state);
+                        } else if watchpoint {
+                            for wp in watchpoints {
+                                mips_state
+                                    .mipsy_stdout
+                                    .push(format!("WATCHPOINT - {} was {}", wp.target,
+                                        match wp.action {
+                                            TargetAction::ReadOnly => "read from",
+                                            TargetAction::WriteOnly => "written to",
+                                            TargetAction::ReadWrite => "written to",
+                                        }
+                                    ));
+                            }
+
+                            response = Self::Output::UpdateMipsState(mips_state);
                         } else if step_size.abs() == 1 {
                             // just update the state
                             response = Self::Output::UpdateMipsState(mips_state);
@@ -926,3 +965,87 @@ impl Worker {
         }
     }
 }
+
+const LB : u32 = 0b100000;
+const LBU: u32 = 0b100100;
+const LH : u32 = 0b100001;
+const LHU: u32 = 0b100101;
+const LUI: u32 = 0b001111;
+const LW : u32 = 0b100011;
+const LWU: u32 = 0b100111;
+const SB : u32 = 0b101000;
+const SH : u32 = 0b101001;
+const SW : u32 = 0b101011;
+
+fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> {
+        let opcode =  inst >> 26;
+        let rb     = (inst >> 21) & 0x1F;
+        let rs     = (inst >> 21) & 0x1F;
+        let rt     = (inst >> 16) & 0x1F;
+        let rd     = (inst >> 11) & 0x1F;
+        let offset = (inst & 0xFF) as i32;
+
+        match opcode {
+            LB | LBU | LH | LHU | LW | LWU | LUI => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (runtime.timeline().prev_state().expect("there should be a previous state")
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            SB | SH | SW => vec![
+                TargetWatch {
+                    target: WatchpointTarget::MemAddr(
+                        (runtime.timeline().state()
+                            .read_register(rb).expect("uninitialized read should already have been handled")
+                            + offset) as u32
+                    ),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            SPECIAL | SPECIAL2 | SPECIAL3 => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rd).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+            ],
+            JUMP | JAL => vec![],
+            _ => vec![
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
+                    action: TargetAction::ReadOnly,
+                },
+                TargetWatch {
+                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
+                    action: TargetAction::WriteOnly,
+                },
+            ],
+        }
+    }
