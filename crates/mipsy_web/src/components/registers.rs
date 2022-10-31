@@ -6,7 +6,7 @@ use bounce::use_atom;
 use derivative::Derivative;
 use mipsy_lib::compile::breakpoints::WatchpointTarget;
 use mipsy_lib::{Register, Safe};
-use yew::{function_component, html, Properties, UseStateHandle, Callback};
+use yew::{function_component, html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
 
 #[derive(Properties, Derivative)]

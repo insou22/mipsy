@@ -1,10 +1,12 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::Register;
-use mipsy_lib::compile::breakpoints::{Breakpoint, WatchpointTarget, Watchpoint, TargetAction, get_affected_registers};
+use mipsy_lib::compile::breakpoints::{
+    get_affected_registers, Breakpoint, TargetAction, Watchpoint, WatchpointTarget,
+};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
+use mipsy_lib::Register;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
@@ -377,7 +379,9 @@ impl Agent for Worker {
                         binary.watchpoints.remove(&target);
                     } else {
                         let id = Binary::generate_id(&binary.watchpoints);
-                        binary.watchpoints.insert(target, Watchpoint::new(id, TargetAction::ReadWrite));
+                        binary
+                            .watchpoints
+                            .insert(target, Watchpoint::new(id, TargetAction::ReadWrite));
                     }
                 }
 
@@ -410,10 +414,21 @@ impl Agent for Worker {
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => {
                                             let pc = next_runtime.timeline().state().pc();
-                                            let affected_registers = get_affected_registers(&next_runtime, next_runtime.current_inst());
-                                            watchpoints = affected_registers.into_iter()
-                                                .filter(|wp| binary.watchpoints.get(&wp.target)
-                                                    .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+                                            let affected_registers = get_affected_registers(
+                                                &next_runtime,
+                                                next_runtime.current_inst(),
+                                            );
+                                            watchpoints = affected_registers
+                                                .into_iter()
+                                                .filter(|wp| {
+                                                    binary.watchpoints.get(&wp.target).map_or(
+                                                        false,
+                                                        |watch| {
+                                                            watch.action == wp.action
+                                                                && watch.enabled
+                                                        },
+                                                    )
+                                                })
                                                 .collect::<Vec<_>>();
 
                                             runtime = next_runtime;
@@ -489,15 +504,15 @@ impl Agent for Worker {
                                 response = Self::Output::UpdateMipsState(mips_state);
                             } else if watchpoint {
                                 for wp in watchpoints {
-                                    mips_state
-                                        .mipsy_stdout
-                                        .push(format!("WATCHPOINT - {} was {} at 0x{pc:08x}", wp.target,
-                                            match wp.action {
-                                                TargetAction::ReadOnly => "read from",
-                                                TargetAction::WriteOnly => "written to",
-                                                TargetAction::ReadWrite => "written to",
-                                            }
-                                        ));
+                                    mips_state.mipsy_stdout.push(format!(
+                                        "WATCHPOINT - {} was {} at 0x{pc:08x}",
+                                        wp.target,
+                                        match wp.action {
+                                            TargetAction::ReadOnly => "read from",
+                                            TargetAction::WriteOnly => "written to",
+                                            TargetAction::ReadWrite => "written to",
+                                        }
+                                    ));
                                 }
 
                                 response = Self::Output::UpdateMipsState(mips_state);
@@ -542,10 +557,20 @@ impl Agent for Worker {
                                 // instruction ran okay
                                 Ok(Ok(next_runtime)) => {
                                     let pc = next_runtime.timeline().state().pc();
-                                    let affected_registers = get_affected_registers(&next_runtime, next_runtime.current_inst());
-                                    watchpoints = affected_registers.into_iter()
-                                        .filter(|wp| binary.watchpoints.get(&wp.target)
-                                            .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+                                    let affected_registers = get_affected_registers(
+                                        &next_runtime,
+                                        next_runtime.current_inst(),
+                                    );
+                                    watchpoints = affected_registers
+                                        .into_iter()
+                                        .filter(|wp| {
+                                            binary
+                                                .watchpoints
+                                                .get(&wp.target)
+                                                .map_or(false, |watch| {
+                                                    watch.action == wp.action && watch.enabled
+                                                })
+                                        })
                                         .collect::<Vec<_>>();
 
                                     runtime = next_runtime;
@@ -906,15 +931,15 @@ impl Agent for Worker {
                             response = Self::Output::UpdateMipsState(mips_state);
                         } else if watchpoint {
                             for wp in watchpoints {
-                                mips_state
-                                    .mipsy_stdout
-                                    .push(format!("WATCHPOINT - {} was {} at 0x{pc:08x}", wp.target,
-                                        match wp.action {
-                                            TargetAction::ReadOnly => "read from",
-                                            TargetAction::WriteOnly => "written to",
-                                            TargetAction::ReadWrite => "written to",
-                                        }
-                                    ));
+                                mips_state.mipsy_stdout.push(format!(
+                                    "WATCHPOINT - {} was {} at 0x{pc:08x}",
+                                    wp.target,
+                                    match wp.action {
+                                        TargetAction::ReadOnly => "read from",
+                                        TargetAction::WriteOnly => "written to",
+                                        TargetAction::ReadWrite => "written to",
+                                    }
+                                ));
                             }
 
                             response = Self::Output::UpdateMipsState(mips_state);

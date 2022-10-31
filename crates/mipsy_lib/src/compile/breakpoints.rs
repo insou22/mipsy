@@ -1,7 +1,10 @@
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-use crate::{Register, Runtime, runtime::{SPECIAL, SPECIAL2, SPECIAL3, JAL, JUMP}};
+use crate::{
+    runtime::{JAL, JUMP, SPECIAL, SPECIAL2, SPECIAL3},
+    Register, Runtime,
+};
 use std::fmt::Display;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -18,18 +21,20 @@ impl PartialEq for TargetAction {
         match *self {
             TargetAction::ReadWrite => true,
             _ => match other {
-                    TargetAction::ReadWrite => true,
-                    _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-            }
+                TargetAction::ReadWrite => true,
+                _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+            },
         }
     }
 }
 
 impl Display for TargetAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
+        write!(
+            f,
+            "{}",
             match *self {
-                TargetAction::ReadOnly  => "read",
+                TargetAction::ReadOnly => "read",
                 TargetAction::WriteOnly => "write",
                 TargetAction::ReadWrite => "read/write",
             }
@@ -45,10 +50,12 @@ pub enum WatchpointTarget {
 
 impl Display for WatchpointTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}",
+        write!(
+            f,
+            "{}",
             match self {
                 WatchpointTarget::Register(r) => r.to_string(),
-                WatchpointTarget::MemAddr(m)  => format!("{}{:08x}", "0x".yellow(), m),
+                WatchpointTarget::MemAddr(m) => format!("{}{:08x}", "0x".yellow(), m),
             }
         )
     }
@@ -126,24 +133,23 @@ impl Point for Watchpoint {
     }
 }
 
-
-const LB : u32 = 0b100000;
+const LB: u32 = 0b100000;
 const LBU: u32 = 0b100100;
-const LH : u32 = 0b100001;
+const LH: u32 = 0b100001;
 const LHU: u32 = 0b100101;
 const LUI: u32 = 0b001111;
-const LW : u32 = 0b100011;
+const LW: u32 = 0b100011;
 const LWU: u32 = 0b100111;
-const SB : u32 = 0b101000;
-const SH : u32 = 0b101001;
-const SW : u32 = 0b101011;
+const SB: u32 = 0b101000;
+const SH: u32 = 0b101001;
+const SW: u32 = 0b101011;
 
 pub fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> {
-    let opcode =  inst >> 26;
-    let rb     = (inst >> 21) & 0x1F;
-    let rs     = (inst >> 21) & 0x1F;
-    let rt     = (inst >> 16) & 0x1F;
-    let rd     = (inst >> 11) & 0x1F;
+    let opcode = inst >> 26;
+    let rb = (inst >> 21) & 0x1F;
+    let rs = (inst >> 21) & 0x1F;
+    let rt = (inst >> 16) & 0x1F;
+    let rd = (inst >> 11) & 0x1F;
     let offset = (inst & 0xFF) as i32;
 
     match opcode {
@@ -158,9 +164,13 @@ pub fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> 
             },
             TargetWatch {
                 target: WatchpointTarget::MemAddr(
-                    (runtime.timeline().prev_state().expect("there should be a previous state")
-                        .read_register(rb).expect("uninitialized read should already have been handled")
-                        + offset) as u32
+                    (runtime
+                        .timeline()
+                        .prev_state()
+                        .expect("there should be a previous state")
+                        .read_register(rb)
+                        .expect("uninitialized read should already have been handled")
+                        + offset) as u32,
                 ),
                 action: TargetAction::ReadOnly,
             },
@@ -168,9 +178,12 @@ pub fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> 
         SB | SH | SW => vec![
             TargetWatch {
                 target: WatchpointTarget::MemAddr(
-                    (runtime.timeline().state()
-                        .read_register(rb).expect("uninitialized read should already have been handled")
-                        + offset) as u32
+                    (runtime
+                        .timeline()
+                        .state()
+                        .read_register(rb)
+                        .expect("uninitialized read should already have been handled")
+                        + offset) as u32,
                 ),
                 action: TargetAction::WriteOnly,
             },
