@@ -88,7 +88,7 @@ pub enum WorkerRequest {
     // Toggle a breakpoiint at an address
     ToggleBreakpoint(u32),
     // Toggle watchpoints on a register
-    ToggleWatchpoint(u32),
+    ToggleWatchpoint(u32, TargetAction),
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
@@ -370,18 +370,20 @@ impl Agent for Worker {
                 self.link.respond(id, response)
             }
 
-            Self::Input::ToggleWatchpoint(register) => {
-                // for now only do read/write
+            Self::Input::ToggleWatchpoint(register, action) => {
                 let binary = self.binary.as_mut();
                 if let Some(binary) = binary {
                     let target = WatchpointTarget::Register(Register::from_u32(register).unwrap());
-                    if binary.watchpoints.contains_key(&target) {
-                        binary.watchpoints.remove(&target);
+                    let watchpoint = binary.watchpoints.get_mut(&target);
+                    if let Some(watchpoint) = watchpoint {
+                        if let Some(action) = watchpoint.action - action {
+                            watchpoint.action = action;
+                        } else {
+                            binary.watchpoints.remove(&target);
+                        }
                     } else {
                         let id = Binary::generate_id(&binary.watchpoints);
-                        binary
-                            .watchpoints
-                            .insert(target, Watchpoint::new(id, TargetAction::ReadWrite));
+                        binary.watchpoints.insert(target, Watchpoint::new(id, action));
                     }
                 }
 

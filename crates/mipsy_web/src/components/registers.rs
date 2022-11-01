@@ -4,7 +4,7 @@ use crate::state::state::{ErrorType, RegisterTab, State};
 use crate::worker::{Worker, WorkerRequest};
 use bounce::use_atom;
 use derivative::Derivative;
-use mipsy_lib::compile::breakpoints::WatchpointTarget;
+use mipsy_lib::compile::breakpoints::{WatchpointTarget, TargetAction};
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
@@ -48,7 +48,10 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <thead>
                 <tr>
                     <th class="w-1/16">
-                    {"Watch"}
+                    {"Read"}
+                    </th>
+                    <th class="w-1/16">
+                    {"Write"}
                     </th>
                     <th class="w-1/4">
                     {"Register"}
@@ -74,23 +77,29 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                         html!{}
                     }
                     else {
-                        let toggle_watchpoint = {
+                        let toggle_read = {
                             let worker = props.worker.clone();
                             Callback::from(move |_| {
-                                worker.send(WorkerRequest::ToggleWatchpoint(index as u32))
+                                worker.send(WorkerRequest::ToggleWatchpoint(index as u32, TargetAction::ReadOnly))
                             })
                         };
 
-                        let has_watchpoint = match &*props.state {
+                        let toggle_write = {
+                            let worker = props.worker.clone();
+                            Callback::from(move |_| {
+                                worker.send(WorkerRequest::ToggleWatchpoint(index as u32, TargetAction::WriteOnly))
+                            })
+                        };
+
+                        let watchpoint = match &*props.state {
                             State::Compiled(curr) => {
                                 let binary = curr.mips_state.binary.as_ref().unwrap();
-                                binary.watchpoints.contains_key(
-                                    &WatchpointTarget::Register(Register::from_u32(index as u32).unwrap())
-                                )
+                                binary.watchpoints
+                                    .get(&WatchpointTarget::Register(Register::from_u32(index as u32).unwrap()))
                             }
                             State::Error(error_type) => {
                                 if let ErrorType::RuntimeError(_error) = error_type {
-                                    false
+                                    None
                                 } else {
                                     unreachable!("Error in decompiled not possible if not compiled");
                                 }
@@ -107,8 +116,18 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                 }>
 
                                     <td class="group w-10 text-center" >
-                                        <button onclick={toggle_watchpoint}>
-                                            if has_watchpoint {
+                                        <button onclick={toggle_read}>
+                                            if watchpoint.map_or(false, |wp| wp.action == TargetAction::ReadOnly) {
+                                                <StopIconFilled />
+                                            } else {
+                                                <StopIconOutline />
+                                            }
+                                        </button>
+                                    </td>
+
+                                    <td class="group w-10 text-center" >
+                                        <button onclick={toggle_write}>
+                                            if watchpoint.map_or(false, |wp| wp.action == TargetAction::WriteOnly) {
                                                 <StopIconFilled />
                                             } else {
                                                 <StopIconOutline />

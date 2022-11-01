@@ -5,7 +5,7 @@ use crate::{
     runtime::{JAL, JUMP, SPECIAL, SPECIAL2, SPECIAL3},
     Register, Runtime,
 };
-use std::fmt::Display;
+use std::{fmt::Display, ops::Sub};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum TargetAction {
@@ -23,6 +23,37 @@ impl PartialEq for TargetAction {
             _ => match other {
                 TargetAction::ReadWrite => true,
                 _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+            },
+        }
+    }
+}
+
+impl Sub for TargetAction {
+    type Output = Option<TargetAction>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match rhs {
+            TargetAction::ReadWrite => None,
+            rhs => match self {
+                TargetAction::ReadWrite => Some(match rhs {
+                    TargetAction::ReadOnly => TargetAction::WriteOnly,
+                    TargetAction::WriteOnly => TargetAction::ReadOnly,
+                    TargetAction::ReadWrite => unreachable!(),
+                }),
+                TargetAction::ReadOnly => {
+                    if rhs == TargetAction::ReadOnly {
+                        None
+                    } else {
+                        Some(TargetAction::ReadWrite)
+                    }
+                }
+                TargetAction::WriteOnly => {
+                    if rhs == TargetAction::WriteOnly {
+                        None
+                    } else {
+                        Some(TargetAction::ReadWrite)
+                    }
+                }
             },
         }
     }
