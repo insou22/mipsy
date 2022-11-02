@@ -383,7 +383,9 @@ impl Agent for Worker {
                         }
                     } else {
                         let id = Binary::generate_id(&binary.watchpoints);
-                        binary.watchpoints.insert(target, Watchpoint::new(id, action));
+                        binary
+                            .watchpoints
+                            .insert(target, Watchpoint::new(id, action));
                     }
                 }
 
@@ -426,7 +428,7 @@ impl Agent for Worker {
                                                     binary.watchpoints.get(&wp.target).map_or(
                                                         false,
                                                         |watch| {
-                                                            watch.action == wp.action
+                                                            watch.action.fits(&wp.action)
                                                                 && watch.enabled
                                                         },
                                                     )
@@ -566,12 +568,12 @@ impl Agent for Worker {
                                     watchpoints = affected_registers
                                         .into_iter()
                                         .filter(|wp| {
-                                            binary
-                                                .watchpoints
-                                                .get(&wp.target)
-                                                .map_or(false, |watch| {
-                                                    watch.action == wp.action && watch.enabled
-                                                })
+                                            binary.watchpoints.get(&wp.target).map_or(
+                                                false,
+                                                |watch| {
+                                                    watch.action.fits(&wp.action) && watch.enabled
+                                                },
+                                            )
                                         })
                                         .collect::<Vec<_>>();
 

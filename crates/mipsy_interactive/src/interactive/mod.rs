@@ -457,7 +457,7 @@ impl State {
         // TODO(joshh): move this into else if once let-chains are stabilised (1.64 baited me smh)
         let watchpoints = affected_registers.iter()
             .filter(|&wp| binary.watchpoints.get(&wp.target)
-                .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+                .map_or(false, |watch| watch.action.fits(&wp.action) && watch.enabled))
             .collect::<Vec<_>>();
 
         Ok(

@@ -4,7 +4,7 @@ use crate::state::state::{ErrorType, RegisterTab, State};
 use crate::worker::{Worker, WorkerRequest};
 use bounce::use_atom;
 use derivative::Derivative;
-use mipsy_lib::compile::breakpoints::{WatchpointTarget, TargetAction};
+use mipsy_lib::compile::breakpoints::{TargetAction, WatchpointTarget};
 use mipsy_lib::{Register, Safe};
 use yew::{function_component, html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
@@ -119,7 +119,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
 
                                     <td class="text-center" >
                                         <button onclick={toggle_read}>
-                                            if watchpoint.map_or(false, |wp| wp.action == TargetAction::ReadOnly) {
+                                            if watchpoint.map_or(false, |wp| wp.action.fits(&TargetAction::ReadOnly)) {
                                                 <StopIconFilled />
                                             } else {
                                                 <StopIconOutline />
@@ -129,7 +129,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
 
                                     <td class="text-center" >
                                         <button onclick={toggle_write}>
-                                            if watchpoint.map_or(false, |wp| wp.action == TargetAction::WriteOnly) {
+                                            if watchpoint.map_or(false, |wp| wp.action.fits(&TargetAction::WriteOnly)) {
                                                 <StopIconFilled />
                                             } else {
                                                 <StopIconOutline />

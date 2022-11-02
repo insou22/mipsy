@@ -7,17 +7,17 @@ use crate::{
 };
 use std::{fmt::Display, ops::Sub};
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum TargetAction {
     ReadOnly,
     WriteOnly,
     ReadWrite,
 }
 
-impl PartialEq for TargetAction {
+impl TargetAction {
     // eq is used to check if a watchpoint should trigger based on the action,
     // so a watchpoint checking for both reads and writes should always trigger
-    fn eq(&self, other: &Self) -> bool {
+    pub fn fits(&self, other: &Self) -> bool {
         match *self {
             TargetAction::ReadWrite => true,
             _ => match other {
