@@ -104,7 +104,9 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     unreachable!("Error in decompiled not possible if not compiled");
                                 }
                             },
-                            _ => unreachable!(),
+                            State::NoFile => {
+                                None
+                            }
                         };
 
                         html! {
@@ -115,7 +117,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                     }
                                 }>
 
-                                    <td class="group w-10 text-center" >
+                                    <td class="text-center" >
                                         <button onclick={toggle_read}>
                                             if watchpoint.map_or(false, |wp| wp.action == TargetAction::ReadOnly) {
                                                 <StopIconFilled />
@@ -125,7 +127,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                         </button>
                                     </td>
 
-                                    <td class="group w-10 text-center" >
+                                    <td class="text-center" >
                                         <button onclick={toggle_write}>
                                             if watchpoint.map_or(false, |wp| wp.action == TargetAction::WriteOnly) {
                                                 <StopIconFilled />
