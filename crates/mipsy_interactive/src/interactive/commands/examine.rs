@@ -80,8 +80,8 @@ pub(crate) fn examine_command() -> Command {
             };
 
             let show_labels = args.get(0).map_or(false, |a| a == &String::from("-labels"));
-            if show_labels {
-                // if -labels was provided,
+            if show_labels && base_addr.is_err() {
+                // if -labels was provided, ensure base_addr is valid
                 base_addr = Ok(segment.get_lower_bound());
             }
 
