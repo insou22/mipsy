@@ -690,8 +690,6 @@ fn state(config: MipsyConfig) -> State {
     state.add_command(commands::load_command());
     state.add_command(commands::run_command());
     state.add_command(commands::step_command());
-    state.add_command(commands::step2syscall_command());
-    state.add_command(commands::step2input_command());
     state.add_command(commands::reset_command());
     state.add_command(commands::watchpoint_command());
     state.add_command(commands::breakpoint_command());
