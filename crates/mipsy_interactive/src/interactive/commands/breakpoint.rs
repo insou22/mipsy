@@ -86,7 +86,7 @@ pub(crate) fn breakpoint_command() -> Command {
 
     command(
         "breakpoint",
-        vec!["bp", "br", "brk", "break"],
+        vec!["b", "bp", "br", "brk", "break"],
         vec!["subcommand"],
         vec![],
         subcommands,

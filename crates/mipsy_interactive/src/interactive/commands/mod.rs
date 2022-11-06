@@ -1,4 +1,3 @@
-mod back;
 mod breakpoint;
 mod context;
 mod commands;
@@ -19,7 +18,6 @@ mod step2syscall;
 pub(crate) mod util;
 mod watchpoint;
 
-pub(crate) use back::back_command;
 pub(crate) use breakpoint::breakpoint_command;
 pub(crate) use context::context_command;
 pub(crate) use disassemble::disassemble_command;
