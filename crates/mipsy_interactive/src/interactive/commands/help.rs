@@ -25,19 +25,20 @@ pub(crate) fn help_command() -> Command {
             if let Some(command) = args.first() {
                 let mut command = &state.find_command(command).ok_or(CommandError::HelpUnknownCommand { command: command.clone() })?;
 
-                let args = &args[1..];
+                let mut args = &args[1..];
                 let mut parts = vec![
                     command.name.yellow().bold().to_string(),
                 ];
 
-                // TODO(joshh): include optional/required args for subcommands?
-                if !args.is_empty() {
+                while !args.is_empty() {
                     let subcmd = command.subcommands.iter()
                             .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
                     if let Some(subcmd) = subcmd {
                         command = subcmd;
-                        parts.push(command.name.yellow().bold().to_string());
+                        parts.push(subcmd.name.yellow().bold().to_string());
                     }
+
+                    args = &args[1..];
                 }
 
                 println!("\n{}\n", get_command_formatted(command, parts));

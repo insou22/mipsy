@@ -20,17 +20,64 @@ pub(crate) fn step_command() -> Command {
         ),
         command(
             "syscall",
-            vec![""],
-            vec![], vec![], vec![],
+            vec!["sys"],
+            vec![], vec![],
+            vec![
+                command(
+                    "input",
+                    vec!["in"], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_input(state, label, args),
+                ),
+                command(
+                    "output",
+                    vec!["out"], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_output(state, label, args),
+                ),
+                command(
+                    "integer",
+                    vec!["int"], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_integer(state, label, args),
+                ),
+                command(
+                    "float",
+                    vec![], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_float(state, label, args),
+                ),
+                command(
+                    "double",
+                    vec![], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_double(state, label, args),
+                ),
+                command(
+                    "string",
+                    vec!["str"], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_string(state, label, args),
+                ),
+                command(
+                    "character",
+                    vec!["char"], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_character(state, label, args),
+                ),
+                command(
+                    "file",
+                    vec![], vec![], vec![], vec![], "",
+                    |_, state, label, args| step_file(state, label, args),
+                ),
+            ],
             "",
-            |_, state, label, args| step_syscall(state, label, args),
-        ),
-        command(
-            "input",
-            vec![""],
-            vec![], vec![], vec![],
-            "",
-            |_, state, label, args| step_input(state, label, args),
+            |cmd, state, label, args| {
+                let cmd = if args.is_empty() {
+                    None
+                } else {
+                    cmd.subcommands
+                        .iter()
+                        .find(|c| c.name == args[0] || c.aliases.contains(&args[0]))
+                };
+                match cmd {
+                    Some(cmd) => cmd.exec(state, label, &args[1..]),
+                    None => step_syscall(state, label, args),
+                }
+            },
         ),
     ];
 
@@ -237,32 +284,7 @@ fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
         )
     }
 
-    if state.exited {
-        return Err(CommandError::ProgramExited);
-    }
-
-    state.interrupted.store(false, Ordering::SeqCst);
-    while !state.interrupted.load(Ordering::SeqCst) {
-        let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-        let runtime = &state.runtime;
-
-        let syscall = if let Ok(inst) = runtime.next_inst() {
-            util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());
-
-            inst == 0xC
-        } else {
-            false
-        };
-
-        let step = state.step(true)?;
-
-        if step || syscall {
-            break;
-        }
-
-    }
-
-    Ok("".into())
+    step_till_condition(state, |_| true)
 }
 
 fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
@@ -273,11 +295,136 @@ fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String
                  This will run in \"verbose\" mode, printing out each instruction that was\n\
              \x20 executed, and verbosely printing any system calls that are executed.\n\
                  To step backwards (i.e. back in time), use `{}`.",
-                "back".bold(),
+                "step back".bold(),
             ),
         )
     }
 
+    step_till_condition(state, |syscall| matches!(syscall, 5 | 6 | 7 | 8 | 12))
+}
+
+fn step_output(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program asks for its next output, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 1 | 2 | 3 | 4 | 11))
+}
+
+fn step_integer(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing an integer, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 1 | 5))
+}
+
+fn step_float(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a float, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 2 | 6))
+}
+
+fn step_double(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a double, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 3 | 7))
+}
+
+fn step_string(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a string, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 4 | 8))
+}
+
+fn step_character(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a character, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 11 | 12))
+}
+
+fn step_file(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+    if label == "__help__" {
+        return Ok(
+            format!(
+                "Steps forwards until your program executes a syscall that opens,\n\
+                 reads from, writes to, or closes a file, or finishes.\n\
+                 This will run in \"verbose\" mode, printing out each instruction that was\n\
+             \x20 executed, and verbosely printing any system calls that are executed.\n\
+                 To step backwards (i.e. back in time), use `{}`.",
+                "step back".bold(),
+            ),
+        )
+    }
+
+    step_till_condition(state, |syscall| matches!(syscall, 13 | 14 | 15 | 16))
+}
+
+fn step_till_condition<F>(state: &mut State, condition: F) -> Result<String, CommandError>
+where
+    F: Fn(i32) -> bool
+{
     if state.exited {
         return Err(CommandError::ProgramExited);
     }
@@ -287,12 +434,12 @@ fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String
         let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
         let runtime = &state.runtime;
 
-        let input = if let Ok(inst) = runtime.next_inst() {
+        let stop = if let Ok(inst) = runtime.next_inst() {
             util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());
 
             if inst == 0xC {
                 let syscall = runtime.timeline().state().read_register(Register::V0.to_u32()).unwrap_or(-1);
-                matches!(syscall, 5 | 6 | 7 | 8 | 12)
+                condition(syscall)
             } else {
                 false
             }
@@ -302,7 +449,7 @@ fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String
 
         let step = state.step(true)?;
 
-        if step || input {
+        if step || stop {
             break;
         }
 
