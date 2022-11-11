@@ -4,8 +4,8 @@ use std::vec;
 use crate::interactive::error::CommandError;
 use crate::prompt;
 
-use super::*;
 use super::Command;
+use super::*;
 use colored::*;
 use mipsy_lib::Register;
 
@@ -14,15 +14,13 @@ pub(crate) fn step_command() -> Command {
         command(
             "back",
             vec!["b"],
-            vec![], vec!["times"], vec![],
-            "",
+            vec![], vec!["times"], vec![], "",
             |_, state, label, args| step_back(state, label, args),
         ),
         command(
             "syscall",
             vec!["sys"],
-            vec![], vec![],
-            vec![
+            vec![], vec![], vec![
                 command(
                     "input",
                     vec!["in"], vec![], vec![], vec![], "",
@@ -82,7 +80,6 @@ pub(crate) fn step_command() -> Command {
     ];
 
     // TODO:
-    //  - dedup step/back logic
     //  - back alias
     //  - long help
     command(
@@ -273,15 +270,9 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
 
 fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program's next syscall.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program's next syscall.",
+        ));
     }
 
     step_till_condition(state, |_| true)
@@ -289,15 +280,9 @@ fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
 
 fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program asks for its next input, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program asks for its next input, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 5 | 6 | 7 | 8 | 12))
@@ -305,15 +290,9 @@ fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String
 
 fn step_output(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program asks for its next output, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program asks for its next output, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 1 | 2 | 3 | 4 | 11))
@@ -321,16 +300,10 @@ fn step_output(state: &mut State, label: &str, _args: &[String]) -> Result<Strin
 
 fn step_integer(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing an integer, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing an integer, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 1 | 5))
@@ -338,16 +311,10 @@ fn step_integer(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
 
 fn step_float(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a float, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a float, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 2 | 6))
@@ -355,16 +322,10 @@ fn step_float(state: &mut State, label: &str, _args: &[String]) -> Result<String
 
 fn step_double(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a double, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a double, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 3 | 7))
@@ -372,33 +333,25 @@ fn step_double(state: &mut State, label: &str, _args: &[String]) -> Result<Strin
 
 fn step_string(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a string, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a string, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 4 | 8))
 }
 
-fn step_character(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_character(
+    state: &mut State,
+    label: &str,
+    _args: &[String],
+) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a character, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a character, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 11 | 12))
@@ -406,16 +359,10 @@ fn step_character(state: &mut State, label: &str, _args: &[String]) -> Result<St
 
 fn step_file(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Steps forwards until your program executes a syscall that opens,\n\
-                 reads from, writes to, or closes a file, or finishes.\n\
-                 This will run in \"verbose\" mode, printing out each instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-                "step back".bold(),
-            ),
-        )
+        return Ok(get_step_help_text(
+            "Steps forwards until your program executes a syscall that opens,\n\
+                 reads from, writes to, or closes a file, or finishes.",
+        ));
     }
 
     step_till_condition(state, |syscall| matches!(syscall, 13 | 14 | 15 | 16))
@@ -423,7 +370,7 @@ fn step_file(state: &mut State, label: &str, _args: &[String]) -> Result<String,
 
 fn step_till_condition<F>(state: &mut State, condition: F) -> Result<String, CommandError>
 where
-    F: Fn(i32) -> bool
+    F: Fn(i32) -> bool,
 {
     if state.exited {
         return Err(CommandError::ProgramExited);
@@ -431,14 +378,24 @@ where
 
     state.interrupted.store(false, Ordering::SeqCst);
     while !state.interrupted.load(Ordering::SeqCst) {
-        let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+        let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
         let runtime = &state.runtime;
 
         let stop = if let Ok(inst) = runtime.next_inst() {
-            util::print_inst(&state.iset, binary, inst, runtime.timeline().state().pc(), state.program.as_deref());
+            util::print_inst(
+                &state.iset,
+                binary,
+                inst,
+                runtime.timeline().state().pc(),
+                state.program.as_deref(),
+            );
 
             if inst == 0xC {
-                let syscall = runtime.timeline().state().read_register(Register::V0.to_u32()).unwrap_or(-1);
+                let syscall = runtime
+                    .timeline()
+                    .state()
+                    .read_register(Register::V0.to_u32())
+                    .unwrap_or(-1);
                 condition(syscall)
             } else {
                 false
@@ -452,8 +409,18 @@ where
         if step || stop {
             break;
         }
-
     }
 
     Ok("".into())
+}
+
+fn get_step_help_text(unique_text: &str) -> String {
+    format!(
+        "{}\n\
+         This will run in \"verbose\" mode, printing out each instruction that was\n\
+     \x20 executed, and verbosely printing any system calls that are executed.\n\
+         To step backwards (i.e. back in time), use `{}`.",
+        unique_text,
+        "step back".bold(),
+    )
 }
