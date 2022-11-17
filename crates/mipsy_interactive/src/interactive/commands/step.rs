@@ -64,13 +64,11 @@ pub(crate) fn step_command() -> Command {
             ],
             "",
             |cmd, state, label, args| {
-                let cmd = if args.is_empty() {
-                    None
-                } else {
+                let cmd = args.get(0).and_then(|arg|
                     cmd.subcommands
                         .iter()
-                        .find(|c| c.name == args[0] || c.aliases.contains(&args[0]))
-                };
+                        .find(|c| &c.name == arg || c.aliases.contains(arg))
+                );
                 match cmd {
                     Some(cmd) => cmd.exec(state, label, &args[1..]),
                     None => step_syscall(state, label, args),
@@ -80,11 +78,10 @@ pub(crate) fn step_command() -> Command {
     ];
 
     // TODO:
-    //  - back alias
     //  - long help
     command(
         "step",
-        vec!["s"],
+        vec!["s", "back"],
         vec![],
         vec!["times", "subcommand"],
         subcommands,
@@ -94,13 +91,15 @@ pub(crate) fn step_command() -> Command {
                 return Ok(get_long_help());
             }
 
-            let cmd = if args.is_empty() {
-                None
-            } else {
+            if label == "back" {
+                return step_back(state, label, args);
+            }
+
+            let cmd = args.get(0).and_then(|arg|
                 cmd.subcommands
                     .iter()
-                    .find(|c| c.name == args[0] || c.aliases.contains(&args[0]))
-            };
+                    .find(|c| &c.name == arg || c.aliases.contains(arg))
+            );
             match cmd {
                 Some(cmd) => cmd.exec(state, label, &args[1..]),
                 None => step_forward(state, label, args),
