@@ -1749,14 +1749,14 @@ pseudoinstructions:
       - inst: ORI
         data: [$Rd, $0, 0]
     derives:
-      - DefaultValue:
-          value: Rs
-          default: $Rd
-          derives:
-            - Imm2Reg:
-                register: Rt
-                imm_types: [I16, U16, I32, U32]
-                sign_extend: true
+      # - DefaultValue:
+      #     value: Rs
+      #     default: $Rd
+      #     derives:
+      #       - Imm2Reg:
+      #           register: Rt
+      #           imm_types: [I16, U16, I32, U32]
+      #           sign_extend: true
       - Imm2Reg:
           register: Rt
           imm_types: [I16, U16, I32, U32]
@@ -1777,14 +1777,14 @@ pseudoinstructions:
       - inst: ORI
         data: [$Rd, $0, 0]
     derives:
-      - DefaultValue:
-          value: Rs
-          default: $Rd
-          derives:
-            - Imm2Reg:
-                register: Rt
-                imm_types: [I16, U16, I32, U32]
-                sign_extend: true
+      # - DefaultValue:
+      #     value: Rs
+      #     default: $Rd
+      #     derives:
+      #       - Imm2Reg:
+      #           register: Rt
+      #           imm_types: [I16, U16, I32, U32]
+      #           sign_extend: true
       - Imm2Reg:
           register: Rt
           imm_types: [I16, U16, I32, U32]
