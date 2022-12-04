@@ -10,7 +10,7 @@
 
 # About
 
-The current existing graphical debuggers that exist for MIPS-32 Assembly are currently aging native applications with outadted UI's. 
+The current existing graphical debuggers that exist for MIPS-32 Assembly are currently aging native applications with outdated UIs. 
 Mipsy Web intends to leverage the power of the Mipsy Platform to provide a better debugging experience. 
 
 To upgrade the debugging experience from this:
@@ -38,18 +38,18 @@ It does this by pulling in the rust `mipsy_lib` crate (amongst others) into an a
 #### WASM
 WASM is not a language, but rather a bytecode format (similar to something like Java ByteCode) that is able to be run on a WASM Virtual Machine (similar to the Java Virtual Machine!).
 
-Similar to how most browsers are able to run JavaSript files using a JavaScript Engine (ie v8) - most browsers (as of recently) also ship with a WASM Virtual Machine. WASM Execution is extremely fast as it is often pre-optimised, and not interpereted.
+Similar to how most browsers are able to run JavaScript files using a JavaScript Engine (ie v8) - most browsers (as of recently) also ship with a WASM Virtual Machine. WASM Execution is extremely fast as it is often pre-optimised, and not interpreted.
 
 Rust is able to compile to WASM, and run applications on the browser.
 
 #### Rust
 
-[Rust](https://rust-lang.org) is a programming languaged focused around three pillars: performance, reliability and productivity. It is fast, memory-efficient, has an extensive type system and concept of ownership, allowing us to resolve many common errors at compiletime. 
+[Rust](https://rust-lang.org) is a programming language focused around three pillars: performance, reliability and productivity. It is fast, memory-efficient, has an extensive type system and concept of ownership, allowing us to resolve many common errors at compile time. 
 
 We chose Rust for this problem, as it is a language that enforces aspects of safety and performance. Additionally, since we want to use `mipsy_lib` for the backend, having `mipsy_web` written in rust allows us to easily use it. Furthermore, Rust has crates that allow us to write modern frontend code (see, Yew) and then compile to WASM.
 
 #### Yew
-[Yew](https://yew.rs/) is a Rust framework for bulding web applications.
+[Yew](https://yew.rs/) is a Rust framework for building web applications.
 It behaves very similar to React, with functional components, lifecycle hooks and a virtual DOM.
 
 #### Web Workers
@@ -76,4 +76,4 @@ It will also watch files for changes, and reload. You can use `trunk serve` duri
 2) `trunk build --release` is used for deployment. It will compile optimized rust code, optimized/minified css + bundle them in `dist/`.
 
 ## Deployment
-1) `scripts/deploy.sh` runs the build script, and then copies across the files to UNSW cse web servers.
+1) `scripts/deploy.sh` runs the build script, and then copies across the files to UNSW CSE web servers.

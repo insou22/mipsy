@@ -4,9 +4,9 @@ mod helper;
 mod error;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc, collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, Arc}};
+use std::{mem::take, ops::Deref, rc::Rc, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
-use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN, SPECIAL, SPECIAL2, SPECIAL3, JUMP, JAL}, Register, compile::breakpoints::{WatchpointTarget, TargetWatch, Watchpoint, TargetAction}};
+use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}, compile::breakpoints::{TargetWatch, TargetAction, get_affected_registers}};
 use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
 use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
 use helper::MyHelper;
@@ -32,17 +32,6 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
-const LB : u32 = 0b100000;
-const LBU: u32 = 0b100100;
-const LH : u32 = 0b100001;
-const LHU: u32 = 0b100101;
-const LUI: u32 = 0b001111;
-const LW : u32 = 0b100011;
-const LWU: u32 = 0b100111;
-const SB : u32 = 0b101000;
-const SH : u32 = 0b101001;
-const SW : u32 = 0b101011;
-
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
@@ -53,7 +42,6 @@ pub(crate) struct State {
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
     pub(crate) confirm_exit: bool,
-    pub(crate) watchpoints: HashMap<WatchpointTarget, Watchpoint>,
     pub(crate) interrupted: Arc<AtomicBool>,
 }
 
@@ -69,7 +57,6 @@ impl State {
             exited: false,
             prev_command: None,
             confirm_exit: false,
-            watchpoints: HashMap::new(),
             interrupted: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -464,11 +451,13 @@ impl State {
             }
         };
 
-        let affected_registers = Self::get_affected_registers(self, inst);
+        let mut empty_binary = Binary::default();
+        let binary = self.binary.as_mut().unwrap_or(&mut empty_binary);
+        let affected_registers = get_affected_registers(&self.runtime, inst);
         // TODO(joshh): move this into else if once let-chains are stabilised (1.64 baited me smh)
         let watchpoints = affected_registers.iter()
-            .filter(|&wp| self.watchpoints.get(&wp.target)
-                .map_or(false, |watch| watch.action == wp.action && watch.enabled))
+            .filter(|&wp| binary.watchpoints.get(&wp.target)
+                .map_or(false, |watch| watch.action.fits(&wp.action) && watch.enabled))
             .collect::<Vec<_>>();
 
         Ok(
@@ -476,8 +465,6 @@ impl State {
                 true
             } else {
                 let pc = self.runtime.timeline().state().pc();
-                let mut empty_binary = Binary::default();
-                let binary = self.binary.as_mut().unwrap_or(&mut empty_binary);
                 let bp = binary.breakpoints.get_mut(&pc);
 
                 if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
@@ -500,19 +487,24 @@ impl State {
                     }
                 } else if !watchpoints.is_empty() {
                     let mut all_ignored = true;
+                    let mut to_exec = Vec::new();
                     for watchpoint in watchpoints {
-                        let mut wp = self.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
+                        let mut wp = binary.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
                         if wp.ignore_count > 0 {
                             wp.ignore_count -= 1;
                         } else {
                             let prev_pc = pc - 4;
-                            runtime_handler::watchpoint(watchpoint, prev_pc, &self.binary.as_ref().unwrap_or(&empty_binary).line_numbers);
-                            wp.commands.clone().iter().for_each(|command| {
-                                self.exec_command(command.to_owned());
-                            });
+                            runtime_handler::watchpoint(watchpoint, prev_pc, &binary.line_numbers);
+                            to_exec.extend(wp.commands.clone().into_iter());
                             all_ignored = false;
                         }
                     }
+
+                    // TODO(joshh): would be nice to have the watchpoint notification in between
+                    // the actions for each watchpoint
+                    to_exec.into_iter().for_each(|command| {
+                        self.exec_command(command);
+                    });
 
                     if all_ignored { trapped } else { true }
                 } else {
@@ -520,79 +512,6 @@ impl State {
                 }
             }
         )
-    }
-
-    fn get_affected_registers(&self, inst: u32) -> Vec<TargetWatch> {
-        let opcode =  inst >> 26;
-        let rb     = (inst >> 21) & 0x1F;
-        let rs     = (inst >> 21) & 0x1F;
-        let rt     = (inst >> 16) & 0x1F;
-        let rd     = (inst >> 11) & 0x1F;
-        let offset = (inst & 0xFF) as i32;
-
-        match opcode {
-            LB | LBU | LH | LHU | LW | LWU | LUI => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::MemAddr(
-                        (self.runtime.timeline().prev_state().expect("there should be a previous state")
-                            .read_register(rb).expect("uninitialized read should already have been handled")
-                            + offset) as u32
-                    ),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            SB | SH | SW => vec![
-                TargetWatch {
-                    target: WatchpointTarget::MemAddr(
-                        (self.runtime.timeline().state()
-                            .read_register(rb).expect("uninitialized read should already have been handled")
-                            + offset) as u32
-                    ),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rb).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            SPECIAL | SPECIAL2 | SPECIAL3 => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rd).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-            ],
-            JUMP | JAL => vec![],
-            _ => vec![
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
-                    action: TargetAction::ReadOnly,
-                },
-                TargetWatch {
-                    target: WatchpointTarget::Register(Register::from_u32(rt).unwrap()),
-                    action: TargetAction::WriteOnly,
-                },
-            ],
-        }
     }
 
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
@@ -637,36 +556,6 @@ impl State {
         if let Some(cmd) = self.prev_command.take() {
             self.exec_command(cmd);
         }
-    }
-
-    pub fn generate_watchpoint_id(&self) -> u32 {
-        let mut id = self.watchpoints
-                    .values()
-                    .map(|wp| wp.id)
-                    .fold(std::u32::MIN, |x, y| x.max(y))
-                    .wrapping_add(1);
-
-        if self.watchpoints.values().any(|wp| wp.id == id) {
-            // find a free id to use
-            // there's probably a neater way to do this,
-            // but realistically if someone is using enough watchpoints
-            // to fill a u32, they have bigger problems
-
-            let mut ids = self.watchpoints
-                    .values()
-                    .map(|wp| wp.id)
-                    .collect::<Vec<_>>();
-
-            ids.sort_unstable();
-
-            id = ids.into_iter()
-                    .enumerate()
-                    .find(|x| x.0 != x.1 as usize)
-                    .expect("you've run out of watchpoints! why are you using so many")
-                    .1;
-        }
-
-        id
     }
 }
 

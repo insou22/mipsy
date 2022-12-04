@@ -88,7 +88,7 @@ pub fn handle_response_from_worker(
                 }))
             }
 
-            _ => unreachable!("cannot update binary if there is no binary"),
+            _ => {},
         },
 
         WorkerResponse::WorkerError(response_struct) => {

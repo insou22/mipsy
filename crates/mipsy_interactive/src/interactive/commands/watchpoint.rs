@@ -3,7 +3,7 @@ use std::{iter::successors, str::FromStr};
 
 use super::{*, commands::handle_commands};
 use colored::*;
-use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}};
+use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}, Binary};
 use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
 
 enum WpState {
@@ -191,12 +191,13 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
     }
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
     let id;
     // this should always be overwritten but the compiler doesn't know that
     let mut action = TargetAction::ReadWrite;
     let wp_action = if op == InsertOp::Delete {
-        if let Some(wp) = state.watchpoints.remove(&target) {
+        if let Some(wp) = binary.watchpoints.remove(&target) {
             id = wp.id;
             "removed"
         } else {
@@ -239,13 +240,13 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
             )
         };
 
-        let task = if state.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
-        id = state.generate_watchpoint_id();
+        let task = if binary.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
+        id = Binary::generate_id(&binary.watchpoints);
         let mut wp = Watchpoint::new(id, action);
         if op == InsertOp::Temporary {
             wp.commands.push(format!("watchpoint remove !{id}"))
         }
-        state.watchpoints.insert(target, wp);
+        binary.watchpoints.insert(target, wp);
 
         task
     };
@@ -257,7 +258,6 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {
-                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                     binary.labels.iter()
                         .find(|(_, &_addr)| _addr == addr)
                         .map(|(name, _)| name)
@@ -299,14 +299,14 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
         )
     }
 
-    if state.watchpoints.is_empty() {
+    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+
+    if binary.watchpoints.is_empty() {
         prompt::error_nl("no watchpoints set");
         return Ok("".into());
     }
 
-    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-
-    let mut watchpoints = state.watchpoints.iter()
+    let mut watchpoints = binary.watchpoints.iter()
             .map(|wp| {
                 let addr = match wp.0 {
                     WatchpointTarget::Register(_) => None,
@@ -410,8 +410,10 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+
     let id;
-    if let Some(wp) = state.watchpoints.get_mut(&target) {
+    if let Some(wp) = binary.watchpoints.get_mut(&target) {
         id = wp.id;
         wp.enabled = match op {
             WpState::Enable  => true,
@@ -431,7 +433,7 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
     }
 
     // already ruled out possibility of entry not existing
-    let action = match state.watchpoints.get(&target).unwrap().enabled {
+    let action = match binary.watchpoints.get(&target).unwrap().enabled {
         true  => "enabled",
         false => "disabled",
     };
@@ -443,7 +445,6 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
             match target {
                 WatchpointTarget::Register(_) => None,
                 WatchpointTarget::MemAddr(addr) => {
-                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                     binary.labels.iter()
                         .find(|(_, &_addr)| _addr == addr)
                         .map(|(name, _)| name)
@@ -525,7 +526,8 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
             ""
         ))?;
 
-    if let Some(wp) = state.watchpoints.get_mut(&target) {
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
+    if let Some(wp) = binary.watchpoints.get_mut(&target) {
         wp.ignore_count = ignore_count;
         prompt::success_nl(format!("skipping watchpoint {} {} times", format!("!{}", wp.id).blue(), ignore_count.to_string().yellow()));
     } else {
@@ -562,8 +564,9 @@ fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Resul
         )
     }
 
+    let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
     state.confirm_exit = true;
-    handle_commands(args, &mut state.watchpoints)
+    handle_commands(args, &mut binary.watchpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
@@ -583,9 +586,11 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget
         &String::from(""),
     );
 
+    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
-        let target = state.watchpoints.iter().find(|wp| wp.1.id == id)
+        let target = binary.watchpoints.iter().find(|wp| wp.1.id == id)
                         .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
 
         return Ok((*target, MipsyArgType::Id))
@@ -604,7 +609,6 @@ fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget
                 MpImmediate::I32(imm) =>  *imm as u32,
                 MpImmediate::U32(imm) =>  *imm,
                 MpImmediate::LabelReference(label) => {
-                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
                     let addr = binary.get_label(label)
                             .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?;
                     return Ok((

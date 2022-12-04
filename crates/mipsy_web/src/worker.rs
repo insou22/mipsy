@@ -1,9 +1,12 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
-use mipsy_lib::compile::breakpoints::Breakpoint;
+use mipsy_lib::compile::breakpoints::{
+    get_affected_registers, Breakpoint, TargetAction, Watchpoint, WatchpointTarget,
+};
 use mipsy_lib::compile::CompilerOptions;
 use mipsy_lib::error::runtime::ErrorContext;
+use mipsy_lib::Register;
 use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runtime, Safe};
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
@@ -84,6 +87,8 @@ pub enum WorkerRequest {
     UpdateConfig(MipsyWebConfig),
     // Toggle a breakpoiint at an address
     ToggleBreakpoint(u32),
+    // Toggle watchpoints on a register
+    ToggleWatchpoint(u32, TargetAction),
     Run(MipsState, NumSteps, FileInformation),
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
@@ -169,6 +174,8 @@ impl Agent for Worker {
 
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
         let mut breakpoint = false;
+        let mut watchpoint = false;
+        let mut watchpoints = Vec::new();
         match msg {
             Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
@@ -354,8 +361,31 @@ impl Agent for Worker {
                     if binary.breakpoints.contains_key(&addr) {
                         binary.breakpoints.remove(&addr);
                     } else {
-                        let id = binary.generate_breakpoint_id();
+                        let id = Binary::generate_id(&binary.breakpoints);
                         binary.breakpoints.insert(addr, Breakpoint::new(id));
+                    }
+                }
+
+                let response = Self::Output::UpdateBinary(self.binary.clone());
+                self.link.respond(id, response)
+            }
+
+            Self::Input::ToggleWatchpoint(register, action) => {
+                let binary = self.binary.as_mut();
+                if let Some(binary) = binary {
+                    let target = WatchpointTarget::Register(Register::from_u32(register).unwrap());
+                    let watchpoint = binary.watchpoints.get_mut(&target);
+                    if let Some(watchpoint) = watchpoint {
+                        if let Some(action) = watchpoint.action - action {
+                            watchpoint.action = action;
+                        } else {
+                            binary.watchpoints.remove(&target);
+                        }
+                    } else {
+                        let id = Binary::generate_id(&binary.watchpoints);
+                        binary
+                            .watchpoints
+                            .insert(target, Watchpoint::new(id, action));
                     }
                 }
 
@@ -384,9 +414,26 @@ impl Agent for Worker {
                                     }
                                 } else {
                                     let stepped_runtime = runtime.step();
+
                                     match stepped_runtime {
                                         Ok(Ok(next_runtime)) => {
                                             let pc = next_runtime.timeline().state().pc();
+                                            let affected_registers = get_affected_registers(
+                                                &next_runtime,
+                                                next_runtime.current_inst(),
+                                            );
+                                            watchpoints = affected_registers
+                                                .into_iter()
+                                                .filter(|wp| {
+                                                    binary.watchpoints.get(&wp.target).map_or(
+                                                        false,
+                                                        |watch| {
+                                                            watch.action.fits(&wp.action)
+                                                                && watch.enabled
+                                                        },
+                                                    )
+                                                })
+                                                .collect::<Vec<_>>();
 
                                             runtime = next_runtime;
                                             // we want to stop at the instruction before the breakpoint
@@ -395,6 +442,9 @@ impl Agent for Worker {
                                                 && !self.config.ignore_breakpoints
                                             {
                                                 breakpoint = true;
+                                                break;
+                                            } else if !watchpoints.is_empty() {
+                                                watchpoint = true;
                                                 break;
                                             }
                                         }
@@ -438,10 +488,11 @@ impl Agent for Worker {
                             mips_state.update_memory(&runtime);
                             let pc = runtime.timeline().state().pc();
                             let binary = self.binary.as_ref().unwrap();
+
                             self.runtime = Some(RuntimeState::Running(runtime));
+                            let response;
                             if mips_state.exit_status.is_some() {
-                                let response = Self::Output::ProgramExited(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::ProgramExited(mips_state);
                             } else if breakpoint {
                                 // the label or address
                                 let label = binary
@@ -454,15 +505,28 @@ impl Agent for Worker {
                                     .mipsy_stdout
                                     .push(format!("BREAKPOINT - {label}"));
 
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::UpdateMipsState(mips_state);
+                            } else if watchpoint {
+                                for wp in watchpoints {
+                                    mips_state.mipsy_stdout.push(format!(
+                                        "WATCHPOINT - {} was {} at 0x{pc:08x}",
+                                        wp.target,
+                                        match wp.action {
+                                            TargetAction::ReadOnly => "read from",
+                                            TargetAction::WriteOnly => "written to",
+                                            TargetAction::ReadWrite => "written to",
+                                        }
+                                    ));
+                                }
+
+                                response = Self::Output::UpdateMipsState(mips_state);
                             } else if mips_state.is_stepping {
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::UpdateMipsState(mips_state);
                             } else {
-                                let response = Self::Output::InstructionOk(mips_state);
-                                self.link.respond(id, response);
+                                response = Self::Output::InstructionOk(mips_state);
                             }
+
+                            self.link.respond(id, response);
                             return;
                         }
 
@@ -475,6 +539,7 @@ impl Agent for Worker {
                         // now let's us step the right number of times
                         for _ in 1..=step_size {
                             let pc = runtime.timeline().state().pc();
+
                             if pc >= mipsy_lib::KTEXT_BOT {
                                 break;
                             } else if mips_state.breakpoint_switch
@@ -496,6 +561,21 @@ impl Agent for Worker {
                                 // instruction ran okay
                                 Ok(Ok(next_runtime)) => {
                                     let pc = next_runtime.timeline().state().pc();
+                                    let affected_registers = get_affected_registers(
+                                        &next_runtime,
+                                        next_runtime.current_inst(),
+                                    );
+                                    watchpoints = affected_registers
+                                        .into_iter()
+                                        .filter(|wp| {
+                                            binary.watchpoints.get(&wp.target).map_or(
+                                                false,
+                                                |watch| {
+                                                    watch.action.fits(&wp.action) && watch.enabled
+                                                },
+                                            )
+                                        })
+                                        .collect::<Vec<_>>();
 
                                     runtime = next_runtime;
                                     // we want to stop at the instruction before the breakpoint
@@ -504,6 +584,9 @@ impl Agent for Worker {
                                         && !self.config.ignore_breakpoints
                                     {
                                         breakpoint = true;
+                                        break;
+                                    } else if !watchpoints.is_empty() {
+                                        watchpoint = true;
                                         break;
                                     }
                                 }
@@ -587,15 +670,6 @@ impl Agent for Worker {
                                             mips_state.stdout.push(string_value);
 
                                             runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
 
                                             // we want to stop at the instruction before the breakpoint
                                             // so that the line of breakpoint doesnt get executed
@@ -857,6 +931,20 @@ impl Agent for Worker {
                             mips_state
                                 .mipsy_stdout
                                 .push(format!("BREAKPOINT - {label}"));
+
+                            response = Self::Output::UpdateMipsState(mips_state);
+                        } else if watchpoint {
+                            for wp in watchpoints {
+                                mips_state.mipsy_stdout.push(format!(
+                                    "WATCHPOINT - {} was {} at 0x{pc:08x}",
+                                    wp.target,
+                                    match wp.action {
+                                        TargetAction::ReadOnly => "read from",
+                                        TargetAction::WriteOnly => "written to",
+                                        TargetAction::ReadWrite => "written to",
+                                    }
+                                ));
+                            }
 
                             response = Self::Output::UpdateMipsState(mips_state);
                         } else if step_size.abs() == 1 {

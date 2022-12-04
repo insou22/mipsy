@@ -3,7 +3,7 @@ use std::iter::successors;
 
 use super::{*, commands::handle_commands};
 use colored::*;
-use mipsy_lib::compile::breakpoints::Breakpoint;
+use mipsy_lib::{compile::breakpoints::Breakpoint, Binary};
 use mipsy_parser::*;
 
 enum EnableOp {
@@ -220,7 +220,7 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
             return Ok("".into());
         }
     } else if !binary.breakpoints.contains_key(&addr) {
-        id = binary.generate_breakpoint_id();
+        id = Binary::generate_id(&binary.breakpoints);
         let mut bp = Breakpoint::new(id);
         if op == InsertOp::Temporary {
             bp.commands.push(format!("breakpoint remove !{id}"))
