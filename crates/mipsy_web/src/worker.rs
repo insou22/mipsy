@@ -177,7 +177,7 @@ impl Agent for Worker {
                     &self.inst_set,
                     vec![TaggedFile::new(Some(&filename), file.as_str())],
                     &CompilerOptions::default(),
-                    &config,
+                    config,
                 );
 
                 match compiled {
@@ -244,30 +244,28 @@ impl Agent for Worker {
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
                                 let decompiled =
-                                    decompile(&binary, &self.inst_set, self.file.clone());
+                                    decompile(binary, &self.inst_set, self.file.clone());
                                 let response = Self::Output::DecompiledCode(DecompiledResponse {
                                     decompiled,
                                     file: None,
                                     binary: binary.to_owned(),
                                 });
-                                let runtime = mipsy_lib::runtime(&binary, &[]);
+                                let runtime = mipsy_lib::runtime(binary, &[]);
                                 self.runtime = Some(RuntimeState::Running(runtime));
                                 self.link.respond(id, response)
                             }
                         }
                     }
-                } else {
-                    if let Some(binary) = &self.binary {
-                        let decompiled = decompile(&binary, &self.inst_set, self.file.clone());
-                        let response = Self::Output::DecompiledCode(DecompiledResponse {
-                            decompiled,
-                            file: None,
-                            binary: binary.to_owned(),
-                        });
-                        let runtime = mipsy_lib::runtime(&binary, &[]);
-                        self.runtime = Some(RuntimeState::Running(runtime));
-                        self.link.respond(id, response)
-                    }
+                } else if let Some(binary) = &self.binary {
+                    let decompiled = decompile(binary, &self.inst_set, self.file.clone());
+                    let response = Self::Output::DecompiledCode(DecompiledResponse {
+                        decompiled,
+                        file: None,
+                        binary: binary.to_owned(),
+                    });
+                    let runtime = mipsy_lib::runtime(binary, &[]);
+                    self.runtime = Some(RuntimeState::Running(runtime));
+                    self.link.respond(id, response)
                 }
             }
 
@@ -351,6 +349,8 @@ impl Agent for Worker {
             Self::Input::ToggleBreakpoint(addr) => {
                 let binary = self.binary.as_mut();
                 if let Some(binary) = binary {
+                    // clippy is wrong here, and breaks borrow checker
+                    #[allow(clippy::all)]
                     if binary.breakpoints.contains_key(&addr) {
                         binary.breakpoints.remove(&addr);
                     } else {
@@ -367,468 +367,69 @@ impl Agent for Worker {
 
             Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
                 let binary = self.binary.as_ref().unwrap();
-                if let Some(runtime_state) = self.runtime.take() {
-                    if let RuntimeState::Running(mut runtime) = runtime_state {
-                        // fast forward the kernel segment
-                        // or, fast rewind the kernel segment if we are rewinding
-                        if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
-                            while runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
-                                // info!("stepping ktext: {:08x}", runtime.timeline().state().pc());
-                                if step_size == -1 {
-                                    info!("stepping back: {:08x}", runtime.timeline().state().pc());
-                                    runtime.timeline_mut().pop_last_state();
-                                    mips_state.exit_status = None;
-                                    // avoid infinite loop of scrolling back
-                                    if runtime.timeline().state().pc() == mipsy_lib::KTEXT_BOT {
-                                        break;
-                                    }
-                                } else {
-                                    let stepped_runtime = runtime.step();
-                                    match stepped_runtime {
-                                        Ok(Ok(next_runtime)) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            runtime = next_runtime;
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-                                        Ok(Err(guard)) => {
-                                            use RuntimeSyscallGuard::*;
-                                            match guard {
-                                                ExitStatus(exit_status_args, next_runtime) => {
-                                                    info!("Exit in kernel");
-
-                                                    mips_state.exit_status =
-                                                        Some(exit_status_args.exit_code);
-                                                    runtime = next_runtime;
-                                                }
-                                                _ => {
-                                                    error!("Some non-exit status syscall exists in the kernel");
-                                                    return;
-                                                }
-                                            }
-                                        }
-                                        Err((prev_runtime, err)) => {
-                                            runtime = prev_runtime;
-                                            mips_state.update_registers(&runtime);
-                                            mips_state.update_current_instr(&runtime);
-                                            mips_state.update_memory(&runtime);
-                                            self.runtime = Some(RuntimeState::Running(runtime));
-                                            mips_state.mipsy_stdout.push(format!("{:?}", err));
-                                            let response =
-                                                Self::Output::UpdateMipsState(mips_state);
-                                            self.link.respond(id, response);
-                                            error!("error when fast forwarding: {:?}", err);
-                                            return;
-                                        }
-                                    }
-                                }
-                                if mips_state.exit_status.is_some() {
+                if let Some(RuntimeState::Running(mut runtime)) = self.runtime.take() {
+                    // fast forward the kernel segment
+                    // or, fast rewind the kernel segment if we are rewinding
+                    if runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
+                        while runtime.timeline().state().pc() >= mipsy_lib::KTEXT_BOT {
+                            // info!("stepping ktext: {:08x}", runtime.timeline().state().pc());
+                            if step_size == -1 {
+                                info!("stepping back: {:08x}", runtime.timeline().state().pc());
+                                runtime.timeline_mut().pop_last_state();
+                                mips_state.exit_status = None;
+                                // avoid infinite loop of scrolling back
+                                if runtime.timeline().state().pc() == mipsy_lib::KTEXT_BOT {
                                     break;
-                                };
-                            }
-                            mips_state.update_registers(&runtime);
-                            mips_state.update_current_instr(&runtime);
-                            mips_state.update_memory(&runtime);
-                            let pc = runtime.timeline().state().pc();
-                            let binary = self.binary.as_ref().unwrap();
-                            self.runtime = Some(RuntimeState::Running(runtime));
-                            if mips_state.exit_status.is_some() {
-                                let response = Self::Output::ProgramExited(mips_state);
-                                self.link.respond(id, response);
-                            } else if breakpoint {
-                                // the label or address
-                                let label = binary
-                                    .labels
-                                    .iter()
-                                    .find(|(_, &addr)| addr == pc)
-                                    .map(|(name, _)| name.to_string())
-                                    .unwrap_or(format!("0x{:08x}", pc));
-                                mips_state
-                                    .mipsy_stdout
-                                    .push(format!("BREAKPOINT - {label}"));
-
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
-                            } else if mips_state.is_stepping {
-                                let response = Self::Output::UpdateMipsState(mips_state);
-                                self.link.respond(id, response);
+                                }
                             } else {
-                                let response = Self::Output::InstructionOk(mips_state);
-                                self.link.respond(id, response);
-                            }
-                            return;
-                        }
+                                let stepped_runtime = runtime.step();
+                                match stepped_runtime {
+                                    Ok(Ok(next_runtime)) => {
+                                        let pc = next_runtime.timeline().state().pc();
 
-                        // prevent us from stepping too far in kernel and exiting
-                        if step_size == -1 {
-                            runtime.timeline_mut().pop_last_state();
-                            mips_state.exit_status = None;
-                        }
+                                        runtime = next_runtime;
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+                                    Ok(Err(guard)) => {
+                                        use RuntimeSyscallGuard::*;
+                                        match guard {
+                                            ExitStatus(exit_status_args, next_runtime) => {
+                                                info!("Exit in kernel");
 
-                        // now let's us step the right number of times
-                        for _ in 1..=step_size {
-                            let pc = runtime.timeline().state().pc();
-                            if pc >= mipsy_lib::KTEXT_BOT {
-                                break;
-                            } else if mips_state.breakpoint_switch
-                                && binary.breakpoints.contains_key(&pc)
-                            {
-                                // the previous instruction was a read syscall
-                                // and indicated that the current instruction
-                                // is a breakpoint, so break here
-                                // set state to say the next run can ignore
-                                // the breakpoint (since we are breaking here)
-                                breakpoint = true;
-                                mips_state.breakpoint_switch = false;
-                                break;
-                            }
-
-                            // info!("stepping text: {:08x}", runtime.timeline().state().pc());
-                            let stepped_runtime = runtime.step();
-                            match stepped_runtime {
-                                // instruction ran okay
-                                Ok(Ok(next_runtime)) => {
-                                    let pc = next_runtime.timeline().state().pc();
-
-                                    runtime = next_runtime;
-                                    // we want to stop at the instruction before the breakpoint
-                                    // so that the line of breakpoint doesnt get executed
-                                    if binary.breakpoints.contains_key(&pc)
-                                        && !self.config.ignore_breakpoints
-                                    {
-                                        breakpoint = true;
-                                        break;
+                                                mips_state.exit_status =
+                                                    Some(exit_status_args.exit_code);
+                                                runtime = next_runtime;
+                                            }
+                                            _ => {
+                                                error!("Some non-exit status syscall exists in the kernel");
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    Err((prev_runtime, err)) => {
+                                        runtime = prev_runtime;
+                                        mips_state.update_registers(&runtime);
+                                        mips_state.update_current_instr(&runtime);
+                                        mips_state.update_memory(&runtime);
+                                        self.runtime = Some(RuntimeState::Running(runtime));
+                                        mips_state.mipsy_stdout.push(format!("{:?}", err));
+                                        let response = Self::Output::UpdateMipsState(mips_state);
+                                        self.link.respond(id, response);
+                                        error!("error when fast forwarding: {:?}", err);
+                                        return;
                                     }
                                 }
-
-                                // instruction ran but we need to handle a syscall
-                                Ok(Err(guard)) => {
-                                    use RuntimeSyscallGuard::*;
-                                    match guard {
-                                        PrintInt(print_int_args, next_runtime) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            info!("printing integer {}", print_int_args.value);
-
-                                            mips_state
-                                                .stdout
-                                                .push(print_int_args.value.to_string());
-
-                                            runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-
-                                        PrintFloat(print_float_args, next_runtime) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            info!("printing float {}", print_float_args.value);
-
-                                            mips_state
-                                                .stdout
-                                                .push(print_float_args.value.to_string());
-
-                                            runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-
-                                        PrintDouble(print_double_args, next_runtime) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            info!("printing double {}", print_double_args.value);
-
-                                            mips_state
-                                                .stdout
-                                                .push(print_double_args.value.to_string());
-
-                                            runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-
-                                        PrintString(print_string_args, next_runtime) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            let string_value =
-                                                String::from_utf8_lossy(&print_string_args.value)
-                                                    .to_string();
-
-                                            info!("printing string {:?}", string_value);
-
-                                            mips_state.stdout.push(string_value);
-
-                                            runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-
-                                        PrintChar(print_char_args, next_runtime) => {
-                                            let pc = next_runtime.timeline().state().pc();
-
-                                            let string =
-                                                String::from_utf8_lossy(&[print_char_args.value])
-                                                    .to_string();
-
-                                            info!("printing! char {:?}", string);
-
-                                            mips_state.stdout.push(string);
-
-                                            runtime = next_runtime;
-
-                                            // we want to stop at the instruction before the breakpoint
-                                            // so that the line of breakpoint doesnt get executed
-                                            if binary.breakpoints.contains_key(&pc)
-                                                && !self.config.ignore_breakpoints
-                                            {
-                                                breakpoint = true;
-                                                break;
-                                            }
-                                        }
-
-                                        ReadInt(guard) => {
-                                            info!("reading int");
-                                            self.runtime = Some(RuntimeState::WaitingInt(guard));
-
-                                            mips_state.breakpoint_switch = true;
-                                            self.link
-                                                .respond(id, WorkerResponse::NeedInt(mips_state));
-
-                                            return;
-                                        }
-
-                                        ReadFloat(guard) => {
-                                            info!("reading float");
-                                            self.runtime = Some(RuntimeState::WaitingFloat(guard));
-                                            mips_state.breakpoint_switch = true;
-
-                                            self.link
-                                                .respond(id, WorkerResponse::NeedFloat(mips_state));
-
-                                            return;
-                                        }
-
-                                        ReadString(_str_args, guard) => {
-                                            info!("reading string");
-                                            self.runtime = Some(RuntimeState::WaitingString(guard));
-                                            mips_state.breakpoint_switch = true;
-
-                                            self.link.respond(
-                                                id,
-                                                WorkerResponse::NeedString(mips_state),
-                                            );
-
-                                            return;
-                                        }
-
-                                        ReadChar(guard) => {
-                                            info!("Reading char");
-                                            self.runtime = Some(RuntimeState::WaitingChar(guard));
-                                            mips_state.breakpoint_switch = true;
-
-                                            self.link
-                                                .respond(id, WorkerResponse::NeedChar(mips_state));
-
-                                            return;
-                                        }
-
-                                        Sbrk(_sbrk_args, next_runtime) => {
-                                            info!("sbrk");
-
-                                            runtime = next_runtime;
-                                        }
-
-                                        Exit(next_runtime) => {
-                                            info!("exit syscall");
-
-                                            mips_state.exit_status = Some(0);
-
-                                            runtime = next_runtime;
-                                        }
-
-                                        Open(_open_args, _fn_ptr) => {
-                                            error!("open syscall is not supported by mipsy_web.");
-
-                                            mips_state
-                                                .mipsy_stdout
-                                                .push("Open syscall not supported".to_string());
-                                            runtime = _fn_ptr(42);
-                                        }
-
-                                        Write(_write_args, _fn_ptr) => {
-                                            error!("write syscall is not supported by mipsy_web ");
-
-                                            mips_state
-                                                .mipsy_stdout
-                                                .push("Write syscall not supported".to_string());
-                                            runtime = _fn_ptr(42);
-                                        }
-
-                                        Close(_close_args, _fn_ptr) => {
-                                            info!("Close");
-
-                                            mips_state
-                                                .mipsy_stdout
-                                                .push("Close syscall not supported".to_string());
-                                            runtime = _fn_ptr(42);
-                                        }
-
-                                        ExitStatus(exit_status_args, next_runtime) => {
-                                            info!("Exit");
-
-                                            mips_state.exit_status =
-                                                Some(exit_status_args.exit_code);
-                                            runtime = next_runtime;
-
-                                            // Can't have a breakpoint
-                                            // after the exit instruction
-                                        }
-
-                                        Breakpoint(next_runtime) => {
-                                            runtime = next_runtime;
-                                            if !self.config.ignore_breakpoints {
-                                                breakpoint = true;
-                                                break;
-                                            }
-
-                                            // Can't have a breakpoint
-                                            // after the break instruction
-                                        }
-
-                                        _ => unreachable!("Invalid Syscall"), /*
-
-                                                                              Sbrk       (SbrkArgs, Runtime),
-                                                                              Exit       (Runtime),
-                                                                              PrintChar  (PrintCharArgs, Runtime),
-                                                                              ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
-                                                                              Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
-                                                                              Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
-                                                                              Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                                              Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
-                                                                              ExitStatus (ExitStatusArgs, Runtime),
-
-                                                                              // other
-                                                                              Breakpoint     (Runtime),
-                                                                              */
-                                    }
-                                }
-
-                                // mipsy runtime error
-                                Err((prev_runtime, error)) => {
-                                    runtime = prev_runtime;
-                                    mips_state.update_registers(&runtime);
-                                    mips_state.update_current_instr(&runtime);
-                                    mips_state.update_memory(&runtime);
-                                    self.runtime = Some(RuntimeState::Running(runtime));
-
-                                    match &error {
-                                        MipsyError::Runtime(runtime_error) => {
-                                            let filename: Rc<str> = Rc::from(filename);
-                                            let file: Rc<str> = Rc::from(file.clone());
-                                            let source_code = [(filename.clone(), file)];
-                                            let runtime = match self.runtime {
-                                                Some(RuntimeState::Running(ref runtime)) => runtime,
-                                                _ => unreachable!("runtime not running"),
-                                            };
-                                            let binary = self
-                                                .binary
-                                                .as_ref()
-                                                .expect("binary should exist if runtime error");
-                                            let message = format!(
-                                                "error: {}\ntips: {}\n",
-                                                runtime_error.error().message(
-                                                    ErrorContext::Binary,
-                                                    &source_code[..],
-                                                    &self.inst_set,
-                                                    binary,
-                                                    runtime
-                                                ),
-                                                runtime_error
-                                                    .error()
-                                                    .tips(
-                                                        &source_code[..],
-                                                        &self.inst_set,
-                                                        binary,
-                                                        runtime
-                                                    )
-                                                    .join("\n")
-                                            );
-
-                                            mips_state.mipsy_stdout.push(message);
-                                            let response =
-                                                Self::Output::RuntimeError(RuntimeErrorResponse {
-                                                    mips_state: mips_state.clone(),
-                                                    error,
-                                                });
-                                            self.link.respond(id, response);
-                                            return;
-                                        }
-
-                                        MipsyError::Parser(_) | MipsyError::Compiler(_) => {
-                                            unreachable!("parser errors and compiler errors should not happen at runtime")
-                                        }
-                                    };
-                                }
                             }
-
                             if mips_state.exit_status.is_some() {
                                 break;
                             };
-
-                            // usually we only update registers after all steps ran, but in case
-                            // next instruction is a syscall, we need to update registers before it
-                            // early exits
-                            if let Ok(next_instr_is_read_syscall) = runtime.next_inst_may_guard() {
-                                if next_instr_is_read_syscall {
-                                    mips_state.update_registers(&runtime);
-                                    mips_state.update_current_instr(&runtime);
-                                    mips_state.update_memory(&runtime);
-                                }
-                            }
                         }
                         mips_state.update_registers(&runtime);
                         mips_state.update_current_instr(&runtime);
@@ -836,16 +437,9 @@ impl Agent for Worker {
                         let pc = runtime.timeline().state().pc();
                         let binary = self.binary.as_ref().unwrap();
                         self.runtime = Some(RuntimeState::Running(runtime));
-
-                        let response;
                         if mips_state.exit_status.is_some() {
-                            mips_state.stdout.push(format!(
-                                "\nProgram exited with exit status {}",
-                                mips_state
-                                    .exit_status
-                                    .expect("infinite loop guarantees Some return")
-                            ));
-                            response = Self::Output::ProgramExited(mips_state);
+                            let response = Self::Output::ProgramExited(mips_state);
+                            self.link.respond(id, response);
                         } else if breakpoint {
                             // the label or address
                             let label = binary
@@ -858,17 +452,405 @@ impl Agent for Worker {
                                 .mipsy_stdout
                                 .push(format!("BREAKPOINT - {label}"));
 
-                            response = Self::Output::UpdateMipsState(mips_state);
-                        } else if step_size.abs() == 1 {
-                            // just update the state
-                            response = Self::Output::UpdateMipsState(mips_state);
+                            let response = Self::Output::UpdateMipsState(mips_state);
+                            self.link.respond(id, response);
+                        } else if mips_state.is_stepping {
+                            let response = Self::Output::UpdateMipsState(mips_state);
+                            self.link.respond(id, response);
                         } else {
-                            // update state and tell frontend to run more isntructions
-                            response = Self::Output::InstructionOk(mips_state);
+                            let response = Self::Output::InstructionOk(mips_state);
+                            self.link.respond(id, response);
+                        }
+                        return;
+                    }
+
+                    // prevent us from stepping too far in kernel and exiting
+                    if step_size == -1 {
+                        runtime.timeline_mut().pop_last_state();
+                        mips_state.exit_status = None;
+                    }
+
+                    // now let's us step the right number of times
+                    for _ in 1..=step_size {
+                        let pc = runtime.timeline().state().pc();
+                        if pc >= mipsy_lib::KTEXT_BOT {
+                            break;
+                        } else if mips_state.breakpoint_switch
+                            && binary.breakpoints.contains_key(&pc)
+                        {
+                            // the previous instruction was a read syscall
+                            // and indicated that the current instruction
+                            // is a breakpoint, so break here
+                            // set state to say the next run can ignore
+                            // the breakpoint (since we are breaking here)
+                            breakpoint = true;
+                            mips_state.breakpoint_switch = false;
+                            break;
                         }
 
-                        self.link.respond(id, response);
+                        // info!("stepping text: {:08x}", runtime.timeline().state().pc());
+                        let stepped_runtime = runtime.step();
+                        match stepped_runtime {
+                            // instruction ran okay
+                            Ok(Ok(next_runtime)) => {
+                                let pc = next_runtime.timeline().state().pc();
+
+                                runtime = next_runtime;
+                                // we want to stop at the instruction before the breakpoint
+                                // so that the line of breakpoint doesnt get executed
+                                if binary.breakpoints.contains_key(&pc)
+                                    && !self.config.ignore_breakpoints
+                                {
+                                    breakpoint = true;
+                                    break;
+                                }
+                            }
+
+                            // instruction ran but we need to handle a syscall
+                            Ok(Err(guard)) => {
+                                use RuntimeSyscallGuard::*;
+                                match guard {
+                                    PrintInt(print_int_args, next_runtime) => {
+                                        let pc = next_runtime.timeline().state().pc();
+
+                                        info!("printing integer {}", print_int_args.value);
+
+                                        mips_state.stdout.push(print_int_args.value.to_string());
+
+                                        runtime = next_runtime;
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+
+                                    PrintFloat(print_float_args, next_runtime) => {
+                                        let pc = next_runtime.timeline().state().pc();
+
+                                        info!("printing float {}", print_float_args.value);
+
+                                        mips_state.stdout.push(print_float_args.value.to_string());
+
+                                        runtime = next_runtime;
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+
+                                    PrintDouble(print_double_args, next_runtime) => {
+                                        let pc = next_runtime.timeline().state().pc();
+
+                                        info!("printing double {}", print_double_args.value);
+
+                                        mips_state.stdout.push(print_double_args.value.to_string());
+
+                                        runtime = next_runtime;
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+
+                                    PrintString(print_string_args, next_runtime) => {
+                                        let pc = next_runtime.timeline().state().pc();
+
+                                        let string_value =
+                                            String::from_utf8_lossy(&print_string_args.value)
+                                                .to_string();
+
+                                        info!("printing string {:?}", string_value);
+
+                                        mips_state.stdout.push(string_value);
+
+                                        runtime = next_runtime;
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+
+                                    PrintChar(print_char_args, next_runtime) => {
+                                        let pc = next_runtime.timeline().state().pc();
+
+                                        let string =
+                                            String::from_utf8_lossy(&[print_char_args.value])
+                                                .to_string();
+
+                                        info!("printing! char {:?}", string);
+
+                                        mips_state.stdout.push(string);
+
+                                        runtime = next_runtime;
+
+                                        // we want to stop at the instruction before the breakpoint
+                                        // so that the line of breakpoint doesnt get executed
+                                        if binary.breakpoints.contains_key(&pc)
+                                            && !self.config.ignore_breakpoints
+                                        {
+                                            breakpoint = true;
+                                            break;
+                                        }
+                                    }
+
+                                    ReadInt(guard) => {
+                                        info!("reading int");
+                                        self.runtime = Some(RuntimeState::WaitingInt(guard));
+
+                                        mips_state.breakpoint_switch = true;
+                                        self.link.respond(id, WorkerResponse::NeedInt(mips_state));
+
+                                        return;
+                                    }
+
+                                    ReadFloat(guard) => {
+                                        info!("reading float");
+                                        self.runtime = Some(RuntimeState::WaitingFloat(guard));
+                                        mips_state.breakpoint_switch = true;
+
+                                        self.link
+                                            .respond(id, WorkerResponse::NeedFloat(mips_state));
+
+                                        return;
+                                    }
+
+                                    ReadString(_str_args, guard) => {
+                                        info!("reading string");
+                                        self.runtime = Some(RuntimeState::WaitingString(guard));
+                                        mips_state.breakpoint_switch = true;
+
+                                        self.link
+                                            .respond(id, WorkerResponse::NeedString(mips_state));
+
+                                        return;
+                                    }
+
+                                    ReadChar(guard) => {
+                                        info!("Reading char");
+                                        self.runtime = Some(RuntimeState::WaitingChar(guard));
+                                        mips_state.breakpoint_switch = true;
+
+                                        self.link.respond(id, WorkerResponse::NeedChar(mips_state));
+
+                                        return;
+                                    }
+
+                                    Sbrk(_sbrk_args, next_runtime) => {
+                                        info!("sbrk");
+
+                                        runtime = next_runtime;
+                                    }
+
+                                    Exit(next_runtime) => {
+                                        info!("exit syscall");
+
+                                        mips_state.exit_status = Some(0);
+
+                                        runtime = next_runtime;
+                                    }
+
+                                    Open(_open_args, _fn_ptr) => {
+                                        error!("open syscall is not supported by mipsy_web.");
+
+                                        mips_state
+                                            .mipsy_stdout
+                                            .push("Open syscall not supported".to_string());
+                                        runtime = _fn_ptr(42);
+                                    }
+
+                                    Write(_write_args, _fn_ptr) => {
+                                        error!("write syscall is not supported by mipsy_web ");
+
+                                        mips_state
+                                            .mipsy_stdout
+                                            .push("Write syscall not supported".to_string());
+                                        runtime = _fn_ptr(42);
+                                    }
+
+                                    Close(_close_args, _fn_ptr) => {
+                                        info!("Close");
+
+                                        mips_state
+                                            .mipsy_stdout
+                                            .push("Close syscall not supported".to_string());
+                                        runtime = _fn_ptr(42);
+                                    }
+
+                                    ExitStatus(exit_status_args, next_runtime) => {
+                                        info!("Exit");
+
+                                        mips_state.exit_status = Some(exit_status_args.exit_code);
+                                        runtime = next_runtime;
+
+                                        // Can't have a breakpoint
+                                        // after the exit instruction
+                                    }
+
+                                    Breakpoint(next_runtime) => {
+                                        runtime = next_runtime;
+                                        if !self.config.ignore_breakpoints {
+                                            breakpoint = true;
+                                            break;
+                                        }
+
+                                        // Can't have a breakpoint
+                                        // after the break instruction
+                                    }
+
+                                    _ => unreachable!("Invalid Syscall"), /*
+
+                                                                          Sbrk       (SbrkArgs, Runtime),
+                                                                          Exit       (Runtime),
+                                                                          PrintChar  (PrintCharArgs, Runtime),
+                                                                          ReadChar   (           Box<dyn FnOnce(u8)             -> Runtime>),
+                                                                          Open       (OpenArgs,  Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                          Read       (ReadArgs,  Box<dyn FnOnce((i32, Vec<u8>)) -> Runtime>),
+                                                                          Write      (WriteArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                          Close      (CloseArgs, Box<dyn FnOnce(i32)            -> Runtime>),
+                                                                          */
+                                }
+                            }
+
+                            // mipsy runtime error
+                            Err((prev_runtime, error)) => {
+                                runtime = prev_runtime;
+                                mips_state.update_registers(&runtime);
+                                mips_state.update_current_instr(&runtime);
+                                mips_state.update_memory(&runtime);
+                                self.runtime = Some(RuntimeState::Running(runtime));
+
+                                match &error {
+                                    MipsyError::Runtime(runtime_error) => {
+                                        let filename: Rc<str> = Rc::from(filename);
+                                        let file: Rc<str> = Rc::from(file);
+                                        let source_code = [(filename, file)];
+                                        let runtime = match self.runtime {
+                                            Some(RuntimeState::Running(ref runtime)) => runtime,
+                                            _ => unreachable!("runtime not running"),
+                                        };
+                                        let binary = self
+                                            .binary
+                                            .as_ref()
+                                            .expect("binary should exist if runtime error");
+                                        let message = format!(
+                                            "error: {}\ntips: {}\n",
+                                            runtime_error.error().message(
+                                                ErrorContext::Binary,
+                                                &source_code[..],
+                                                &self.inst_set,
+                                                binary,
+                                                runtime
+                                            ),
+                                            runtime_error
+                                                .error()
+                                                .tips(
+                                                    &source_code[..],
+                                                    &self.inst_set,
+                                                    binary,
+                                                    runtime
+                                                )
+                                                .join("\n")
+                                        );
+
+                                        mips_state.mipsy_stdout.push(message);
+                                        let response =
+                                            Self::Output::RuntimeError(RuntimeErrorResponse {
+                                                mips_state: mips_state.clone(),
+                                                error,
+                                            });
+                                        self.link.respond(id, response);
+                                        return;
+                                    }
+
+                                    MipsyError::Parser(_) | MipsyError::Compiler(_) => {
+                                        unreachable!("parser errors and compiler errors should not happen at runtime")
+                                    }
+                                };
+                            }
+                        }
+
+                        if mips_state.exit_status.is_some() {
+                            break;
+                        };
+
+                        // usually we only update registers after all steps ran, but in case
+                        // next instruction is a syscall, we need to update registers before it
+                        // early exits
+                        if let Ok(next_instr_is_read_syscall) = runtime.next_inst_may_guard() {
+                            if next_instr_is_read_syscall {
+                                mips_state.update_registers(&runtime);
+                                mips_state.update_current_instr(&runtime);
+                                mips_state.update_memory(&runtime);
+                            }
+                        }
                     }
+                    mips_state.update_registers(&runtime);
+                    mips_state.update_current_instr(&runtime);
+                    mips_state.update_memory(&runtime);
+                    let pc = runtime.timeline().state().pc();
+                    let binary = self.binary.as_ref().unwrap();
+                    self.runtime = Some(RuntimeState::Running(runtime));
+
+                    let response;
+                    if mips_state.exit_status.is_some() {
+                        mips_state.stdout.push(format!(
+                            "\nProgram exited with exit status {}",
+                            mips_state
+                                .exit_status
+                                .expect("infinite loop guarantees Some return")
+                        ));
+                        response = Self::Output::ProgramExited(mips_state);
+                    } else if breakpoint {
+                        // the label or address
+                        let label = binary
+                            .labels
+                            .iter()
+                            .find(|(_, &addr)| addr == pc)
+                            .map(|(name, _)| name.to_string())
+                            .unwrap_or(format!("0x{:08x}", pc));
+                        mips_state
+                            .mipsy_stdout
+                            .push(format!("BREAKPOINT - {label}"));
+
+                        response = Self::Output::UpdateMipsState(mips_state);
+                    } else if step_size.abs() == 1 {
+                        // just update the state
+                        response = Self::Output::UpdateMipsState(mips_state);
+                    } else {
+                        // update state and tell frontend to run more isntructions
+                        response = Self::Output::InstructionOk(mips_state);
+                    }
+
+                    self.link.respond(id, response);
                 }
             }
         }
