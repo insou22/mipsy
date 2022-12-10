@@ -46,10 +46,14 @@ pub enum MpItem {
 
 impl<'tag, 'file> TaggedFile<'tag, 'file> {
     pub fn new(tag: Option<&'tag str>, file_contents: &'file str) -> Self {
-        Self {
-            tag,
-            file_contents,
-        }
+        Self { tag, file_contents }
+    }
+    pub fn tag(&self) -> Option<&'tag str> {
+        self.tag
+    }
+
+    pub fn file_contents(&self) -> &'file str {
+        self.file_contents
     }
 }
 
