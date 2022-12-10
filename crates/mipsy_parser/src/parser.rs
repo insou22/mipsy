@@ -1,14 +1,19 @@
 use std::rc::Rc;
 
-use crate::{ErrorLocation, Span, attribute::{Attribute, parse_inner_attribute, parse_outer_attribute}, constant::{MpConst, parse_constant}, directive::{MpDirective, MpDirectiveLoc, parse_directive}, instruction::{
-        MpInstruction,
-        parse_instruction,
-    }, label::{MpLabel, parse_label}, misc::{comment_multispace0, comment_multispace1, parse_result}};
-use nom::{AsBytes, IResult, branch::alt, combinator::map, multi::many0, sequence::tuple};
-use nom_locate::{LocatedSpan, position};
-use serde::{Serialize, Deserialize};
+use crate::{
+    attribute::{parse_inner_attribute, parse_outer_attribute, Attribute},
+    constant::{parse_constant, MpConst},
+    directive::{parse_directive, MpDirective, MpDirectiveLoc},
+    instruction::{parse_instruction, MpInstruction},
+    label::{parse_label, MpLabel},
+    misc::{comment_multispace0, comment_multispace1, parse_result},
+    ErrorLocation, Span,
+};
+use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, AsBytes, IResult};
+use nom_locate::{position, LocatedSpan};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TaggedFile<'tag, 'file> {
     tag: Option<&'tag str>,
     file_contents: &'file str,
@@ -73,10 +78,10 @@ impl Position {
         E: AsBytes,
     {
         Self {
-            line:     pos_start.location_line(),
+            line: pos_start.location_line(),
             line_end: pos_end.location_line(),
-            col:      pos_start.get_column() as _,
-            col_end:  pos_end.get_column() as _,
+            col: pos_start.get_column() as _,
+            col_end: pos_end.get_column() as _,
         }
     }
 
@@ -98,7 +103,12 @@ impl Position {
 }
 
 impl MpAttributedItem {
-    pub fn new(item: MpItem, attributes: Vec<Attribute>, file_tag: Option<Rc<str>>, line_number: u32) -> Self {
+    pub fn new(
+        item: MpItem,
+        attributes: Vec<Attribute>,
+        file_tag: Option<Rc<str>>,
+        line_number: u32,
+    ) -> Self {
         Self {
             item,
             attributes,
@@ -162,56 +172,44 @@ pub fn parse_mips_item(i: Span<'_>) -> IResult<Span<'_>, (MpItem, Vec<Attribute>
     map(
         tuple((
             comment_multispace0,
-            many0(
-                map(
-                    tuple((
-                        parse_inner_attribute,
-                        comment_multispace0,
-                    )),
-                    |(attr, _)| attr,
-                )
-            ),
+            many0(map(
+                tuple((parse_inner_attribute, comment_multispace0)),
+                |(attr, _)| attr,
+            )),
             comment_multispace0,
             position,
             alt((
-                map(parse_constant,    MpItem::Constant),
-                map(parse_label,       MpItem::Label),
-                map(parse_directive,   MpItem::Directive),
+                map(parse_constant, MpItem::Constant),
+                map(parse_label, MpItem::Label),
+                map(parse_directive, MpItem::Directive),
                 map(parse_instruction, MpItem::Instruction),
             )),
             comment_multispace0,
         )),
-        |(_, attrs,  _, pos, item, _)| (item, attrs, pos.location_line())
+        |(_, attrs, _, pos, item, _)| (item, attrs, pos.location_line()),
     )(i)
 }
 
-
-pub fn parse_mips_bytes<'a>(file_name: Option<Rc<str>>) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MpProgram> {
+pub fn parse_mips_bytes<'a>(
+    file_name: Option<Rc<str>>,
+) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, MpProgram> {
     move |i| {
-        let (
-            remaining_input,
-            (attrs, items)
-        ) = tuple((
+        let (remaining_input, (attrs, items)) = tuple((
             parse_outer_attributes,
-            many0(
-                alt((
-                    map(
-                        parse_mips_item,
-                        |(item, attrs, line)| Some(MpAttributedItem {
-                            item,
-                            attributes: attrs,
-                            file_tag: file_name.clone(),
-                            line_number: line,
-                        }),
-                    ),
-                    map(comment_multispace1, |_| None),
-                ))
-            )
+            many0(alt((
+                map(parse_mips_item, |(item, attrs, line)| {
+                    Some(MpAttributedItem {
+                        item,
+                        attributes: attrs,
+                        file_tag: file_name.clone(),
+                        line_number: line,
+                    })
+                }),
+                map(comment_multispace1, |_| None),
+            ))),
         ))(i)?;
 
-        let items = items.into_iter()
-            .flatten()
-            .collect();
+        let items = items.into_iter().flatten().collect();
 
         Ok((
             remaining_input,
@@ -227,21 +225,19 @@ pub fn parse_outer_attributes(i: Span<'_>) -> IResult<Span<'_>, Vec<Attribute>> 
     map(
         tuple((
             comment_multispace0,
-            many0(
-                map(
-                    tuple((
-                        parse_outer_attribute,
-                        comment_multispace0,
-                    )),
-                    |(attr, _)| attr,
-                )
-            ),
+            many0(map(
+                tuple((parse_outer_attribute, comment_multispace0)),
+                |(attr, _)| attr,
+            )),
         )),
-        |(_, attrs)| attrs
+        |(_, attrs)| attrs,
     )(i)
 }
 
-pub fn parse_mips(files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> Result<MpProgram, ErrorLocation> {
+pub fn parse_mips(
+    files: Vec<TaggedFile<'_, '_>>,
+    default_tab_size: u32,
+) -> Result<MpProgram, ErrorLocation> {
     let mut program = MpProgram {
         items: vec![],
         file_attributes: vec![],
@@ -266,8 +262,11 @@ pub fn parse_mips(files: Vec<TaggedFile<'_, '_>>, default_tab_size: u32) -> Resu
             if attr.key().to_ascii_lowercase() == "tabsize" {
                 // TODO(zkol): This error handling needs to get wrapped up
                 // with the rest somehow...
-                actual_tabsize = attr.value().expect("Tabsize attribute requires a value")
-                    .parse().expect("Tabsize attribute value should be numeric");
+                actual_tabsize = attr
+                    .value()
+                    .expect("Tabsize attribute requires a value")
+                    .parse()
+                    .expect("Tabsize attribute value should be numeric");
             }
         }
 
