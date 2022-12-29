@@ -8,7 +8,7 @@ use nom::{AsBytes, IResult, branch::alt, combinator::map, multi::many0, sequence
 use nom_locate::{LocatedSpan, position};
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct TaggedFile<'tag, 'file> {
     tag: Option<&'tag str>,
     file_contents: &'file str,
@@ -51,6 +51,15 @@ impl<'tag, 'file> TaggedFile<'tag, 'file> {
             file_contents,
         }
     }
+
+    pub fn tag(&self) -> Option<&'tag str> {
+        self.tag
+    }
+
+    pub fn file_contents(&self) -> &'file str {
+        self.file_contents
+    }
+
 }
 
 impl Position {
