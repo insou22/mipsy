@@ -19,7 +19,7 @@ pub(crate) fn step_command() -> Command {
         ),
         command(
             "syscall",
-            vec!["sys"],
+            vec!["s", "sys"],
             vec![], vec![], vec![
                 command(
                     "input",
@@ -77,8 +77,6 @@ pub(crate) fn step_command() -> Command {
         ),
     ];
 
-    // TODO:
-    //  - long help
     command(
         "step",
         vec!["s", "back"],
@@ -109,21 +107,30 @@ pub(crate) fn step_command() -> Command {
 }
 
 fn get_long_help() -> String {
-    format!("TODO: long help")
+    format!(
+        "A collection of commands for {3}ping through the program. Available {0}s are:\n\
+         \n\
+         {3} {4}    : steps backwards instead of forwards\n\
+         {3} {5} : steps forwards until the next syscall\n\
+         \n\
+         {6} {7} will provide more information about the specified subcommand.\n\
+         \n\
+         By default, this steps forwards one instruction, or {1} instructions if specified.\n\
+         This will run in \"verbose\" mode, printing out the instruction that was\n\
+         \x20 executed, and verbosely printing any system calls that are executed.\n\
+         To step backwards (i.e. back in time), use `{2}`.",
+        "[subcommand]".magenta(),
+        "[times]".magenta(),
+        "back".bold(),
+        "step".yellow().bold(),
+        "back".purple(),
+        "syscall".purple(),
+        "help step".white().bold(),
+        "[subcommand]".magenta().bold(),
+    )
 }
 
 fn step_forward(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(format!(
-            "Steps forwards one instruction, or {} instructions if specified.\n\
-                 This will run in \"verbose\" mode, printing out the instruction that was\n\
-             \x20 executed, and verbosely printing any system calls that are executed.\n\
-                 To step backwards (i.e. back in time), use `{}`.",
-            "[times]".magenta(),
-            "back".bold(),
-        ));
-    }
-
     let times = match args.first() {
         Some(arg) => match arg.parse::<i32>() {
             Ok(num) => {
@@ -270,7 +277,34 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
 fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
-            "Steps forwards until your program's next syscall.",
+            format!("\
+                Available {1}s are:\n\
+                \n\
+                {0} {2}     : syscalls 5, 6, 7, 8, 12\n\
+                {0} {3}    : syscalls 1, 2, 3, 4, 11\n\
+                {0} {4}   : syscalls 1, 5\n\
+                {0} {5}     : syscalls 2, 6\n\
+                {0} {6}    : syscalls 3, 7\n\
+                {0} {7}    : syscalls 4, 8\n\
+                {0} {8} : syscalls 11, 12\n\
+                {0} {9}      : syscalls 13, 14, 15, 16\n\
+                \n\
+                {10} {11} will provide more information about the specified subcommand.\n\
+                \n\
+                By default, this steps forwards until your program's next syscall, or finishes.",
+                "step syscall".bold().yellow(),
+                "[type]".magenta(),
+                "input".purple(),
+                "output".purple(),
+                "integer".purple(),
+                "float".purple(),
+                "double".purple(),
+                "string".purple(),
+                "character".purple(),
+                "file".purple(),
+                "help step syscall".white().bold(),
+                "[type]".magenta().bold(),
+            ).as_ref(),
         ));
     }
 

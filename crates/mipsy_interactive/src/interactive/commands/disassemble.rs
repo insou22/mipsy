@@ -8,7 +8,7 @@ use mipsy_lib::decompile::{Decompiled, Uninit, decompile_into_parts};
 pub(crate) fn disassemble_command() -> Command {
     command(
         "disassemble",
-        vec!["d", "dis", "disasm", "dec", "decompile"],
+        vec!["d", "dis", "disas", "disasm", "dec", "decompile"],
         vec![],
         vec![],
         vec![],
