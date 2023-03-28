@@ -135,8 +135,11 @@ fn step_forward(state: &mut State, label: &str, args: &[String]) -> Result<Strin
         Some(arg) => match arg.parse::<i32>() {
             Ok(num) => {
                 if num.is_negative() {
-                    // TODO: rest of args?
-                    return step_back(state, label, &[num.abs().to_string()]);
+                    return step_back(state, label, 
+                        [num.abs().to_string()].into_iter()
+                            .chain(args.to_owned().into_iter().skip(1))
+                            .collect::<Vec<String>>().as_ref()
+                    );
                 }
 
                 Ok(num)
@@ -197,8 +200,11 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
         Some(arg) => match arg.parse::<i32>() {
             Ok(num) => {
                 if num.is_negative() {
-                    // TODO: rest of args?
-                    return step_forward(state, label, &[num.abs().to_string()]);
+                    return step_forward(state, label, 
+                        [num.abs().to_string()].into_iter()
+                            .chain(args.to_owned().into_iter().skip(1))
+                            .collect::<Vec<String>>().as_ref()
+                    );
                 }
 
                 Ok(num)
