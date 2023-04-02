@@ -241,7 +241,13 @@ pub fn get_affected_registers(runtime: &Runtime, inst: u32) -> Vec<TargetWatch> 
                 action: TargetAction::ReadOnly,
             },
         ],
-        JUMP | JAL => vec![],
+        JUMP => vec![],
+        JAL => vec![
+            TargetWatch {
+                target: WatchpointTarget::Register(Register::Ra),
+                action: TargetAction::WriteOnly,
+            }
+        ],
         _ => vec![
             TargetWatch {
                 target: WatchpointTarget::Register(Register::from_u32(rs).unwrap()),
