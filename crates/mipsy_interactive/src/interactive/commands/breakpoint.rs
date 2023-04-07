@@ -578,7 +578,9 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
         let mut file = parts.next().unwrap();
         if file.is_empty() {
             let mut filenames = binary.line_numbers.values()
-                    .map(|(filename, _)| filename);
+                    .map(|(filename, _)| filename)
+                    .filter(|filename| filename.as_ref() != "kernel");
+
             file = filenames.next().unwrap();
             if !filenames.all(|f| f.as_ref() == file) {
                 return Err(CommandError::MustSpecifyFile);

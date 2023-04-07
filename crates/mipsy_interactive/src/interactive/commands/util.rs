@@ -52,14 +52,12 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
             } else {
                 format!("0x{:08x}", parts.addr).bright_black()
             },
-            match parts.location {
-                Some((_, num)) => format!("{:<last_line_len$}", num),
-                None      => {
-                    if parts.addr >= KTEXT_BOT {
-                        "kernel".yellow().bold().to_string()
-                    } else {
-                        format!("{:last_line_len$}", "")
-                    }
+            if parts.addr >= KTEXT_BOT {
+                "kernel".yellow().bold().to_string()
+            } else {
+                match parts.location {
+                    Some((_, num)) => format!("{:<last_line_len$}", num),
+                    None           => format!("{:last_line_len$}", "")
                 }
             }.yellow().bold(),
             "uninitialised".red(),
@@ -118,14 +116,12 @@ pub(crate) fn print_inst_parts(binary: &Binary, parts: &Result<Decompiled, Unini
         } else {
             format!("0x{:08x}", parts.addr).bright_black()
         },
-        match parts.location {
-            Some((_, num)) => format!("{:<last_line_len$}", num),
-            None      => {
-                if parts.addr >= KTEXT_BOT {
-                    "kernel".yellow().bold().to_string()
-                } else {
-                    format!("{:last_line_len$}", "")
-                }
+        if parts.addr >= KTEXT_BOT {
+            "kernel".yellow().bold().to_string()
+        } else {
+            match parts.location {
+                Some((_, num)) => format!("{:<last_line_len$}", num),
+                None           => format!("{:last_line_len$}", "")
             }
         }.yellow().bold(),
         format!("0x{:08x}", parts.opcode).green(),

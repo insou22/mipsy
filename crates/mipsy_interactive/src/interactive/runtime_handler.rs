@@ -335,9 +335,10 @@ pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32, line_numbers: &HashM
         "]".cyan().bold(),
         watchpoint.target,
         match watchpoint.action {
-            TargetAction::ReadOnly => "read from",
-            TargetAction::WriteOnly => "written to",
-            TargetAction::ReadWrite => "written to",
+            TargetAction::ReadOnly
+                => "read from",
+            TargetAction::WriteOnly | TargetAction::ReadWrite
+                => "written to",
         }
     );
 }

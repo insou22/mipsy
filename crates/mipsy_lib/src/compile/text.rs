@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{Safe, TEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
+use crate::{Safe, TEXT_BOT, KTEXT_BOT, error::{InternalError, MipsyInternalResult, ToMipsyResult, compiler}};
 use crate::inst::instruction::SignatureRef;
 use crate::{MpProgram, MipsyResult};
 use crate::inst::instruction::InstSet;
@@ -85,6 +85,7 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, config: &MipsyConfig, 
         let file_tag = attributed_item.file_tag()
             .unwrap_or_else(|| Rc::from(""));
         let item = attributed_item.item();
+        let kernel_tag: Rc<str> = Rc::from("kernel");
 
         match item {
             MpItem::Directive(directive) => {
@@ -118,6 +119,8 @@ pub fn populate_text(binary: &mut Binary, iset: &InstSet, config: &MipsyConfig, 
                     Segment::KText => {
                         let alignment = (4 - binary.ktext.len() % 4) % 4;
                         binary.ktext.append(&mut vec![Safe::Uninitialised; alignment]);
+
+                        binary.line_numbers.insert(KTEXT_BOT + (binary.ktext.len() as u32), (kernel_tag.clone(), line));
                         
                         &mut binary.ktext
                     },

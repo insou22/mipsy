@@ -320,7 +320,7 @@ impl State {
         }
     }
 
-    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>, inst: u32) -> CommandResult<bool> {
+    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>, inst: u32, original_pc: u32) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
 
@@ -493,8 +493,7 @@ impl State {
                         if wp.ignore_count > 0 {
                             wp.ignore_count -= 1;
                         } else {
-                            let prev_pc = pc - 4;
-                            runtime_handler::watchpoint(watchpoint, prev_pc, &binary.line_numbers);
+                            runtime_handler::watchpoint(watchpoint, original_pc, &binary.line_numbers);
                             to_exec.extend(wp.commands.clone().into_iter());
                             all_ignored = false;
                         }
@@ -516,13 +515,15 @@ impl State {
 
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
+        let original_pc = runtime.timeline().state().pc();
         let inst = runtime.current_inst();
-        self.eval_stepped_runtime(verbose, runtime.step(), inst)
+        self.eval_stepped_runtime(verbose, runtime.step(), inst, original_pc)
     }
 
     pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
-        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode), opcode)
+        let original_pc = runtime.timeline().state().pc();
+        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode), opcode, original_pc)
     }
 
     pub(crate) fn run(&mut self) -> CommandResult<String> {
