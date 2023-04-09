@@ -15,7 +15,7 @@ pub(crate) fn examine_command() -> Command {
         "examine",
         vec!["e", "ex", "x", "dump"],
         vec![],
-        vec!["section", "len", "addr", "-labels"],
+        vec!["section", "len", "addr", "-nolabels"],
         vec![],
         "examine memory contents",
         |_, state, label, mut args| {
@@ -40,7 +40,7 @@ pub(crate) fn examine_command() -> Command {
                         "main".yellow().bold(),
                         ".".bright_black(),
                         "_".bright_black(),
-                        "-labels".magenta(),
+                        "-nolabels".magenta(),
                     )
                 );
             }
@@ -79,8 +79,8 @@ pub(crate) fn examine_command() -> Command {
                 Ok(segment.get_lower_bound())
             };
 
-            let show_labels = args.get(0).map_or(false, |a| a == &String::from("-labels"));
-            if show_labels && base_addr.is_err() {
+            let hide_labels = args.get(0).map_or(false, |a| a == &String::from("-nolabels"));
+            if hide_labels && base_addr.is_err() {
                 // if -labels was provided, ensure base_addr is valid
                 base_addr = Ok(segment.get_lower_bound());
             }
@@ -138,7 +138,7 @@ pub(crate) fn examine_command() -> Command {
                         .unwrap();
 
                     // TODO: combine these when if-let chaining is stabilised
-                    if show_labels {
+                    if !hide_labels {
                         if let Some((label, addr)) = binary
                             .labels
                             .iter()
