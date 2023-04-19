@@ -410,6 +410,7 @@ impl Agent for Worker {
                                     break;
                                 }
                             } else {
+                                let executed_inst = runtime.current_inst();
                                 let stepped_runtime = runtime.step();
 
                                 match stepped_runtime {
@@ -417,7 +418,7 @@ impl Agent for Worker {
                                         let pc = next_runtime.timeline().state().pc();
                                         let affected_registers = get_affected_registers(
                                             &next_runtime,
-                                            next_runtime.current_inst(),
+                                            executed_inst,
                                         );
                                         watchpoints = affected_registers
                                             .into_iter()
@@ -552,6 +553,7 @@ impl Agent for Worker {
                         }
 
                         // info!("stepping text: {:08x}", runtime.timeline().state().pc());
+                        let executed_inst = runtime.current_inst();
                         let stepped_runtime = runtime.step();
                         match stepped_runtime {
                             // instruction ran okay
@@ -559,7 +561,7 @@ impl Agent for Worker {
                                 let pc = next_runtime.timeline().state().pc();
                                 let affected_registers = get_affected_registers(
                                     &next_runtime,
-                                    next_runtime.current_inst(),
+                                    executed_inst,
                                 );
                                 watchpoints = affected_registers
                                     .into_iter()
