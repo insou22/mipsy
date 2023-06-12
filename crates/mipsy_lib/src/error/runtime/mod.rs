@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::util::{inst_parts_to_string, inst_to_string, tip_header};
-use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, KDATA_BOT, KTEXT_BOT, DATA_BOT, TEXT_BOT, util::{get_segment, Segment}};
+use crate::{Binary, InstSet, Register, Runtime, Safe, State, decompile::{self, Decompiled, decompile_inst_into_parts}, inst::ReadsRegisterType, runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO}, util::{get_segment, Segment}};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
@@ -199,7 +199,7 @@ impl Error {
                                     (state.pc() + 4 - real_inst_parts.addr) / 4,
                                 ));
 
-                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                     let inst = state.read_mem_word(addr).unwrap();
 
                                     let failed = addr == state.pc();
@@ -328,7 +328,7 @@ impl Error {
                                         (last_mod.pc() - real_inst_parts.addr) / 4,
                                     ));
 
-                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                         let inst = last_mod.read_mem_word(addr).unwrap();
 
                                         let failed = addr == last_mod.pc() - 4;
@@ -435,7 +435,7 @@ impl Error {
                                     (state.pc() + 4 - real_inst_parts.addr) / 4,
                                 ));
 
-                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                     let inst = state.read_mem_word(addr).unwrap();
 
                                     let failed = addr == state.pc();
@@ -680,7 +680,7 @@ impl Error {
                                         (state.pc() + 4 - real_inst_parts.addr) / 4,
                                     ));
 
-                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                         let inst = state.read_mem_word(addr).unwrap();
 
                                         let failed = addr == state.pc();
@@ -757,7 +757,7 @@ impl Error {
                                         (state.pc() + 4 - real_inst_parts.addr) / 4,
                                     ));
 
-                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                         let inst = state.read_mem_word(addr).unwrap();
 
                                         let failed = addr == state.pc();
@@ -860,7 +860,7 @@ impl Error {
                                     (state.pc() + 4 - real_inst_parts.addr) / 4,
                                 ));
 
-                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                     let inst = state.read_mem_word(addr).unwrap();
 
                                     let failed = addr == state.pc();
@@ -992,7 +992,7 @@ impl Error {
                                         (last_mod.pc() - real_inst_parts.addr) / 4,
                                     ));
 
-                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, real_inst_parts.addr)).step_by(4) {
+                                    for addr in (real_inst_parts.addr..try_find_pseudo_expansion_end(binary, runtime.timeline().state(), real_inst_parts.addr)).step_by(4) {
                                         let inst = last_mod.read_mem_word(addr).unwrap();
 
                                         let failed = addr == last_mod.pc() - 4;
@@ -1252,7 +1252,7 @@ fn get_real_instruction_start<'inst_set>(state: &State, binary: &Binary, inst_se
     }
 }
 
-fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
+fn try_find_pseudo_expansion_end(program: &Binary, state: &State, initial_addr: u32) -> u32 {
     let mut addr = initial_addr + 4;
 
     loop {
@@ -1260,19 +1260,7 @@ fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
             return addr;
         }
 
-        if addr >= (KDATA_BOT + program.kdata.len() as u32) {
-            return addr;
-        }
-        
-        if addr < KDATA_BOT && addr >= (KTEXT_BOT + (program.ktext.len() / 4 * 4) as u32) {
-            return addr;
-        }
-        
-        if addr < KTEXT_BOT && addr >= (DATA_BOT + program.data.len() as u32) {
-            return addr;
-        }
-        
-        if addr < DATA_BOT && addr >= (TEXT_BOT + (program.text.len() / 4 * 4) as u32) {
+        if state.read_mem_word(addr).is_err() {
             return addr;
         }
 
