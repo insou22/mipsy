@@ -142,7 +142,7 @@ impl Default for MipsyWebConfig {
             tab_size: 8,
             font_size: 14,
             monaco_theme: "vs".to_string(),
-            register_base: RegisterBase::Hexadecimal,
+            register_base: RegisterBase::Decimal,
             // This is true as most CS1521 students don't need to see them
             hide_uncommon_registers: true,
         }
