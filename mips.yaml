@@ -1742,12 +1742,10 @@ pseudoinstructions:
     compile:
       format: [Rd, Rs, Rt]
     expand:
-      - inst: ORI
-        data: [$Rd, $0, 1]
-      - inst: BEQ
-        data: [$Rs, $Rt, 2]
-      - inst: ORI
-        data: [$Rd, $0, 0]
+      - inst: XOR
+        data: [$Rd, $Rs, $Rt]
+      - inst: SLTIU
+        data: [$Rd, $Rd, 1]
     derives:
       # - DefaultValue:
       #     value: Rs
