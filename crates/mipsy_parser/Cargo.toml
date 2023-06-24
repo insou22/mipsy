@@ -9,7 +9,4 @@ edition = "2021"
 [dependencies]
 nom = "7" # parser
 nom_locate = "4"
-serde = { version = "1.0", features = ["derive"] } 
-
-[build-dependencies]
-vergen = "3"
+serde = { version = "1.0", features = ["derive"] }

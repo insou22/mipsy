@@ -1,9 +1,9 @@
+use super::*;
+use crate::interactive::{commands::util::expect_u32, error::CommandError};
+use colored::*;
 use mipsy_lib::decompile;
 use mipsy_lib::KTEXT_BOT;
 use mipsy_lib::TEXT_BOT;
-use crate::interactive::{error::CommandError, commands::util::expect_u32};
-use super::*;
-use colored::*;
 
 #[allow(unreachable_code)]
 pub(crate) fn context_command() -> Command {
@@ -19,23 +19,16 @@ pub(crate) fn context_command() -> Command {
         ),
         |_, state, label, args| {
             if label == "__help__" {
-                return Ok(
-                    format!(
-                        "prints the current and surrounding 3 (or {}) instructions",
-                        "[n]".magenta(),
-                    ),
-                )
+                return Ok(format!(
+                    "prints the current and surrounding 3 (or {}) instructions",
+                    "[n]".magenta(),
+                ));
             }
 
             let f: Option<&dyn Fn(i32) -> String> = None;
 
             let n = match args.first() {
-                Some(arg) => expect_u32(
-                    label,
-                    &"[n]".bright_magenta(),
-                    arg,
-                    f
-                ),
+                Some(arg) => expect_u32(label, &"[n]".bright_magenta(), arg, f),
                 None => Ok(3),
             }? as i32;
 
@@ -44,7 +37,7 @@ pub(crate) fn context_command() -> Command {
             }
 
             let program = state.program.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let binary  = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
             let runtime = &state.runtime;
 
             let base_addr = runtime.timeline().state().pc();
@@ -76,6 +69,6 @@ pub(crate) fn context_command() -> Command {
 
             println!();
             Ok("".into())
-        }
+        },
     )
 }

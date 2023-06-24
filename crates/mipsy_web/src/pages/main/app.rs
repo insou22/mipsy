@@ -83,7 +83,16 @@ pub fn render_app() -> Html {
                 let filename = filename.clone();
                 let monaco_cursor = monaco_cursor.clone();
                 update::handle_response_from_worker(
-                    state, show_tab, show_io, file, filename, response, worker, input_ref, is_saved, monaco_cursor,
+                    state,
+                    show_tab,
+                    show_io,
+                    file,
+                    filename,
+                    response,
+                    worker,
+                    input_ref,
+                    is_saved,
+                    monaco_cursor,
                 )
             }))
         };
@@ -122,12 +131,10 @@ pub fn render_app() -> Html {
                                 let editor_contents2 = editor_contents.clone();
                                 file3.set(Some(editor_contents2));
 
-                                let last_saved_contents =
-                                    crate::get_localstorage_file_contents();
+                                let last_saved_contents = crate::get_localstorage_file_contents();
 
                                 is_saved.set(editor_contents == last_saved_contents);
-                            })
-                                as Box<dyn Fn()>);
+                            }) as Box<dyn Fn()>);
 
                             crate::set_model_change_listener(&cb);
                             cb.forget();
@@ -144,11 +151,10 @@ pub fn render_app() -> Html {
                                 filename2.set(Some(crate::get_localstorage_filename()));
                             }
                         }
-
                     }
                     None => {}
                 }
-                
+
                 move || {} //do stuff when your componet is unmounted
             },
             (filename.clone(), file2, show_code_tab.clone()), // run use_effect when these dependencies change
@@ -406,7 +412,6 @@ pub fn render_app() -> Html {
             worker.clone(),
         ),
     };
-
 
     let file_loaded = match *state {
         State::NoFile | State::Error(_) => false,

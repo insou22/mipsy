@@ -1,5 +1,5 @@
 use crate::components::data_segment::{FP_COLOR, SP_COLOR};
-use crate::components::decompiled::{StopIconOutline, StopIconFilled};
+use crate::components::decompiled::{StopIconFilled, StopIconOutline};
 use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
 use crate::worker::{Worker, WorkerRequest};

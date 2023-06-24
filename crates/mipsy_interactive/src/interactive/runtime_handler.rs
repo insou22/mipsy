@@ -1,34 +1,36 @@
-use std::{fmt::{Debug, Display}, str::FromStr, collections::HashMap, rc::Rc};
 use crate::interactive::TargetAction;
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+    rc::Rc,
+    str::FromStr,
+};
 
 use super::{prompt, TargetWatch};
 use colored::*;
-use mipsy_lib::runtime::{OpenArgs, ReadArgs, WriteArgs, CloseArgs};
-use text_io::try_read;
+use mipsy_lib::runtime::{CloseArgs, OpenArgs, ReadArgs, WriteArgs};
 use std::io::Write;
+use text_io::try_read;
 
 fn get_input<T>(name: &str, verbose: bool, line: bool) -> T
 where
     T: FromStr + Display,
     <T as FromStr>::Err: Debug,
 {
-    let prompt: Box<dyn Fn()> =
-        if verbose {
-            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
-        } else {
-            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
-        };
+    let prompt: Box<dyn Fn()> = if verbose {
+        Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+    } else {
+        Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+    };
 
     loop {
         let result: Result<T, _> = if line {
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
 
-            input.parse()
-                .map_err(|_| ())
+            input.parse().map_err(|_| ())
         } else {
-            try_read!()
-                .map_err(|_| ())
+            try_read!().map_err(|_| ())
         };
 
         match result {
@@ -37,7 +39,7 @@ where
                 (prompt)();
                 std::io::stdout().flush().unwrap();
                 continue;
-            },
+            }
         };
     }
 }
@@ -47,12 +49,11 @@ where
     T: FromStr + Display,
     <T as FromStr>::Err: Debug,
 {
-    let prompt: Box<dyn Fn()> =
-        if verbose {
-            Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
-        } else {
-            Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
-        };
+    let prompt: Box<dyn Fn()> = if verbose {
+        Box::new(|| prompt::error_nonl(format!("bad input (expected {}), try again: ", name)))
+    } else {
+        Box::new(|| print!("[mipsy] bad input (expected {}), try again: ", name))
+    };
 
     loop {
         let result: Result<T, _> = try_read!();
@@ -72,7 +73,7 @@ where
                 (prompt)();
                 std::io::stdout().flush().unwrap();
                 continue;
-            },
+            }
         };
     }
 }
@@ -98,16 +99,17 @@ fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
         let result: Result<i128, _> = try_read!();
 
         match result {
-            Ok(n) => {
-                match i32::try_from(n) {
-                    Ok(n) => return Some(n),
-                    Err(_) => {
-                        (too_big_prompt)();
-                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
-                        print!(  "[mipsy] try again: ");
-                        std::io::stdout().flush().unwrap();
-                        continue;
-                    }
+            Ok(n) => match i32::try_from(n) {
+                Ok(n) => return Some(n),
+                Err(_) => {
+                    (too_big_prompt)();
+                    println!(
+                        "[mipsy] if you want the value to be truncated to 32 bits, try {}",
+                        n as i32
+                    );
+                    print!("[mipsy] try again: ");
+                    std::io::stdout().flush().unwrap();
+                    continue;
                 }
             },
             Err(text_io::Error::Parse(leftover, _)) => {
@@ -123,7 +125,7 @@ fn get_input_int(name: &str, verbose: bool) -> Option<i32> {
                 (bad_input_prompt)();
                 std::io::stdout().flush().unwrap();
                 continue;
-            },
+            }
         };
     }
 }
@@ -176,34 +178,31 @@ pub(crate) fn sys4_print_string(verbose: bool, val: &[u8]) {
     std::io::stdout().flush().unwrap();
 }
 
-pub(crate) fn sys5_read_int(verbose: bool, ) -> i32 {
+pub(crate) fn sys5_read_int(verbose: bool) -> i32 {
     if verbose {
         prompt::syscall(5, "read_int: ");
         std::io::stdout().flush().unwrap();
     }
 
-    get_input_int("int", verbose)
-        .unwrap_or(0)
+    get_input_int("int", verbose).unwrap_or(0)
 }
 
-pub(crate) fn sys6_read_float(verbose: bool, ) -> f32 {
+pub(crate) fn sys6_read_float(verbose: bool) -> f32 {
     if verbose {
         prompt::syscall(6, "read_float: ");
         std::io::stdout().flush().unwrap();
     }
 
-    get_input_eof("float", verbose)
-        .unwrap_or(0.0)
+    get_input_eof("float", verbose).unwrap_or(0.0)
 }
 
-pub(crate) fn sys7_read_double(verbose: bool, ) -> f64 {
+pub(crate) fn sys7_read_double(verbose: bool) -> f64 {
     if verbose {
         prompt::syscall(7, "read_double: ");
         std::io::stdout().flush().unwrap();
     }
 
-    get_input_eof("double", verbose)
-        .unwrap_or(0.0)
+    get_input_eof("double", verbose).unwrap_or(0.0)
 }
 
 pub(crate) fn sys8_read_string(verbose: bool, max_len: u32) -> Vec<u8> {
@@ -212,25 +211,23 @@ pub(crate) fn sys8_read_string(verbose: bool, max_len: u32) -> Vec<u8> {
         std::io::stdout().flush().unwrap();
     }
 
-    loop {
-        let input: String = get_input("string", verbose, true);
+    let input: String = get_input("string", verbose, true);
 
-        // if input.len() > max_len as usize {
-        //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
-        //     prompt::error_nonl("please try again: ");
-        //     std::io::stdout().flush().unwrap();
-        //     continue;
-        // }
+    // if input.len() > max_len as usize {
+    //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes), try again: ", max_len, input.len()));
+    //     prompt::error_nonl("please try again: ");
+    //     std::io::stdout().flush().unwrap();
+    //     continue;
+    // }
 
-        // if input.len() == max_len as usize {
-        //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
-        //     prompt::error_nonl("please try again: ");
-        //     std::io::stdout().flush().unwrap();
-        //     continue;
-        // }
+    // if input.len() == max_len as usize {
+    //     prompt::error(format!("bad input (max string length specified as {}, given string is {} bytes -- must be at least one byte fewer, for NULL character), try again: ", max_len, input.len()));
+    //     prompt::error_nonl("please try again: ");
+    //     std::io::stdout().flush().unwrap();
+    //     continue;
+    // }
 
-        return input.into_bytes();
-    }
+    input.into_bytes()
 }
 
 pub(crate) fn sys9_sbrk(verbose: bool, val: i32) {
@@ -260,14 +257,14 @@ pub(crate) fn sys11_print_char(verbose: bool, val: u8) {
     std::io::stdout().flush().unwrap();
 }
 
-pub(crate) fn sys12_read_char(verbose: bool, ) -> u8 {
+pub(crate) fn sys12_read_char(verbose: bool) -> u8 {
     if verbose {
         prompt::syscall(5, "read_character: ");
         std::io::stdout().flush().unwrap();
     }
 
     let character: char = get_input_eof("character", verbose).unwrap_or('\0');
-    return character as u8;
+    character as u8
 }
 
 // TODO: implement file handling in mipsy interactive
@@ -313,7 +310,11 @@ pub(crate) fn trap(_verbose: bool) {
     println!("{}\n", "[TRAP]".bright_red().bold());
 }
 
-pub(crate) fn breakpoint(label: Option<&str>, pc: u32, line_numbers: &HashMap<u32, (Rc<str>, u32)>) {
+pub(crate) fn breakpoint(
+    label: Option<&str>,
+    pc: u32,
+    line_numbers: &HashMap<u32, (Rc<str>, u32)>,
+) {
     let (filename, line_num, addr) = get_line_info(line_numbers, pc);
 
     println!(
@@ -324,7 +325,11 @@ pub(crate) fn breakpoint(label: Option<&str>, pc: u32, line_numbers: &HashMap<u3
     );
 }
 
-pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32, line_numbers: &HashMap<u32, (Rc<str>, u32)>) {
+pub(crate) fn watchpoint(
+    watchpoint: &TargetWatch,
+    pc: u32,
+    line_numbers: &HashMap<u32, (Rc<str>, u32)>,
+) {
     let (filename, line_num, addr) = get_line_info(line_numbers, pc);
     println!(
         "{} {}:{}{}{} - {} was {}\n",
@@ -335,17 +340,18 @@ pub(crate) fn watchpoint(watchpoint: &TargetWatch, pc: u32, line_numbers: &HashM
         "]".cyan().bold(),
         watchpoint.target,
         match watchpoint.action {
-            TargetAction::ReadOnly
-                => "read from",
-            TargetAction::WriteOnly | TargetAction::ReadWrite
-                => "written to",
+            TargetAction::ReadOnly => "read from",
+            TargetAction::WriteOnly | TargetAction::ReadWrite => "written to",
         }
     );
 }
 
 fn get_line_info(line_numbers: &HashMap<u32, (Rc<str>, u32)>, pc: u32) -> (&str, u32, String) {
     // get closest line number (pc may be in the middle of a pseudoinstruction)
-    let mut lines = line_numbers.iter().filter(|&(&addr, _)| addr <= pc).collect::<Vec<_>>();
+    let mut lines = line_numbers
+        .iter()
+        .filter(|&(&addr, _)| addr <= pc)
+        .collect::<Vec<_>>();
     lines.sort_unstable_by_key(|&(&addr, _)| addr);
     let line_num = lines.last().expect("there should be at least one line");
     let addr = if line_num.0 != &pc {
@@ -356,14 +362,13 @@ fn get_line_info(line_numbers: &HashMap<u32, (Rc<str>, u32)>, pc: u32) -> (&str,
     };
 
     // don't show filename when only 1 file is loaded
-    let mut filenames = line_numbers.values()
-            .map(|(filename, _)| filename);
+    let mut filenames = line_numbers.values().map(|(filename, _)| filename);
     let file = filenames.next().unwrap().as_ref();
     let filename = if !filenames.all(|f| f.as_ref() == file) {
-        line_num.1.0.as_ref()
+        line_num.1 .0.as_ref()
     } else {
         ""
     };
 
-    (filename, line_num.1.1, addr)
+    (filename, line_num.1 .1, addr)
 }

@@ -156,22 +156,22 @@ impl From<InstructionType> for super::base::InstructionType {
 impl From<ArgumentType> for super::base::ArgumentType {
     fn from(x: ArgumentType) -> super::base::ArgumentType {
         match x {
-            ArgumentType::Rd      => super::base::ArgumentType::Rd,
-            ArgumentType::Rs      => super::base::ArgumentType::Rs,
-            ArgumentType::Rt      => super::base::ArgumentType::Rt,
-            ArgumentType::Shamt   => super::base::ArgumentType::Shamt,
-            ArgumentType::I16     => super::base::ArgumentType::I16,
-            ArgumentType::U16     => super::base::ArgumentType::U16,
-            ArgumentType::J       => super::base::ArgumentType::J,
-            ArgumentType::OffRs   => super::base::ArgumentType::OffRs,
-            ArgumentType::OffRt   => super::base::ArgumentType::OffRt,
-            ArgumentType::F32     => super::base::ArgumentType::F32,
-            ArgumentType::F64     => super::base::ArgumentType::F64,
-            ArgumentType::I32     => super::base::ArgumentType::I32,
-            ArgumentType::U32     => super::base::ArgumentType::U32,
+            ArgumentType::Rd => super::base::ArgumentType::Rd,
+            ArgumentType::Rs => super::base::ArgumentType::Rs,
+            ArgumentType::Rt => super::base::ArgumentType::Rt,
+            ArgumentType::Shamt => super::base::ArgumentType::Shamt,
+            ArgumentType::I16 => super::base::ArgumentType::I16,
+            ArgumentType::U16 => super::base::ArgumentType::U16,
+            ArgumentType::J => super::base::ArgumentType::J,
+            ArgumentType::OffRs => super::base::ArgumentType::OffRs,
+            ArgumentType::OffRt => super::base::ArgumentType::OffRt,
+            ArgumentType::F32 => super::base::ArgumentType::F32,
+            ArgumentType::F64 => super::base::ArgumentType::F64,
+            ArgumentType::I32 => super::base::ArgumentType::I32,
+            ArgumentType::U32 => super::base::ArgumentType::U32,
             ArgumentType::Off32Rs => super::base::ArgumentType::Off32Rs,
             ArgumentType::Off32Rt => super::base::ArgumentType::Off32Rt,
-            ArgumentType::Rx      => super::base::ArgumentType::Rx,
+            ArgumentType::Rx => super::base::ArgumentType::Rx,
         }
     }
 }

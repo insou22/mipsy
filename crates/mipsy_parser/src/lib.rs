@@ -1,41 +1,18 @@
 extern crate nom;
 
+use misc::parse_result;
 use nom::combinator::map;
 use nom_locate::LocatedSpan;
-use misc::parse_result;
 
 pub type Span<'a> = LocatedSpan<&'a [u8]>;
 
-pub use parser::{
-    MpProgram,
-    MpItem,
-    TaggedFile,
-};
-pub use instruction::{
-    MpInstruction,
-    MpArgument,
-};
+pub use constant::{MpConst, MpConstValue, MpConstValueLoc};
 pub use directive::MpDirective;
-pub use misc::{
-    ErrorLocation,
-    tabs_to_spaces,
-};
-pub use number::{
-    MpNumber,
-    MpImmediate,
-    MpImmediateBinaryOp,
-};
-pub use register::{
-    MpRegister,
-    MpRegisterIdentifier,
-    MpOffsetOperator,
-};
-pub use constant::{
-    MpConst,
-    MpConstValue,
-    MpConstValueLoc,
-};
-
+pub use instruction::{MpArgument, MpInstruction};
+pub use misc::{tabs_to_spaces, ErrorLocation};
+pub use number::{MpImmediate, MpImmediateBinaryOp, MpNumber};
+pub use parser::{MpItem, MpProgram, TaggedFile};
+pub use register::{MpOffsetOperator, MpRegister, MpRegisterIdentifier};
 
 pub use parser::parse_mips;
 
@@ -45,7 +22,11 @@ where
 {
     let string = misc::tabs_to_spaces(input, tab_size);
 
-    parse_result(Span::new(string.as_bytes()), None, instruction::parse_instruction)
+    parse_result(
+        Span::new(string.as_bytes()),
+        None,
+        instruction::parse_instruction,
+    )
 }
 
 pub fn parse_argument<T>(input: T, tab_size: u32) -> Result<MpArgument, ErrorLocation>
@@ -57,19 +38,16 @@ where
     parse_result(
         Span::new(string.as_bytes()),
         None,
-        map(
-            instruction::parse_argument,
-            |(arg, _, _)| arg
-        )
+        map(instruction::parse_argument, |(arg, _, _)| arg),
     )
 }
 
-pub mod parser;
 mod attribute;
+mod constant;
 mod directive;
 mod instruction;
 mod label;
 mod misc;
 mod number;
+pub mod parser;
 mod register;
-mod constant;

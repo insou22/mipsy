@@ -1,14 +1,15 @@
 mod breakpoint;
-mod context;
+#[allow(clippy::module_inception)]
 mod commands;
+mod context;
 mod disassemble;
 mod dot;
 mod examine;
 mod exit;
 mod help;
-mod load;
 mod label;
 mod labels;
+mod load;
 mod print;
 mod reset;
 mod run;
@@ -23,9 +24,9 @@ pub(crate) use dot::dot_command;
 pub(crate) use examine::examine_command;
 pub(crate) use exit::exit_command;
 pub(crate) use help::help_command;
-pub(crate) use load::load_command;
 pub(crate) use label::label_command;
 pub(crate) use labels::labels_command;
+pub(crate) use load::load_command;
 pub(crate) use print::print_command;
 pub(crate) use reset::reset_command;
 pub(crate) use run::run_command;
@@ -37,8 +38,14 @@ use super::{error::CommandResult, State};
 // TODO(joshh): remove once if-let chaining is in
 #[derive(Clone)]
 pub(crate) enum Arguments {
-    Exactly { required: Vec<String>, optional: Vec<String> },
-    VarArgs { required: Vec<String>, format: String, },
+    Exactly {
+        required: Vec<String>,
+        optional: Vec<String>,
+    },
+    VarArgs {
+        required: Vec<String>,
+        format: String,
+    },
 }
 
 // TODO(joshh): remove once if-let chaining is in
@@ -53,12 +60,25 @@ pub(crate) struct Command {
 }
 
 impl Command {
-    pub(crate) fn exec(&self, state: &mut State, label: &str, args: &[String]) -> CommandResult<String> {
+    pub(crate) fn exec(
+        &self,
+        state: &mut State,
+        label: &str,
+        args: &[String],
+    ) -> CommandResult<String> {
         (self._internal_exec)(self, state, label, args)
     }
 }
 
-pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, optional_args: Vec<S>, subcommands: Vec<Command>, desc: S, exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>) -> Command {
+pub(crate) fn command<S: Into<String>>(
+    name: S,
+    aliases: Vec<S>,
+    required_args: Vec<S>,
+    optional_args: Vec<S>,
+    subcommands: Vec<Command>,
+    desc: S,
+    exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>,
+) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
@@ -72,12 +92,23 @@ pub(crate) fn command<S: Into<String>>(name: S, aliases: Vec<S>, required_args: 
     }
 }
 
-pub(crate) fn command_varargs<S: Into<String>>(name: S, aliases: Vec<S>, required_args: Vec<S>, varargs_format: impl Into<String>, subcommands: Vec<Command>, desc: S, exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>) -> Command {
+pub(crate) fn command_varargs<S: Into<String>>(
+    name: S,
+    aliases: Vec<S>,
+    required_args: Vec<S>,
+    varargs_format: impl Into<String>,
+    subcommands: Vec<Command>,
+    desc: S,
+    exec: fn(&Command, &mut State, &str, &[String]) -> CommandResult<String>,
+) -> Command {
     Command {
         name: name.into(),
         description: desc.into(),
         aliases: aliases.into_iter().map(S::into).collect(),
-        args: Arguments::VarArgs { required: required_args.into_iter().map(S::into).collect(), format: varargs_format.into() },
+        args: Arguments::VarArgs {
+            required: required_args.into_iter().map(S::into).collect(),
+            format: varargs_format.into(),
+        },
         _internal_exec: exec,
         subcommands,
     }

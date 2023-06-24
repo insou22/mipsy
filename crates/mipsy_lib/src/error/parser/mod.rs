@@ -71,7 +71,8 @@ impl ParserError {
                     continue;
                 }
 
-                let spaces_to_insert = config.tab_size - (updated_line.len() as u32 % config.tab_size);
+                let spaces_to_insert =
+                    config.tab_size - (updated_line.len() as u32 % config.tab_size);
                 updated_line.push_str(&" ".repeat(spaces_to_insert as usize));
             }
 

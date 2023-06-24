@@ -5,13 +5,24 @@ use crate::{
     number::{parse_immediate, MpImmediate},
     Span,
 };
-use nom::{IResult, branch::alt, character::complete::{alphanumeric1, char, digit1, one_of, space0}, combinator::{map, opt}, sequence::tuple};
+use nom::{
+    branch::alt,
+    character::complete::{alphanumeric1, char, digit1, one_of, space0},
+    combinator::{map, opt},
+    sequence::tuple,
+    IResult,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum MpRegister {
     Normal(MpRegisterIdentifier),
     Offset(MpImmediate, MpRegisterIdentifier),
-    BinaryOpOffset(MpImmediate, MpOffsetOperator, MpImmediate, MpRegisterIdentifier),
+    BinaryOpOffset(
+        MpImmediate,
+        MpOffsetOperator,
+        MpImmediate,
+        MpRegisterIdentifier,
+    ),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -58,14 +69,18 @@ impl fmt::Display for MpRegisterIdentifier {
 impl fmt::Display for MpOffsetOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Plus  => write!(f, "+"),
+            Self::Plus => write!(f, "+"),
             Self::Minus => write!(f, "-"),
         }
     }
 }
 
 pub fn parse_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
-    alt((parse_normal_register, parse_offset_register, parse_offset_binary_op_register))(i)
+    alt((
+        parse_normal_register,
+        parse_offset_register,
+        parse_offset_binary_op_register,
+    ))(i)
 }
 
 pub fn parse_normal_register(i: Span<'_>) -> IResult<Span<'_>, MpRegister> {
@@ -107,14 +122,11 @@ pub fn parse_offset_binary_op_register(i: Span<'_>) -> IResult<Span<'_>, MpRegis
     let (remaining_data, (i1, _, op, _, i2, _, _, _, reg, ..)) = tuple((
         parse_immediate,
         space0,
-        map(
-            one_of("+-"),
-            |char| match char {
-                '+' => MpOffsetOperator::Plus,
-                '-' => MpOffsetOperator::Minus,
-                _ => unreachable!(),
-            },
-        ),
+        map(one_of("+-"), |char| match char {
+            '+' => MpOffsetOperator::Plus,
+            '-' => MpOffsetOperator::Minus,
+            _ => unreachable!(),
+        }),
         space0,
         parse_immediate,
         space0,

@@ -1,4 +1,7 @@
-use mipsy_lib::inst::{InstSignature, CompileSignature, RuntimeMetadata, RuntimeSignature, InstMetadata, PseudoSignature, PseudoExpand};
+use mipsy_lib::inst::{
+    CompileSignature, InstMetadata, InstSignature, PseudoExpand, PseudoSignature, RuntimeMetadata,
+    RuntimeSignature,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -115,13 +118,17 @@ impl From<RuntimeYaml> for RuntimeSignature {
             InstructionType::R => RuntimeSignature::R {
                 opcode: x.opcode.unwrap_or(0),
                 funct: x.funct.unwrap_or(0),
-                shamt: x.shamt, rs: x.rs, rt: x.rt, rd: x.rd
+                shamt: x.shamt,
+                rs: x.rs,
+                rt: x.rt,
+                rd: x.rd,
             },
             InstructionType::I => RuntimeSignature::I {
-                opcode: x.opcode.expect("I-type requires opcode"), rt: x.rt
+                opcode: x.opcode.expect("I-type requires opcode"),
+                rt: x.rt,
             },
             InstructionType::J => RuntimeSignature::J {
-                opcode: x.opcode.expect("J-type requires opcode")
+                opcode: x.opcode.expect("J-type requires opcode"),
             },
         }
     }
@@ -136,20 +143,20 @@ impl From<RuntimeYaml> for RuntimeMetadata {
 impl From<ArgumentType> for mipsy_lib::ArgumentType {
     fn from(x: ArgumentType) -> mipsy_lib::ArgumentType {
         match x {
-            ArgumentType::Rd      => mipsy_lib::ArgumentType::Rd,
-            ArgumentType::Rs      => mipsy_lib::ArgumentType::Rs,
-            ArgumentType::Rt      => mipsy_lib::ArgumentType::Rt,
-            ArgumentType::Shamt   => mipsy_lib::ArgumentType::Shamt,
-            ArgumentType::I16     => mipsy_lib::ArgumentType::I16,
-            ArgumentType::U16     => mipsy_lib::ArgumentType::U16,
-            ArgumentType::J       => mipsy_lib::ArgumentType::J,
-            ArgumentType::OffRs   => mipsy_lib::ArgumentType::OffRs,
-            ArgumentType::OffRt   => mipsy_lib::ArgumentType::OffRt,
-            ArgumentType::F32     => mipsy_lib::ArgumentType::F32,
-            ArgumentType::F64     => mipsy_lib::ArgumentType::F64,
-            ArgumentType::Rx      => panic!("Rx is not a real register -- it must be macroed away"),
-            ArgumentType::I32     => mipsy_lib::ArgumentType::I32,
-            ArgumentType::U32     => mipsy_lib::ArgumentType::U32,
+            ArgumentType::Rd => mipsy_lib::ArgumentType::Rd,
+            ArgumentType::Rs => mipsy_lib::ArgumentType::Rs,
+            ArgumentType::Rt => mipsy_lib::ArgumentType::Rt,
+            ArgumentType::Shamt => mipsy_lib::ArgumentType::Shamt,
+            ArgumentType::I16 => mipsy_lib::ArgumentType::I16,
+            ArgumentType::U16 => mipsy_lib::ArgumentType::U16,
+            ArgumentType::J => mipsy_lib::ArgumentType::J,
+            ArgumentType::OffRs => mipsy_lib::ArgumentType::OffRs,
+            ArgumentType::OffRt => mipsy_lib::ArgumentType::OffRt,
+            ArgumentType::F32 => mipsy_lib::ArgumentType::F32,
+            ArgumentType::F64 => mipsy_lib::ArgumentType::F64,
+            ArgumentType::Rx => panic!("Rx is not a real register -- it must be macroed away"),
+            ArgumentType::I32 => mipsy_lib::ArgumentType::I32,
+            ArgumentType::U32 => mipsy_lib::ArgumentType::U32,
             ArgumentType::Off32Rs => mipsy_lib::ArgumentType::Off32Rs,
             ArgumentType::Off32Rt => mipsy_lib::ArgumentType::Off32Rt,
         }
@@ -159,8 +166,8 @@ impl From<ArgumentType> for mipsy_lib::ArgumentType {
 impl From<ReadsRegisterType> for mipsy_lib::inst::ReadsRegisterType {
     fn from(x: ReadsRegisterType) -> mipsy_lib::inst::ReadsRegisterType {
         match x {
-            ReadsRegisterType::Rs    => mipsy_lib::inst::ReadsRegisterType::Rs,
-            ReadsRegisterType::Rt    => mipsy_lib::inst::ReadsRegisterType::Rt,
+            ReadsRegisterType::Rs => mipsy_lib::inst::ReadsRegisterType::Rs,
+            ReadsRegisterType::Rt => mipsy_lib::inst::ReadsRegisterType::Rt,
             ReadsRegisterType::OffRs => mipsy_lib::inst::ReadsRegisterType::OffRs,
             ReadsRegisterType::OffRt => mipsy_lib::inst::ReadsRegisterType::OffRt,
         }
@@ -179,9 +186,6 @@ impl From<PseudoInstructionYaml> for PseudoSignature {
 
 impl From<InstructionExpansionYaml> for PseudoExpand {
     fn from(x: InstructionExpansionYaml) -> PseudoExpand {
-        PseudoExpand::new(
-            x.inst,
-            x.data,
-        )
+        PseudoExpand::new(x.inst, x.data)
     }
 }

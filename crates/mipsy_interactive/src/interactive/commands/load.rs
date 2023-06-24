@@ -24,7 +24,7 @@ pub(crate) fn load_command() -> Command {
                         "step".bold(),
                         "print".bold(),
                     ),
-                )
+                );
             }
 
             let (files, arguments) = {
@@ -40,40 +40,48 @@ pub(crate) fn load_command() -> Command {
             #[cfg(unix)]
             let stdin = String::from("/dev/stdin");
 
-            let program: Vec<_> = files.iter()
-                    .map(|name| {
-                        let mut path = name;
+            let program: Vec<_> = files
+                .iter()
+                .map(|name| {
+                    let mut path = name;
 
-                        #[cfg(unix)]
-                        if path == "-" {
-                            path = &stdin;
-                        }
+                    #[cfg(unix)]
+                    if path == "-" {
+                        path = &stdin;
+                    }
 
-                        match std::fs::read_to_string(expand_tilde(path)) {
-                            Ok(content) => Ok((path.to_string(), content)),
-                            Err(err)    => Err(CommandError::CannotReadFile {
-                                path: path.clone(),
-                                os_error: err.to_string()
-                            })
-                        }
-                    })
-                    .collect::<Result<_, _>>()?;
+                    match std::fs::read_to_string(expand_tilde(path)) {
+                        Ok(content) => Ok((path.to_string(), content)),
+                        Err(err) => Err(CommandError::CannotReadFile {
+                            path: path.clone(),
+                            os_error: err.to_string(),
+                        }),
+                    }
+                })
+                .collect::<Result<_, _>>()?;
 
             state.program = Some(program);
             let program = state.program.as_ref().unwrap();
 
-            let binary_files = program.iter()
-                    .map(|(path, file)| TaggedFile::new(Some(path), file))
-                    .collect::<Vec<_>>();
+            let binary_files = program
+                .iter()
+                .map(|(path, file)| TaggedFile::new(Some(path), file))
+                .collect::<Vec<_>>();
 
-            let binary = mipsy_lib::compile(&state.iset, binary_files, &CompilerOptions::default(), &state.config)
-                .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
+            let binary = mipsy_lib::compile(
+                &state.iset,
+                binary_files,
+                &CompilerOptions::default(),
+                &state.config,
+            )
+            .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
-            let runtime = mipsy_lib::runtime(&binary, &arguments.iter().map(|x| &**x).collect::<Vec<_>>());
+            let runtime =
+                mipsy_lib::runtime(&binary, &arguments.iter().map(|x| &**x).collect::<Vec<_>>());
 
-            state.binary  = Some(binary);
+            state.binary = Some(binary);
             state.runtime = runtime;
-            state.exited  = false;
+            state.exited = false;
 
             let loaded = if program.len() == 1 {
                 "file loaded"
@@ -84,6 +92,6 @@ pub(crate) fn load_command() -> Command {
             prompt::success_nl(loaded);
 
             Ok("".into())
-        }
+        },
     )
 }

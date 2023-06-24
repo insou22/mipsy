@@ -1,14 +1,5 @@
+use crate::{DATA_BOT, GLOBAL_BOT, KDATA_BOT, KTEXT_BOT, STACK_BOT, STACK_TOP, TEXT_BOT, TEXT_TOP};
 use serde::{Deserialize, Serialize};
-use crate::{
-    TEXT_TOP,
-    TEXT_BOT,
-    DATA_BOT,
-    GLOBAL_BOT,
-    STACK_BOT,
-    STACK_TOP,
-    KTEXT_BOT,
-    KDATA_BOT,
-};
 
 #[derive(Copy, Debug, Serialize, Deserialize)]
 pub enum Safe<T> {
@@ -38,13 +29,11 @@ impl<T> Safe<T> {
 
 impl<T> PartialEq for Safe<T>
 where
-    T: PartialEq
+    T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Valid(a), Self::Valid(b)) => {
-                a.eq(b)
-            }
+            (Self::Valid(a), Self::Valid(b)) => a.eq(b),
             (Self::Uninitialised, Self::Uninitialised) => true,
             _ => false,
         }
@@ -52,8 +41,8 @@ where
 }
 
 impl<T> Clone for Safe<T>
-where 
-    T: Clone
+where
+    T: Clone,
 {
     fn clone(&self) -> Self {
         match self {
@@ -98,9 +87,9 @@ pub enum Segment {
 impl Segment {
     pub fn get_lower_bound(&self) -> u32 {
         match self {
-            Segment::None  => 0,
-            Segment::Text  => TEXT_BOT,
-            Segment::Data  => DATA_BOT,
+            Segment::None => 0,
+            Segment::Text => TEXT_BOT,
+            Segment::Data => DATA_BOT,
             Segment::Stack => STACK_TOP,
             Segment::KText => KTEXT_BOT,
             Segment::KData => KDATA_BOT,
@@ -112,10 +101,10 @@ pub fn get_segment(address: u32) -> Segment {
     match address {
         // TODO(zkol): Update this when exclusive range matching is stabilised
         _ if address < TEXT_BOT => Segment::None,
-        _ if (TEXT_BOT..=TEXT_TOP)  .contains(&address) => Segment::Text,
+        _ if (TEXT_BOT..=TEXT_TOP).contains(&address) => Segment::Text,
         _ if (GLOBAL_BOT..STACK_BOT).contains(&address) => Segment::Data,
         _ if (STACK_BOT..=STACK_TOP).contains(&address) => Segment::Stack,
-        _ if (KTEXT_BOT..KDATA_BOT) .contains(&address) => Segment::KText,
+        _ if (KTEXT_BOT..KDATA_BOT).contains(&address) => Segment::KText,
         _ if address >= KDATA_BOT => Segment::KData,
         _ => unreachable!(),
     }

@@ -1,31 +1,34 @@
-pub mod prompt;
 pub(crate) mod commands;
-mod helper;
 mod error;
+mod helper;
+pub mod prompt;
 mod runtime_handler;
 
-use std::{mem::take, ops::Deref, rc::Rc, sync::{atomic::{AtomicBool, Ordering}, Arc}};
-
-use mipsy_lib::{Binary, InstSet, Runtime, MipsyError, ParserError, error::parser, runtime::{SteppedRuntime, state::TIMELINE_MAX_LEN}, compile::breakpoints::{TargetWatch, TargetAction, get_affected_registers}};
-use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
-use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
-use helper::MyHelper;
-
-use rustyline::{
-    At,
-    Cmd,
-    Editor,
-    KeyCode,
-    KeyEvent,
-    Modifiers,
-    Movement,
-    Word,
-    error::ReadlineError, config::Configurer,
+use std::{
+    mem::take,
+    ops::Deref,
+    rc::Rc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
+
+use helper::MyHelper;
+use mipsy_lib::error::runtime::{Error, ErrorContext, InvalidSyscallReason, RuntimeError};
+use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
+use mipsy_lib::{
+    compile::breakpoints::{get_affected_registers, TargetAction, TargetWatch},
+    error::parser,
+    runtime::{state::TIMELINE_MAX_LEN, SteppedRuntime},
+    Binary, InstSet, MipsyError, ParserError, Runtime,
+};
+
 use colored::*;
-use commands::{
-    Command,
-    Arguments,
+use commands::{Arguments, Command};
+use rustyline::{
+    config::Configurer, error::ReadlineError, At, Cmd, Editor, KeyCode, KeyEvent, Modifiers,
+    Movement, Word,
 };
 
 use mipsy_utils::MipsyConfig;
@@ -37,7 +40,7 @@ pub(crate) struct State {
     pub(crate) iset: InstSet,
     pub(crate) commands: Vec<Command>,
     pub(crate) program: Option<Vec<(String, String)>>,
-    pub(crate) binary:  Option<Binary>,
+    pub(crate) binary: Option<Binary>,
     pub(crate) runtime: Runtime,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
@@ -52,7 +55,7 @@ impl State {
             iset: mipsy_instructions::inst_set(),
             commands: vec![],
             program: None,
-            binary:  None,
+            binary: None,
             runtime: Runtime::new_without_binary(),
             exited: false,
             prev_command: None,
@@ -78,14 +81,11 @@ impl State {
         self.prev_command = Some(cmd);
     }
 
-    fn find_command(&self, cmd: &str) -> Option<Command>
-    {
-        self.commands.iter()
-                .find(|command| {
-                    command.name == cmd || 
-                        command.aliases.iter()
-                                .any(|alias| alias == cmd)
-                }).cloned()
+    fn find_command(&self, cmd: &str) -> Option<Command> {
+        self.commands
+            .iter()
+            .find(|command| command.name == cmd || command.aliases.iter().any(|alias| alias == cmd))
+            .cloned()
     }
 
     fn do_exec(&mut self, line: &str) {
@@ -108,24 +108,33 @@ impl State {
 
         let command = command.unwrap();
         let required = match &command.args {
-            Arguments::Exactly { required, optional: _ } => required,
-            Arguments::VarArgs { required, format:   _ } => required,
+            Arguments::Exactly {
+                required,
+                optional: _,
+            } => required,
+            Arguments::VarArgs {
+                required,
+                format: _,
+            } => required,
         };
 
         if (parts.len() - 1) < required.len() {
-            self.handle_error(CommandError::WithTip {
-                error: Box::new(CommandError::MissingArguments {
-                    args: required.to_vec(),
-                    instead: parts.to_vec(),
-                }),
-                tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
-            }, true);
+            self.handle_error(
+                CommandError::WithTip {
+                    error: Box::new(CommandError::MissingArguments {
+                        args: required.to_vec(),
+                        instead: parts.to_vec(),
+                    }),
+                    tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
+                },
+                true,
+            );
             return;
         }
 
         let result = command.exec(self, command_name, &parts[1..]);
         match result {
-            Ok(_)    => {}
+            Ok(_) => {}
             Err(err) => self.handle_error(err, true),
         };
     }
@@ -146,36 +155,36 @@ impl State {
                         .iter()
                         .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
                         .collect::<Vec<String>>()
-                        .join(" ")
+                        .join(" "),
                 );
 
                 prompt::error(err_msg);
             }
-            CommandError::BadArgument { arg, instead, } => {
-                prompt::error(
-                    format!("bad argument `{}` for {}", instead, arg)
-                );
+            CommandError::BadArgument { arg, instead } => {
+                prompt::error(format!("bad argument `{}` for {}", instead, arg));
             }
-            CommandError::ArgExpectedI32 { arg, instead, } => {
-                prompt::error(
-                    format!("parameter {} expected integer, got `{}` instead", arg, instead)
-                );
+            CommandError::ArgExpectedI32 { arg, instead } => {
+                prompt::error(format!(
+                    "parameter {} expected integer, got `{}` instead",
+                    arg, instead
+                ));
             }
-            CommandError::ArgExpectedU32 { arg, instead, } => {
-                prompt::error(
-                    format!("parameter {} expected positive integer, got `{}` instead", arg, instead)
-                );
+            CommandError::ArgExpectedU32 { arg, instead } => {
+                prompt::error(format!(
+                    "parameter {} expected positive integer, got `{}` instead",
+                    arg, instead
+                ));
             }
             CommandError::InvalidBpId { arg } => {
                 prompt::error(format!("breakpoint with id {} does not exist", arg.blue()));
-            },
-            CommandError::HelpUnknownCommand { command, } => {
+            }
+            CommandError::HelpUnknownCommand { command } => {
                 prompt::error(format!("unknown command `{}`", command));
             }
-            CommandError::CannotReadFile { path, os_error, } => {
+            CommandError::CannotReadFile { path, os_error } => {
                 prompt::error(format!("failed to read file `{}`: {}", path, os_error));
             }
-            CommandError::CannotCompile  { mipsy_error } => {
+            CommandError::CannotCompile { mipsy_error } => {
                 let file_tag = match mipsy_error {
                     MipsyError::Parser(ref error) => error.file_tag(),
                     MipsyError::Compiler(ref error) => error.file_tag(),
@@ -198,14 +207,12 @@ impl State {
                 prompt::error("failed to parse");
 
                 self.mipsy_error(
-                    MipsyError::Parser(
-                        ParserError::new(
-                            parser::Error::ParseFailure,
-                            Rc::from(""),
-                            error.line,
-                            error.col as u32,
-                        )
-                    ),
+                    MipsyError::Parser(ParserError::new(
+                        parser::Error::ParseFailure,
+                        Rc::from(""),
+                        error.line,
+                        error.col as u32,
+                    )),
                     ErrorContext::Repl,
                     Some(line),
                 );
@@ -215,34 +222,46 @@ impl State {
                 self.mipsy_error(error, ErrorContext::Repl, Some(line));
             }
             CommandError::LineDoesNotExist { line_number } => {
-                prompt::error(format!("line :{line_number} does not exist in this program"));
+                prompt::error(format!(
+                    "line :{line_number} does not exist in this program"
+                ));
             }
             CommandError::UnknownRegister { register } => {
-                prompt::error(format!("unknown register: {}{}", "$".yellow(), register.bold()));
+                prompt::error(format!(
+                    "unknown register: {}{}",
+                    "$".yellow(),
+                    register.bold()
+                ));
             }
             CommandError::MustLoadFile => {
                 prompt::error("you have to load a file first");
             }
             CommandError::MustSpecifyFile => {
-                prompt::error("there are multiple files loaded, you must specify which file to use");
+                prompt::error(
+                    "there are multiple files loaded, you must specify which file to use",
+                );
             }
             CommandError::ProgramExited => {
                 prompt::error("program has exited");
-                prompt::tip(format!("try using `{}` or `{}`", "back".bold(), "reset".bold()));
+                prompt::tip(format!(
+                    "try using `{}` or `{}`",
+                    "back".bold(),
+                    "reset".bold()
+                ));
             }
-            CommandError::CannotStepFurtherBack => {
-                prompt::error("can't step any further back")
-            }
-            CommandError::RanOutOfHistory => {
-                prompt::error(format!("ran out of history (max {} steps) -- try using `{}`", TIMELINE_MAX_LEN, "reset".bold()))
-            }
-            CommandError::RuntimeError { mipsy_error, } => {
+            CommandError::CannotStepFurtherBack => prompt::error("can't step any further back"),
+            CommandError::RanOutOfHistory => prompt::error(format!(
+                "ran out of history (max {} steps) -- try using `{}`",
+                TIMELINE_MAX_LEN,
+                "reset".bold()
+            )),
+            CommandError::RuntimeError { mipsy_error } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Interactive, None);
             }
-            CommandError::ReplRuntimeError { mipsy_error, line, } => {
+            CommandError::ReplRuntimeError { mipsy_error, line } => {
                 self.mipsy_error(mipsy_error, ErrorContext::Repl, Some(line));
             }
-            CommandError::WithTip { error, tip, } => {
+            CommandError::WithTip { error, tip } => {
                 self.handle_error(*error, false);
                 prompt::tip(tip);
             }
@@ -257,7 +276,11 @@ impl State {
             }
             CommandError::UnterminatedString { good_parts } => {
                 prompt::error(format!("unterminated string: \"{}\"", good_parts.red()));
-                prompt::tip(format!("make sure your strings are null terminated - use {} instead of {}", ".asciiz".green(), ".ascii".red()));
+                prompt::tip(format!(
+                    "make sure your strings are null terminated - use {} instead of {}",
+                    ".asciiz".green(),
+                    ".ascii".red()
+                ));
             }
         }
 
@@ -266,7 +289,12 @@ impl State {
         }
     }
 
-    pub(crate) fn mipsy_error(&self, error: MipsyError, context: ErrorContext, repl_line: Option<String>) {
+    pub(crate) fn mipsy_error(
+        &self,
+        error: MipsyError,
+        context: ErrorContext,
+        repl_line: Option<String>,
+    ) {
         let config = &self.config;
 
         match error {
@@ -276,7 +304,9 @@ impl State {
                 } else {
                     let file_tag = error.file_tag();
 
-                    let file = self.program.as_ref()
+                    let file = self
+                        .program
+                        .as_ref()
                         .expect("cannot get parser error without a file to compile")
                         .iter()
                         .find(|(tag, _)| tag.as_str() == file_tag.deref())
@@ -291,36 +321,45 @@ impl State {
                     error.show_error(config, Rc::from(&*line));
                 } else {
                     let file_tag = error.file_tag();
-    
-                    let file = self.program.as_ref()
+
+                    let file = self
+                        .program
+                        .as_ref()
                         .expect("cannot get compiler error without a file to compile")
                         .iter()
                         .find(|(tag, _)| tag.as_str() == file_tag.deref())
                         .map(|(_, str)| Rc::from(&**str))
                         .unwrap_or_else(|| Rc::from(""));
-    
+
                     error.show_error(config, file);
                 }
             }
-            MipsyError::Runtime(error) => {
-                error.show_error(
-                    context,
-                    if let Some(line) = repl_line {
-                        vec![(Rc::from(""), Rc::from(&*line))]
-                    } else {
-                        self.program.as_ref().unwrap().iter()
-                            .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
-                            .collect()
-                    },
-                    &self.iset,
-                    self.binary.as_ref().unwrap(),
-                    &self.runtime,
-                )
-            }
+            MipsyError::Runtime(error) => error.show_error(
+                context,
+                if let Some(line) = repl_line {
+                    vec![(Rc::from(""), Rc::from(&*line))]
+                } else {
+                    self.program
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                        .collect()
+                },
+                &self.iset,
+                self.binary.as_ref().unwrap(),
+                &self.runtime,
+            ),
         }
     }
 
-    pub(crate) fn eval_stepped_runtime(&mut self, verbose: bool, result: Result<SteppedRuntime, (Runtime, MipsyError)>, inst: u32, original_pc: u32) -> CommandResult<bool> {
+    pub(crate) fn eval_stepped_runtime(
+        &mut self,
+        verbose: bool,
+        result: Result<SteppedRuntime, (Runtime, MipsyError)>,
+        inst: u32,
+        original_pc: u32,
+    ) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
 
@@ -372,7 +411,7 @@ impl State {
                     Exit(new_runtime) => {
                         self.runtime = new_runtime;
                         self.exited = true;
-                        
+
                         runtime_handler::sys10_exit(verbose);
                     }
                     PrintChar(args, new_runtime) => {
@@ -389,7 +428,14 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError {
+                            mipsy_error: MipsyError::Runtime(RuntimeError::new(
+                                Error::InvalidSyscall {
+                                    syscall: SYS13_OPEN,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                },
+                            )),
+                        });
 
                         // let value = runtime_handler::sys13_open(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -400,7 +446,14 @@ impl State {
                         let mut new_runtime = guard((-1, Vec::new()));
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError {
+                            mipsy_error: MipsyError::Runtime(RuntimeError::new(
+                                Error::InvalidSyscall {
+                                    syscall: SYS14_READ,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                },
+                            )),
+                        });
 
                         // let value = runtime_handler::sys14_read(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -411,7 +464,14 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError {
+                            mipsy_error: MipsyError::Runtime(RuntimeError::new(
+                                Error::InvalidSyscall {
+                                    syscall: SYS15_WRITE,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                },
+                            )),
+                        });
 
                         // let value = runtime_handler::sys15_write(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -422,7 +482,14 @@ impl State {
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
-                        return Err(CommandError::RuntimeError { mipsy_error: MipsyError::Runtime(RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }))});
+                        return Err(CommandError::RuntimeError {
+                            mipsy_error: MipsyError::Runtime(RuntimeError::new(
+                                Error::InvalidSyscall {
+                                    syscall: SYS16_CLOSE,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                },
+                            )),
+                        });
 
                         // let value = runtime_handler::sys16_close(verbose, args);
                         // self.runtime = Some(guard(value));
@@ -455,62 +522,73 @@ impl State {
         let binary = self.binary.as_mut().unwrap_or(&mut empty_binary);
         let affected_registers = get_affected_registers(&self.runtime, inst);
         // TODO(joshh): move this into else if once let-chains are stabilised (1.64 baited me smh)
-        let watchpoints = affected_registers.iter()
-            .filter(|&wp| binary.watchpoints.get(&wp.target)
-                .map_or(false, |watch| watch.action.fits(&wp.action) && watch.enabled))
+        let watchpoints = affected_registers
+            .iter()
+            .filter(|&wp| {
+                binary.watchpoints.get(&wp.target).map_or(false, |watch| {
+                    watch.action.fits(&wp.action) && watch.enabled
+                })
+            })
             .collect::<Vec<_>>();
 
-        Ok(
-            if self.exited {
-                true
-            } else {
-                let pc = self.runtime.timeline().state().pc();
-                let bp = binary.breakpoints.get_mut(&pc);
+        Ok(if self.exited {
+            true
+        } else {
+            let pc = self.runtime.timeline().state().pc();
+            let bp = binary.breakpoints.get_mut(&pc);
 
-                if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
-                    if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
-                        bp.unwrap().ignore_count -= 1;
-                        trapped
-                    } else {
-                        let label = binary.labels.iter()
-                                .find(|(_, &addr)| addr == pc)
-                                .map(|(name, _)| name.yellow().bold().to_string());
-
-                        runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
-                        if let Some(bp) = bp {
-                            bp.commands.clone().iter().for_each(|command| {
-                                self.exec_command(command.to_owned());
-                            });
-                        }
-
-                        true
-                    }
-                } else if !watchpoints.is_empty() {
-                    let mut all_ignored = true;
-                    let mut to_exec = Vec::new();
-                    for watchpoint in watchpoints {
-                        let mut wp = binary.watchpoints.get_mut(&watchpoint.target).expect("I got the condition wrong");
-                        if wp.ignore_count > 0 {
-                            wp.ignore_count -= 1;
-                        } else {
-                            runtime_handler::watchpoint(watchpoint, original_pc, &binary.line_numbers);
-                            to_exec.extend(wp.commands.clone().into_iter());
-                            all_ignored = false;
-                        }
-                    }
-
-                    // TODO(joshh): would be nice to have the watchpoint notification in between
-                    // the actions for each watchpoint
-                    to_exec.into_iter().for_each(|command| {
-                        self.exec_command(command);
-                    });
-
-                    if all_ignored { trapped } else { true }
-                } else {
+            if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
+                if bp.is_some() && bp.as_ref().unwrap().ignore_count > 0 {
+                    bp.unwrap().ignore_count -= 1;
                     trapped
+                } else {
+                    let label = binary
+                        .labels
+                        .iter()
+                        .find(|(_, &addr)| addr == pc)
+                        .map(|(name, _)| name.yellow().bold().to_string());
+
+                    runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
+                    if let Some(bp) = bp {
+                        bp.commands.clone().iter().for_each(|command| {
+                            self.exec_command(command.to_owned());
+                        });
+                    }
+
+                    true
                 }
+            } else if !watchpoints.is_empty() {
+                let mut all_ignored = true;
+                let mut to_exec = Vec::new();
+                for watchpoint in watchpoints {
+                    let wp = binary
+                        .watchpoints
+                        .get_mut(&watchpoint.target)
+                        .expect("I got the condition wrong");
+                    if wp.ignore_count > 0 {
+                        wp.ignore_count -= 1;
+                    } else {
+                        runtime_handler::watchpoint(watchpoint, original_pc, &binary.line_numbers);
+                        to_exec.extend(wp.commands.clone().into_iter());
+                        all_ignored = false;
+                    }
+                }
+
+                // TODO(joshh): would be nice to have the watchpoint notification in between
+                // the actions for each watchpoint
+                to_exec.into_iter().for_each(|command| {
+                    self.exec_command(command);
+                });
+
+                if all_ignored {
+                    trapped
+                } else {
+                    true
+                }
+            } else {
+                trapped
             }
-        )
+        })
     }
 
     pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
@@ -568,8 +646,14 @@ pub(crate) fn editor() -> Editor<MyHelper> {
     let helper = MyHelper::new();
     rl.set_helper(Some(helper));
 
-    rl.bind_sequence(KeyEvent(KeyCode::Left, Modifiers::CTRL),  Cmd::Move(Movement::BackwardWord(1, Word::Emacs)));
-    rl.bind_sequence(KeyEvent(KeyCode::Right, Modifiers::CTRL), Cmd::Move(Movement::ForwardWord (1, At::BeforeEnd, Word::Emacs)));
+    rl.bind_sequence(
+        KeyEvent(KeyCode::Left, Modifiers::CTRL),
+        Cmd::Move(Movement::BackwardWord(1, Word::Emacs)),
+    );
+    rl.bind_sequence(
+        KeyEvent(KeyCode::Right, Modifiers::CTRL),
+        Cmd::Move(Movement::ForwardWord(1, At::BeforeEnd, Word::Emacs)),
+    );
 
     rl
 }
@@ -600,7 +684,8 @@ pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
     let mut state = state(config);
     let interrupted = state.interrupted.clone();
-    ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst)).expect("Failed to set signal handler!");
+    ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))
+        .expect("Failed to set signal handler!");
 
     loop {
         let readline = rl.readline(state.prompt());

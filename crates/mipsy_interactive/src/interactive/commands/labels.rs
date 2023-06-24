@@ -15,22 +15,28 @@ pub(crate) fn labels_command() -> Command {
         |_, state, label, _args| {
             if label == "__help__" {
                 return Ok(
-                    "Prints the addresses of all labels in the currently loaded program.".into()
-                )
+                    "Prints the addresses of all labels in the currently loaded program.".into(),
+                );
             }
 
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-            let max_len = binary.labels.keys()
-                .filter(|&label| !(label.starts_with("kernel__") || label == &String::from("_start")))
+            let max_len = binary
+                .labels
+                .keys()
+                .filter(|&label| {
+                    !(label.starts_with("kernel__") || label == &String::from("_start"))
+                })
                 .map(|label| label.len())
                 .max()
                 .unwrap_or(0);
-            
-            let mut entries: Vec<(String, u32)> = binary.labels.iter()
-                    .map(|(key, &val)| (key.to_string(), val))
-                    .filter(|(key, _)| !(key.starts_with("kernel__") || key == &String::from("_start")))
-                    .collect();
+
+            let mut entries: Vec<(String, u32)> = binary
+                .labels
+                .iter()
+                .map(|(key, &val)| (key.to_string(), val))
+                .filter(|(key, _)| !(key.starts_with("kernel__") || key == &String::from("_start")))
+                .collect();
 
             entries.sort_by_key(|(_, val)| *val);
 
@@ -43,11 +49,16 @@ pub(crate) fn labels_command() -> Command {
                     printed_data_header = true;
                 }
 
-                println!("{:max_len$} => 0x{:08x}", label.yellow().bold(), addr, max_len = max_len);
+                println!(
+                    "{:max_len$} => 0x{:08x}",
+                    label.yellow().bold(),
+                    addr,
+                    max_len = max_len
+                );
             }
             println!();
 
             Ok("".into())
-        }
+        },
     )
 }

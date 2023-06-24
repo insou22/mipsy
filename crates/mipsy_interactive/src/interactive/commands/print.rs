@@ -52,25 +52,29 @@ pub(crate) fn print_command() -> Command {
                         format!("{}{}", "c".yellow().bold(), "har".bold()),
                         format!("{}{}", "s".yellow().bold(), "tring".bold()),
                     ),
-                )
+                );
             }
 
-            let get_error = || CommandError::WithTip { 
-                error: Box::new(CommandError::BadArgument { arg: "<item>".magenta().to_string(), instead: args[0].to_string() }),
+            let get_error = || CommandError::WithTip {
+                error: Box::new(CommandError::BadArgument {
+                    arg: "<item>".magenta().to_string(),
+                    instead: args[0].to_string(),
+                }),
                 tip: format!("try `{}`", "help print".bold()),
             };
 
             let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
-                    .map_err(|_| get_error())?;
+                .map_err(|_| get_error())?;
 
             let print_type = &*args.get(1).cloned().unwrap_or_else(|| "word".to_string());
             match print_type {
-                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char" | "string" |
-                "b"    | "h"    | "w"    | "xb"    | "xh"    | "xw"    |   "x" | "c"    | "s" => {}
+                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
+                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {}
                 other => {
-                    return Err(
-                        CommandError::BadArgument { arg: "[format]".magenta().to_string(), instead: other.to_string() }
-                    );
+                    return Err(CommandError::BadArgument {
+                        arg: "[format]".magenta().to_string(),
+                        instead: other.to_string(),
+                    });
                 }
             }
 
@@ -82,8 +86,15 @@ pub(crate) fn print_command() -> Command {
                 MpArgument::Register(MpRegister::Normal(ident)) => {
                     match print_type {
                         "string" | "s" => {
-                            prompt::error(format!("{} `string` unsupported for {} `register`", "[format]".magenta(), "<item>".magenta()));
-                            prompt::tip_nl(format!("try using an address instead - `{}`", "help print".bold()));
+                            prompt::error(format!(
+                                "{} `string` unsupported for {} `register`",
+                                "[format]".magenta(),
+                                "<item>".magenta()
+                            ));
+                            prompt::tip_nl(format!(
+                                "try using an address instead - `{}`",
+                                "help print".bold()
+                            ));
                             return Ok("".into());
                         }
                         _ => {}
@@ -91,24 +102,42 @@ pub(crate) fn print_command() -> Command {
 
                     if matches!(ident, MpRegisterIdentifier::Named(ref name) if name == "all") {
                         for register in &Register::all() {
-                            if let Ok(val) = runtime.timeline().state().read_register(register.to_u32()) {
+                            if let Ok(val) =
+                                runtime.timeline().state().read_register(register.to_u32())
+                            {
                                 let out = format_simple_print(val, print_type);
-                                println!("{}{:4} = {}", "$".yellow(), register.to_lower_str().bold(), out);
+                                println!(
+                                    "{}{:4} = {}",
+                                    "$".yellow(),
+                                    register.to_lower_str().bold(),
+                                    out
+                                );
                             }
                         }
 
                         if let Ok(val) = runtime.timeline().state().read_lo() {
-                            println!(" {:4} = {}", "lo".bold(), format_simple_print(val, print_type));
+                            println!(
+                                " {:4} = {}",
+                                "lo".bold(),
+                                format_simple_print(val, print_type)
+                            );
                         }
 
                         if let Ok(val) = runtime.timeline().state().read_hi() {
-                            println!(" {:4} = {}", "hi".bold(), format_simple_print(val, print_type));
+                            println!(
+                                " {:4} = {}",
+                                "hi".bold(),
+                                format_simple_print(val, print_type)
+                            );
                         }
 
-                        println!(" {:4} = {}", "pc".bold(), format_simple_print(runtime.timeline().state().pc() as i32, print_type));
+                        println!(
+                            " {:4} = {}",
+                            "pc".bold(),
+                            format_simple_print(runtime.timeline().state().pc() as i32, print_type)
+                        );
                     } else {
-                        let (val, reg_name) = 
-                        {
+                        let (val, reg_name) = {
                             let (unchecked_val, reg_name) = match ident {
                                 MpRegisterIdentifier::Named(name) => {
                                     let name = name.to_ascii_lowercase();
@@ -121,21 +150,45 @@ pub(crate) fn print_command() -> Command {
                                         Ok((runtime.timeline().state().read_lo(), "lo"))
                                     } else {
                                         Register::from_str(&name)
-                                            .map(|reg| (runtime.timeline().state().read_register(reg.to_u32()), reg.to_lower_str()))
-                                            .map_err(|_| CommandError::UnknownRegister { register: name })
+                                            .map(|reg| {
+                                                (
+                                                    runtime
+                                                        .timeline()
+                                                        .state()
+                                                        .read_register(reg.to_u32()),
+                                                    reg.to_lower_str(),
+                                                )
+                                            })
+                                            .map_err(|_| CommandError::UnknownRegister {
+                                                register: name,
+                                            })
                                     }
-                                },
+                                }
                                 MpRegisterIdentifier::Numbered(num) => {
                                     Register::from_number(num as i32)
-                                        .map(|reg| (runtime.timeline().state().read_register(reg.to_u32()), reg.to_lower_str()))
-                                        .map_err(|_| CommandError::UnknownRegister { register: num.to_string() })
+                                        .map(|reg| {
+                                            (
+                                                runtime
+                                                    .timeline()
+                                                    .state()
+                                                    .read_register(reg.to_u32()),
+                                                reg.to_lower_str(),
+                                            )
+                                        })
+                                        .map_err(|_| CommandError::UnknownRegister {
+                                            register: num.to_string(),
+                                        })
                                 }
                             }?;
 
                             let val = match unchecked_val {
                                 Ok(val) => val,
-                                Err(_)  => {
-                                    prompt::error_nl(format!("{}{} is uninitialized", "$".yellow(), reg_name.bold()));
+                                Err(_) => {
+                                    prompt::error_nl(format!(
+                                        "{}{} is uninitialized",
+                                        "$".yellow(),
+                                        reg_name.bold()
+                                    ));
                                     return Ok("".into());
                                 }
                             };
@@ -144,51 +197,99 @@ pub(crate) fn print_command() -> Command {
                         };
 
                         let value = format_simple_print(val, print_type);
-                        prompt::success_nl(format!("{}{} = {}", "$".yellow(), reg_name.bold(), value));
+                        prompt::success_nl(format!(
+                            "{}{} = {}",
+                            "$".yellow(),
+                            reg_name.bold(),
+                            value
+                        ));
                     }
                 }
                 MpArgument::Number(MpNumber::Immediate(imm)) => {
-                    let imm = match imm {
-                        MpImmediate::I16(imm) => {
-                            imm as u32
-                        }
-                        MpImmediate::U16(imm) => {
-                            imm as u32
-                        }
-                        MpImmediate::I32(imm) => {
-                            imm as u32
-                        }
-                        MpImmediate::U32(imm) => {
-                            imm
-                        }
-                        MpImmediate::LabelReference(label) => {
-                            binary.get_label(&label)
-                                    .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?
-                        }
-                    };
+                    let imm =
+                        match imm {
+                            MpImmediate::I16(imm) => imm as u32,
+                            MpImmediate::U16(imm) => imm as u32,
+                            MpImmediate::I32(imm) => imm as u32,
+                            MpImmediate::U32(imm) => imm,
+                            MpImmediate::LabelReference(label) => binary
+                                .get_label(&label)
+                                .map_err(|_| CommandError::UnknownLabel {
+                                    label: label.to_string(),
+                                })?,
+                        };
 
                     let map_err = |_err| CommandError::UninitialisedPrint { addr: imm };
 
                     let value = match print_type {
-                        "byte"  | "b"  => format!("{}", runtime.timeline().state().read_mem_byte(imm).map_err(map_err)?),
-                        "half"  | "h"  => format!("{}", runtime.timeline().state().read_mem_half(imm).map_err(map_err)?),
-                        "word"  | "w"  => format!("{}", runtime.timeline().state().read_mem_word(imm).map_err(map_err)?),
-                        "xbyte" | "xb" => format!("0x{:02x}", runtime.timeline().state().read_mem_byte(imm).map_err(map_err)? as u8),
-                        "xhalf" | "xh" => format!("0x{:04x}", runtime.timeline().state().read_mem_half(imm).map_err(map_err)? as u16),
-                        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", runtime.timeline().state().read_mem_word(imm).map_err(map_err)? as u32),
-                        "char"  | "c"  => format!("\'{}\'", ascii::escape_default(runtime.timeline().state().read_mem_byte(imm).map_err(map_err)? as u8)),
-                        "string"| "s"  => {
+                        "byte" | "b" => format!(
+                            "{}",
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_byte(imm)
+                                .map_err(map_err)?
+                        ),
+                        "half" | "h" => format!(
+                            "{}",
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_half(imm)
+                                .map_err(map_err)?
+                        ),
+                        "word" | "w" => format!(
+                            "{}",
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_word(imm)
+                                .map_err(map_err)?
+                        ),
+                        "xbyte" | "xb" => format!("0x{:02x}", {
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_byte(imm)
+                                .map_err(map_err)?
+                        }),
+                        "xhalf" | "xh" => format!("0x{:04x}", {
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_half(imm)
+                                .map_err(map_err)?
+                        }),
+                        "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", {
+                            runtime
+                                .timeline()
+                                .state()
+                                .read_mem_word(imm)
+                                .map_err(map_err)?
+                        }),
+                        "char" | "c" => format!(
+                            "\'{}\'",
+                            ascii::escape_default(
+                                runtime
+                                    .timeline()
+                                    .state()
+                                    .read_mem_byte(imm)
+                                    .map_err(map_err)?
+                            )
+                        ),
+                        "string" | "s" => {
                             let mut text = String::new();
 
                             let mut addr = imm;
                             loop {
-                                let chr =
-                                    match runtime.timeline().state().read_mem_byte(addr) {
-                                        Ok(byte) => byte,
-                                        Err(_) => {
-                                            return Err(CommandError::UnterminatedString { good_parts: text });
-                                        }   
-                                    };
+                                let chr = match runtime.timeline().state().read_mem_byte(addr) {
+                                    Ok(byte) => byte,
+                                    Err(_) => {
+                                        return Err(CommandError::UnterminatedString {
+                                            good_parts: text,
+                                        });
+                                    }
+                                };
 
                                 if chr == 0 {
                                     break;
@@ -199,7 +300,7 @@ pub(crate) fn print_command() -> Command {
                             }
 
                             format!("\"{}\"", text)
-                        },
+                        }
                         _ => unreachable!(),
                     };
 
@@ -209,19 +310,19 @@ pub(crate) fn print_command() -> Command {
             }
 
             Ok("".into())
-        }
+        },
     )
 }
 
 fn format_simple_print(val: i32, print_type: &str) -> String {
     match print_type {
-        "byte"  | "b"  => format!("{}", val & 0xFF),
-        "half"  | "h"  => format!("{}", val & 0xFFFF),
-        "word"  | "w"  => format!("{}", val),
+        "byte" | "b" => format!("{}", val & 0xFF),
+        "half" | "h" => format!("{}", val & 0xFFFF),
+        "word" | "w" => format!("{}", val),
         "xbyte" | "xb" => format!("0x{:02x}", (val as u32) & 0xFF),
         "xhalf" | "xh" => format!("0x{:04x}", (val as u32) & 0xFFFF),
         "xword" | "xw" | "hex" | "x" => format!("0x{:08x}", val as u32),
-        "char"  | "c"  => format!("\'{}\'", ascii::escape_default((val & 0xFF) as u8)),
+        "char" | "c" => format!("\'{}\'", ascii::escape_default((val & 0xFF) as u8)),
         _ => unreachable!(),
     }
 }

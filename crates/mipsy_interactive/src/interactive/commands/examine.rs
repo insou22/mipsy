@@ -79,7 +79,9 @@ pub(crate) fn examine_command() -> Command {
                 Ok(segment.get_lower_bound())
             };
 
-            let hide_labels = args.get(0).map_or(false, |a| a == &String::from("-nolabels"));
+            let hide_labels = args
+                .get(0)
+                .map_or(false, |a| a == &String::from("-nolabels"));
             if hide_labels && base_addr.is_err() {
                 // if -labels was provided, ensure base_addr is valid
                 base_addr = Ok(segment.get_lower_bound());
@@ -172,9 +174,9 @@ pub(crate) fn examine_command() -> Command {
                 }
 
                 let marker = if segment == Segment::Stack {
-                    base_addr as usize - nth * row_size
+                    base_addr - nth * row_size
                 } else {
-                    base_addr as usize + nth * row_size
+                    base_addr + nth * row_size
                 };
 
                 if !label_strs.is_empty() {
@@ -204,9 +206,7 @@ fn render_data(data_val: Safe<u8>) -> String {
         Safe::Valid(byte) => {
             format!("{:02x}", byte)
         }
-        Safe::Uninitialised => {
-            format!("__")
-        }
+        Safe::Uninitialised => "__".to_string(),
     }
 }
 
@@ -262,7 +262,7 @@ fn parse_arg(state: &State, arg: &String) -> Result<u32, CommandError> {
                 arg: expected.magenta().to_string(),
                 instead: arg.into(),
             },
-            &String::from(""),
+            String::from(""),
         )
     };
 

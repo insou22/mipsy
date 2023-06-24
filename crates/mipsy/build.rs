@@ -1,7 +1,6 @@
 extern crate vergen;
 
-use vergen::{Config, vergen, ShaKind, TimestampKind};
-
+use vergen::{vergen, Config, ShaKind, TimestampKind};
 
 fn main() {
     let mut config = Config::default();

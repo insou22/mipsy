@@ -23,7 +23,7 @@ pub(crate) fn run_command() -> Command {
                         "step".bold(),
                         "not".red().bold(),
                     ),
-                )
+                );
             }
 
             if state.binary.is_none() {
@@ -31,6 +31,6 @@ pub(crate) fn run_command() -> Command {
             }
 
             state.run()
-        }
+        },
     )
 }
