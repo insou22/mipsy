@@ -779,24 +779,6 @@ instructions:
       opcode: 0x2B
       reads: [Rt]
 
-  - name: LWC1
-    desc_short: Load a word from the immediate address + $Rs into $Rt (floating point register)
-    compile:
-      format: [Rt, OffRs]
-    runtime:
-      type: I
-      opcode: 0x31
-      reads: [OffRs]
-
-  - name: SWC1
-    desc_short: Store a word from $Rt (floating point register) into the immediate address + $Rs
-    compile:
-      format: [Rt, OffRs]
-    runtime:
-      type: I
-      opcode: 0x39
-      reads: [Rt]
-
   # J-Type Instructions
   - name: J
     desc_short: Jump to the immediate address
