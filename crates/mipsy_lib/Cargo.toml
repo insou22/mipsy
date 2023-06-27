@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive", "rc"] }            # for data deserialization
-serde_yaml = "0.9.19"                                               #   - see mips.yaml
+serde_yaml = "0.8.26"                                               #   - see mips.yaml
 strsim = "0.10"                                                     # for error-reporting - string similarity
 linked-hash-map = { version = "0.5.4", features = ["serde_impl"] }  # for labels
 colored = "2"                                                       # for ansi colors
