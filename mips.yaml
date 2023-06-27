@@ -2441,11 +2441,11 @@ pseudoinstructions:
       format: [Rs, Off32Rt]
     expand:
       - inst: LUI
-        data: [$Rs, $Off32uHi]
+        data: [$At, $Off32uHi]
       - inst: ORI
-        data: [$Rs, $Rs, $Off32uLo]
+        data: [$At, $At, $Off32uLo]
       - inst: ADDU
-        data: [$Rs, $Rs, $Rt]
+        data: [$Rs, $Rs, $At]
 
   - name: NOP
     desc_short: No-Operation - doesn't do anything
