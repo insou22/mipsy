@@ -4,13 +4,6 @@
 mod config;
 mod expand;
 
-pub use config::{
-    MipsyConfig,
-    MipsyConfigError,
-    read_config,
-    config_path,
-};
+pub use config::{config_path, read_config, MipsyConfig, MipsyConfigError};
 
-pub use expand::{
-    expand_tilde,
-};
+pub use expand::expand_tilde;

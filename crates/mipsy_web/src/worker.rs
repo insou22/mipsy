@@ -416,10 +416,8 @@ impl Agent for Worker {
                                 match stepped_runtime {
                                     Ok(Ok(next_runtime)) => {
                                         let pc = next_runtime.timeline().state().pc();
-                                        let affected_registers = get_affected_registers(
-                                            &next_runtime,
-                                            executed_inst,
-                                        );
+                                        let affected_registers =
+                                            get_affected_registers(&next_runtime, executed_inst);
                                         watchpoints = affected_registers
                                             .into_iter()
                                             .filter(|wp| {
@@ -559,10 +557,8 @@ impl Agent for Worker {
                             // instruction ran okay
                             Ok(Ok(next_runtime)) => {
                                 let pc = next_runtime.timeline().state().pc();
-                                let affected_registers = get_affected_registers(
-                                    &next_runtime,
-                                    executed_inst,
-                                );
+                                let affected_registers =
+                                    get_affected_registers(&next_runtime, executed_inst);
                                 watchpoints = affected_registers
                                     .into_iter()
                                     .filter(|wp| {

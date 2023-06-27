@@ -1,7 +1,7 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
-use super::{*, commands::handle_commands};
+use super::{commands::handle_commands, *};
 use colored::*;
 use mipsy_lib::{compile::breakpoints::Breakpoint, Binary};
 use mipsy_parser::*;
@@ -31,56 +31,83 @@ pub(crate) fn breakpoint_command() -> Command {
         command(
             "list",
             vec!["l"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_list(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_list(state, label, args),
         ),
         command(
             "insert",
             vec!["i", "in", "ins", "add"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert),
         ),
         command(
             "remove",
             vec!["del", "delete", "r", "rm"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete),
         ),
         command(
             "temporary",
             vec!["tmp", "temp"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary),
         ),
         command(
             "enable",
             vec!["e"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable),
         ),
         command(
             "disable",
             vec!["d"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable),
         ),
         command(
             "toggle",
             vec!["t"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle),
         ),
         command(
             "ignore",
             vec![],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_ignore(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_ignore(state, label, args),
         ),
         command(
             "commands",
             vec!["com", "comms", "cmd", "cmds", "command"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| breakpoint_commands(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| breakpoint_commands(state, label, args),
         ),
     ];
 
@@ -96,18 +123,19 @@ pub(crate) fn breakpoint_command() -> Command {
         ),
         |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
-                return Ok(
-                    get_long_help()
-                )
+                return Ok(get_long_help());
             }
 
-            let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+            let cmd = cmd
+                .subcommands
+                .iter()
+                .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
             match cmd {
                 None if label == "__help__" => Ok(get_long_help()),
                 Some(cmd) => cmd.exec(state, label, &args[1..]),
                 None => breakpoint_insert(state, label, args, InsertOp::Insert),
             }
-        }
+        },
     )
 }
 
@@ -142,7 +170,12 @@ fn get_long_help() -> String {
     )
 }
 
-fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: InsertOp) -> Result<String, CommandError> {
+fn breakpoint_insert(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+    op: InsertOp,
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -174,23 +207,21 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
                 "{insert, delete, temporary}".purple(),
                 "<temporary>".purple(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["addr".to_string()],
-                    instead: args.to_vec(),
-                },
-                match op {
-                    InsertOp::Insert    => "insert",
-                    InsertOp::Delete    => "delete",
-                    InsertOp::Temporary => "temporary",
-                },
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["addr".to_string()],
+                instead: args.to_vec(),
+            },
+            match op {
+                InsertOp::Insert => "insert",
+                InsertOp::Delete => "delete",
+                InsertOp::Temporary => "temporary",
+            },
+        ));
     }
 
     let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
@@ -212,9 +243,9 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
                 "breakpoint at {} doesn't exist",
                 match arg_type {
                     MipsyArgType::LineNumber => args[0].as_str().into(),
-                    MipsyArgType::Immediate  => args[0].white(),
-                    MipsyArgType::Label      => args[0].yellow().bold(),
-                    MipsyArgType::Id         => args[0].blue(),
+                    MipsyArgType::Immediate => args[0].white(),
+                    MipsyArgType::Label => args[0].yellow().bold(),
+                    MipsyArgType::Id => args[0].blue(),
                 }
             ));
             return Ok("".into());
@@ -233,9 +264,9 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
             "breakpoint at {} already exists",
             match arg_type {
                 MipsyArgType::LineNumber => args[0].as_str().into(),
-                MipsyArgType::Immediate  => args[0].white(),
-                MipsyArgType::Label      => args[0].yellow().bold(),
-                MipsyArgType::Id         => args[0].blue(),
+                MipsyArgType::Immediate => args[0].white(),
+                MipsyArgType::Label => args[0].yellow().bold(),
+                MipsyArgType::Id => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -243,19 +274,32 @@ fn breakpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
 
     let label = match arg_type {
         MipsyArgType::Immediate => None,
-        MipsyArgType::Label     => Some(&args[0]),
+        MipsyArgType::Label => Some(&args[0]),
         MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            binary.labels.iter()
+            binary
+                .labels
+                .iter()
                 .find(|(_, &_addr)| _addr == addr)
                 .map(|(name, _)| name)
-        },
+        }
     };
 
     if let Some(label) = label {
-        prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", format!("!{}", id).blue(), action, label.yellow().bold(), addr));
+        prompt::success_nl(format!(
+            "breakpoint {} {} at {} (0x{:08x})",
+            format!("!{}", id).blue(),
+            action,
+            label.yellow().bold(),
+            addr
+        ));
     } else {
-        prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      format!("!{}", id).blue(), action, addr));
+        prompt::success_nl(format!(
+            "breakpoint {} {} at 0x{:08x}",
+            format!("!{}", id).blue(),
+            action,
+            addr
+        ));
     }
 
     Ok("".into())
@@ -274,7 +318,7 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
                  ":".bold(),
                  "break".bold(),
             ),
-        )
+        );
     }
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
@@ -284,39 +328,42 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
         return Ok("".into());
     }
 
-    let mut breakpoints = binary.breakpoints.iter()
-            .map(|x| {
-                let (&addr, bp) = x;
-                let id = bp.id;
+    let mut breakpoints = binary
+        .breakpoints
+        .iter()
+        .map(|x| {
+            let (&addr, bp) = x;
+            let id = bp.id;
+            (
                 (
-                    (
-                        id,
-                        // TODO (joshh): replace with checked_log10 when
-                        // https://github.com/rust-lang/rust/issues/70887 is stabilised
-                        successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
-                    ),
-                    addr,
-                    binary.labels.iter()
-                        .find(|(_, &val)| val == addr)
-                        .map(|(name, _)| name),
-                    bp,
-                )
-            })
-            .collect::<Vec<_>>();
+                    id,
+                    // TODO (joshh): replace with checked_log10 when
+                    // https://github.com/rust-lang/rust/issues/70887 is stabilised
+                    successors(Some(id), |&id| (id >= 10).then_some(id / 10)).count(),
+                ),
+                addr,
+                binary
+                    .labels
+                    .iter()
+                    .find(|(_, &val)| val == addr)
+                    .map(|(name, _)| name),
+                bp,
+            )
+        })
+        .collect::<Vec<_>>();
 
     breakpoints.sort_by_key(|(_, addr, _, _)| *addr);
 
-    let max_id_len = breakpoints.iter()
-            .map(|&(id, _, _, _)| {
-                id.1
-            })
-            .max()
-            .unwrap_or(0);
+    let max_id_len = breakpoints
+        .iter()
+        .map(|&(id, _, _, _)| id.1)
+        .max()
+        .unwrap_or(0);
 
     println!("\n{}", "[breakpoints]".green().bold());
     for (id, addr, text, bp) in breakpoints {
         let disabled = match bp.enabled {
-            true  => "",
+            true => "",
             false => " (disabled)",
         };
 
@@ -327,10 +374,27 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 
         match text {
             Some(name) => {
-                println!("{}{}: {}{:08x} ({}){}{}", " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, name.yellow().bold(), disabled.bright_black(), ignored);
+                println!(
+                    "{}{}: {}{:08x} ({}){}{}",
+                    " ".repeat(max_id_len - id.1),
+                    id.0.to_string().blue(),
+                    "0x".magenta(),
+                    addr,
+                    name.yellow().bold(),
+                    disabled.bright_black(),
+                    ignored
+                );
             }
             None => {
-                println!("{}{}: {}{:08x}{}{}",      " ".repeat(max_id_len - id.1), id.0.to_string().blue(), "0x".magenta(), addr, disabled.bright_black(), ignored);
+                println!(
+                    "{}{}: {}{:08x}{}{}",
+                    " ".repeat(max_id_len - id.1),
+                    id.0.to_string().blue(),
+                    "0x".magenta(),
+                    addr,
+                    disabled.bright_black(),
+                    ignored
+                );
             }
         }
     }
@@ -339,7 +403,12 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: EnableOp) -> Result<String, CommandError> {
+fn breakpoint_toggle(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+    op: EnableOp,
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -361,23 +430,21 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
                 "breakpoint".yellow().bold(),
                 "{enable, disable, toggle}".purple(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["addr".to_string()],
-                    instead: args.to_vec(),
-                },
-                match op {
-                    EnableOp::Enable  => "enable",
-                    EnableOp::Disable => "disable",
-                    EnableOp::Toggle  => "toggle",
-                },
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["addr".to_string()],
+                instead: args.to_vec(),
+            },
+            match op {
+                EnableOp::Enable => "enable",
+                EnableOp::Disable => "disable",
+                EnableOp::Toggle => "toggle",
+            },
+        ));
     }
 
     let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
@@ -393,18 +460,18 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
     if let Some(br) = binary.breakpoints.get_mut(&addr) {
         id = br.id;
         br.enabled = match op {
-            EnableOp::Enable  => true,
+            EnableOp::Enable => true,
             EnableOp::Disable => false,
-            EnableOp::Toggle  => !br.enabled,
+            EnableOp::Toggle => !br.enabled,
         }
     } else {
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::LineNumber => args[0].as_str().into(),
-                MipsyArgType::Immediate  => args[0].white(),
-                MipsyArgType::Label      => args[0].yellow().bold(),
-                MipsyArgType::Id         => args[0].blue(),
+                MipsyArgType::Immediate => args[0].white(),
+                MipsyArgType::Label => args[0].yellow().bold(),
+                MipsyArgType::Id => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -412,31 +479,48 @@ fn breakpoint_toggle(state: &mut State, label: &str, args: &[String], op: Enable
 
     // already ruled out possibility of entry not existing
     let action = match binary.breakpoints.get(&addr).unwrap().enabled {
-        true  => "enabled",
+        true => "enabled",
         false => "disabled",
     };
 
     let label = match arg_type {
         MipsyArgType::Immediate => None,
-        MipsyArgType::Label     => Some(&args[0]),
+        MipsyArgType::Label => Some(&args[0]),
         MipsyArgType::Id | MipsyArgType::LineNumber => {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            binary.labels.iter()
+            binary
+                .labels
+                .iter()
                 .find(|(_, &_addr)| _addr == addr)
                 .map(|(name, _)| name)
-        },
+        }
     };
 
     if let Some(label) = label {
-        prompt::success_nl(format!("breakpoint {} {} at {} (0x{:08x})", format!("!{}", id).blue(), action, label.yellow().bold(), addr));
+        prompt::success_nl(format!(
+            "breakpoint {} {} at {} (0x{:08x})",
+            format!("!{}", id).blue(),
+            action,
+            label.yellow().bold(),
+            addr
+        ));
     } else {
-        prompt::success_nl(format!("breakpoint {} {} at 0x{:08x}",      format!("!{}", id).blue(), action, addr));
+        prompt::success_nl(format!(
+            "breakpoint {} {} at 0x{:08x}",
+            format!("!{}", id).blue(),
+            action,
+            addr
+        ));
     }
 
     Ok("".into())
 }
 
-fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Result<String, CommandError> {
+fn breakpoint_ignore(
+    state: &mut State,
+    label: &str,
+    mut args: &[String],
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -456,19 +540,17 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
                 "breakpoint".yellow().bold(),
                 "ignore".purple(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["addr".to_string()],
-                    instead: args.to_vec(),
-                },
-                "ignore",
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["addr".to_string()],
+                instead: args.to_vec(),
+            },
+            "ignore",
+        ));
     }
 
     let (addr, arg_type) = parse_breakpoint_arg(state, &args[0])?;
@@ -480,39 +562,42 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
 
     args = &args[1..];
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["ignore count".to_string()],
-                    instead: args.to_vec(),
-                },
-                "ignore",
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["ignore count".to_string()],
+                instead: args.to_vec(),
+            },
+            "ignore",
+        ));
     }
 
-    let ignore_count: u32 = args[0].parse()
-        .map_err(|_| generate_err(
+    let ignore_count: u32 = args[0].parse().map_err(|_| {
+        generate_err(
             CommandError::BadArgument {
                 arg: "<ignore count>".into(),
                 instead: args[0].clone(),
             },
-            ""
-        ))?;
+            "",
+        )
+    })?;
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
     if let Some(br) = binary.breakpoints.get_mut(&addr) {
         br.ignore_count = ignore_count;
-        prompt::success_nl(format!("skipping breakpoint {} {} times", format!("!{}", br.id).blue(), ignore_count.to_string().yellow()));
+        prompt::success_nl(format!(
+            "skipping breakpoint {} {} times",
+            format!("!{}", br.id).blue(),
+            ignore_count.to_string().yellow()
+        ));
     } else {
         prompt::error_nl(format!(
             "breakpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::LineNumber => args[0].as_str().into(),
-                MipsyArgType::Immediate  => args[0].white(),
-                MipsyArgType::Label      => args[0].yellow().bold(),
-                MipsyArgType::Id         => args[0].blue(),
+                MipsyArgType::Immediate => args[0].white(),
+                MipsyArgType::Label => args[0].yellow().bold(),
+                MipsyArgType::Id => args[0].blue(),
             }
         ));
     }
@@ -520,11 +605,14 @@ fn breakpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     Ok("".into())
 }
 
-fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+fn breakpoint_commands(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Takes in a list of commands seperated by newlines,\n\
+        return Ok(format!(
+            "Takes in a list of commands seperated by newlines,\n\
                  and attaches the commands to the specified {0}.\n\
                  If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
                  Whenever that breakpoint is hit, the commands will automatically be executed\n\
@@ -533,11 +621,10 @@ fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Resul
                  To view the commands attached to a particular breakpoint,\n\
                  use {2} {0}
                 ",
-                "<breakpoint id>".purple(),
-                "end".yellow().bold(),
-                "commands list".bold().yellow(),
-            )
-        )
+            "<breakpoint id>".purple(),
+            "end".yellow().bold(),
+            "commands list".bold().yellow(),
+        ));
     }
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
@@ -548,28 +635,41 @@ fn breakpoint_commands(state: &mut State, label: &str, args: &[String]) -> Resul
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");
     let command_name = command_name.into();
-    if !command_name.is_empty() { help.push(' ') };
+    if !command_name.is_empty() {
+        help.push(' ')
+    };
 
     CommandError::WithTip {
         error: Box::new(error),
         tip: format!("try `{}{}`", help.bold(), command_name.bold()),
-    } 
+    }
 }
 
 fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgType), CommandError> {
-    let get_error = |expected: &str| generate_err(
-        CommandError::BadArgument { arg: expected.magenta().to_string(), instead: arg.into() },
-        &String::from(""),
-    );
+    let get_error = |expected: &str| {
+        generate_err(
+            CommandError::BadArgument {
+                arg: expected.magenta().to_string(),
+                instead: arg.into(),
+            },
+            String::from(""),
+        )
+    };
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
-        let addr = binary.breakpoints.iter().find(|bp| bp.1.id == id)
-                        .ok_or(CommandError::InvalidBpId { arg: arg.to_string() })?.0;
+        let addr = binary
+            .breakpoints
+            .iter()
+            .find(|bp| bp.1.id == id)
+            .ok_or(CommandError::InvalidBpId {
+                arg: arg.to_string(),
+            })?
+            .0;
 
-        return Ok((*addr, MipsyArgType::Id))
+        return Ok((*addr, MipsyArgType::Id));
     }
 
     if arg.contains(':') {
@@ -577,9 +677,11 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
         let mut parts = arg.split(':');
         let mut file = parts.next().unwrap();
         if file.is_empty() {
-            let mut filenames = binary.line_numbers.values()
-                    .map(|(filename, _)| filename)
-                    .filter(|filename| filename.as_ref() != "kernel");
+            let mut filenames = binary
+                .line_numbers
+                .values()
+                .map(|(filename, _)| filename)
+                .filter(|filename| filename.as_ref() != "kernel");
 
             file = filenames.next().unwrap();
             if !filenames.all(|f| f.as_ref() == file) {
@@ -587,21 +689,30 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
             }
         }
 
-        let line_number: u32 = parts.next().unwrap().parse().map_err(|_| get_error("<line number>"))?;
-        let mut lines = binary.line_numbers.iter()
-            .filter(|(_, (filename, _))| filename.as_ref() == file).collect::<Vec<_>>();
-        lines.sort_unstable_by(|a, b| a.1.1.cmp(&b.1.1));
+        let line_number: u32 = parts
+            .next()
+            .unwrap()
+            .parse()
+            .map_err(|_| get_error("<line number>"))?;
+        let mut lines = binary
+            .line_numbers
+            .iter()
+            .filter(|(_, (filename, _))| filename.as_ref() == file)
+            .collect::<Vec<_>>();
+        lines.sort_unstable_by(|a, b| a.1 .1.cmp(&b.1 .1));
 
         // use first line after the specified line that contains an instruction
-        let addr = lines.iter()
+        let addr = lines
+            .iter()
             .find(|(_, &(_, _line_number))| _line_number >= line_number)
-            .ok_or_else(|| CommandError::LineDoesNotExist { line_number })?.0;
+            .ok_or(CommandError::LineDoesNotExist { line_number })?
+            .0;
 
-        return Ok((*addr, MipsyArgType::LineNumber))
+        return Ok((*addr, MipsyArgType::LineNumber));
     }
 
     let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
-            .map_err(|_| get_error("<addr>"))?;
+        .map_err(|_| get_error("<addr>"))?;
 
     if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
         Ok(match imm {
@@ -609,12 +720,14 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
             MpImmediate::U16(imm) => (*imm as u32, MipsyArgType::Immediate),
             MpImmediate::I32(imm) => (*imm as u32, MipsyArgType::Immediate),
             MpImmediate::U32(imm) => (*imm, MipsyArgType::Immediate),
-            MpImmediate::LabelReference(label) =>
-                (
-                    binary.get_label(label)
-                        .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?,
-                    MipsyArgType::Label,
-                ),
+            MpImmediate::LabelReference(label) => (
+                binary
+                    .get_label(label)
+                    .map_err(|_| CommandError::UnknownLabel {
+                        label: label.to_string(),
+                    })?,
+                MipsyArgType::Label,
+            ),
         })
     } else {
         Err(get_error("<addr>"))

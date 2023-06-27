@@ -1,11 +1,16 @@
-use std::{fs::{self, File}, io::{Read, Write}, path::PathBuf, time::SystemTime};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
+    path::PathBuf,
+    time::SystemTime,
+};
 
 const MIPSY_DIR: &str = "mipsy";
 const CONFIG_NAME: &str = "config.yaml";
 
 /// # The user's mipsy congfiguration.
-/// 
+///
 /// This usually comes from the `~/.config/mipsy/config.yaml` file.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct MipsyConfig {
@@ -14,7 +19,7 @@ pub struct MipsyConfig {
 }
 
 /// # Errors arising from reading the mipsy configuration.
-/// 
+///
 /// This is used to indicate that the configuration file
 /// could not be read, or that the configuration file
 /// is invalid.
@@ -29,15 +34,15 @@ pub fn config_path() -> Option<PathBuf> {
 }
 
 /// # Reads the user's mipsy configuration.
-/// 
+///
 /// This reads the mipsy config file,
 /// and returns the configuration if it exists.
-/// 
+///
 /// If the configuration file does not exist,
 /// it will be created with the default configuration.
-/// 
+///
 /// # Errors
-/// 
+///
 /// This function may return an error if the configuration
 /// file could not be read, or if the configuration file
 /// is invalid.
@@ -79,7 +84,7 @@ fn write_default_config(path: &PathBuf) -> Result<MipsyConfig, DeserialiseConfig
         .map(String::from)
         .collect::<Vec<_>>();
     lines.push(String::new());
-        
+
     let yaml = lines.join("\n");
 
     file.write_all(yaml.as_bytes())
@@ -104,10 +109,11 @@ fn try_deserialise() -> Result<MipsyConfig, DeserialiseConfigError> {
     let mut file = File::open(&config_path).map_err(|_| NotUsingConfig)?;
     let mut contents = String::new();
 
-    file.read_to_string(&mut contents).map_err(|_| NotUsingConfig)?;
+    file.read_to_string(&mut contents)
+        .map_err(|_| NotUsingConfig)?;
 
     let config: Result<MipsyConfig, _> = serde_yaml::from_str(&contents);
-    
+
     match config {
         Ok(config) => Ok(config),
         Err(_) => {
@@ -116,11 +122,10 @@ fn try_deserialise() -> Result<MipsyConfig, DeserialiseConfigError> {
                 .expect("can you please set your system clock to *some time* after the 1970's?")
                 .as_secs();
 
-            let to_path = mipsy_dir.join(&format!("{}.{}", CONFIG_NAME, epoch));
+            let to_path = mipsy_dir.join(format!("{}.{}", CONFIG_NAME, epoch));
 
-            fs::rename(&config_path, &to_path)
-                .expect("cannot rename broken config file");
-            
+            fs::rename(&config_path, &to_path).expect("cannot rename broken config file");
+
             Err(ConfigBroken(to_path, write_default_config(&config_path)?))
         }
     }

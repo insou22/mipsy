@@ -1,9 +1,14 @@
-use std::fmt::Display;
 use colored::*;
+use std::fmt::Display;
 
 pub fn unknown_command<D: Display>(command: D) {
     error(format!("{} `{}`", "unknown command", command));
-    tip_nl(format!("{}{}{}", "use `", "help".bold(), "` for a list of commands"));
+    tip_nl(format!(
+        "{}{}{}",
+        "use `",
+        "help".bold(),
+        "` for a list of commands"
+    ));
 }
 
 pub fn banner<D: Display>(text: D) {
@@ -65,7 +70,13 @@ pub fn warning_nl<D: Display>(text: D) {
 }
 
 pub fn syscall<D: Display>(code: i32, text: D) {
-    print!("{}{}{}{}", "\n[SYSCALL ".yellow().bold(), code.to_string().bold(), "] ".yellow().bold(), text);
+    print!(
+        "{}{}{}{}",
+        "\n[SYSCALL ".yellow().bold(),
+        code.to_string().bold(),
+        "] ".yellow().bold(),
+        text
+    );
 }
 
 pub fn syscall_nl<D: Display>(code: i32, text: D) {

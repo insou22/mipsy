@@ -6,10 +6,14 @@ use crate::{
     register::{parse_register, MpRegister},
     Span,
 };
-use nom::{IResult, branch::alt, character::complete::{
-        char,
-        space0,
-    }, combinator::{map, opt}, multi::separated_list0, sequence::tuple};
+use nom::{
+    branch::alt,
+    character::complete::{char, space0},
+    combinator::{map, opt},
+    multi::separated_list0,
+    sequence::tuple,
+    IResult,
+};
 use nom_locate::position;
 use serde::{Deserialize, Serialize};
 
@@ -59,43 +63,20 @@ impl MpInstruction {
 impl fmt::Display for MpArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Register(reg)                    => write!(f, "{}", reg),
-            Self::Number(num)                      => write!(f, "{}", num),
+            Self::Register(reg) => write!(f, "{}", reg),
+            Self::Number(num) => write!(f, "{}", num),
             // Self::LabelPlusConst(label, the_const) => write!(f, "{} + {}", label, the_const),
         }
     }
 }
 
 pub fn parse_instruction(i: Span<'_>) -> IResult<Span<'_>, MpInstruction> {
-    let (
-        remaining_data,
-        (
-            position,
-            name,
-            _,
-            arguments,
-            _,
-            position_end,
-            ..
-        )
-    ) = tuple((
+    let (remaining_data, (position, name, _, arguments, _, position_end, ..)) = tuple((
         position,
         parse_ident,
         space0,
-        separated_list0(
-            tuple((
-                space0,
-                char(','),
-                space0,
-            )),
-            parse_argument,
-        ),
-        opt(
-            tuple((
-                comment_multispace0,
-                char(';'),
-            )),
-        ),
+        separated_list0(tuple((space0, char(','), space0)), parse_argument),
+        opt(tuple((comment_multispace0, char(';')))),
         position,
         comment_multispace0,
     ))(i)?;

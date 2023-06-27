@@ -1,5 +1,6 @@
 [workspace]
 members = ["crates/*"]
+resolver = "2"
 
 [profile.dev]
 opt-level = 1   # I would *love* to not have to do this,

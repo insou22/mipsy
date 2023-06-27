@@ -1,28 +1,13 @@
-use std::borrow::Cow::{
-    self,
-    Borrowed,
-    Owned,
-};
 use rustyline::{
-    Context,
+    completion::{Completer, FilenameCompleter, Pair},
     error::ReadlineError,
-    completion::{
-        Completer, 
-        FilenameCompleter, 
-        Pair,
-    },
     highlight::Highlighter,
-    hint::{
-        Hinter,
-        HistoryHinter,
-    },
-    validate::{
-        Validator,
-        ValidationContext,
-        ValidationResult
-    },
+    hint::{Hinter, HistoryHinter},
+    validate::{ValidationContext, ValidationResult, Validator},
+    Context,
 };
 use rustyline_derive::Helper;
+use std::borrow::Cow::{self, Borrowed, Owned};
 
 #[derive(Helper)]
 pub(crate) struct MyHelper {
@@ -83,10 +68,7 @@ impl Highlighter for MyHelper {
 }
 
 impl Validator for MyHelper {
-    fn validate(
-        &self,
-        _ctx: &mut ValidationContext,
-    ) -> rustyline::Result<ValidationResult> {
+    fn validate(&self, _ctx: &mut ValidationContext) -> rustyline::Result<ValidationResult> {
         Ok(ValidationResult::Valid(None))
     }
 

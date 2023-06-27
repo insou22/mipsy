@@ -2,9 +2,13 @@ use crate::{
     pages::main::app::{
         process_syscall_request, process_syscall_response, ReadSyscalls, NUM_INSTR_BEFORE_RESPONSE,
     },
-    state::{config::MonacoCursor, state::{
-        DisplayedCodeTab, ErrorState, ErrorType, MipsState, RunningState, RuntimeErrorState, State,
-    }},
+    state::{
+        config::MonacoCursor,
+        state::{
+            DisplayedCodeTab, ErrorState, ErrorType, MipsState, RunningState, RuntimeErrorState,
+            State,
+        },
+    },
     worker::{
         FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
         WorkerResponse,
@@ -88,7 +92,7 @@ pub fn handle_response_from_worker(
                 }))
             }
 
-            _ => {},
+            _ => {}
         },
 
         WorkerResponse::WorkerError(response_struct) => {

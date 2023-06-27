@@ -4,28 +4,41 @@ use colored::Colorize;
 use mipsy_lib::compile::breakpoints::Point;
 use rustyline::error::ReadlineError;
 
-use crate::{interactive::{editor, error::CommandError}, prompt};
+use crate::{
+    interactive::{editor, error::CommandError},
+    prompt,
+};
 
 use super::*;
 
-pub fn handle_commands<K, V: Point>(mut args: &[String], points: &mut HashMap<K, V>) -> Result<String, CommandError> {
-    let get_error = |expected: &str, instead: &str| generate_err(
-        CommandError::BadArgument { arg: expected.magenta().to_string(), instead: instead.into() },
-        &String::from(""),
-    );
+pub fn handle_commands<K, V: Point>(
+    mut args: &[String],
+    points: &mut HashMap<K, V>,
+) -> Result<String, CommandError> {
+    let get_error = |expected: &str, instead: &str| {
+        generate_err(
+            CommandError::BadArgument {
+                arg: expected.magenta().to_string(),
+                instead: instead.into(),
+            },
+            String::from(""),
+        )
+    };
 
-    let list = !args.is_empty() &&
-        matches!(args[0].as_ref(), "l" | "list");
-    if list { args = &args[1..]; }
+    let list = !args.is_empty() && matches!(args[0].as_ref(), "l" | "list");
+    if list {
+        args = &args[1..];
+    }
 
     let id: u32 = if args.is_empty() {
-        points.values()
+        points
+            .values()
             .map(|bp| bp.get_id())
             .fold(u32::MIN, |x, y| x.max(y))
     } else if let Some(id) = args[0].strip_prefix('!') {
         id.parse().map_err(|_| get_error("<id>", &args[0]))?
     } else {
-        return Err(get_error("<id>", &args[0]))
+        return Err(get_error("<id>", &args[0]));
     };
 
     if list {
@@ -50,9 +63,15 @@ fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResu
         return Ok("".into());
     }
 
-    println!("[mipsy] enter commands seperated by newlines\n\
-              [mipsy] to run whenever breakpoint {} is hit", format!("!{id}").blue());
-    println!("[mipsy] use an empty line or the command {} to finish", "end".bold().yellow());
+    println!(
+        "[mipsy] enter commands seperated by newlines\n\
+              [mipsy] to run whenever breakpoint {} is hit",
+        format!("!{id}").blue()
+    );
+    println!(
+        "[mipsy] use an empty line or the command {} to finish",
+        "end".bold().yellow()
+    );
 
     let mut rl = editor();
     loop {
@@ -79,12 +98,18 @@ fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResu
         }
     }
 
-    prompt::success_nl(format!("commands attached to breakpoint {}", format!("!{id}").blue()));
+    prompt::success_nl(format!(
+        "commands attached to breakpoint {}",
+        format!("!{id}").blue()
+    ));
     Ok("".into())
 }
 
 fn list_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResult<String> {
-    println!("[mipsy] commands for breakpoint {}:", format!("!{id}").blue());
+    println!(
+        "[mipsy] commands for breakpoint {}:",
+        format!("!{id}").blue()
+    );
 
     if let Some(br) = points.iter_mut().find(|bp| bp.1.get_id() == id) {
         let commands = br.1.get_commands();
@@ -102,10 +127,12 @@ fn list_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandRes
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help breakpoint");
     let command_name = command_name.into();
-    if !command_name.is_empty() { help.push(' ') };
+    if !command_name.is_empty() {
+        help.push(' ')
+    };
 
     CommandError::WithTip {
         error: Box::new(error),
         tip: format!("try `{}{}`", help.bold(), command_name.bold()),
-    } 
+    }
 }

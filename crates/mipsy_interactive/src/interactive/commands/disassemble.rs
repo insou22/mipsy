@@ -3,7 +3,7 @@ use crate::interactive::error::CommandError;
 use super::*;
 use colored::*;
 
-use mipsy_lib::decompile::{Decompiled, Uninit, decompile_into_parts};
+use mipsy_lib::decompile::{decompile_into_parts, Decompiled, Uninit};
 
 pub(crate) fn disassemble_command() -> Command {
     command(
@@ -20,20 +20,20 @@ pub(crate) fn disassemble_command() -> Command {
                         "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
                         "step".bold(),
                     ),
-                )
+                );
             }
 
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let mut decompiled = decompile_into_parts(binary, &state.iset)
-                    .into_iter()
-                    .collect::<Vec<(u32, Result<Decompiled, Uninit>)>>();
-            
+                .into_iter()
+                .collect::<Vec<(u32, Result<Decompiled, Uninit>)>>();
+
             decompiled.sort_by_key(|&(addr, _)| addr);
 
             if let Some((_, inst)) = decompiled.get(0) {
                 let labels = match inst {
-                    Ok(ok)   => &ok.labels,
+                    Ok(ok) => &ok.labels,
                     Err(err) => &err.labels,
                 };
 
@@ -49,6 +49,6 @@ pub(crate) fn disassemble_command() -> Command {
             println!();
 
             Ok("".into())
-        }
+        },
     )
 }

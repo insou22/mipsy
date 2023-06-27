@@ -2,11 +2,13 @@ use std::rc::Rc;
 
 use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber};
 
-use crate::{Binary, MpProgram, MipsyResult, error::{ToMipsyResult, compiler}, inst::instruction::ToRegister, HEAP_BOT, DATA_BOT, MipsyError, CompilerError};
+use crate::{
+    error::{compiler, ToMipsyResult},
+    inst::instruction::ToRegister,
+    Binary, CompilerError, MipsyError, MipsyResult, MpProgram, DATA_BOT, HEAP_BOT,
+};
 
-pub enum Warning {
-
-}
+pub enum Warning {}
 
 pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
     let warnings = vec![];
@@ -14,8 +16,7 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
     for attributed_item in program.items() {
         let item = attributed_item.item();
         let line = attributed_item.line_number();
-        let file_tag = attributed_item.file_tag()
-            .unwrap_or_else(|| Rc::from(""));
+        let file_tag = attributed_item.file_tag().unwrap_or_else(|| Rc::from(""));
 
         match item {
             MpItem::Instruction(ref instruction) => {
@@ -23,10 +24,14 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
                     match argument {
                         MpArgument::Register(register) => {
                             let ident = register.get_identifier();
-                            ident.to_register().into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                            ident.to_register().into_compiler_mipsy_result(
+                                file_tag.clone(),
+                                line,
+                                *col,
+                                *col_end,
+                            )?;
                         }
-                        MpArgument::Number(_) => {}
-                        // MpArgument::LabelPlusConst(..) => {}
+                        MpArgument::Number(_) => {} // MpArgument::LabelPlusConst(..) => {}
                     }
                 }
             }
@@ -47,32 +52,30 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
     for attributed_item in program.items() {
         let item = attributed_item.item();
         let line = attributed_item.line_number();
-        let file_tag = attributed_item.file_tag()
-            .unwrap_or_else(|| Rc::from(""));
+        let file_tag = attributed_item.file_tag().unwrap_or_else(|| Rc::from(""));
 
         match item {
             MpItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
                     match argument {
                         MpArgument::Register(_) => {}
-                        MpArgument::Number(number) => {
-                            match number {
-                                MpNumber::Immediate(imm) => check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?,
-                                MpNumber::BinaryOpImmediate(i1, _, i2) => {
-                                    check_imm(binary, i1, file_tag.clone(), line, *col, *col_end)?;
-                                    check_imm(binary, i2, file_tag.clone(), line, *col, *col_end)?;
-                                }
-                                MpNumber::Float32(_) => {}
-                                MpNumber::Float64(_) => {}
-                                MpNumber::Char(_) => {}
+                        MpArgument::Number(number) => match number {
+                            MpNumber::Immediate(imm) => {
+                                check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
                             }
-                        }
-                        // MpArgument::LabelPlusConst(label, _const) => {
-                        //     if binary.constants.get(label).is_none() {
-                        //         binary.get_label(label)
-                        //             .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
-                        //     }
-                        // }
+                            MpNumber::BinaryOpImmediate(i1, _, i2) => {
+                                check_imm(binary, i1, file_tag.clone(), line, *col, *col_end)?;
+                                check_imm(binary, i2, file_tag.clone(), line, *col, *col_end)?;
+                            }
+                            MpNumber::Float32(_) => {}
+                            MpNumber::Float64(_) => {}
+                            MpNumber::Char(_) => {}
+                        }, // MpArgument::LabelPlusConst(label, _const) => {
+                           //     if binary.constants.get(label).is_none() {
+                           //         binary.get_label(label)
+                           //             .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
+                           //     }
+                           // }
                     }
                 }
             }
@@ -83,17 +86,16 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
     }
 
     if binary.data.len() > (HEAP_BOT - DATA_BOT) as usize {
-        return Err(
-            MipsyError::Compiler(
-                CompilerError::new(
-                    compiler::Error::TooMuchData {
-                        data_size: binary.data.len() as u32
-                    },
-                    // this all doesn't end up being used
-                    Rc::from(""), 0, 0, 0
-                )
-            )
-        );
+        return Err(MipsyError::Compiler(CompilerError::new(
+            compiler::Error::TooMuchData {
+                data_size: binary.data.len() as u32,
+            },
+            // this all doesn't end up being used
+            Rc::from(""),
+            0,
+            0,
+            0,
+        )));
     }
 
     // TODO
@@ -101,18 +103,23 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
     Ok(warnings)
 }
 
-fn check_imm(binary: &Binary, imm: &MpImmediate, file_tag: Rc<str>, line: u32, col: u32, col_end: u32) -> MipsyResult<()> {
+fn check_imm(
+    binary: &Binary,
+    imm: &MpImmediate,
+    file_tag: Rc<str>,
+    line: u32,
+    col: u32,
+    col_end: u32,
+) -> MipsyResult<()> {
     match imm {
         MpImmediate::LabelReference(label) => {
             if binary.constants.get(label).is_none() {
-                binary.get_label(label)
+                binary
+                    .get_label(label)
                     .into_compiler_mipsy_result(file_tag, line, col, col_end)?;
             }
         }
-        MpImmediate::I16(_)
-        | MpImmediate::U16(_)
-        | MpImmediate::I32(_)
-        | MpImmediate::U32(_) => {}
+        MpImmediate::I16(_) | MpImmediate::U16(_) | MpImmediate::I32(_) | MpImmediate::U32(_) => {}
     }
 
     Ok(())

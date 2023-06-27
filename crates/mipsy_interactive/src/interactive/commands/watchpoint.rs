@@ -1,10 +1,13 @@
 use crate::interactive::{error::CommandError, prompt};
 use std::{iter::successors, str::FromStr};
 
-use super::{*, commands::handle_commands};
+use super::{commands::handle_commands, *};
 use colored::*;
-use mipsy_lib::{Register, compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget}, Binary};
-use mipsy_parser::{MpArgument, MpNumber, MpImmediate};
+use mipsy_lib::{
+    compile::breakpoints::{TargetAction, Watchpoint, WatchpointTarget},
+    Binary, Register,
+};
+use mipsy_parser::{MpArgument, MpImmediate, MpNumber};
 
 enum WpState {
     Enable,
@@ -30,56 +33,83 @@ pub(crate) fn watchpoint_command() -> Command {
         command(
             "list",
             vec!["l"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_list(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_list(state, label, args),
         ),
         command(
             "insert",
             vec!["i", "in", "ins", "add"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Insert)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Insert),
         ),
         command(
             "remove",
             vec!["del", "delete", "r", "rm"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Delete)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Delete),
         ),
         command(
             "temporary",
             vec!["tmp", "temp"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Temporary)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_insert(state, label, args, InsertOp::Temporary),
         ),
         command(
             "enable",
             vec!["e"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Enable)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Enable),
         ),
         command(
             "disable",
             vec!["d"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Disable)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Disable),
         ),
         command(
             "toggle",
             vec!["t"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Toggle)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Toggle),
         ),
         command(
             "ignore",
             vec![],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_ignore(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_ignore(state, label, args),
         ),
         command(
             "commands",
             vec!["com", "comms", "cmd", "cmds", "command"],
-            vec![], vec![], vec![], "",
-            |_, state, label, args| watchpoint_commands(state, label, args)
+            vec![],
+            vec![],
+            vec![],
+            "",
+            |_, state, label, args| watchpoint_commands(state, label, args),
         ),
     ];
 
@@ -95,18 +125,19 @@ pub(crate) fn watchpoint_command() -> Command {
         ),
         |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
-                return Ok(
-                    get_long_help()
-                )
+                return Ok(get_long_help());
             }
 
-            let cmd = cmd.subcommands.iter().find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+            let cmd = cmd
+                .subcommands
+                .iter()
+                .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
             match cmd {
                 None if label == "__help__" => Ok(get_long_help()),
                 Some(cmd) => cmd.exec(state, label, &args[1..]),
                 None => watchpoint_insert(state, label, args, InsertOp::Insert),
             }
-        }
+        },
     )
 }
 
@@ -141,7 +172,12 @@ fn get_long_help() -> String {
     )
 }
 
-fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: InsertOp) -> Result<String, CommandError> {
+fn watchpoint_insert(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+    op: InsertOp,
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -171,23 +207,21 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
                 "main".yellow().bold(),
                 "<temporary>".purple(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["target".to_string()],
-                    instead: args.to_vec(),
-                },
-                match op {
-                    InsertOp::Insert    => "insert",
-                    InsertOp::Delete    => "delete",
-                    InsertOp::Temporary => "temporary",
-                }
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["target".to_string()],
+                instead: args.to_vec(),
+            },
+            match op {
+                InsertOp::Insert => "insert",
+                InsertOp::Delete => "delete",
+                InsertOp::Temporary => "temporary",
+            },
+        ));
     }
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
@@ -205,8 +239,8 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
                 "watchpoint at {} doesn't exist",
                 match arg_type {
                     MipsyArgType::Target => target.to_string().as_str().into(),
-                    MipsyArgType::Label  => args[0].yellow().bold(),
-                    MipsyArgType::Id     => args[0].blue(),
+                    MipsyArgType::Label => args[0].yellow().bold(),
+                    MipsyArgType::Id => args[0].blue(),
                 }
             ));
             return Ok("".into());
@@ -214,33 +248,37 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
     } else {
         let args = &args[1..];
         if args.is_empty() {
-            return Err(
-                generate_err(
-                    CommandError::MissingArguments {
-                        args: vec!["action".to_string()],
-                        instead: args.to_vec(),
-                    },
-                    "rm",
-                )
-            );
+            return Err(generate_err(
+                CommandError::MissingArguments {
+                    args: vec!["action".to_string()],
+                    instead: args.to_vec(),
+                },
+                "rm",
+            ));
         }
 
         action = match args[0].as_str() {
-            "r" | "read"  => TargetAction::ReadOnly,
+            "r" | "read" => TargetAction::ReadOnly,
             "w" | "write" => TargetAction::WriteOnly,
-            "rw" | "r/w" | "r+w" | "w/r" | "w+r" | "read/write" | "read+write"
-                => TargetAction::ReadWrite,
-            _ => return Err(
-                    generate_err(CommandError::BadArgument {
+            "rw" | "r/w" | "r+w" | "w/r" | "w+r" | "read/write" | "read+write" => {
+                TargetAction::ReadWrite
+            }
+            _ => {
+                return Err(generate_err(
+                    CommandError::BadArgument {
                         arg: "action".to_owned(),
                         instead: args[0].clone(),
                     },
                     "insert",
-                )
-            )
+                ))
+            }
         };
 
-        let task = if binary.watchpoints.contains_key(&target) { "updated" } else { "inserted" };
+        let task = if binary.watchpoints.contains_key(&target) {
+            "updated"
+        } else {
+            "inserted"
+        };
         id = Binary::generate_id(&binary.watchpoints);
         let mut wp = Watchpoint::new(id, action);
         if op == InsertOp::Temporary {
@@ -253,16 +291,14 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
 
     let label = match arg_type {
         MipsyArgType::Target => None,
-        MipsyArgType::Label  => Some(&args[0]),
-        MipsyArgType::Id     => {
-            match target {
-                WatchpointTarget::Register(_) => None,
-                WatchpointTarget::MemAddr(addr) => {
-                    binary.labels.iter()
-                        .find(|(_, &_addr)| _addr == addr)
-                        .map(|(name, _)| name)
-                },
-            }
+        MipsyArgType::Label => Some(&args[0]),
+        MipsyArgType::Id => match target {
+            WatchpointTarget::Register(_) => None,
+            WatchpointTarget::MemAddr(addr) => binary
+                .labels
+                .iter()
+                .find(|(_, &_addr)| _addr == addr)
+                .map(|(name, _)| name),
         },
     };
 
@@ -273,13 +309,15 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
     };
 
     if op == InsertOp::Delete {
-        prompt::success_nl(format!("watchpoint {} {} for {}",
+        prompt::success_nl(format!(
+            "watchpoint {} {} for {}",
             format!("!{}", id).blue(),
             wp_action,
             target,
         ));
     } else {
-        prompt::success_nl(format!("watchpoint {} {} for {} ({})",
+        prompt::success_nl(format!(
+            "watchpoint {} {} for {} ({})",
             format!("!{}", id).blue(),
             wp_action,
             target,
@@ -292,11 +330,7 @@ fn watchpoint_insert(state: &mut State, label: &str, args: &[String], op: Insert
 
 fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Lists currently set watchpoints."
-            )
-        )
+        return Ok("Lists currently set watchpoints.".to_string());
     }
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
@@ -306,45 +340,46 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
         return Ok("".into());
     }
 
-    let mut watchpoints = binary.watchpoints.iter()
-            .map(|wp| {
-                let addr = match wp.0 {
-                    WatchpointTarget::Register(_) => None,
-                    WatchpointTarget::MemAddr(m) => Some(m),
-                };
-                let id = wp.1.id;
+    let mut watchpoints = binary
+        .watchpoints
+        .iter()
+        .map(|wp| {
+            let addr = match wp.0 {
+                WatchpointTarget::Register(_) => None,
+                WatchpointTarget::MemAddr(m) => Some(m),
+            };
+            let id = wp.1.id;
+            (
                 (
-                    (
-                        id,
-                        // TODO (joshh): replace with checked_log10 when
-                        // https://github.com/rust-lang/rust/issues/70887 is stabilised
-                        successors(Some(id), |&id| (id >= 10).then(|| id / 10)).count(),
-                    ),
-                    wp,
-                    if let Some(&addr) = addr {
-                        binary.labels.iter()
-                            .find(|(_, &val)| val == addr)
-                            .map(|(name, _)| name)
-                    } else { None },
-                )
-            })
-            .collect::<Vec<_>>();
+                    id,
+                    // TODO (joshh): replace with checked_log10 when
+                    // https://github.com/rust-lang/rust/issues/70887 is stabilised
+                    successors(Some(id), |&id| (id >= 10).then_some(id / 10)).count(),
+                ),
+                wp,
+                if let Some(&addr) = addr {
+                    binary
+                        .labels
+                        .iter()
+                        .find(|(_, &val)| val == addr)
+                        .map(|(name, _)| name)
+                } else {
+                    None
+                },
+            )
+        })
+        .collect::<Vec<_>>();
 
     watchpoints.sort_by_key(|(id, _, _)| id.0);
 
-    let max_id_len = watchpoints.iter()
-            .map(|(id, _, _)| {
-                id.1
-            })
-            .max()
-            .unwrap_or(0);
+    let max_id_len = watchpoints.iter().map(|(id, _, _)| id.1).max().unwrap_or(0);
 
     println!("\n{}", "[watchpoints]".green().bold());
     for (id, wp, label) in watchpoints {
         let (target, wp) = wp;
         let disabled = match wp.enabled {
-            true  => "",
-            false => " (disabled)"
+            true => "",
+            false => " (disabled)",
         };
 
         let ignored = match wp.ignore_count {
@@ -358,10 +393,13 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
             format!("{}", target)
         };
 
-        println!("{}{}: {} ({}){}{}",
-            " ".repeat(max_id_len - id.1), id.0.to_string().blue(),
+        println!(
+            "{}{}: {} ({}){}{}",
+            " ".repeat(max_id_len - id.1),
+            id.0.to_string().blue(),
             target,
-            wp.action.to_string().purple(), disabled.bright_black(),
+            wp.action.to_string().purple(),
+            disabled.bright_black(),
             ignored,
         );
     }
@@ -370,7 +408,12 @@ fn watchpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpState) -> Result<String, CommandError> {
+fn watchpoint_toggle(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+    op: WpState,
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -389,23 +432,21 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
                 "0x".yellow(),
                 "main".yellow().bold(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["addr".to_string()],
-                    instead: args.to_vec(),
-                },
-                match op {
-                    WpState::Enable  => "enable",
-                    WpState::Disable => "disable",
-                    WpState::Toggle  => "toggle",
-                },
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["addr".to_string()],
+                instead: args.to_vec(),
+            },
+            match op {
+                WpState::Enable => "enable",
+                WpState::Disable => "disable",
+                WpState::Toggle => "toggle",
+            },
+        ));
     }
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
@@ -416,17 +457,17 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
     if let Some(wp) = binary.watchpoints.get_mut(&target) {
         id = wp.id;
         wp.enabled = match op {
-            WpState::Enable  => true,
+            WpState::Enable => true,
             WpState::Disable => false,
-            WpState::Toggle  => !wp.enabled,
+            WpState::Toggle => !wp.enabled,
         }
     } else {
         prompt::error_nl(format!(
             "watchpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::Target => target.to_string().as_str().into(),
-                MipsyArgType::Label  => args[0].yellow().bold(),
-                MipsyArgType::Id     => args[0].blue(),
+                MipsyArgType::Label => args[0].yellow().bold(),
+                MipsyArgType::Id => args[0].blue(),
             }
         ));
         return Ok("".into());
@@ -434,22 +475,20 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
 
     // already ruled out possibility of entry not existing
     let action = match binary.watchpoints.get(&target).unwrap().enabled {
-        true  => "enabled",
+        true => "enabled",
         false => "disabled",
     };
 
     let label = match arg_type {
         MipsyArgType::Target => None,
-        MipsyArgType::Label  => Some(&args[0]),
-        MipsyArgType::Id     => {
-            match target {
-                WatchpointTarget::Register(_) => None,
-                WatchpointTarget::MemAddr(addr) => {
-                    binary.labels.iter()
-                        .find(|(_, &_addr)| _addr == addr)
-                        .map(|(name, _)| name)
-                },
-            }
+        MipsyArgType::Label => Some(&args[0]),
+        MipsyArgType::Id => match target {
+            WatchpointTarget::Register(_) => None,
+            WatchpointTarget::MemAddr(addr) => binary
+                .labels
+                .iter()
+                .find(|(_, &_addr)| _addr == addr)
+                .map(|(name, _)| name),
         },
     };
 
@@ -459,7 +498,8 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
         format!("{}", target)
     };
 
-    prompt::success_nl(format!("watchpoint {} {} for {} ({})",
+    prompt::success_nl(format!(
+        "watchpoint {} {} for {} ({})",
         format!("!{}", id).blue(),
         action,
         target,
@@ -469,7 +509,11 @@ fn watchpoint_toggle(state: &mut State, label: &str, args: &[String], op: WpStat
     Ok("".into())
 }
 
-fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Result<String, CommandError> {
+fn watchpoint_ignore(
+    state: &mut State,
+    label: &str,
+    mut args: &[String],
+) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
             format!(
@@ -487,56 +531,57 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
                 "0x".yellow(),
                 "main".yellow().bold(),
             )
-        )
+        );
     }
 
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["addr".to_string()],
-                    instead: args.to_vec(),
-                },
-                "ignore",
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["addr".to_string()],
+                instead: args.to_vec(),
+            },
+            "ignore",
+        ));
     }
 
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     args = &args[1..];
     if args.is_empty() {
-        return Err(
-            generate_err(
-                CommandError::MissingArguments {
-                    args: vec!["ignore count".to_string()],
-                    instead: args.to_vec(),
-                },
-                "ignore",
-            )
-        );
+        return Err(generate_err(
+            CommandError::MissingArguments {
+                args: vec!["ignore count".to_string()],
+                instead: args.to_vec(),
+            },
+            "ignore",
+        ));
     }
 
-    let ignore_count: u32 = args[0].parse()
-        .map_err(|_| generate_err(
+    let ignore_count: u32 = args[0].parse().map_err(|_| {
+        generate_err(
             CommandError::BadArgument {
                 arg: "<ignore count>".into(),
                 instead: args[0].clone(),
             },
-            ""
-        ))?;
+            "",
+        )
+    })?;
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
     if let Some(wp) = binary.watchpoints.get_mut(&target) {
         wp.ignore_count = ignore_count;
-        prompt::success_nl(format!("skipping watchpoint {} {} times", format!("!{}", wp.id).blue(), ignore_count.to_string().yellow()));
+        prompt::success_nl(format!(
+            "skipping watchpoint {} {} times",
+            format!("!{}", wp.id).blue(),
+            ignore_count.to_string().yellow()
+        ));
     } else {
         prompt::error_nl(format!(
             "watchpoint at {} doesn't exist",
             match arg_type {
                 MipsyArgType::Target => target.to_string().as_str().into(),
-                MipsyArgType::Label  => args[0].yellow().bold(),
-                MipsyArgType::Id     => args[0].blue(),
+                MipsyArgType::Label => args[0].yellow().bold(),
+                MipsyArgType::Id => args[0].blue(),
             }
         ));
     }
@@ -544,11 +589,14 @@ fn watchpoint_ignore(state: &mut State, label: &str, mut args: &[String]) -> Res
     Ok("".into())
 }
 
-fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+fn watchpoint_commands(
+    state: &mut State,
+    label: &str,
+    args: &[String],
+) -> Result<String, CommandError> {
     if label == "__help__" {
-        return Ok(
-            format!(
-                "Takes in a list of commands seperated by newlines,\n\
+        return Ok(format!(
+            "Takes in a list of commands seperated by newlines,\n\
                  and attaches the commands to the specified {0}.\n\
                  If no watchpoint is specified, the most recently created watchpoint is chosen.\n\
                  Whenever that watchpoint is hit, the commands will automatically be executed\n\
@@ -557,11 +605,10 @@ fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Resul
                  To view the commands attached to a particular watchpoint,\n\
                  use {2} {0}
                 ",
-                "<watchpoint id>".purple(),
-                "end".yellow().bold(),
-                "commands list".bold().yellow(),
-            )
-        )
+            "<watchpoint id>".purple(),
+            "end".yellow().bold(),
+            "commands list".bold().yellow(),
+        ));
     }
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
@@ -572,53 +619,69 @@ fn watchpoint_commands(state: &mut State, label: &str, args: &[String]) -> Resul
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
     let mut help = String::from("help watchpoint");
     let command_name = command_name.into();
-    if !command_name.is_empty() { help.push(' ') };
+    if !command_name.is_empty() {
+        help.push(' ')
+    };
 
     CommandError::WithTip {
         error: Box::new(error),
         tip: format!("try `{}{}`", help.bold(), command_name.bold()),
-    } 
+    }
 }
 
-fn parse_watchpoint_arg(state: &State, arg: &String) -> Result<(WatchpointTarget, MipsyArgType), CommandError> {
-    let get_error = |expected: &str| generate_err(
-        CommandError::BadArgument { arg: expected.magenta().to_string(), instead: arg.into() },
-        &String::from(""),
-    );
+fn parse_watchpoint_arg(
+    state: &State,
+    arg: &String,
+) -> Result<(WatchpointTarget, MipsyArgType), CommandError> {
+    let get_error = |expected: &str| {
+        generate_err(
+            CommandError::BadArgument {
+                arg: expected.magenta().to_string(),
+                instead: arg.into(),
+            },
+            String::from(""),
+        )
+    };
 
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
     if let Some(id) = arg.strip_prefix('!') {
         let id: u32 = id.parse().map_err(|_| get_error("<id>"))?;
-        let target = binary.watchpoints.iter().find(|wp| wp.1.id == id)
-                        .ok_or_else(|| CommandError::InvalidBpId { arg: arg.to_string() })?.0;
+        let target = binary
+            .watchpoints
+            .iter()
+            .find(|wp| wp.1.id == id)
+            .ok_or_else(|| CommandError::InvalidBpId {
+                arg: arg.to_string(),
+            })?
+            .0;
 
-        return Ok((*target, MipsyArgType::Id))
+        return Ok((*target, MipsyArgType::Id));
     }
 
     let target = if let Ok(register) = Register::from_str(arg.strip_prefix('$').unwrap_or(arg)) {
         WatchpointTarget::Register(register)
     } else {
         let arg = mipsy_parser::parse_argument(arg, state.config.tab_size)
-                .map_err(|_| get_error("<addr>"))?;
+            .map_err(|_| get_error("<addr>"))?;
 
         if let MpArgument::Number(MpNumber::Immediate(ref imm)) = arg {
             WatchpointTarget::MemAddr(match imm {
-                MpImmediate::I16(imm) =>  *imm as u32,
-                MpImmediate::U16(imm) =>  *imm as u32,
-                MpImmediate::I32(imm) =>  *imm as u32,
-                MpImmediate::U32(imm) =>  *imm,
+                MpImmediate::I16(imm) => *imm as u32,
+                MpImmediate::U16(imm) => *imm as u32,
+                MpImmediate::I32(imm) => *imm as u32,
+                MpImmediate::U32(imm) => *imm,
                 MpImmediate::LabelReference(label) => {
-                    let addr = binary.get_label(label)
-                            .map_err(|_| CommandError::UnknownLabel { label: label.to_string() })?;
-                    return Ok((
-                        WatchpointTarget::MemAddr(addr),
-                        MipsyArgType::Label
-                    ));
+                    let addr = binary
+                        .get_label(label)
+                        .map_err(|_| CommandError::UnknownLabel {
+                            label: label.to_string(),
+                        })?;
+                    return Ok((WatchpointTarget::MemAddr(addr), MipsyArgType::Label));
                 }
             })
         } else {
-            return Err(get_error("<addr>"))
+            return Err(get_error("<addr>"));
         }
     };
 

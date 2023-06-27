@@ -2,16 +2,6 @@ pub mod instruction;
 pub mod register;
 
 pub use instruction::{
-    InstSet,
-    InstSignature,
-    CompileSignature,
-    ArgumentType,
-    RuntimeSignature,
-    RuntimeMetadata,
-    ReadsRegisterType,
-    InstMetadata,
-    GenericSignature,
-    PseudoSignature,
-    PseudoExpand,
-    Signature,
+    ArgumentType, CompileSignature, GenericSignature, InstMetadata, InstSet, InstSignature,
+    PseudoExpand, PseudoSignature, ReadsRegisterType, RuntimeMetadata, RuntimeSignature, Signature,
 };

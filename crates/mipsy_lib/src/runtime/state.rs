@@ -1,7 +1,15 @@
-use std::{collections::{HashMap, VecDeque}, rc::Rc};
+use std::{
+    collections::{HashMap, VecDeque},
+    rc::Rc,
+};
 
-use crate::{MipsyResult, Safe, Uninitialised, TEXT_BOT, compile::TEXT_TOP, GLOBAL_BOT, HEAP_BOT, STACK_BOT, STACK_TOP, KTEXT_BOT, MipsyError, error::runtime::{RuntimeError, SegmentationFaultAccessType, self}};
-use super::{PAGE_SIZE, SafeToUninitResult};
+use super::{SafeToUninitResult, PAGE_SIZE};
+use crate::{
+    compile::TEXT_TOP,
+    error::runtime::{self, RuntimeError, SegmentationFaultAccessType},
+    MipsyError, MipsyResult, Safe, Uninitialised, GLOBAL_BOT, HEAP_BOT, KTEXT_BOT, STACK_BOT,
+    STACK_TOP, TEXT_BOT,
+};
 
 pub const WRITE_MARKER_LO: u32 = 32;
 pub const WRITE_MARKER_HI: u32 = 32;
@@ -64,8 +72,9 @@ impl Timeline {
     pub fn push_next_state(&mut self) -> &mut State {
         let timeline_len = self.timeline_len();
         if timeline_len == self.timeline.capacity()
-            && timeline_len     < TIMELINE_MAX_LEN
-            && timeline_len * 2 > TIMELINE_MAX_LEN {
+            && timeline_len < TIMELINE_MAX_LEN
+            && timeline_len * 2 > TIMELINE_MAX_LEN
+        {
             self.timeline.reserve_exact(TIMELINE_MAX_LEN - timeline_len);
         }
 
@@ -79,7 +88,9 @@ impl Timeline {
 
         self.timeline.push_back(next_state);
 
-        self.timeline.back_mut().expect("just pushed to the timeline")
+        self.timeline
+            .back_mut()
+            .expect("just pushed to the timeline")
     }
 
     pub fn pop_last_state(&mut self) -> bool {
@@ -132,12 +143,11 @@ impl State {
     }
 
     pub fn registers(&self) -> &[Safe<i32>] {
-       &self.registers
+        &self.registers
     }
 
     pub fn read_register(&self, reg_num: u32) -> MipsyResult<i32> {
-        self.registers[reg_num as usize]
-            .to_result(Uninitialised::Register { reg_num })
+        self.registers[reg_num as usize].to_result(Uninitialised::Register { reg_num })
     }
 
     pub fn read_register_uninit(&self, reg_num: u32) -> Safe<i32> {
@@ -145,13 +155,11 @@ impl State {
     }
 
     pub fn read_hi(&self) -> MipsyResult<i32> {
-        self.hi
-            .to_result(Uninitialised::Hi)
+        self.hi.to_result(Uninitialised::Hi)
     }
 
     pub fn read_lo(&self) -> MipsyResult<i32> {
-        self.lo
-            .to_result(Uninitialised::Lo)
+        self.lo.to_result(Uninitialised::Lo)
     }
 
     pub fn write_register(&mut self, reg_num: u32, value: i32) {
@@ -186,34 +194,33 @@ impl State {
         self.write_marker |= 1u64 << WRITE_MARKER_LO;
     }
 
-    pub fn check_segfault(&self, address: u32, access: SegmentationFaultAccessType) -> MipsyResult<()> {
+    pub fn check_segfault(
+        &self,
+        address: u32,
+        access: SegmentationFaultAccessType,
+    ) -> MipsyResult<()> {
         let segfault = match address {
             // TODO(zkol): Update this when exclusive range matching is stabilised
-            _ if address < TEXT_BOT => {
-                true
-            }
-            _ if (TEXT_BOT..=TEXT_TOP).contains(&address) => {
-                false
-            }
-            _ if (GLOBAL_BOT..HEAP_BOT).contains(&address) => {
-                false
-            }
+            _ if address < TEXT_BOT => true,
+            _ if (TEXT_BOT..=TEXT_TOP).contains(&address) => false,
+            _ if (GLOBAL_BOT..HEAP_BOT).contains(&address) => false,
             _ if (HEAP_BOT..STACK_BOT).contains(&address) => {
                 let heap_offset = address - HEAP_BOT;
 
                 heap_offset >= self.heap_size()
             }
-            _ if (STACK_BOT..=STACK_TOP).contains(&address) => {
-                false
-            }
-            _ if address >= KTEXT_BOT => {
-                self.pc() < KTEXT_BOT
-            }
+            _ if (STACK_BOT..=STACK_TOP).contains(&address) => false,
+            _ if address >= KTEXT_BOT => self.pc() < KTEXT_BOT,
             _ => unreachable!(),
         };
 
         if segfault {
-            Err(MipsyError::Runtime(RuntimeError::new(runtime::Error::SegmentationFault { addr: address, access })))
+            Err(MipsyError::Runtime(RuntimeError::new(
+                runtime::Error::SegmentationFault {
+                    addr: address,
+                    access,
+                },
+            )))
         } else {
             Ok(())
         }
@@ -261,16 +268,15 @@ impl State {
     }
 
     pub fn read_mem_byte_uninit_unchecked(&self, address: u32) -> MipsyResult<Safe<u8>> {
-        Ok(
-            self.get_page(address)
-                .and_then(|page| {
-                    let offset = Self::offset_in_page(address);
+        Ok(self
+            .get_page(address)
+            .and_then(|page| {
+                let offset = Self::offset_in_page(address);
 
-                    page[offset as usize].as_option().copied()
-                })
-                .map(Safe::Valid)
-                .unwrap_or(Safe::Uninitialised)
-        )
+                page[offset as usize].as_option().copied()
+            })
+            .map(Safe::Valid)
+            .unwrap_or(Safe::Uninitialised))
     }
 
     pub fn read_mem_half_uninit(&self, address: u32) -> MipsyResult<Safe<u16>> {
@@ -284,10 +290,7 @@ impl State {
             Ok(u16::from_le_bytes([byte1, byte2]))
         })();
 
-        Ok(
-            result.map(Safe::Valid)
-                .unwrap_or(Safe::Uninitialised)
-        )
+        Ok(result.map(Safe::Valid).unwrap_or(Safe::Uninitialised))
     }
 
     pub fn read_mem_word_uninit(&self, address: u32) -> MipsyResult<Safe<u32>> {
@@ -305,10 +308,7 @@ impl State {
             Ok(u32::from_le_bytes([byte1, byte2, byte3, byte4]))
         })();
 
-        Ok(
-            result.map(Safe::Valid)
-                .unwrap_or(Safe::Uninitialised)
-        )
+        Ok(result.map(Safe::Valid).unwrap_or(Safe::Uninitialised))
     }
 
     pub fn write_mem_byte(&mut self, address: u32, byte: u8) -> MipsyResult<()> {
@@ -357,7 +357,7 @@ impl State {
         match half {
             Safe::Valid(half) => self.write_mem_half(address, half)?,
             Safe::Uninitialised => {
-                self.write_mem_byte_uninit(address,     Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address, Safe::Uninitialised)?;
                 self.write_mem_byte_uninit(address + 1, Safe::Uninitialised)?;
             }
         }
@@ -369,7 +369,7 @@ impl State {
         match word {
             Safe::Valid(word) => self.write_mem_word(address, word)?,
             Safe::Uninitialised => {
-                self.write_mem_byte_uninit(address,     Safe::Uninitialised)?;
+                self.write_mem_byte_uninit(address, Safe::Uninitialised)?;
                 self.write_mem_byte_uninit(address + 1, Safe::Uninitialised)?;
                 self.write_mem_byte_uninit(address + 2, Safe::Uninitialised)?;
                 self.write_mem_byte_uninit(address + 3, Safe::Uninitialised)?;
@@ -409,7 +409,7 @@ impl State {
 
     pub fn branch(&mut self, imm: i16) {
         let imm = imm as i32 - 1; // branch offset is 1-based
-        let imm = imm * 4;        // branch offset is in instructions
+        let imm = imm * 4; // branch offset is in instructions
 
         let pc_offset = imm as u32;
         self.pc = self.pc.wrapping_add(pc_offset);
@@ -444,7 +444,9 @@ impl State {
     pub fn get_mut_page_or_new(&mut self, address: u32) -> &mut [Safe<u8>; PAGE_SIZE] {
         let base_addr = Self::addr_to_page_base_addr(address);
 
-        let page = self.pages.entry(base_addr)
+        let page = self
+            .pages
+            .entry(base_addr)
             .or_insert_with(|| Rc::new([Default::default(); PAGE_SIZE]));
 
         Rc::make_mut(page)
@@ -453,9 +455,11 @@ impl State {
 
 impl Clone for State {
     fn clone(&self) -> Self {
-        let cow_pages = self.pages.iter()
-                .map(|(&addr, val)| (addr, val.clone()))
-                .collect::<HashMap<_, _>>();
+        let cow_pages = self
+            .pages
+            .iter()
+            .map(|(&addr, val)| (addr, val.clone()))
+            .collect::<HashMap<_, _>>();
 
         Self {
             pages: cow_pages,

@@ -18,4 +18,4 @@ colored = "2"     # for ansi colors
 text_io = "0.1.8" # to read values in, w/out per line
 
 [build-dependencies]
-vergen = { version = "7.4.2", default-features = false, features = ["git"] } # for version info
+vergen = { version = "7.5.1", default-features = false, features = ["git"] } # for version info

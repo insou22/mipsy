@@ -4,7 +4,15 @@ use crate::{
     misc::{escape_char, parse_escaped_char, parse_ident},
     Span,
 };
-use nom::{IResult, branch::alt, bytes::complete::{is_a, tag}, character::complete::{char, digit1, hex_digit1, oct_digit1, one_of, space0}, combinator::{map, map_res, opt}, number::complete::{double, float}, sequence::tuple};
+use nom::{
+    branch::alt,
+    bytes::complete::{is_a, tag},
+    character::complete::{char, digit1, hex_digit1, oct_digit1, one_of, space0},
+    combinator::{map, map_res, opt},
+    number::complete::{double, float},
+    sequence::tuple,
+    IResult,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -58,7 +66,7 @@ impl fmt::Display for MpImmediate {
 impl fmt::Display for MpImmediateBinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Plus  => write!(f, "+"),
+            Self::Plus => write!(f, "+"),
             Self::Minus => write!(f, "-"),
         }
     }
@@ -75,28 +83,16 @@ pub fn parse_number(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
 }
 
 pub fn parse_binary_op_immedaite(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
-    let (
-        remaining_data,
-        (
-            i1,
-            _,
-            op,
-            _,
-            i2
-        )
-    ) = tuple((
+    let (remaining_data, (i1, _, op, _, i2)) = tuple((
         parse_immediate,
         space0,
-        map(
-            one_of("+-"),
-            |op| match op {
-                '+' => MpImmediateBinaryOp::Plus,
-                '-' => MpImmediateBinaryOp::Minus,
-                _ => unreachable!(),
-            }
-        ),
+        map(one_of("+-"), |op| match op {
+            '+' => MpImmediateBinaryOp::Plus,
+            '-' => MpImmediateBinaryOp::Minus,
+            _ => unreachable!(),
+        }),
         space0,
-        parse_immediate
+        parse_immediate,
     ))(i)?;
 
     Ok((remaining_data, MpNumber::BinaryOpImmediate(i1, op, i2)))
@@ -136,20 +132,24 @@ pub fn parse_num<'a, O: RadixNum<O>>(i: Span<'a>) -> IResult<Span<'a>, O> {
                 },
             ),
             map(
-                tuple((
-                    opt(char('-')),
-                    tag("0o"),
-                    oct_digit1,
-                )),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
+                tuple((opt(char('-')), tag("0o"), oct_digit1)),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| {
+                    (
+                        get_sign(neg),
+                        8,
+                        String::from_utf8_lossy(digits.fragment()).to_string(),
+                    )
+                },
             ),
             map(
-                tuple((
-                    opt(char('-')),
-                    tag("0"),
-                    oct_digit1,
-                )),
-                |(neg, _, digits): (Option<char>, _, Span<'a>)| (get_sign(neg), 8, String::from_utf8_lossy(digits.fragment()).to_string())
+                tuple((opt(char('-')), tag("0"), oct_digit1)),
+                |(neg, _, digits): (Option<char>, _, Span<'a>)| {
+                    (
+                        get_sign(neg),
+                        8,
+                        String::from_utf8_lossy(digits.fragment()).to_string(),
+                    )
+                },
             ),
             map(
                 tuple((opt(char('-')), digit1)),
@@ -222,20 +222,9 @@ pub fn parse_f64(i: Span<'_>) -> IResult<Span<'_>, f64> {
 }
 
 pub fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
-    let (
-        remaining_data,
-        (
-            _,
-            chr,
-            _,
-        )
-    ) = tuple((
-        char('\''),
-        parse_escaped_char,
-        char('\''),
-    ))(i)?;
+    let (remaining_data, (_, chr, _)) = tuple((char('\''), parse_escaped_char, char('\'')))(i)?;
 
-    Ok((remaining_data, chr as char))
+    Ok((remaining_data, chr))
 }
 
 fn get_sign(neg: Option<char>) -> &'static str {
@@ -257,7 +246,7 @@ mod tests {
         chars.push_str(&('A'..='Z').collect::<String>());
         chars.push_str(&('a'..='z').collect::<String>());
         chars.push_str(&('0'..='9').collect::<String>());
-        chars.push_str(&"`~!@#$%^&*()-_=+[{]}|;:,<.>/?");
+        chars.push_str("`~!@#$%^&*()-_=+[{]}|;:,<.>/?");
 
         for chr in chars.chars() {
             assert_eq!(

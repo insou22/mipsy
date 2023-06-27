@@ -1,13 +1,23 @@
-use std::{io::Write, fmt::{Debug, Display}, fs, process, rc::Rc, str::FromStr};
+use std::{
+    fmt::{Debug, Display},
+    fs,
+    io::Write,
+    process,
+    rc::Rc,
+    str::FromStr,
+};
 
-use colored::Colorize;
-use mipsy_lib::{Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe, compile::{get_kernel, CompilerOptions}};
-use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
-use mipsy_lib::error::runtime::{Error, RuntimeError, ErrorContext, InvalidSyscallReason};
-use mipsy_interactive::prompt;
 use clap::Parser;
+use colored::Colorize;
+use mipsy_interactive::prompt;
+use mipsy_lib::error::runtime::{Error, ErrorContext, InvalidSyscallReason, RuntimeError};
+use mipsy_lib::runtime::{SYS13_OPEN, SYS14_READ, SYS15_WRITE, SYS16_CLOSE};
+use mipsy_lib::{
+    compile::{get_kernel, CompilerOptions},
+    Binary, InstSet, MipsyError, MipsyResult, MpProgram, Runtime, Safe,
+};
 use mipsy_parser::TaggedFile;
-use mipsy_utils::{MipsyConfig, MipsyConfigError, config_path, read_config};
+use mipsy_utils::{config_path, read_config, MipsyConfig, MipsyConfigError};
 use text_io::try_read;
 
 #[derive(Parser, Debug)]
@@ -47,7 +57,7 @@ struct Opts {
 
     /// Command line argument(s) to be passed to the program
     #[arg(last = true, requires = "files")]
-    args:  Vec<String>,
+    args: Vec<String>,
 }
 
 fn get_input<T>(name: &str, line: bool) -> T
@@ -60,11 +70,9 @@ where
             let mut input = String::new();
             std::io::stdin().read_line(&mut input).unwrap();
 
-            input.parse()
-                .map_err(|_| ())
+            input.parse().map_err(|_| ())
         } else {
-            try_read!()
-                .map_err(|_| ())
+            try_read!().map_err(|_| ())
         };
 
         match result {
@@ -74,7 +82,7 @@ where
                 std::io::stdout().flush().unwrap();
 
                 continue;
-            },
+            }
         };
     }
 }
@@ -90,7 +98,7 @@ where
         match result {
             Ok(n) => return Some(n),
             Err(text_io::Error::Parse(leftover, _)) => {
-                if leftover == "" {
+                if leftover.is_empty() {
                     return None;
                 }
 
@@ -102,7 +110,7 @@ where
                 print!("[mipsy] bad input (expected {}), try again: ", name);
                 std::io::stdout().flush().unwrap();
                 continue;
-            },
+            }
         };
     }
 }
@@ -112,20 +120,21 @@ fn get_input_int(name: &str) -> Option<i32> {
         let result: Result<i128, _> = try_read!();
 
         match result {
-            Ok(n) => {
-                match i32::try_from(n) {
-                    Ok(n) => return Some(n),
-                    Err(_) => {
-                        println!("[mipsy] bad input (too big to fit in 32 bits)");
-                        println!("[mipsy] if you want the value to be truncated to 32 bits, try {}", n as i32);
-                        print!(  "[mipsy] try again: ");
-                        std::io::stdout().flush().unwrap();
-                        continue;
-                    }
+            Ok(n) => match i32::try_from(n) {
+                Ok(n) => return Some(n),
+                Err(_) => {
+                    println!("[mipsy] bad input (too big to fit in 32 bits)");
+                    println!(
+                        "[mipsy] if you want the value to be truncated to 32 bits, try {}",
+                        n as i32
+                    );
+                    print!("[mipsy] try again: ");
+                    std::io::stdout().flush().unwrap();
+                    continue;
                 }
             },
             Err(text_io::Error::Parse(leftover, _)) => {
-                if leftover == "" {
+                if leftover.is_empty() {
                     return None;
                 }
 
@@ -137,7 +146,7 @@ fn get_input_int(name: &str) -> Option<i32> {
                 print!("[mipsy] bad input (expected {}), try again: ", name);
                 std::io::stdout().flush().unwrap();
                 continue;
-            },
+            }
         };
     }
 }
@@ -146,21 +155,24 @@ fn main() {
     let opts: Opts = Opts::parse();
 
     let moves = {
-        opts.move_label.into_iter()
+        opts.move_label
+            .into_iter()
             .map(|s| {
                 let (old, new) = match s.split_once('=') {
                     Some(parts) => parts,
                     None => {
                         eprintln!("Invalid move label: {s}");
-                        eprintln!("Must be in format: --move-label old1=new1 --move-label old2=new2 ...");
+                        eprintln!(
+                            "Must be in format: --move-label old1=new1 --move-label old2=new2 ..."
+                        );
                         std::process::exit(1);
-                    },
+                    }
                 };
 
                 (old.to_string(), new.to_string())
             })
             .collect::<Vec<_>>()
-        };
+    };
 
     let mut config = match read_config() {
         Ok(config) => config,
@@ -191,34 +203,44 @@ fn main() {
         mipsy_interactive::launch(config);
     }
 
-    let files = opts.files.into_iter()
-            .map(|mut name| {
-                #[cfg(unix)]
-                if name == "-" {
-                    name = String::from("/dev/stdin");
+    let files = opts
+        .files
+        .into_iter()
+        .map(|mut name| {
+            #[cfg(unix)]
+            if name == "-" {
+                name = String::from("/dev/stdin");
+            }
+
+            let file_contents = match fs::read_to_string(&name) {
+                Ok(contents) => contents,
+                Err(err) => {
+                    prompt::error_nl(format!(
+                        "failed to read file `{}`: {}",
+                        name.bold(),
+                        err.to_string().bright_red()
+                    ));
+
+                    process::exit(1);
                 }
+            };
 
-                let file_contents = match fs::read_to_string(&name) {
-                    Ok(contents) => contents,
-                    Err(err) => {
-                        prompt::error_nl(format!("failed to read file `{}`: {}", name.bold(), err.to_string().bright_red()));
+            (name, file_contents)
+        })
+        .collect::<Vec<_>>();
 
-                        process::exit(1);
-                    },
-                };
-
-                (name, file_contents)
-            })
-            .collect::<Vec<_>>();
-
-    let args = opts.args.iter()
-            .map(|arg| &**arg)
-            .collect::<Vec<_>>();
+    let args = opts.args.iter().map(|arg| &**arg).collect::<Vec<_>>();
 
     let compiler_options = CompilerOptions::new(moves);
 
     let compiled = if opts.check_no_main {
-        compile_with_kernel(&compiler_options, &config, &files, &args, &mut MpProgram::new(vec![], vec![]))
+        compile_with_kernel(
+            &compiler_options,
+            &config,
+            &files,
+            &args,
+            &mut MpProgram::new(vec![], vec![]),
+        )
     } else {
         compile(&compiler_options, &config, &files, &args)
     };
@@ -233,8 +255,7 @@ fn main() {
 
             let file = files
                 .iter()
-                .filter(|(tag, _)| &**tag == &*file_tag)
-                .next()
+                .find(|(tag, _)| &**tag == &*file_tag)
                 .map(|(_, str)| Rc::from(&**str))
                 .expect("for file to throw a parser error, it should probably exist");
 
@@ -256,8 +277,7 @@ fn main() {
 
             let file = files
                 .iter()
-                .filter(|(tag, _)| &**tag == &*file_tag)
-                .next()
+                .find(|(tag, _)| &**tag == &*file_tag)
                 .map(|(_, str)| Rc::from(&**str))
                 .unwrap_or_else(|| Rc::from(""));
 
@@ -303,7 +323,7 @@ fn main() {
                 match stepped_runtime {
                     Ok(new_runtime) => {
                         runtime = new_runtime;
-                    },
+                    }
                     Err(runtime_guard) => {
                         use mipsy_lib::runtime::RuntimeSyscallGuard::*;
 
@@ -369,14 +389,21 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS13_OPEN, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall {
+                                    syscall: SYS13_OPEN,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                })
+                                .show_error(
                                     ErrorContext::Binary,
-                                    files.iter()
-                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                    files
+                                        .iter()
+                                        .map(|(tag, content)| {
+                                            (Rc::from(&**tag), Rc::from(&**content))
+                                        })
                                         .collect(),
                                     &iset,
                                     &binary,
-                                    &runtime
+                                    &runtime,
                                 );
                                 process::exit(1);
                             }
@@ -385,14 +412,21 @@ fn main() {
                                 runtime = guard((-1, Vec::new()));
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS14_READ, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall {
+                                    syscall: SYS14_READ,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                })
+                                .show_error(
                                     ErrorContext::Binary,
-                                    files.iter()
-                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                    files
+                                        .iter()
+                                        .map(|(tag, content)| {
+                                            (Rc::from(&**tag), Rc::from(&**content))
+                                        })
                                         .collect(),
                                     &iset,
                                     &binary,
-                                    &runtime
+                                    &runtime,
                                 );
                                 process::exit(1);
                             }
@@ -401,14 +435,21 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS15_WRITE, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall {
+                                    syscall: SYS15_WRITE,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                })
+                                .show_error(
                                     ErrorContext::Binary,
-                                    files.iter()
-                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                    files
+                                        .iter()
+                                        .map(|(tag, content)| {
+                                            (Rc::from(&**tag), Rc::from(&**content))
+                                        })
                                         .collect(),
                                     &iset,
                                     &binary,
-                                    &runtime
+                                    &runtime,
                                 );
                                 process::exit(1);
                             }
@@ -417,14 +458,21 @@ fn main() {
                                 runtime = guard(-1);
                                 runtime.timeline_mut().pop_last_state();
                                 println!();
-                                RuntimeError::new(Error::InvalidSyscall { syscall: SYS16_CLOSE, reason: InvalidSyscallReason::Unimplemented }).show_error(
+                                RuntimeError::new(Error::InvalidSyscall {
+                                    syscall: SYS16_CLOSE,
+                                    reason: InvalidSyscallReason::Unimplemented,
+                                })
+                                .show_error(
                                     ErrorContext::Binary,
-                                    files.iter()
-                                        .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+                                    files
+                                        .iter()
+                                        .map(|(tag, content)| {
+                                            (Rc::from(&**tag), Rc::from(&**content))
+                                        })
                                         .collect(),
                                     &iset,
                                     &binary,
-                                    &runtime
+                                    &runtime,
                                 );
                                 process::exit(1);
                             }
@@ -448,12 +496,13 @@ fn main() {
                 println!();
                 err.show_error(
                     ErrorContext::Binary,
-                    files.iter()
+                    files
+                        .iter()
                         .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
                         .collect(),
                     &iset,
                     &binary,
-                    &runtime
+                    &runtime,
                 );
 
                 process::exit(1);
@@ -489,20 +538,36 @@ fn read_string(_max_len: u32) -> String {
     }
 }
 
-fn compile(options: &CompilerOptions, config: &MipsyConfig, files: &[(String, String)], args: &[&str]) -> MipsyResult<(InstSet, Binary, Runtime)> {
+fn compile(
+    options: &CompilerOptions,
+    config: &MipsyConfig,
+    files: &[(String, String)],
+    args: &[&str],
+) -> MipsyResult<(InstSet, Binary, Runtime)> {
     compile_with_kernel(options, config, files, args, &mut get_kernel())
 }
 
-fn compile_with_kernel(options: &CompilerOptions, config: &MipsyConfig, files: &[(String, String)], args: &[&str], kernel: &mut MpProgram) -> MipsyResult<(InstSet, Binary, Runtime)> {
-    let files = files.iter()
+fn compile_with_kernel(
+    options: &CompilerOptions,
+    config: &MipsyConfig,
+    files: &[(String, String)],
+    args: &[&str],
+    kernel: &mut MpProgram,
+) -> MipsyResult<(InstSet, Binary, Runtime)> {
+    let files = files
+        .iter()
         .map(|(k, v)| TaggedFile::new(Some(k), v))
         .collect::<Vec<_>>();
 
-    let iset    = mipsy_instructions::inst_set();
-    let binary  = mipsy_lib::compile_with_kernel(&iset, files, kernel, options, &config)?;
+    let iset = mipsy_instructions::inst_set();
+    let binary = mipsy_lib::compile_with_kernel(&iset, files, kernel, options, config)?;
     let runtime = mipsy_lib::runtime(&binary, args);
 
     Ok((iset, binary, runtime))
 }
 
-pub const VERSION: &str = concat!(env!("VERGEN_GIT_COMMIT_DATE"), " ", env!("VERGEN_GIT_SHA_SHORT"));
+pub const VERSION: &str = concat!(
+    env!("VERGEN_GIT_COMMIT_DATE"),
+    " ",
+    env!("VERGEN_GIT_SHA_SHORT")
+);

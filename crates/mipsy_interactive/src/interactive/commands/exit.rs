@@ -11,12 +11,10 @@ pub(crate) fn exit_command() -> Command {
         "exit mipsy",
         |_, _state, label, _args| {
             if label == "__help__" {
-                return Ok(
-                        "Immediately exits mipsy".into()
-                )
+                return Ok("Immediately exits mipsy".into());
             }
 
             std::process::exit(0)
-        }
+        },
     )
 }

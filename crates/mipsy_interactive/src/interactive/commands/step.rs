@@ -14,61 +14,98 @@ pub(crate) fn step_command() -> Command {
         command(
             "back",
             vec!["b"],
-            vec![], vec!["times"], vec![], "",
+            vec![],
+            vec!["times"],
+            vec![],
+            "",
             |_, state, label, args| step_back(state, label, args),
         ),
         command(
             "syscall",
             vec!["s", "sys"],
-            vec![], vec![], vec![
+            vec![],
+            vec![],
+            vec![
                 command(
                     "input",
-                    vec!["in"], vec![], vec![], vec![], "",
+                    vec!["in"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_input(state, label, args),
                 ),
                 command(
                     "output",
-                    vec!["out"], vec![], vec![], vec![], "",
+                    vec!["out"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_output(state, label, args),
                 ),
                 command(
                     "integer",
-                    vec!["int"], vec![], vec![], vec![], "",
+                    vec!["int"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_integer(state, label, args),
                 ),
                 command(
                     "float",
-                    vec![], vec![], vec![], vec![], "",
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_float(state, label, args),
                 ),
                 command(
                     "double",
-                    vec![], vec![], vec![], vec![], "",
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_double(state, label, args),
                 ),
                 command(
                     "string",
-                    vec!["str"], vec![], vec![], vec![], "",
+                    vec!["str"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_string(state, label, args),
                 ),
                 command(
                     "character",
-                    vec!["char"], vec![], vec![], vec![], "",
+                    vec!["char"],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_character(state, label, args),
                 ),
                 command(
                     "file",
-                    vec![], vec![], vec![], vec![], "",
+                    vec![],
+                    vec![],
+                    vec![],
+                    vec![],
+                    "",
                     |_, state, label, args| step_file(state, label, args),
                 ),
             ],
             "",
             |cmd, state, label, args| {
-                let cmd = args.get(0).and_then(|arg|
+                let cmd = args.get(0).and_then(|arg| {
                     cmd.subcommands
                         .iter()
                         .find(|c| &c.name == arg || c.aliases.contains(arg))
-                );
+                });
                 match cmd {
                     Some(cmd) => cmd.exec(state, label, &args[1..]),
                     None => step_syscall(state, label, args),
@@ -83,7 +120,7 @@ pub(crate) fn step_command() -> Command {
         vec![],
         vec!["times", "subcommand"],
         subcommands,
-        &format!("step forwards or execute a subcommand"),
+        "step forwards or execute a subcommand",
         |cmd, state, label, args| {
             if label == "__help__" && args.is_empty() {
                 return Ok(get_long_help());
@@ -93,11 +130,11 @@ pub(crate) fn step_command() -> Command {
                 return step_back(state, label, args);
             }
 
-            let cmd = args.get(0).and_then(|arg|
+            let cmd = args.get(0).and_then(|arg| {
                 cmd.subcommands
                     .iter()
                     .find(|c| &c.name == arg || c.aliases.contains(arg))
-            );
+            });
             match cmd {
                 Some(cmd) => cmd.exec(state, label, &args[1..]),
                 None => step_forward(state, label, args),
@@ -135,10 +172,14 @@ fn step_forward(state: &mut State, label: &str, args: &[String]) -> Result<Strin
         Some(arg) => match arg.parse::<i32>() {
             Ok(num) => {
                 if num.is_negative() {
-                    return step_back(state, label, 
-                        [num.abs().to_string()].into_iter()
-                            .chain(args.to_owned().into_iter().skip(1))
-                            .collect::<Vec<String>>().as_ref()
+                    return step_back(
+                        state,
+                        label,
+                        [num.abs().to_string()]
+                            .into_iter()
+                            .chain(args.iter().skip(1).cloned())
+                            .collect::<Vec<String>>()
+                            .as_ref(),
                     );
                 }
 
@@ -200,10 +241,14 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
         Some(arg) => match arg.parse::<i32>() {
             Ok(num) => {
                 if num.is_negative() {
-                    return step_forward(state, label, 
-                        [num.abs().to_string()].into_iter()
-                            .chain(args.to_owned().into_iter().skip(1))
-                            .collect::<Vec<String>>().as_ref()
+                    return step_forward(
+                        state,
+                        label,
+                        [num.abs().to_string()]
+                            .into_iter()
+                            .chain(args.iter().skip(1).cloned())
+                            .collect::<Vec<String>>()
+                            .as_ref(),
                     );
                 }
 
@@ -283,7 +328,8 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
 fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
-            format!("\
+            format!(
+                "\
                 Available {1}s are:\n\
                 \n\
                 {0} {2}     : syscalls 5, 6, 7, 8, 12\n\
@@ -310,7 +356,8 @@ fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
                 "file".purple(),
                 "help step syscall".white().bold(),
                 "[type]".magenta().bold(),
-            ).as_ref(),
+            )
+            .as_ref(),
         ));
     }
 
