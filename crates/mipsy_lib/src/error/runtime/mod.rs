@@ -6,7 +6,7 @@ use crate::{
     inst::ReadsRegisterType,
     runtime::state::{WRITE_MARKER_HI, WRITE_MARKER_LO},
     util::{get_segment, Segment},
-    Binary, InstSet, Register, Runtime, Safe, State, DATA_BOT, KDATA_BOT, KTEXT_BOT, TEXT_BOT,
+    Binary, InstSet, Register, Runtime, Safe, State,
 };
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
@@ -223,7 +223,11 @@ impl Error {
                                 ));
 
                                 for addr in (real_inst_parts.addr
-                                    ..try_find_pseudo_expansion_end(binary, real_inst_parts.addr))
+                                    ..try_find_pseudo_expansion_end(
+                                        binary,
+                                        runtime.timeline().state(),
+                                        real_inst_parts.addr,
+                                    ))
                                     .step_by(4)
                                 {
                                     let inst = state.read_mem_word(addr).unwrap();
@@ -397,6 +401,7 @@ impl Error {
                                     for addr in (real_inst_parts.addr
                                         ..try_find_pseudo_expansion_end(
                                             binary,
+                                            runtime.timeline().state(),
                                             real_inst_parts.addr,
                                         ))
                                         .step_by(4)
@@ -515,7 +520,11 @@ impl Error {
                                 ));
 
                                 for addr in (real_inst_parts.addr
-                                    ..try_find_pseudo_expansion_end(binary, real_inst_parts.addr))
+                                    ..try_find_pseudo_expansion_end(
+                                        binary,
+                                        runtime.timeline().state(),
+                                        real_inst_parts.addr,
+                                    ))
                                     .step_by(4)
                                 {
                                     let inst = state.read_mem_word(addr).unwrap();
@@ -808,6 +817,7 @@ impl Error {
                                     for addr in (real_inst_parts.addr
                                         ..try_find_pseudo_expansion_end(
                                             binary,
+                                            runtime.timeline().state(),
                                             real_inst_parts.addr,
                                         ))
                                         .step_by(4)
@@ -908,6 +918,7 @@ impl Error {
                                     for addr in (real_inst_parts.addr
                                         ..try_find_pseudo_expansion_end(
                                             binary,
+                                            runtime.timeline().state(),
                                             real_inst_parts.addr,
                                         ))
                                         .step_by(4)
@@ -1036,7 +1047,11 @@ impl Error {
                                 ));
 
                                 for addr in (real_inst_parts.addr
-                                    ..try_find_pseudo_expansion_end(binary, real_inst_parts.addr))
+                                    ..try_find_pseudo_expansion_end(
+                                        binary,
+                                        runtime.timeline().state(),
+                                        real_inst_parts.addr,
+                                    ))
                                     .step_by(4)
                                 {
                                     let inst = state.read_mem_word(addr).unwrap();
@@ -1213,6 +1228,7 @@ impl Error {
                                     for addr in (real_inst_parts.addr
                                         ..try_find_pseudo_expansion_end(
                                             binary,
+                                            runtime.timeline().state(),
                                             real_inst_parts.addr,
                                         ))
                                         .step_by(4)
@@ -1537,7 +1553,7 @@ fn get_real_instruction_start<'inst_set>(
     }
 }
 
-fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
+fn try_find_pseudo_expansion_end(program: &Binary, state: &State, initial_addr: u32) -> u32 {
     let mut addr = initial_addr + 4;
 
     loop {
@@ -1545,19 +1561,7 @@ fn try_find_pseudo_expansion_end(program: &Binary, initial_addr: u32) -> u32 {
             return addr;
         }
 
-        if addr >= (KDATA_BOT + program.kdata.len() as u32) {
-            return addr;
-        }
-
-        if addr < KDATA_BOT && addr >= (KTEXT_BOT + (program.ktext.len() / 4 * 4) as u32) {
-            return addr;
-        }
-
-        if addr < KTEXT_BOT && addr >= (DATA_BOT + program.data.len() as u32) {
-            return addr;
-        }
-
-        if addr < DATA_BOT && addr >= (TEXT_BOT + (program.text.len() / 4 * 4) as u32) {
+        if state.read_mem_word(addr).is_err() {
             return addr;
         }
 
