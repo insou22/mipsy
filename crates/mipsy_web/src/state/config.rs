@@ -106,6 +106,7 @@ pub enum RegisterBase {
     Hexadecimal,
     Decimal,
     Binary,
+    Mixed,
 }
 
 impl std::fmt::Display for RegisterBase {
@@ -114,6 +115,7 @@ impl std::fmt::Display for RegisterBase {
             RegisterBase::Hexadecimal => write!(f, "Hexadecimal"),
             RegisterBase::Decimal => write!(f, "Decimal"),
             RegisterBase::Binary => write!(f, "Binary"),
+            RegisterBase::Mixed => write!(f, "Mixed"),
         }
     }
 }
@@ -124,8 +126,15 @@ impl From<std::string::String> for RegisterBase {
             "Hexadecimal" => RegisterBase::Hexadecimal,
             "Decimal" => RegisterBase::Decimal,
             "Binary" => RegisterBase::Binary,
-            _ => RegisterBase::Hexadecimal,
+            "Mixed" => RegisterBase::Mixed,
+            _ => RegisterBase::default(),
         }
+    }
+}
+
+impl Default for RegisterBase {
+    fn default() -> Self {
+        RegisterBase::Decimal
     }
 }
 
@@ -142,7 +151,7 @@ impl Default for MipsyWebConfig {
             tab_size: 8,
             font_size: 14,
             monaco_theme: "vs".to_string(),
-            register_base: RegisterBase::Decimal,
+            register_base: RegisterBase::default(),
             // This is true as most CS1521 students don't need to see them
             hide_uncommon_registers: true,
         }

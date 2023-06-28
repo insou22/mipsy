@@ -6,9 +6,12 @@ use crate::worker::{Worker, WorkerRequest};
 use bounce::use_atom;
 use derivative::Derivative;
 use mipsy_lib::compile::breakpoints::{TargetAction, WatchpointTarget};
-use mipsy_lib::{Register, Safe};
+use mipsy_lib::{Register, Safe, KDATA_BOT, TEXT_BOT};
 use yew::{function_component, html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
+
+const MIXED_BASE_MIN_ADDRESS: u32 = TEXT_BOT - 1024;
+const MIXED_BASE_MAX_ADDRESS: u32 = KDATA_BOT + 1024;
 
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
@@ -180,6 +183,15 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                                                         RegisterBase::Binary => {
                                                             format!("0b{:b}", val)
                                                         },
+                                                        RegisterBase::Mixed => {
+                                                            let as_u32 = *val as u32;
+
+                                                            if (MIXED_BASE_MIN_ADDRESS..MIXED_BASE_MAX_ADDRESS).contains(&as_u32) {
+                                                                format!("0x{:08x}", as_u32)
+                                                            } else {
+                                                                format!("{}", val)
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             } else {
