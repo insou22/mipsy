@@ -164,7 +164,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             hide_label={true}
                             selected_value={(*config).register_base.to_string()}
                             options={
-                                vec!["Hexadecimal".to_string(), "Decimal".to_string(), "Binary".to_string()]
+                                vec!["Hexadecimal".to_string(), "Decimal".to_string(), "Binary".to_string(), "Mixed".to_string()]
                             }
                         />
                         </div>
