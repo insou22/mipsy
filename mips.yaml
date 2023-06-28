@@ -2437,9 +2437,7 @@ pseudoinstructions:
       - inst: ORI
         data: [$At, $At, $Off32uLo]
       - inst: ADDU
-        data: [$At, $At, $Rt]
-      - inst: ADDU
-        data: [$Rs, $Rs, $At]
+        data: [$Rs, $Rt, $At]
 
   - name: NOP
     desc_short: No-Operation - doesn't do anything
