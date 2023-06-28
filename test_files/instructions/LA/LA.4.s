@@ -1,8 +1,6 @@
-CONSTANT = 0
-
 main:
 	li	$a0, 1
-	la	$a0, CONSTANT($a0)
+	la	$a0, 0($a0)
 	li	$v0, 1
 	syscall
 
