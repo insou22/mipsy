@@ -1565,11 +1565,9 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: SLT
-        data: [$Rd, $Rs, $Rt]
-      - inst: BNE
-        data: [$Rs, $Rt, 2]
-      - inst: ORI
-        data: [$Rd, $0, 1]
+        data: [$Rd, $Rt, $Rs]
+      - inst: SLTIU
+        data: [$Rd, $Rd, 1]
     derives:
       - DefaultValue:
           value: Rs
@@ -1593,11 +1591,9 @@ pseudoinstructions:
       format: [Rd, Rs, Rt]
     expand:
       - inst: SLTU
-        data: [$Rd, $Rs, $Rt]
-      - inst: BNE
-        data: [$Rs, $Rt, 2]
-      - inst: ORI
-        data: [$Rd, $0, 1]
+        data: [$Rd, $Rt, $Rs]
+      - inst: SLTIU
+        data: [$Rd, $Rd, 1]
     derives:
       - DefaultValue:
           value: Rs
@@ -1724,12 +1720,10 @@ pseudoinstructions:
     compile:
       format: [Rd, Rs, Rt]
     expand:
-      - inst: ORI
-        data: [$Rd, $0, 1]
-      - inst: BEQ
-        data: [$Rs, $Rt, 2]
-      - inst: ORI
-        data: [$Rd, $0, 0]
+      - inst: XOR
+        data: [$Rd, $Rs, $Rt]
+      - inst: SLTIU
+        data: [$Rd, $Rd, 1]
     derives:
       # - DefaultValue:
       #     value: Rs
@@ -1752,12 +1746,10 @@ pseudoinstructions:
     compile:
       format: [Rd, Rs, Rt]
     expand:
-      - inst: ORI
-        data: [$Rd, $0, 1]
-      - inst: BNE
-        data: [$Rs, $Rt, 2]
-      - inst: ORI
-        data: [$Rd, $0, 0]
+      - inst: XOR
+        data: [$Rd, $Rs, $Rt]
+      - inst: SLTU
+        data: [$Rd, $0, $Rd]
     derives:
       # - DefaultValue:
       #     value: Rs
@@ -2444,6 +2436,8 @@ pseudoinstructions:
         data: [$At, $Off32uHi]
       - inst: ORI
         data: [$At, $At, $Off32uLo]
+      - inst: ADDU
+        data: [$At, $At, $Rt]
       - inst: ADDU
         data: [$Rs, $Rs, $At]
 
