@@ -14,7 +14,8 @@ pub fn app_wrapper() -> Html {
 fn main() {
     let document = web_sys::window().unwrap().document().unwrap();
     let entry_point = document.get_element_by_id("yew_app").unwrap();
-    yew::start_app_in_element::<AppWrapper>(entry_point);
+
+    yew::Renderer::<AppWrapper>::with_root(entry_point);
 
     wasm_logger::init(wasm_logger::Config::default());
 

@@ -3,7 +3,7 @@ use crate::{
     worker::{Worker, WorkerRequest},
 };
 use derivative::Derivative;
-use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
+use yew::{classes, function_component, html, Html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
 
 #[derive(Properties, Derivative)]
