@@ -43,12 +43,11 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
         .mips_state
         .memory
         .iter()
-        .map(|(key, val)| (key.clone(), val.clone()))
+        .map(|(key, val)| (key, val.clone()))
         .collect::<Vec<_>>();
 
     let registers = Some(props.state.mips_state.clone())
-        .clone()
-        .map(|state| state.register_values.clone())
+        .map(|state| state.register_values)
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
     pages.sort_by_key(|(key, _)| *key);
@@ -60,7 +59,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
             <div style="width: 100%;">
                 {
                     for pages.into_iter().map(|(page_addr, page_contents)| {
-                        let segment = get_segment(page_addr);
+                        let segment = get_segment(*page_addr);
 
                         if !should_display_segment(segment) {
                             return html! {};
@@ -83,7 +82,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
 
                                 // render the data
                                 <div style="display: grid; width: 100%; grid-template-columns: repeat(40, [col-start] 1fr); font-size: 11.5px; font-family: monospace;">
-                                    { render_page(&props, page_addr, page_contents, &registers) }
+                                    { render_page(props, *page_addr, page_contents, &registers) }
                                 </div>
                             </>
                         }

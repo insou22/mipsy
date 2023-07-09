@@ -72,7 +72,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             {
                 for registers.iter().enumerate().map(|(index, item)| {
                     // dont' show uninit registers, or uncommon K0, K1, GP 
-                    if !show_uninitialised_registers && !register_is_uncommon(index) && item.as_option().is_some() {
+                    if !show_uninitialised_registers && item.as_option().is_none() || register_is_uncommon(index)  {
                         html!{}
                     }
                     else {

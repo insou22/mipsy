@@ -322,11 +322,7 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                         // run or step buttons should be disabled
                         // if we have exited
                         let is_run_step_disabled = if item.label == "Run" || item.label == "Step Next" {
-                            if let Some(Some(_)) = &exit_status {
-                                true
-                            } else {
-                                false
-                            }
+                            matches!(&exit_status, Some(Some(_)))
                         } else {
                             false
                         };
