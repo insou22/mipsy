@@ -13,7 +13,7 @@ use crate::{
     },
     worker::{FileInformation, MipsyWebWorker, WorkerRequest},
 };
-use bounce::use_atom;
+use bounce::{use_atom, UseAtomHandle};
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
@@ -21,7 +21,6 @@ use gloo_worker::{Spawnable, WorkerBridge};
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
 use std::ops::Deref;
-use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
@@ -39,7 +38,7 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 #[function_component(App)]
 pub fn render_app() -> Html {
     /* State Handlers */
-    let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
+    let state = use_atom::<State>();
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let settings_modal: UseStateHandle<bool> = use_state_eq(|| false);
     let show_io: UseStateHandle<bool> = use_state_eq(|| true);
@@ -61,34 +60,38 @@ pub fn render_app() -> Html {
     });
     let monaco_cursor = use_atom::<MonacoCursor>();
 
-    let bridge: UseStateHandle<WorkerBridge<MipsyWebWorker>> = use_state(|| {
-        let state = state.clone();
-        let show_code_tab = show_code_tab.clone();
-        let show_io = show_io.clone();
-        let file = file.clone();
-        let filename = filename.clone();
-        let input_ref = input_ref.clone();
-        let is_saved = is_saved.clone();
-        let monaco_cursor = monaco_cursor.clone();
-        MipsyWebWorker::spawner()
-            .callback(move |response| {
-                // this runs in the main browser thread
-                // and does not block the web worker
-                log::debug!("received message from worker: {:?}", response);
-                update::handle_response_from_worker(
-                    &state,
-                    &show_code_tab,
-                    &show_io,
-                    &file,
-                    &filename,
-                    response,
-                    &input_ref,
-                    &is_saved,
-                    &monaco_cursor,
-                )
-            })
-            .spawn("/worker.js")
-    });
+    let bridge: UseStateHandle<WorkerBridge<MipsyWebWorker>> = {
+        use_state_eq(|| {
+            let state = state.clone();
+            let show_code_tab = show_code_tab.clone();
+            let show_io = show_io.clone();
+            let file = file.clone();
+            let filename = filename.clone();
+            let input_ref = input_ref.clone();
+            let is_saved = is_saved.clone();
+            let monaco_cursor = monaco_cursor.clone();
+            MipsyWebWorker::spawner()
+                .callback(move |response| {
+                    // this runs in the main browser thread
+                    // and does not block the web worker
+                    let state = state.clone();
+                    log::debug!("received message from worker");
+
+                    update::handle_response_from_worker(
+                        state,
+                        &show_code_tab,
+                        &show_io,
+                        &file,
+                        &filename,
+                        response,
+                        &input_ref,
+                        &is_saved,
+                        &monaco_cursor,
+                    )
+                })
+                .spawn("/worker.js")
+        })
+    };
 
     let config = use_atom::<MipsyWebConfig>();
 
@@ -489,7 +492,6 @@ pub fn render_app() -> Html {
                     {settings_modal}
                     {file_loaded}
                     {waiting_syscall}
-                    state={state.clone()}
                     worker={bridge.clone()}
                     {filename}
                     {file}
@@ -551,7 +553,7 @@ pub fn render_app() -> Html {
                         </div>
 
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
-                            <Registers state={state.clone()} tab={show_register_tab} worker={bridge.clone()}/>
+                            <Registers tab={show_register_tab} worker={bridge.clone()}/>
                         </div>
 
                         <OutputArea
@@ -586,7 +588,7 @@ pub fn is_nav_or_special_key(event: &KeyboardEvent) -> bool {
 
 fn render_running(
     file: UseStateHandle<Option<String>>,
-    state: UseStateHandle<State>,
+    state: UseAtomHandle<State>,
     filename: UseStateHandle<Option<String>>,
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
@@ -617,7 +619,6 @@ fn render_running(
                                     <DecompiledCode
                                         current_instr={curr.mips_state.current_instr}
                                         decompiled={curr.decompiled.clone()}
-                                        state={state.clone()}
                                         worker={worker.clone()}
                                     />
                                 }
@@ -636,7 +637,6 @@ fn render_running(
                                                     <DecompiledCode
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
-                                                        state={state.clone()}
                                                         worker={worker.clone()}
                                                     />
                                                 </tbody>
@@ -675,7 +675,7 @@ fn render_running(
     }
 }
 
-fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<State>) -> Html {
+fn render_running_output(show_io: UseStateHandle<bool>, state: UseAtomHandle<State>) -> Html {
     if *show_io {
         match &*state {
             State::Compiled(curr) => {
@@ -716,7 +716,7 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
 pub fn process_syscall_request(
     mips_state: MipsState,
     required_type: ReadSyscalls,
-    state: &UseStateHandle<State>,
+    state: &UseAtomHandle<State>,
     input_ref: &UseStateHandle<NodeRef>,
     show_io: &UseStateHandle<bool>,
 ) {
@@ -740,7 +740,7 @@ fn focus_input(input_ref: &UseStateHandle<NodeRef>) {
 }
 
 pub fn process_syscall_response(
-    state: &UseStateHandle<State>,
+    state: &UseAtomHandle<State>,
     worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input: HtmlInputElement,
     required_type: ReadSyscallInputs,

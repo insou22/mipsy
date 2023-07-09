@@ -16,7 +16,6 @@ const MIXED_BASE_MAX_ADDRESS: u32 = KDATA_BOT + 1024;
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
 pub struct RegisterProps {
-    pub state: UseStateHandle<State>,
     pub tab: UseStateHandle<RegisterTab>,
 
     #[derivative(PartialEq = "ignore")]
@@ -31,7 +30,9 @@ pub fn register_is_uncommon(index: usize) -> bool {
 
 #[function_component(Registers)]
 pub fn render_running_registers(props: &RegisterProps) -> Html {
-    let mips_state = match &*props.state {
+    let state = use_atom::<State>();
+    
+    let mips_state = match &*state {
         State::Compiled(state) => Some(state.mips_state.clone()),
         State::Error(ErrorType::RuntimeError(error)) => Some(error.mips_state.clone()),
         _ => None,
@@ -90,7 +91,7 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
                             })
                         };
 
-                        let watchpoint = match &*props.state {
+                        let watchpoint = match &*state {
                             State::Compiled(curr) => {
                                 let binary = curr.mips_state.binary.as_ref().unwrap();
                                 binary.watchpoints
