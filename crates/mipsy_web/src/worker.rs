@@ -1,5 +1,6 @@
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
+use gloo_worker::{HandlerId, Worker, WorkerScope};
 use log::{error, info};
 use mipsy_lib::compile::breakpoints::{
     get_affected_registers, Breakpoint, TargetAction, Watchpoint, WatchpointTarget,
@@ -11,7 +12,6 @@ use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runti
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
-use yew_agent::{Agent, AgentLink, HandlerId, Public};
 
 //            Worker Overview
 // ___________________________________________
@@ -35,9 +35,7 @@ use yew_agent::{Agent, AgentLink, HandlerId, Public};
 // Worker: Sure, here is a cleared set of registers
 // ____________________________________________
 
-pub struct Worker {
-    // the link that allows to communicate to main thread
-    link: AgentLink<Self>,
+pub struct MipsyWebWorker {
     inst_set: InstSet,
     file: Option<String>,
     // the runtime may not exist if no binary
@@ -63,7 +61,7 @@ enum RuntimeState {
     //WaitingOpen(Guard<i32>),
     //WaitingRead(Guard<(i32, Vec<u8>)>),
     //WaitingWrite(Guard<i32>),
-    //WaitingClose(Guard<i32>),
+    //WaitingClose(Guard<i32>),worker
     //Stopped,
 }
 
@@ -93,7 +91,7 @@ pub enum WorkerRequest {
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DecompiledResponse {
     pub decompiled: String,
     pub file: Option<String>,
@@ -106,7 +104,7 @@ pub struct FileInformation {
     pub filename: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     // error is RuntimeError, ParseError, or CompilerError
     pub error: MipsyError,
@@ -117,13 +115,13 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RuntimeErrorResponse {
     pub error: MipsyError,
     pub mips_state: MipsState,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum WorkerResponse {
     DecompiledCode(DecompiledResponse),
     WorkerError(ErrorResponse),
@@ -139,15 +137,13 @@ pub enum WorkerResponse {
     RuntimeError(RuntimeErrorResponse), //NeedRead((i32, Vec<u8>)),
 }
 
-impl Agent for Worker {
-    type Reach = Public<Self>;
+impl Worker for MipsyWebWorker {
     type Message = ();
     type Input = WorkerRequest;
     type Output = WorkerResponse;
 
-    fn create(link: AgentLink<Self>) -> Self {
+    fn create(scope: &WorkerScope<Self>) -> Self {
         Self {
-            link,
             inst_set: mipsy_instructions::inst_set(),
             runtime: None,
             binary: None,
@@ -156,23 +152,14 @@ impl Agent for Worker {
         }
     }
 
-    // we need this as we can no longer
-    // assume that worker resources are hosted at root
-    fn resource_path_is_relative() -> bool {
-        true
-    }
-
     /// Represents the name of loading resorce for remote workers which
     /// have to live in a separate files.
-    fn name_of_resource() -> &'static str {
-        "worker.js"
+
+    fn update(&mut self, _scope: &WorkerScope<Self>, _msg: Self::Message) {
+        // pass
     }
 
-    fn update(&mut self, _msg: Self::Message) {
-        // no messaging exists
-    }
-
-    fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
+    fn received(&mut self, scope: &WorkerScope<Self>, msg: Self::Input, id: HandlerId) {
         let mut breakpoint = false;
         let mut watchpoint = false;
         let mut watchpoints = Vec::new();
@@ -199,7 +186,7 @@ impl Agent for Worker {
                         self.binary = Some(binary);
                         self.runtime = Some(RuntimeState::Running(runtime));
                         self.file = Some(file);
-                        self.link.respond(id, response)
+                        scope.respond(id, response)
                     }
 
                     Err(error) => {
@@ -221,7 +208,7 @@ impl Agent for Worker {
                                 );
                             }
                         };
-                        self.link.respond(
+                        scope.respond(
                             id,
                             Self::Output::WorkerError(ErrorResponse {
                                 error,
@@ -243,8 +230,7 @@ impl Agent for Worker {
                             mips_state.exit_status = None;
                             mips_state.current_instr = None;
                             mips_state.register_values = vec![Safe::Uninitialised; 32];
-                            self.link
-                                .respond(id, WorkerResponse::UpdateMipsState(mips_state));
+                            scope.respond(id, WorkerResponse::UpdateMipsState(mips_state));
                         }
                         _ => {
                             // if we are not running, then just recompile the file (since we have
@@ -259,7 +245,7 @@ impl Agent for Worker {
                                 });
                                 let runtime = mipsy_lib::runtime(binary, &[]);
                                 self.runtime = Some(RuntimeState::Running(runtime));
-                                self.link.respond(id, response)
+                                scope.respond(id, response)
                             }
                         }
                     }
@@ -272,7 +258,7 @@ impl Agent for Worker {
                     });
                     let runtime = mipsy_lib::runtime(binary, &[]);
                     self.runtime = Some(RuntimeState::Running(runtime));
-                    self.link.respond(id, response)
+                    scope.respond(id, response)
                 }
             }
 
@@ -290,6 +276,7 @@ impl Agent for Worker {
                                         int,
                                         id,
                                         format!("{}\n", int),
+                                        scope,
                                     );
                                 } else {
                                     panic!("Error: please report this to developers, with steps to reproduce")
@@ -305,6 +292,7 @@ impl Agent for Worker {
                                         float,
                                         id,
                                         format!("{}\n", float),
+                                        scope,
                                     );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
@@ -319,6 +307,7 @@ impl Agent for Worker {
                                         char,
                                         id,
                                         format!("{}\n", char as char),
+                                        scope,
                                     );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
@@ -334,6 +323,7 @@ impl Agent for Worker {
                                         string,
                                         id,
                                         format!("{}\n", display),
+                                        scope,
                                     );
                                 } else {
                                     error!("Error: please report this to developers, with steps to reproduce")
@@ -365,7 +355,7 @@ impl Agent for Worker {
                 }
 
                 let response = Self::Output::UpdateBinary(self.binary.clone());
-                self.link.respond(id, response)
+                scope.respond(id, response)
             }
 
             Self::Input::ToggleWatchpoint(register, action) => {
@@ -388,12 +378,13 @@ impl Agent for Worker {
                 }
 
                 let response = Self::Output::UpdateBinary(self.binary.clone());
-                self.link.respond(id, response)
+                scope.respond(id, response)
             }
 
             Self::Input::UpdateConfig(config) => self.config = config,
 
             Self::Input::Run(mut mips_state, step_size, FileInformation { file, filename }) => {
+                log::error!("HONK");
                 let binary = self.binary.as_ref().unwrap();
                 if let Some(RuntimeState::Running(mut runtime)) = self.runtime.take() {
                     // fast forward the kernel segment
@@ -468,7 +459,7 @@ impl Agent for Worker {
                                         self.runtime = Some(RuntimeState::Running(runtime));
                                         mips_state.mipsy_stdout.push(format!("{:?}", err));
                                         let response = Self::Output::UpdateMipsState(mips_state);
-                                        self.link.respond(id, response);
+                                        scope.respond(id, response);
                                         error!("error when fast forwarding: {:?}", err);
                                         return;
                                     }
@@ -521,7 +512,7 @@ impl Agent for Worker {
                             response = Self::Output::InstructionOk(mips_state);
                         }
 
-                        self.link.respond(id, response);
+                        scope.respond(id, response);
                         return;
                     }
 
@@ -533,6 +524,7 @@ impl Agent for Worker {
 
                     // now let's us step the right number of times
                     for _ in 1..=step_size {
+                        log::info!("hi");
                         let pc = runtime.timeline().state().pc();
 
                         if pc >= mipsy_lib::KTEXT_BOT {
@@ -694,7 +686,7 @@ impl Agent for Worker {
                                         self.runtime = Some(RuntimeState::WaitingInt(guard));
 
                                         mips_state.breakpoint_switch = true;
-                                        self.link.respond(id, WorkerResponse::NeedInt(mips_state));
+                                        scope.respond(id, WorkerResponse::NeedInt(mips_state));
 
                                         return;
                                     }
@@ -704,8 +696,7 @@ impl Agent for Worker {
                                         self.runtime = Some(RuntimeState::WaitingFloat(guard));
                                         mips_state.breakpoint_switch = true;
 
-                                        self.link
-                                            .respond(id, WorkerResponse::NeedFloat(mips_state));
+                                        scope.respond(id, WorkerResponse::NeedFloat(mips_state));
 
                                         return;
                                     }
@@ -715,8 +706,7 @@ impl Agent for Worker {
                                         self.runtime = Some(RuntimeState::WaitingString(guard));
                                         mips_state.breakpoint_switch = true;
 
-                                        self.link
-                                            .respond(id, WorkerResponse::NeedString(mips_state));
+                                        scope.respond(id, WorkerResponse::NeedString(mips_state));
 
                                         return;
                                     }
@@ -726,7 +716,7 @@ impl Agent for Worker {
                                         self.runtime = Some(RuntimeState::WaitingChar(guard));
                                         mips_state.breakpoint_switch = true;
 
-                                        self.link.respond(id, WorkerResponse::NeedChar(mips_state));
+                                        scope.respond(id, WorkerResponse::NeedChar(mips_state));
 
                                         return;
                                     }
@@ -858,7 +848,7 @@ impl Agent for Worker {
                                                 mips_state: mips_state.clone(),
                                                 error,
                                             });
-                                        self.link.respond(id, response);
+                                        scope.respond(id, response);
                                         return;
                                     }
 
@@ -935,14 +925,14 @@ impl Agent for Worker {
                         response = Self::Output::InstructionOk(mips_state);
                     }
 
-                    self.link.respond(id, response);
+                    scope.respond(id, response);
                 }
             }
         }
     }
 }
 
-impl Worker {
+impl MipsyWebWorker {
     fn upload_syscall_value<T>(
         &mut self,
         mut mips_state: MipsState,
@@ -950,6 +940,7 @@ impl Worker {
         val: T,
         id: HandlerId,
         serialized: String,
+        scope: &WorkerScope<Self>,
     ) {
         mips_state.stdout.push(serialized);
 
@@ -965,11 +956,15 @@ impl Worker {
         // if stepping we want UpdateMipsState
 
         if mips_state.is_stepping {
-            self.link
-                .respond(id, <Worker as Agent>::Output::UpdateMipsState(mips_state))
+            scope.respond(
+                id,
+                <MipsyWebWorker as Worker>::Output::UpdateMipsState(mips_state),
+            )
         } else {
-            self.link
-                .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
+            scope.respond(
+                id,
+                <MipsyWebWorker as Worker>::Output::InstructionOk(mips_state),
+            )
         }
     }
 }

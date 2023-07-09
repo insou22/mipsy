@@ -1088,6 +1088,7 @@ dependencies = [
  "gloo-console",
  "gloo-file",
  "gloo-utils",
+ "gloo-worker",
  "js-sys",
  "log",
  "mipsy_instructions",

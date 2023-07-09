@@ -1,7 +1,9 @@
-use mipsy_web::worker::Worker;
+use mipsy_web::worker::MipsyWebWorker;
 use wasm_logger::Config;
-use yew_agent::Threaded;
+use gloo_worker::Registrable;
+
 fn main() {
     wasm_logger::init(Config::default());
-    Worker::register();
+
+    MipsyWebWorker::registrar().register();
 }

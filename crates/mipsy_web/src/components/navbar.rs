@@ -1,12 +1,12 @@
 use crate::{
     pages::main::app::NUM_INSTR_BEFORE_RESPONSE,
     state::state::{DisplayedCodeTab, ErrorType, MipsState, RunningState, State},
-    worker::{FileInformation, Worker, WorkerRequest},
+    worker::{FileInformation, MipsyWebWorker, WorkerRequest},
 };
 use derivative::Derivative;
+use gloo_worker::{WorkerBridge, Worker};
 use log::info;
 use yew::{prelude::*, Html};
-use yew_agent::{Agent, UseBridgeHandle};
 
 #[derive(Properties, Derivative)]
 #[derivative(PartialEq)]
@@ -20,7 +20,7 @@ pub struct NavBarProps {
     pub state: UseStateHandle<State>,
     pub is_saved: UseStateHandle<bool>,
     #[derivative(PartialEq = "ignore")]
-    pub worker: UseBridgeHandle<Worker>,
+    pub worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     pub filename: UseStateHandle<Option<String>>,
     pub file: UseStateHandle<Option<String>>,
     pub show_tab: UseStateHandle<DisplayedCodeTab>,
@@ -94,7 +94,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             filename: filename.as_deref().unwrap_or("Untitled").to_string(),
                             file: file.as_deref().unwrap_or("").to_string(),
                         };
-                        let input = <Worker as Agent>::Input::Run(
+                        let input = <MipsyWebWorker as Worker>::Input::Run(
                             MipsState {
                                 is_stepping: false,
                                 ..curr.mips_state.clone()
@@ -134,7 +134,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                                 ..curr.clone()
                             }));
                             let input =
-                                <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                                <MipsyWebWorker as Worker>::Input::ResetRuntime(curr.mips_state.clone());
                             worker.send(input);
                         }
                         State::Error(ErrorType::RuntimeError(curr)) => {
@@ -145,7 +145,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                                 input_needed: None,
                             }));
                             let input =
-                                <Worker as Agent>::Input::ResetRuntime(curr.mips_state.clone());
+                                <MipsyWebWorker as Worker>::Input::ResetRuntime(curr.mips_state.clone());
                             worker.send(input);
                         }
 
@@ -219,7 +219,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             file: file.as_deref().unwrap_or("").to_string(),
                         };
                         let input =
-                            <Worker as Agent>::Input::Run(new_mips_state, -1, file_information);
+                            <MipsyWebWorker as Worker>::Input::Run(new_mips_state, -1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");
@@ -258,7 +258,7 @@ fn icons(props: &NavBarProps) -> Vec<Icon> {
                             file: file.as_deref().unwrap_or("").to_string(),
                         };
                         let input =
-                            <Worker as Agent>::Input::Run(new_mips_state, 1, file_information);
+                            <MipsyWebWorker as Worker>::Input::Run(new_mips_state, 1, file_information);
                         worker.send(input);
                     } else {
                         info!("No File loaded, cannot step");

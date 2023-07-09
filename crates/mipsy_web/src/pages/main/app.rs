@@ -1,3 +1,4 @@
+use crate::split_setup;
 use crate::worker::ReadSyscallInputs;
 use crate::{
     components::{
@@ -10,12 +11,13 @@ use crate::{
         state::{DisplayedCodeTab, ErrorType, MipsState, RegisterTab, RunningState, State},
         update,
     },
-    worker::{FileInformation, Worker, WorkerRequest},
+    worker::{FileInformation, MipsyWebWorker, WorkerRequest},
 };
 use bounce::use_atom;
 use gloo_console::log;
 use gloo_file::callbacks::{read_as_text, FileReader};
 use gloo_file::File;
+use gloo_worker::{Spawnable, WorkerBridge};
 use log::{error, info, trace};
 use mipsy_lib::MipsyError;
 use std::ops::Deref;
@@ -23,7 +25,6 @@ use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::closure::Closure;
 use web_sys::{window, Element, HtmlInputElement};
 use yew::prelude::*;
-use yew_agent::{use_bridge, UseBridgeHandle};
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReadSyscalls {
     ReadInt,
@@ -37,7 +38,6 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
 #[function_component(App)]
 pub fn render_app() -> Html {
-    let worker = Rc::new(RefCell::new(None));
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
@@ -56,47 +56,39 @@ pub fn render_app() -> Html {
         // dont show the banner
         // this is false for now, as analytics is not yet implemented
         crate::get_localstorage("analytics_ack")
-            .map(|item| !(item.as_str() == "true"))
+            .map(|item| item.as_str() != "true")
             .unwrap_or(false)
     });
     let monaco_cursor = use_atom::<MonacoCursor>();
 
-    if worker.borrow().is_none() {
-        *worker.borrow_mut() = {
-            let state = state.clone();
-            let show_tab = show_code_tab.clone();
-            let show_io = show_io.clone();
-            let file = file.clone();
-            let input_ref = input_ref.clone();
-            let worker = worker.clone();
-            let is_saved = is_saved.clone();
-            let filename = filename.clone();
-            let monaco_cursor = monaco_cursor.clone();
-            Some(use_bridge(move |response| {
-                let state = state.clone();
-                let show_tab = show_tab.clone();
-                let show_io = show_io.clone();
-                let file = file.clone();
-                let input_ref = input_ref.clone();
-                let worker = worker.clone();
-                let is_saved = is_saved.clone();
-                let filename = filename.clone();
-                let monaco_cursor = monaco_cursor.clone();
+    let bridge: UseStateHandle<WorkerBridge<MipsyWebWorker>> = use_state(|| {
+        let state = state.clone();
+        let show_code_tab = show_code_tab.clone();
+        let show_io = show_io.clone();
+        let file = file.clone();
+        let filename = filename.clone();
+        let input_ref = input_ref.clone();
+        let is_saved = is_saved.clone();
+        let monaco_cursor = monaco_cursor.clone();
+        MipsyWebWorker::spawner()
+            .callback(move |response| {
+                // this runs in the main browser thread
+                // and does not block the web worker
+                log::debug!("received message from worker: {:?}", response);
                 update::handle_response_from_worker(
-                    state,
-                    show_tab,
-                    show_io,
-                    file,
-                    filename,
+                    &state,
+                    &show_code_tab,
+                    &show_io,
+                    &file,
+                    &filename,
                     response,
-                    worker,
-                    input_ref,
-                    is_saved,
-                    monaco_cursor,
+                    &input_ref,
+                    &is_saved,
+                    &monaco_cursor,
                 )
-            }))
-        };
-    }
+            })
+            .spawn("/worker.js")
+    });
 
     let config = use_atom::<MipsyWebConfig>();
 
@@ -115,44 +107,41 @@ pub fn render_app() -> Html {
             move |_| {
                 let document = web_sys::window().unwrap().document().unwrap();
                 let element: Option<Element> = document.get_element_by_id("monaco_editor");
-                match element {
-                    Some(e) => {
-                        //info!("rendering monaco editor");
-                        // if the editor does not exist, create it
-                        if e.child_element_count() == 0 {
-                            crate::init_editor();
-                        }
+                if let Some(e) = element {
+                    //info!("rendering monaco editor");
+                    // if the editor does not exist, create it
+                    if e.child_element_count() == 0 {
+                        crate::init_editor();
+                    }
 
-                        // if window element is on the page, create, leak, and add the onchange callback
-                        // only if we have not already added it
-                        if window().unwrap().get("editor").is_some() {
-                            let cb = Closure::wrap(Box::new(move || {
-                                let editor_contents = crate::get_editor_value();
-                                let editor_contents2 = editor_contents.clone();
-                                file3.set(Some(editor_contents2));
+                    // if window element is on the page, create, leak, and add the onchange callback
+                    // only if we have not already added it
+                    if window().unwrap().get("editor").is_some() {
+                        let cb = Closure::wrap(Box::new(move || {
+                            let editor_contents = crate::get_editor_value();
+                            let editor_contents2 = editor_contents.clone();
+                            file3.set(Some(editor_contents2));
 
-                                let last_saved_contents = crate::get_localstorage_file_contents();
+                            let last_saved_contents = crate::get_localstorage_file_contents();
 
-                                is_saved.set(editor_contents == last_saved_contents);
-                            }) as Box<dyn Fn()>);
+                            is_saved.set(editor_contents == last_saved_contents);
+                        }) as Box<dyn Fn()>);
 
-                            crate::set_model_change_listener(&cb);
-                            cb.forget();
-                        }
+                        crate::set_model_change_listener(&cb);
+                        cb.forget();
+                    }
 
-                        if let Some(file) = &*file {
-                            crate::set_editor_value(file.as_str())
+                    if let Some(file) = &*file {
+                        crate::set_editor_value(file.as_str())
+                    } else {
+                        let local_editor_contents = crate::get_localstorage_file_contents();
+                        if local_editor_contents.is_empty() {
+                            crate::set_editor_value("")
                         } else {
-                            let local_editor_contents = crate::get_localstorage_file_contents();
-                            if local_editor_contents.is_empty() {
-                                crate::set_editor_value("")
-                            } else {
-                                crate::set_editor_value(local_editor_contents.as_str());
-                                filename2.set(Some(crate::get_localstorage_filename()));
-                            }
+                            crate::set_editor_value(local_editor_contents.as_str());
+                            filename2.set(Some(crate::get_localstorage_filename()));
                         }
                     }
-                    None => {}
                 }
 
                 move || {} //do stuff when your componet is unmounted
@@ -314,7 +303,7 @@ pub fn render_app() -> Html {
 
     /*    CALLBACKS   */
     let load_onchange: Callback<Event> = {
-        let worker = worker.clone();
+        let worker = bridge.clone();
         let filename = filename.clone();
         let tasks = tasks;
         Callback::from(move |e: Event| {
@@ -340,7 +329,7 @@ pub fn render_app() -> Html {
                             });
                             log!("sending to worker");
 
-                            worker.borrow().as_ref().unwrap().send(input);
+                            worker.send(input);
                         }
 
                         Err(_e) => {}
@@ -355,7 +344,7 @@ pub fn render_app() -> Html {
     // REFACTOR - move this
     let save_keydown: Callback<KeyboardEvent> = {
         let file = file.clone();
-        let worker = worker.clone();
+        let worker = bridge.clone();
         let is_saved = is_saved.clone();
         let filename = filename.clone();
         let monaco_cursor = monaco_cursor.clone();
@@ -373,29 +362,25 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_file_contents(&updated_content);
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
-                worker
-                    .borrow()
-                    .as_ref()
-                    .unwrap()
-                    .send(WorkerRequest::CompileCode(FileInformation {
-                        filename: filename.to_string(),
-                        file: clone,
-                    }));
+                worker.send(WorkerRequest::CompileCode(FileInformation {
+                    filename: filename.to_string(),
+                    file: clone,
+                }));
             };
         })
     };
 
     let on_input_keydown: Callback<KeyboardEvent> = {
-        let worker = worker.clone();
+        let worker = bridge.clone();
         let state = state.clone();
         let input_ref = input_ref.clone();
         Callback::from(move |event: KeyboardEvent| {
             if event.key() == "Enter" {
-                update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_input(&worker, &input_ref, &state);
             };
             if event.key() == "d" && event.ctrl_key() {
                 event.prevent_default();
-                update::submit_eof(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_eof(&worker, &input_ref, &state);
             };
         })
     };
@@ -409,7 +394,7 @@ pub fn render_app() -> Html {
             save_keydown,
             is_saved.clone(),
             show_code_tab.clone(),
-            worker.clone(),
+            bridge.clone(),
         ),
     };
 
@@ -459,6 +444,13 @@ pub fn render_app() -> Html {
         State::NoFile | State::Error(_) => None,
     };
 
+    use_effect_with_deps(
+        |_| {
+            split_setup();
+        },
+        (),
+    );
+
     let rendered_running = render_running_output(show_io.clone(), state.clone());
     html! {
         <>
@@ -498,7 +490,7 @@ pub fn render_app() -> Html {
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
-                    worker={worker.borrow().as_ref().unwrap().clone()}
+                    worker={bridge.clone()}
                     {filename}
                     {file}
                     {is_saved}
@@ -559,7 +551,7 @@ pub fn render_app() -> Html {
                         </div>
 
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
-                            <Registers state={state.clone()} tab={show_register_tab} worker={worker.borrow().as_ref().unwrap().clone()}/>
+                            <Registers state={state.clone()} tab={show_register_tab} worker={bridge.clone()}/>
                         </div>
 
                         <OutputArea
@@ -599,7 +591,7 @@ fn render_running(
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
     show_tab: UseStateHandle<DisplayedCodeTab>,
-    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
+    worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -626,7 +618,7 @@ fn render_running(
                                         current_instr={curr.mips_state.current_instr}
                                         decompiled={curr.decompiled.clone()}
                                         state={state.clone()}
-                                        worker={worker.borrow().as_ref().unwrap().clone()}
+                                        worker={worker.clone()}
                                     />
                                 }
                             },
@@ -645,7 +637,7 @@ fn render_running(
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
                                                         state={state.clone()}
-                                                        worker={worker.borrow().as_ref().unwrap().clone()}
+                                                        worker={worker.clone()}
                                                     />
                                                 </tbody>
                                             </table>
@@ -724,11 +716,12 @@ fn render_running_output(show_io: UseStateHandle<bool>, state: UseStateHandle<St
 pub fn process_syscall_request(
     mips_state: MipsState,
     required_type: ReadSyscalls,
-    state: UseStateHandle<State>,
-    input_ref: UseStateHandle<NodeRef>,
-    show_io: UseStateHandle<bool>,
+    state: &UseStateHandle<State>,
+    input_ref: &UseStateHandle<NodeRef>,
+    show_io: &UseStateHandle<bool>,
 ) {
-    if let State::Compiled(ref curr) = &*state {
+    // TODO - is there a more ergonomic way of double deref
+    if let State::Compiled(ref curr) = *(*state) {
         state.set(State::Compiled(RunningState {
             mips_state,
             input_needed: Some(required_type),
@@ -739,7 +732,7 @@ pub fn process_syscall_request(
     }
 }
 
-fn focus_input(input_ref: UseStateHandle<NodeRef>) {
+fn focus_input(input_ref: &UseStateHandle<NodeRef>) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
         input.set_disabled(false);
         input.focus().unwrap();
@@ -747,8 +740,8 @@ fn focus_input(input_ref: UseStateHandle<NodeRef>) {
 }
 
 pub fn process_syscall_response(
-    state: UseStateHandle<State>,
-    worker: UseBridgeHandle<Worker>,
+    state: &UseStateHandle<State>,
+    worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input: HtmlInputElement,
     required_type: ReadSyscallInputs,
 ) {

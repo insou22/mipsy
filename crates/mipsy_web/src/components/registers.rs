@@ -2,13 +2,13 @@ use crate::components::data_segment::{FP_COLOR, SP_COLOR};
 use crate::components::decompiled::{StopIconFilled, StopIconOutline};
 use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
-use crate::worker::{Worker, WorkerRequest};
+use crate::worker::{WorkerRequest, MipsyWebWorker};
 use bounce::use_atom;
 use derivative::Derivative;
+use gloo_worker::WorkerBridge;
 use mipsy_lib::compile::breakpoints::{TargetAction, WatchpointTarget};
 use mipsy_lib::{Register, Safe, KDATA_BOT, TEXT_BOT};
 use yew::{function_component, html, Html, Callback, Properties, UseStateHandle};
-use yew_agent::UseBridgeHandle;
 
 const MIXED_BASE_MIN_ADDRESS: u32 = TEXT_BOT - 1024;
 const MIXED_BASE_MAX_ADDRESS: u32 = KDATA_BOT + 1024;
@@ -20,13 +20,13 @@ pub struct RegisterProps {
     pub tab: UseStateHandle<RegisterTab>,
 
     #[derivative(PartialEq = "ignore")]
-    pub worker: UseBridgeHandle<Worker>,
+    pub worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
 }
 
 pub fn register_is_uncommon(index: usize) -> bool {
     index == usize::from(Register::K0.to_number()) ||
         index == usize::from(Register::K1.to_number()) ||
-        index == usize::from(Register::Gp.to_number())
+        index == usize::from(Register::Gp.to_number()) 
 }
 
 #[function_component(Registers)]

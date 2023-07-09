@@ -10,12 +10,13 @@ use crate::{
         },
     },
     worker::{
-        FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
-        WorkerResponse,
+        FileInformation, ReadSyscallInputs, RuntimeErrorResponse, WorkerRequest,
+        WorkerResponse, MipsyWebWorker,
     },
 };
 use bounce::prelude::UseAtomHandle;
 use gloo_console::log;
+use gloo_worker::WorkerBridge;
 use log::{error, info};
 use mipsy_lib::Safe;
 use std::collections::HashMap;
@@ -23,20 +24,20 @@ use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use yew_agent::UseBridgeHandle;
 
 pub fn handle_response_from_worker(
-    state: UseStateHandle<State>,
-    show_code_tab: UseStateHandle<DisplayedCodeTab>,
-    show_io: UseStateHandle<bool>,
-    file: UseStateHandle<Option<String>>,
-    filename: UseStateHandle<Option<String>>,
+    state: &UseStateHandle<State>,
+    show_code_tab: &UseStateHandle<DisplayedCodeTab>,
+    show_io: &UseStateHandle<bool>,
+    file: &UseStateHandle<Option<String>>,
+    filename: &UseStateHandle<Option<String>>,
     response: WorkerResponse,
-    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
-    input_ref: UseStateHandle<NodeRef>,
-    is_saved: UseStateHandle<bool>,
-    monaco_cursor: UseAtomHandle<MonacoCursor>,
+    input_ref: &UseStateHandle<NodeRef>,
+    is_saved: &UseStateHandle<bool>,
+    monaco_cursor: &UseAtomHandle<MonacoCursor>,
 ) {
+
+    let state = state.to_owned();
     match response {
         WorkerResponse::DecompiledCode(response_struct) => {
             log!("recieved decompiled code from worker");
@@ -104,13 +105,13 @@ pub fn handle_response_from_worker(
             });
 
             show_io.set(false);
-            file.set(Some(response_struct.file.clone()));
+            file.set(Some(response_struct.file));
             show_code_tab.set(DisplayedCodeTab::Source);
             state.set(State::Error(state_struct));
         }
 
         WorkerResponse::ProgramExited(mips_state) => {
-            if let State::Compiled(ref curr) = *state {
+            if let State::Compiled(ref curr) = &*state {
                 state.set(State::Compiled(RunningState {
                     mips_state,
                     ..curr.clone()
@@ -119,7 +120,7 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::InstructionOk(mips_state) => {
-            if let State::Compiled(ref curr) = *state {
+            if let State::Compiled(ref curr) = &*state {
                 if curr.mips_state.stdout != mips_state.stdout {
                     show_io.set(true);
                 }
@@ -141,8 +142,8 @@ pub fn handle_response_from_worker(
                         mips_state: mips_state.clone(),
                         ..curr.clone()
                     }));
+                    // TODO -> make WorkerResponse::InstructionOk be internal messaging
 
-                    worker.borrow().as_ref().unwrap().send(input);
                 }
 
                 state.set(State::Compiled(RunningState {
@@ -156,7 +157,7 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::UpdateMipsState(mips_state) => {
-            if let State::Compiled(ref curr) = *state {
+            if let State::Compiled(ref curr) = &*state {
                 // focus IO if output
                 if curr.mips_state.stdout != mips_state.stdout {
                     show_io.set(true);
@@ -173,7 +174,7 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::RuntimeError(RuntimeErrorResponse { mips_state, error }) => {
-            if let State::Compiled(ref curr) = *state {
+            if let State::Compiled(ref curr) = &*state {
                 show_io.set(false);
                 show_code_tab.set(DisplayedCodeTab::Source);
                 let decompiled = &curr.decompiled;
@@ -186,33 +187,33 @@ pub fn handle_response_from_worker(
         }
 
         WorkerResponse::NeedInt(mips_state) => {
-            process_syscall_request(mips_state, ReadSyscalls::ReadInt, state, input_ref, show_io)
+            process_syscall_request(mips_state, ReadSyscalls::ReadInt, &state, input_ref, show_io)
         }
         WorkerResponse::NeedFloat(mips_state) => process_syscall_request(
             mips_state,
             ReadSyscalls::ReadFloat,
-            state,
+            &state,
             input_ref,
             show_io,
         ),
         WorkerResponse::NeedDouble(mips_state) => process_syscall_request(
             mips_state,
             ReadSyscalls::ReadDouble,
-            state,
+            &state,
             input_ref,
             show_io,
         ),
         WorkerResponse::NeedChar(mips_state) => process_syscall_request(
             mips_state,
             ReadSyscalls::ReadChar,
-            state,
+            &state,
             input_ref,
             show_io,
         ),
         WorkerResponse::NeedString(mips_state) => process_syscall_request(
             mips_state,
             ReadSyscalls::ReadString,
-            state,
+            &state,
             input_ref,
             show_io,
         ),
@@ -220,7 +221,7 @@ pub fn handle_response_from_worker(
 }
 
 pub fn submit_input(
-    worker: &UseBridgeHandle<Worker>,
+    worker: &UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input_ref: &UseStateHandle<NodeRef>,
     state: &UseStateHandle<State>,
 ) {
@@ -231,7 +232,7 @@ pub fn submit_input(
             match curr.input_needed.as_ref().unwrap_throw() {
                 ReadInt => match input.value().parse::<i32>() {
                     Ok(num) => {
-                        process_syscall_response(state.clone(), worker.clone(), input, Int(num));
+                        process_syscall_response(state, worker.clone(), input, Int(num));
                     }
                     Err(_e) => {
                         let error_msg =
@@ -252,7 +253,7 @@ pub fn submit_input(
 
                 ReadFloat => match input.value().parse::<f32>() {
                     Ok(num) => {
-                        process_syscall_response(state.clone(), worker.clone(), input, Float(num));
+                        process_syscall_response(state, worker.clone(), input, Float(num));
                     }
 
                     Err(_e) => {
@@ -274,7 +275,7 @@ pub fn submit_input(
 
                 ReadDouble => match input.value().parse::<f64>() {
                     Ok(num) => {
-                        process_syscall_response(state.clone(), worker.clone(), input, Double(num));
+                        process_syscall_response(state, worker.clone(), input, Double(num));
                     }
                     Err(_e) => {
                         error!("Failed to parse input '{}' as an f64", input.value());
@@ -283,7 +284,7 @@ pub fn submit_input(
 
                 ReadChar => match input.value().parse::<char>() {
                     Ok(char) => process_syscall_response(
-                        state.clone(),
+                        state,
                         worker.clone(),
                         input,
                         Char(char as u8),
@@ -307,7 +308,7 @@ pub fn submit_input(
 
                 ReadString => {
                     let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
-                    process_syscall_response(state.clone(), worker.clone(), input, String(string));
+                    process_syscall_response(state, worker.clone(), input, String(string));
                 }
             }
         } else {
@@ -318,7 +319,7 @@ pub fn submit_input(
 
 // same default values for EOF as crates/mipsy/src/main.rs
 pub fn submit_eof(
-    worker: &UseBridgeHandle<Worker>,
+    worker: &UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input_ref: &UseStateHandle<NodeRef>,
     state: &UseStateHandle<State>,
 ) {
@@ -328,24 +329,24 @@ pub fn submit_eof(
             use ReadSyscalls::*;
             match curr.input_needed.as_ref().unwrap_throw() {
                 ReadInt => {
-                    process_syscall_response(state.clone(), worker.clone(), input, Int(0));
+                    process_syscall_response(state, worker.clone(), input, Int(0));
                 }
 
                 ReadFloat => {
-                    process_syscall_response(state.clone(), worker.clone(), input, Double(0.0));
+                    process_syscall_response(state, worker.clone(), input, Double(0.0));
                 }
 
                 ReadDouble => {
-                    process_syscall_response(state.clone(), worker.clone(), input, Double(0.0));
+                    process_syscall_response(state, worker.clone(), input, Double(0.0));
                 }
 
                 ReadChar => {
-                    process_syscall_response(state.clone(), worker.clone(), input, Char('\0' as u8))
+                    process_syscall_response(state, worker.clone(), input, Char('\0' as u8))
                 }
 
                 ReadString => {
                     let string = format!("{}{}", input.value(), "\n").as_bytes().to_vec();
-                    process_syscall_response(state.clone(), worker.clone(), input, String(string));
+                    process_syscall_response(state, worker.clone(), input, String(string));
                 }
             }
         } else {

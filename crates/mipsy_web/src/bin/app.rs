@@ -15,9 +15,8 @@ fn main() {
     let document = web_sys::window().unwrap().document().unwrap();
     let entry_point = document.get_element_by_id("yew_app").unwrap();
 
-    yew::Renderer::<AppWrapper>::with_root(entry_point);
+    let result = yew::Renderer::<AppWrapper>::with_root(entry_point).render();
 
     wasm_logger::init(wasm_logger::Config::default());
 
-    mipsy_web::split_setup();
 }
