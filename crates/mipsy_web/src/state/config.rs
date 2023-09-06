@@ -7,18 +7,18 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
 
 // i should probably write a macro for this
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 pub struct PrimaryColor(pub String);
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 pub struct SecondaryColor(pub String);
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 pub struct TertiaryColor(pub String);
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 pub struct HighlightColor(pub String);
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 pub struct FontColor(pub String);
 
-#[derive(Clone, PartialEq, Atom, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Atom, Serialize, Deserialize, Debug)]
 #[bounce(observed)]
 pub struct MipsyWebConfig {
     pub mipsy_config: MipsyConfig,
@@ -101,7 +101,7 @@ impl From<std::string::String> for FontColor {
     }
 }
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
 pub enum RegisterBase {
     Hexadecimal,
     Decimal,

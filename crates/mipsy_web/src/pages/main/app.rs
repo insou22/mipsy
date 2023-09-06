@@ -10,7 +10,7 @@ use crate::{
         state::{DisplayedCodeTab, ErrorType, MipsState, RegisterTab, RunningState, State},
         update,
     },
-    worker::{FileInformation, Worker, WorkerRequest},
+    worker::{FileInformation, MipsyWebWorker, WorkerRequest},
 };
 use bounce::use_atom;
 use gloo_console::log;
@@ -37,7 +37,6 @@ pub const NUM_INSTR_BEFORE_RESPONSE: i32 = 40;
 
 #[function_component(App)]
 pub fn render_app() -> Html {
-    let worker = Rc::new(RefCell::new(None));
     /* State Handlers */
     let state: UseStateHandle<State> = use_state_eq(|| State::NoFile);
     let display_modal: UseStateHandle<bool> = use_state_eq(|| false);
@@ -61,42 +60,38 @@ pub fn render_app() -> Html {
     });
     let monaco_cursor = use_atom::<MonacoCursor>();
 
-    if worker.borrow().is_none() {
-        *worker.borrow_mut() = {
+    let worker  = {
             let state = state.clone();
-            let show_tab = show_code_tab.clone();
+            let show_code_tab = show_code_tab.clone();
             let show_io = show_io.clone();
             let file = file.clone();
             let input_ref = input_ref.clone();
-            let worker = worker.clone();
             let is_saved = is_saved.clone();
             let filename = filename.clone();
             let monaco_cursor = monaco_cursor.clone();
-            Some(use_bridge(move |response| {
+            use_bridge(move |response| {
                 let state = state.clone();
-                let show_tab = show_tab.clone();
+                let show_code_tab = show_code_tab.clone();
                 let show_io = show_io.clone();
                 let file = file.clone();
                 let input_ref = input_ref.clone();
-                let worker = worker.clone();
                 let is_saved = is_saved.clone();
                 let filename = filename.clone();
                 let monaco_cursor = monaco_cursor.clone();
                 update::handle_response_from_worker(
                     state,
-                    show_tab,
+                    show_code_tab,
                     show_io,
                     file,
                     filename,
                     response,
-                    worker,
                     input_ref,
                     is_saved,
                     monaco_cursor,
-                )
-            }))
-        };
-    }
+                );
+            })
+    };
+    
 
     let config = use_atom::<MipsyWebConfig>();
 
@@ -340,7 +335,7 @@ pub fn render_app() -> Html {
                             });
                             log!("sending to worker");
 
-                            worker.borrow().as_ref().unwrap().send(input);
+                            worker.send(input);
                         }
 
                         Err(_e) => {}
@@ -374,9 +369,6 @@ pub fn render_app() -> Html {
                 crate::set_localstorage_filename(filename);
                 file.set(Some(updated_content));
                 worker
-                    .borrow()
-                    .as_ref()
-                    .unwrap()
                     .send(WorkerRequest::CompileCode(FileInformation {
                         filename: filename.to_string(),
                         file: clone,
@@ -391,11 +383,11 @@ pub fn render_app() -> Html {
         let input_ref = input_ref.clone();
         Callback::from(move |event: KeyboardEvent| {
             if event.key() == "Enter" {
-                update::submit_input(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_input(&worker, &input_ref, &state);
             };
             if event.key() == "d" && event.ctrl_key() {
                 event.prevent_default();
-                update::submit_eof(worker.borrow().as_ref().unwrap(), &input_ref, &state);
+                update::submit_eof(&worker, &input_ref, &state);
             };
         })
     };
@@ -498,7 +490,7 @@ pub fn render_app() -> Html {
                     {file_loaded}
                     {waiting_syscall}
                     state={state.clone()}
-                    worker={worker.borrow().as_ref().unwrap().clone()}
+                    worker={worker.clone()}
                     {filename}
                     {file}
                     {is_saved}
@@ -559,7 +551,7 @@ pub fn render_app() -> Html {
                         </div>
 
                         <div id="regs" class="overflow-y-auto bg-th-secondary px-2 border-2 border-current">
-                            <Registers state={state.clone()} tab={show_register_tab} worker={worker.borrow().as_ref().unwrap().clone()}/>
+                            <Registers state={state.clone()} tab={show_register_tab} worker={worker.clone()}/>
                         </div>
 
                         <OutputArea
@@ -599,7 +591,7 @@ fn render_running(
     save_keydown: Callback<KeyboardEvent>,
     is_saved: UseStateHandle<bool>,
     show_tab: UseStateHandle<DisplayedCodeTab>,
-    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
+    worker: UseBridgeHandle<MipsyWebWorker>,
 ) -> Html {
     let display_filename = (&*filename.as_deref().unwrap_or("Untitled")).to_string();
 
@@ -626,7 +618,7 @@ fn render_running(
                                         current_instr={curr.mips_state.current_instr}
                                         decompiled={curr.decompiled.clone()}
                                         state={state.clone()}
-                                        worker={worker.borrow().as_ref().unwrap().clone()}
+                                        worker={worker.clone()}
                                     />
                                 }
                             },
@@ -645,7 +637,7 @@ fn render_running(
                                                         current_instr={error.mips_state.current_instr}
                                                         decompiled={error.decompiled.clone()}
                                                         state={state.clone()}
-                                                        worker={worker.borrow().as_ref().unwrap().clone()}
+                                                        worker={worker.clone()}
                                                     />
                                                 </tbody>
                                             </table>
@@ -748,7 +740,7 @@ fn focus_input(input_ref: UseStateHandle<NodeRef>) {
 
 pub fn process_syscall_response(
     state: UseStateHandle<State>,
-    worker: UseBridgeHandle<Worker>,
+    worker: UseBridgeHandle<MipsyWebWorker>,
     input: HtmlInputElement,
     required_type: ReadSyscallInputs,
 ) {

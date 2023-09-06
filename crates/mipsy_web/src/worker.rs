@@ -1,3 +1,4 @@
+use crate::pages::main::app::NUM_INSTR_BEFORE_RESPONSE;
 use crate::state::config::MipsyWebConfig;
 use crate::{state::state::MipsState, utils::decompile, utils::generate_highlighted_line};
 use log::{error, info};
@@ -11,7 +12,7 @@ use mipsy_lib::{runtime::RuntimeSyscallGuard, Binary, InstSet, MipsyError, Runti
 use mipsy_parser::TaggedFile;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
-use yew_agent::{Agent, AgentLink, HandlerId, Public};
+use yew_agent::{Worker, WorkerLink, HandlerId, Public};
 
 //            Worker Overview
 // ___________________________________________
@@ -35,11 +36,11 @@ use yew_agent::{Agent, AgentLink, HandlerId, Public};
 // Worker: Sure, here is a cleared set of registers
 // ____________________________________________
 
-pub struct Worker {
+pub struct MipsyWebWorker {
     // the link that allows to communicate to main thread
-    link: AgentLink<Self>,
+    link: WorkerLink<Self>,
     inst_set: InstSet,
-    file: Option<String>,
+    file: Option<FileInformation>,
     // the runtime may not exist if no binary
     runtime: Option<RuntimeState>,
     // the binary will not exist if we have not been sent a file
@@ -69,7 +70,7 @@ enum RuntimeState {
 
 type NumSteps = i32;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ReadSyscallInputs {
     Int(i32),
     Float(f32),
@@ -79,7 +80,7 @@ pub enum ReadSyscallInputs {
     //Read((i32, Vec<u8>)),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum WorkerRequest {
     // The struct that worker can obtain
     CompileCode(FileInformation),
@@ -93,20 +94,20 @@ pub enum WorkerRequest {
     GiveSyscallValue(MipsState, ReadSyscallInputs),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DecompiledResponse {
     pub decompiled: String,
     pub file: Option<String>,
     pub binary: Binary,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FileInformation {
     pub file: String,
     pub filename: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     // error is RuntimeError, ParseError, or CompilerError
     pub error: MipsyError,
@@ -117,13 +118,13 @@ pub struct ErrorResponse {
     pub message: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RuntimeErrorResponse {
     pub error: MipsyError,
     pub mips_state: MipsState,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum WorkerResponse {
     DecompiledCode(DecompiledResponse),
     WorkerError(ErrorResponse),
@@ -139,13 +140,13 @@ pub enum WorkerResponse {
     RuntimeError(RuntimeErrorResponse), //NeedRead((i32, Vec<u8>)),
 }
 
-impl Agent for Worker {
+impl Worker for MipsyWebWorker {
     type Reach = Public<Self>;
     type Message = ();
     type Input = WorkerRequest;
     type Output = WorkerResponse;
 
-    fn create(link: AgentLink<Self>) -> Self {
+    fn create(link: WorkerLink<Self>) -> Self {
         Self {
             link,
             inst_set: mipsy_instructions::inst_set(),
@@ -176,6 +177,7 @@ impl Agent for Worker {
         let mut breakpoint = false;
         let mut watchpoint = false;
         let mut watchpoints = Vec::new();
+        log::info!("Handling input {msg:#?}");
         match msg {
             Self::Input::CompileCode(FileInformation { file, filename }) => {
                 // TODO(shreys): this is a hack to get the file to compile
@@ -198,7 +200,7 @@ impl Agent for Worker {
                         let runtime = mipsy_lib::runtime(&binary, &[]);
                         self.binary = Some(binary);
                         self.runtime = Some(RuntimeState::Running(runtime));
-                        self.file = Some(file);
+                        self.file = Some(FileInformation { file, filename });
                         self.link.respond(id, response)
                     }
 
@@ -250,8 +252,9 @@ impl Agent for Worker {
                             // if we are not running, then just recompile the file (since we have
                             // lost the old runtime lawl)
                             if let Some(binary) = &self.binary {
+                                let file = self.file.clone().map(|file| file.file);
                                 let decompiled =
-                                    decompile(binary, &self.inst_set, self.file.clone());
+                                    decompile(binary, &self.inst_set, file);
                                 let response = Self::Output::DecompiledCode(DecompiledResponse {
                                     decompiled,
                                     file: None,
@@ -264,7 +267,8 @@ impl Agent for Worker {
                         }
                     }
                 } else if let Some(binary) = &self.binary {
-                    let decompiled = decompile(binary, &self.inst_set, self.file.clone());
+                    let file = self.file.clone().map(|file| file.file);
+                    let decompiled = decompile(binary, &self.inst_set, file);
                     let response = Self::Output::DecompiledCode(DecompiledResponse {
                         decompiled,
                         file: None,
@@ -687,6 +691,7 @@ impl Agent for Worker {
                                             breakpoint = true;
                                             break;
                                         }
+                                        info!("end of printchar");
                                     }
 
                                     ReadInt(guard) => {
@@ -892,6 +897,13 @@ impl Agent for Worker {
                     self.runtime = Some(RuntimeState::Running(runtime));
 
                     let response;
+
+                    let file_info = FileInformation {
+                        filename,
+                        file,
+                    };
+
+
                     if mips_state.exit_status.is_some() {
                         mips_state.stdout.push(format!(
                             "\nProgram exited with exit status {}",
@@ -899,7 +911,8 @@ impl Agent for Worker {
                                 .exit_status
                                 .expect("infinite loop guarantees Some return")
                         ));
-                        response = Self::Output::ProgramExited(mips_state);
+                        response = Self::Output::ProgramExited(mips_state.clone());
+                        self.link.respond(id, response);
                     } else if breakpoint {
                         // the label or address
                         let label = binary
@@ -912,7 +925,8 @@ impl Agent for Worker {
                             .mipsy_stdout
                             .push(format!("BREAKPOINT - {label}"));
 
-                        response = Self::Output::UpdateMipsState(mips_state);
+                        response = Self::Output::UpdateMipsState(mips_state.clone());
+                        self.link.respond(id, response);
                     } else if watchpoint {
                         for wp in watchpoints {
                             mips_state.mipsy_stdout.push(format!(
@@ -926,23 +940,25 @@ impl Agent for Worker {
                             ));
                         }
 
-                        response = Self::Output::UpdateMipsState(mips_state);
+                        response = Self::Output::UpdateMipsState(mips_state.clone());
+                        self.link.respond(id, response);
                     } else if step_size.abs() == 1 {
                         // just update the state
-                        response = Self::Output::UpdateMipsState(mips_state);
+                        response = Self::Output::UpdateMipsState(mips_state.clone());
+                        self.link.respond(id, response);
                     } else {
                         // update state and tell frontend to run more isntructions
-                        response = Self::Output::InstructionOk(mips_state);
+                        response = Self::Output::InstructionOk(mips_state.clone());
+                        self.link.respond(id, response);
+                        self.link.send_input(WorkerRequest::Run(mips_state, NUM_INSTR_BEFORE_RESPONSE, file_info));
                     }
-
-                    self.link.respond(id, response);
                 }
             }
         }
     }
 }
 
-impl Worker {
+impl MipsyWebWorker {
     fn upload_syscall_value<T>(
         &mut self,
         mut mips_state: MipsState,
@@ -966,10 +982,10 @@ impl Worker {
 
         if mips_state.is_stepping {
             self.link
-                .respond(id, <Worker as Agent>::Output::UpdateMipsState(mips_state))
+                .respond(id, <MipsyWebWorker as Worker>::Output::UpdateMipsState(mips_state))
         } else {
             self.link
-                .respond(id, <Worker as Agent>::Output::InstructionOk(mips_state))
+                .respond(id, <MipsyWebWorker as Worker>::Output::InstructionOk(mips_state))
         }
     }
 }
