@@ -3,7 +3,6 @@ use crate::{
     state::state::{DisplayedCodeTab, ErrorType, MipsState, RunningState, State},
     worker::{FileInformation, MipsyWebWorker, WorkerRequest},
 };
-use bounce::{use_atom, UseAtomHandle};
 use derivative::Derivative;
 use gloo_worker::{WorkerBridge, Worker};
 use log::info;
@@ -18,6 +17,7 @@ pub struct NavBarProps {
     pub settings_modal: UseStateHandle<bool>,
     pub file_loaded: bool,
     pub waiting_syscall: bool,
+    pub state: UseStateHandle<State>,
     pub is_saved: UseStateHandle<bool>,
     #[derivative(PartialEq = "ignore")]
     pub worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
@@ -34,7 +34,7 @@ struct Icon {
     is_disabled: bool,
 }
 
-fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
+fn icons(props: &NavBarProps) -> Vec<Icon> {
     let icons = vec![
         Icon {
             label: String::from("Save"),
@@ -76,7 +76,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
             title: String::from("Run program"),
             callback: Some({
                 let worker = props.worker.clone();
-                let state = state.clone();
+                let state = props.state.clone();
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 let show_tab = props.show_tab.clone();
@@ -123,7 +123,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
             title: String::from("Reset Runtime"),
             callback: Some({
                 let worker = props.worker.clone();
-                let state = state.clone();
+                let state = props.state.clone();
                 Callback::from(move |_| {
                     info!("Reset button clicked");
 
@@ -160,7 +160,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
                     }
                 })
             }),
-            is_disabled: match **state {
+            is_disabled: match &*props.state {
                 State::Compiled(_) => false,
                 State::Error(ErrorType::RuntimeError(_)) => false,
                 State::Error(ErrorType::CompilerOrParserError(_)) => true,
@@ -176,7 +176,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
             },
             title: String::from("Stop executing program"),
             callback: Some({
-                let state = state.clone();
+                let state = props.state.clone();
                 Callback::from(move |_| {
                     info!("Kill button clicked");
                     if let State::Compiled(curr) = &*state {
@@ -199,7 +199,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
             title: String::from("Step backwards"),
             callback: Some({
                 let worker = props.worker.clone();
-                let state = state.clone();
+                let state = props.state.clone();
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
@@ -238,7 +238,7 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
             title: String::from("Step forwards"),
             callback: Some({
                 let worker = props.worker.clone();
-                let state = state.clone();
+                let state = props.state.clone();
                 let file = props.file.clone();
                 let filename = props.filename.clone();
                 Callback::from(move |_| {
@@ -295,9 +295,8 @@ fn icons(props: &NavBarProps, state: &UseAtomHandle<State>) -> Vec<Icon> {
 
 #[function_component(NavBar)]
 pub fn render_navbar(props: &NavBarProps) -> Html {
-    let state = use_atom::<State>();
-    let icons = icons(props.clone(), &state);
-    let exit_status = match &*state {
+    let icons = icons(props.clone());
+    let exit_status = match &*props.state {
         State::Compiled(curr) => Some(curr.mips_state.exit_status),
         _ => None,
     };

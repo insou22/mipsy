@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::pages::main::app::ReadSyscalls;
-use bounce::Atom;
 use mipsy_lib::{Binary, MipsyError, Runtime, Safe};
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +17,7 @@ pub enum RegisterTab {
     AllRegisters,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MipsState {
     pub stdout: Vec<String>,
     pub mipsy_stdout: Vec<String>,
@@ -69,15 +68,14 @@ impl MipsState {
     }
 }
 
-#[derive(Atom, Debug, PartialEq, Clone, Default)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum State {
-    #[default]
     NoFile,
     Error(ErrorType),
     Compiled(RunningState),
 }
 
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct RunningState {
     pub decompiled: String,
     pub mips_state: MipsState,

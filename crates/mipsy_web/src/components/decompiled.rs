@@ -2,7 +2,6 @@ use crate::{
     state::state::{ErrorType::RuntimeError, State},
     worker::{MipsyWebWorker, WorkerRequest},
 };
-use bounce::use_atom;
 use derivative::Derivative;
 use gloo_worker::WorkerBridge;
 use yew::{classes, function_component, html, Html, Callback, Properties, UseStateHandle};
@@ -12,6 +11,7 @@ use yew::{classes, function_component, html, Html, Callback, Properties, UseStat
 pub struct DecompiledProps {
     pub current_instr: Option<u32>,
     pub decompiled: String,
+    pub state: UseStateHandle<State>,
 
     #[derivative(PartialEq = "ignore")]
     pub worker: UseStateHandle<WorkerBridge<MipsyWebWorker>>,
@@ -21,8 +21,6 @@ pub struct DecompiledProps {
 pub fn render_decompiled(props: &DecompiledProps) -> Html {
     let runtime_instr = props.current_instr.unwrap_or(0);
     let decompiled = &props.decompiled;
-    let state = use_atom::<State>();
-
     html! {
             <pre class="text-xs">
             <table>
@@ -49,7 +47,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
                         };
 
 
-                        let current_is_breakpoint = match &*state {
+                        let current_is_breakpoint = match &*props.state {
 
                             State::NoFile => unreachable!("cannot have decompiled if no file"),
                             State::Error(error_type) => {
@@ -72,7 +70,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
                         };
 
                         let toggle_breakpoint = {
-                            let state = state.clone();
+                            let state = props.state.clone();
                             let item = String::from(item);
                             let source_instr = source_instr.clone();
                             let worker = props.worker.clone();

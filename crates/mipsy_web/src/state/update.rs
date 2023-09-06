@@ -20,12 +20,13 @@ use gloo_worker::WorkerBridge;
 use log::{error, info};
 use mipsy_lib::Safe;
 use std::collections::HashMap;
+use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 pub fn handle_response_from_worker(
-    state: UseAtomHandle<State>,
+    state: &UseStateHandle<State>,
     show_code_tab: &UseStateHandle<DisplayedCodeTab>,
     show_io: &UseStateHandle<bool>,
     file: &UseStateHandle<Option<String>>,
@@ -35,6 +36,8 @@ pub fn handle_response_from_worker(
     is_saved: &UseStateHandle<bool>,
     monaco_cursor: &UseAtomHandle<MonacoCursor>,
 ) {
+
+    let state = state.to_owned();
     match response {
         WorkerResponse::DecompiledCode(response_struct) => {
             log!("recieved decompiled code from worker");
@@ -220,7 +223,7 @@ pub fn handle_response_from_worker(
 pub fn submit_input(
     worker: &UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input_ref: &UseStateHandle<NodeRef>,
-    state: &UseAtomHandle<State>,
+    state: &UseStateHandle<State>,
 ) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
         if let State::Compiled(curr) = &**state {
@@ -318,7 +321,7 @@ pub fn submit_input(
 pub fn submit_eof(
     worker: &UseStateHandle<WorkerBridge<MipsyWebWorker>>,
     input_ref: &UseStateHandle<NodeRef>,
-    state: &UseAtomHandle<State>,
+    state: &UseStateHandle<State>,
 ) {
     if let Some(input) = input_ref.cast::<HtmlInputElement>() {
         if let State::Compiled(curr) = &**state {
