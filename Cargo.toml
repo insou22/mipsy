@@ -1,0 +1,42 @@
+[package]
+name = "mipsy_web"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+
+[dependencies]
+yew = "0.19.3"
+yew-agent = "0.1.0"
+gloo-file = "0.2.0"
+gloo-utils = { version = "0.1.5", features = ["serde"]}
+web-sys = { version="0.3.55", features=["Element", "EventTarget", "HtmlElement", "HtmlSelectElement"] }
+mipsy_lib = { path = "../mipsy_lib" }
+mipsy_instructions = { path = "../mipsy_instructions", features = ["rt_yaml"] }
+mipsy_parser = { path = "../mipsy_parser" }
+mipsy_utils = { path = "../mipsy_utils" }
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+serde = { version = "1", features = ["rc"] }
+log = "0.4.14"
+wasm-logger = "0.2.0"
+git-version = "0.3.5"
+derivative = "2.2.0"
+gloo-console = "0.2.1"
+bounce = "0.3.0"
+serde_json = "1.0.82"
+
+# [profile.release]
+# # less code to include into binary
+# panic = 'abort'
+# # optimization over all codebase ( better optimization, slower build )
+# codegen-units = 1
+# # optimization for size ( more aggressive )
+# opt-level = 'z'
+# # optimization for size
+# # opt-level = 's'
+# # link time optimization using using whole-program analysis
+# lto = true
