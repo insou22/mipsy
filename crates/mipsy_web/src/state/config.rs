@@ -134,7 +134,7 @@ impl From<std::string::String> for RegisterBase {
 
 impl Default for RegisterBase {
     fn default() -> Self {
-        RegisterBase::Decimal
+        RegisterBase::Mixed
     }
 }
 
