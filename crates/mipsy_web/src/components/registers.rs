@@ -2,12 +2,12 @@ use crate::components::data_segment::{FP_COLOR, SP_COLOR};
 use crate::components::decompiled::{StopIconFilled, StopIconOutline};
 use crate::state::config::{MipsyWebConfig, RegisterBase};
 use crate::state::state::{ErrorType, RegisterTab, State};
-use crate::worker::{Worker, WorkerRequest};
+use crate::worker::{MipsyWebWorker, WorkerRequest};
 use bounce::use_atom;
 use derivative::Derivative;
 use mipsy_lib::compile::breakpoints::{TargetAction, WatchpointTarget};
 use mipsy_lib::{Register, Safe, KDATA_BOT, TEXT_BOT};
-use yew::{function_component, html, Callback, Properties, UseStateHandle};
+use yew::{function_component, html, Html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
 
 const MIXED_BASE_MIN_ADDRESS: u32 = TEXT_BOT - 1024;
@@ -20,7 +20,13 @@ pub struct RegisterProps {
     pub tab: UseStateHandle<RegisterTab>,
 
     #[derivative(PartialEq = "ignore")]
-    pub worker: UseBridgeHandle<Worker>,
+    pub worker: UseBridgeHandle<MipsyWebWorker>,
+}
+
+pub fn register_is_uncommon(index: usize) -> bool {
+    index == usize::from(Register::K0.to_number()) ||
+        index == usize::from(Register::K1.to_number()) ||
+        index == usize::from(Register::Gp.to_number())
 }
 
 #[function_component(Registers)]
@@ -33,18 +39,15 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
 
     let config = use_atom::<MipsyWebConfig>();
 
-    let show_uninitialised_registers = match &*props.tab {
-        RegisterTab::AllRegisters => true,
-        _ => false,
-    };
+    let show_uninitialised_registers = matches!(&*props.tab, RegisterTab::AllRegisters);
 
     let registers = mips_state
         .clone()
-        .map(|state| state.register_values.clone())
+        .map(|state| state.register_values)
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
     let previous_registers = mips_state
-        .map(|state| state.previous_registers.clone())
+        .map(|state| state.previous_registers)
         .unwrap_or_else(|| vec![Safe::Uninitialised; 32]);
 
     html! {
@@ -68,16 +71,8 @@ pub fn render_running_registers(props: &RegisterProps) -> Html {
             <tbody>
             {
                 for registers.iter().enumerate().map(|(index, item)| {
-                    if !show_uninitialised_registers &&
-                        config.hide_uncommon_registers &&
-                        (index == usize::from(Register::K0.to_number()) ||
-                         index == usize::from(Register::K1.to_number()) ||
-                         index == usize::from(Register::Gp.to_number())
-                        )
-                    {
-                        html!{}
-                    }
-                    else if !show_uninitialised_registers && item == &Safe::Uninitialised {
+                    // dont' show uninit registers, or uncommon K0, K1, GP 
+                    if !show_uninitialised_registers && !register_is_uncommon(index) && item.as_option().is_some() {
                         html!{}
                     }
                     else {
