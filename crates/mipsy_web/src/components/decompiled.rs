@@ -23,7 +23,7 @@ pub fn render_decompiled(props: &DecompiledProps) -> Html {
     let decompiled = &props.decompiled;
     html! {
             <pre class="text-xs">
-            <table>
+            <table id="decompiled_output">
             { html! {
                 for decompiled.as_str().split("\n").into_iter().map(|item| {
                     if item == "" {

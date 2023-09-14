@@ -2,3 +2,16 @@ dist/
 tailwind.css
 Session.vim
 _static/tailwind.css
+node_modules/
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+# Yarn v3 (Plug'n'Play) and Zero-Installs
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

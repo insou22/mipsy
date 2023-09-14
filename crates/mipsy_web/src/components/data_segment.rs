@@ -56,7 +56,7 @@ pub fn data_segment(props: &DataSegmentProps) -> Html {
     let mut curr_segment = Segment::None;
 
     html! {
-        <div id="output" style="min-width: 650px;margin-top: 10px;">
+        <div id="data_output" style="min-width: 650px;margin-top: 10px;">
             <div style="width: 100%;">
                 {
                     for pages.into_iter().map(|(page_addr, page_contents)| {
