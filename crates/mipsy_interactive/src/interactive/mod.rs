@@ -422,77 +422,85 @@ impl State {
                         let value = runtime_handler::sys12_read_char(verbose);
                         self.runtime = guard(value);
                     }
+                    #[cfg(feature = "raw_io")]
+                    Open(args, guard) => {
+                        let value = runtime_handler::sys13_open(verbose, args);
+                        self.runtime = guard(value);
+                    }
+                    #[cfg(feature = "raw_io")]
+                    Read(args, guard) => {
+                        let value = runtime_handler::sys14_read(verbose, args);
+                        self.runtime = guard(value);
+                    }
+                    #[cfg(feature = "raw_io")]
+                    Write(args, guard) => {
+                        let value = runtime_handler::sys15_write(verbose, args);
+                        self.runtime = guard(value);
+                    }
+                    #[cfg(feature = "raw_io")]
+                    Close(args, guard) => {
+                        let value = runtime_handler::sys16_close(verbose, args);
+                        self.runtime = guard(value);
+                    }
+                    #[allow(unreachable_patterns)] // fall-through
                     Open(_args, guard) => {
-                        // TODO: implement file open for mipsy interactive frontend
-
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
+
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
                                     syscall: SYS13_OPEN,
-                                    reason: InvalidSyscallReason::Unimplemented,
+                                    reason: InvalidSyscallReason::Disabled,
                                 },
                             )),
                         });
-
-                        // let value = runtime_handler::sys13_open(verbose, args);
-                        // self.runtime = Some(guard(value));
                     }
+                    #[allow(unreachable_patterns)] // fall-through
                     Read(_args, guard) => {
-                        // TODO: implement file read for mipsy interactive frontend
-
-                        let mut new_runtime = guard((-1, Vec::new()));
+                        let mut new_runtime = guard((-1, vec![]));
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
+
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
                                     syscall: SYS14_READ,
-                                    reason: InvalidSyscallReason::Unimplemented,
+                                    reason: InvalidSyscallReason::Disabled,
                                 },
                             )),
                         });
-
-                        // let value = runtime_handler::sys14_read(verbose, args);
-                        // self.runtime = Some(guard(value));
                     }
+                    #[allow(unreachable_patterns)] // fall-through
                     Write(_args, guard) => {
-                        // TODO: implement file write for mipsy interactive frontend
-
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
+
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
                                     syscall: SYS15_WRITE,
-                                    reason: InvalidSyscallReason::Unimplemented,
+                                    reason: InvalidSyscallReason::Disabled,
                                 },
                             )),
                         });
-
-                        // let value = runtime_handler::sys15_write(verbose, args);
-                        // self.runtime = Some(guard(value));
                     }
+                    #[allow(unreachable_patterns)] // fall-through
                     Close(_args, guard) => {
-                        // TODO: implement file close for mipsy interactive frontend
-
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
                         self.runtime = new_runtime;
+
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
                                     syscall: SYS16_CLOSE,
-                                    reason: InvalidSyscallReason::Unimplemented,
+                                    reason: InvalidSyscallReason::Disabled,
                                 },
                             )),
                         });
-
-                        // let value = runtime_handler::sys16_close(verbose, args);
-                        // self.runtime = Some(guard(value));
                     }
                     ExitStatus(args, new_runtime) => {
                         self.runtime = new_runtime;

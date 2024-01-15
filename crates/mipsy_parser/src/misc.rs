@@ -52,8 +52,8 @@ fn leftover_tokens_strip_multispace(i: Span<'_>, file_name: Option<Rc<str>>) -> 
     }
 }
 
-const IDENT_FIRST_CHAR: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
-const IDENT_CONTD_CHARS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
+const IDENT_FIRST_CHAR: &str = "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_";
+const IDENT_CONTD_CHARS: &str = "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789.";
 
 pub fn escape_char(char: char) -> String {
     match char {
