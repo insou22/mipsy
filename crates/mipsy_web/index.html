@@ -131,7 +131,11 @@
       }
 
       function set_editor_value(value="") {
-        window.editor.setValue(value);
+        // Don't unnecesarily call editor.setValue(),
+        // since setValue will also reset undo history.
+        if (get_editor_value() !== value) {
+          window.editor.setValue(value);
+        }
       }
 
       function get_editor_value() {
