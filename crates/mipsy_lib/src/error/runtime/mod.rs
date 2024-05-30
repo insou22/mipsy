@@ -99,6 +99,7 @@ pub enum AlignmentRequirement {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum InvalidSyscallReason {
     Unimplemented, // Invalid becasue we don't have an implementation for it but it does exist
+    Disabled,      // The syscall is disabled (compilation flag)
     Unknown,       // Invalid because it doesn't exist to begin with
 }
 
@@ -977,6 +978,13 @@ impl Error {
                         // $v0 is a valid value, but mipsy doesn't implement the operation
                         error.push_str(&format!(
                             "\nthe syscall number `{}` is not implemented.\n",
+                            syscall.to_string().bold()
+                        ));
+                    }
+                    InvalidSyscallReason::Disabled => {
+                        // $v0 is a valid value, but mipsy doesn't implement the operation
+                        error.push_str(&format!(
+                            "\nthe syscall number `{}` is disabled; try enabling some features\n",
                             syscall.to_string().bold()
                         ));
                     }
