@@ -10,7 +10,7 @@ use crate::{
         },
     },
     worker::{
-        FileInformation, ReadSyscallInputs, RuntimeErrorResponse, Worker, WorkerRequest,
+        FileInformation, ReadSyscallInputs, RuntimeErrorResponse, MipsyWebWorker, WorkerRequest,
         WorkerResponse,
     },
 };
@@ -32,7 +32,6 @@ pub fn handle_response_from_worker(
     file: UseStateHandle<Option<String>>,
     filename: UseStateHandle<Option<String>>,
     response: WorkerResponse,
-    worker: Rc<RefCell<Option<UseBridgeHandle<Worker>>>>,
     input_ref: UseStateHandle<NodeRef>,
     is_saved: UseStateHandle<bool>,
     monaco_cursor: UseAtomHandle<MonacoCursor>,
@@ -142,7 +141,8 @@ pub fn handle_response_from_worker(
                         ..curr.clone()
                     }));
 
-                    worker.borrow().as_ref().unwrap().send(input);
+                    // TODO(shreys) verify this isn't needed?
+                    // worker.borrow().as_ref().unwrap().send(input);
                 }
 
                 state.set(State::Compiled(RunningState {
@@ -220,7 +220,7 @@ pub fn handle_response_from_worker(
 }
 
 pub fn submit_input(
-    worker: &UseBridgeHandle<Worker>,
+    worker: &UseBridgeHandle<MipsyWebWorker>,
     input_ref: &UseStateHandle<NodeRef>,
     state: &UseStateHandle<State>,
 ) {
@@ -318,7 +318,7 @@ pub fn submit_input(
 
 // same default values for EOF as crates/mipsy/src/main.rs
 pub fn submit_eof(
-    worker: &UseBridgeHandle<Worker>,
+    worker: &UseBridgeHandle<MipsyWebWorker>,
     input_ref: &UseStateHandle<NodeRef>,
     state: &UseStateHandle<State>,
 ) {

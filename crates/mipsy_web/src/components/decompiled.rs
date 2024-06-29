@@ -1,9 +1,9 @@
 use crate::{
     state::state::{ErrorType::RuntimeError, State},
-    worker::{Worker, WorkerRequest},
+    worker::{MipsyWebWorker, WorkerRequest},
 };
 use derivative::Derivative;
-use yew::{classes, function_component, html, Callback, Properties, UseStateHandle};
+use yew::{classes, function_component, html, Html, Callback, Properties, UseStateHandle};
 use yew_agent::UseBridgeHandle;
 
 #[derive(Properties, Derivative)]
@@ -14,7 +14,7 @@ pub struct DecompiledProps {
     pub state: UseStateHandle<State>,
 
     #[derivative(PartialEq = "ignore")]
-    pub worker: UseBridgeHandle<Worker>,
+    pub worker: UseBridgeHandle<MipsyWebWorker>,
 }
 
 #[function_component(DecompiledCode)]
