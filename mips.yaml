@@ -214,7 +214,7 @@ instructions:
       reads: [Rs, Rt]
 
   - name: DIV
-    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO
+    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in LO, and $Rs % $Rt in HI
     compile:
       format: [Rs, Rt]
     runtime:
@@ -223,7 +223,7 @@ instructions:
       reads: [Rs, Rt]
 
   - name: DIVU
-    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in HI, and $Rs % $Rt in LO, unsigned
+    desc_short: Divides the values in $Rs and $Rt, storing the $Rs / $Rt in LO, and $Rs % $Rt in HI, unsigned
     compile:
       format: [Rs, Rt]
     runtime:
