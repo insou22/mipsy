@@ -384,97 +384,62 @@ fn main() {
                                 let character: char = get_input_eof("character").unwrap_or('\0');
                                 runtime = guard(character as u8);
                             }
+                            #[cfg(feature = "raw_io")]
+                            Open(args, guard) => {
+                                use std::ffi::CString;
+
+                                let name = CString::new(args.path)
+                                    .expect("runtime should have removed \\0");
+                                let fd = unsafe {
+                                    libc::open(name.as_ptr(), args.flags as i32, args.mode)
+                                };
+                                runtime = guard(fd);
+                            }
+                            #[cfg(feature = "raw_io")]
+                            Read(args, guard) => {
+                                let mut vec = vec![0u8; args.len as usize];
+                                let read = unsafe {
+                                    libc::read(args.fd as i32, vec.as_mut_ptr().cast(), vec.len())
+                                };
+                                runtime = guard((read as i32, vec));
+                            }
+                            #[cfg(feature = "raw_io")]
+                            Write(args, guard) => {
+                                let write = unsafe {
+                                    libc::write(
+                                        args.fd as i32,
+                                        args.buf.as_ptr().cast(),
+                                        args.buf.len(),
+                                    )
+                                } as i32;
+                                runtime = guard(write);
+                            }
+                            #[cfg(feature = "raw_io")]
+                            Close(args, guard) => {
+                                let close = unsafe { libc::close(args.fd as i32) } as i32;
+                                runtime = guard(close);
+                            }
+                            #[allow(unreachable_patterns)] // fall-through
                             Open(_args, guard) => {
-                                // TODO: implement file open for mipsy cli frontend
-                                runtime = guard(-1);
-                                runtime.timeline_mut().pop_last_state();
-                                println!();
-                                RuntimeError::new(Error::InvalidSyscall {
-                                    syscall: SYS13_OPEN,
-                                    reason: InvalidSyscallReason::Unimplemented,
-                                })
-                                .show_error(
-                                    ErrorContext::Binary,
-                                    files
-                                        .iter()
-                                        .map(|(tag, content)| {
-                                            (Rc::from(&**tag), Rc::from(&**content))
-                                        })
-                                        .collect(),
-                                    &iset,
-                                    &binary,
-                                    &runtime,
-                                );
-                                process::exit(1);
+                                disabled_raw_io(SYS13_OPEN, guard(-1), files, iset, binary);
                             }
+                            #[allow(unreachable_patterns)] // fall-through
                             Read(_args, guard) => {
-                                // TODO: implement file read for mipsy cli frontend
-                                runtime = guard((-1, Vec::new()));
-                                runtime.timeline_mut().pop_last_state();
-                                println!();
-                                RuntimeError::new(Error::InvalidSyscall {
-                                    syscall: SYS14_READ,
-                                    reason: InvalidSyscallReason::Unimplemented,
-                                })
-                                .show_error(
-                                    ErrorContext::Binary,
-                                    files
-                                        .iter()
-                                        .map(|(tag, content)| {
-                                            (Rc::from(&**tag), Rc::from(&**content))
-                                        })
-                                        .collect(),
-                                    &iset,
-                                    &binary,
-                                    &runtime,
+                                disabled_raw_io(
+                                    SYS14_READ,
+                                    guard((-1, vec![])),
+                                    files,
+                                    iset,
+                                    binary,
                                 );
-                                process::exit(1);
                             }
+                            #[allow(unreachable_patterns)] // fall-through
                             Write(_args, guard) => {
-                                // TODO: implement file write for mipsy cli frontend
-                                runtime = guard(-1);
-                                runtime.timeline_mut().pop_last_state();
-                                println!();
-                                RuntimeError::new(Error::InvalidSyscall {
-                                    syscall: SYS15_WRITE,
-                                    reason: InvalidSyscallReason::Unimplemented,
-                                })
-                                .show_error(
-                                    ErrorContext::Binary,
-                                    files
-                                        .iter()
-                                        .map(|(tag, content)| {
-                                            (Rc::from(&**tag), Rc::from(&**content))
-                                        })
-                                        .collect(),
-                                    &iset,
-                                    &binary,
-                                    &runtime,
-                                );
-                                process::exit(1);
+                                disabled_raw_io(SYS15_WRITE, guard(-1), files, iset, binary);
                             }
+                            #[allow(unreachable_patterns)] // fall-through
                             Close(_args, guard) => {
-                                // TODO: implement file close for mipsy cli frontend
-                                runtime = guard(-1);
-                                runtime.timeline_mut().pop_last_state();
-                                println!();
-                                RuntimeError::new(Error::InvalidSyscall {
-                                    syscall: SYS16_CLOSE,
-                                    reason: InvalidSyscallReason::Unimplemented,
-                                })
-                                .show_error(
-                                    ErrorContext::Binary,
-                                    files
-                                        .iter()
-                                        .map(|(tag, content)| {
-                                            (Rc::from(&**tag), Rc::from(&**content))
-                                        })
-                                        .collect(),
-                                    &iset,
-                                    &binary,
-                                    &runtime,
-                                );
-                                process::exit(1);
+                                disabled_raw_io(SYS16_CLOSE, guard(-1), files, iset, binary);
                             }
                             ExitStatus(args, _new_runtime) => {
                                 std::process::exit(args.exit_code);
@@ -512,6 +477,31 @@ fn main() {
             }
         }
     }
+}
+
+fn disabled_raw_io(
+    syscall: i32,
+    mut runtime: Runtime,
+    files: Vec<(String, String)>,
+    iset: InstSet,
+    binary: Binary,
+) -> ! {
+    runtime.timeline_mut().pop_last_state();
+    let err = RuntimeError::new(Error::InvalidSyscall {
+        syscall,
+        reason: InvalidSyscallReason::Disabled,
+    });
+    err.show_error(
+        ErrorContext::Binary,
+        files
+            .iter()
+            .map(|(tag, content)| (Rc::from(&**tag), Rc::from(&**content)))
+            .collect(),
+        &iset,
+        &binary,
+        &runtime,
+    );
+    process::exit(1);
 }
 
 fn read_string(_max_len: u32) -> String {

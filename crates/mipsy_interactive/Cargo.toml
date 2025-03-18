@@ -4,10 +4,11 @@ version = "0.1.0"
 authors = ["insou22 <zac.kologlu@gmail.com>"]
 edition = "2021"
 
-[lib]
-path = "src/lib.rs"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["raw_io"]
+raw_io = ["libc"]
 
 [dependencies]
 mipsy_lib          = { version = "0.1.0", path = "../mipsy_lib" }
@@ -25,3 +26,5 @@ text_io = "0.1.8"           # to read values in, w/out per line
 dirs = "3.0"                # for user config directory
 ctrlc = { version = "3.0", features = ["termination"] } # for interrupt handling during execution
 termsize = "0.1"            # to get terminal width info
+
+libc = { version = "0.2.152", optional = true }

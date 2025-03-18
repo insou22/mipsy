@@ -8,6 +8,7 @@ use std::{
 
 use super::{prompt, TargetWatch};
 use colored::*;
+#[cfg(feature = "raw_io")]
 use mipsy_lib::runtime::{CloseArgs, OpenArgs, ReadArgs, WriteArgs};
 use std::io::Write;
 use text_io::try_read;
@@ -267,26 +268,49 @@ pub(crate) fn sys12_read_char(verbose: bool) -> u8 {
     character as u8
 }
 
-// TODO: implement file handling in mipsy interactive
+#[cfg(feature = "raw_io")]
+pub(crate) fn sys13_open(verbose: bool, args: OpenArgs) -> i32 {
+    use std::ffi::CString;
 
-#[allow(unused)]
-pub(crate) fn sys13_open(_verbose: bool, _args: OpenArgs) -> i32 {
-    todo!()
+    let name = CString::new(args.path).expect("runtime should have removed \\0");
+
+    if verbose {
+        prompt::syscall_nl(
+            13,
+            format!("open({:?}, {}, {})", name, args.flags, args.mode),
+        );
+    }
+
+    unsafe { libc::open(name.as_ptr(), args.flags as i32, args.mode) }
 }
 
-#[allow(unused)]
-pub(crate) fn sys14_read(_verbose: bool, _args: ReadArgs) -> (i32, Vec<u8>) {
-    todo!()
+#[cfg(feature = "raw_io")]
+pub(crate) fn sys14_read(verbose: bool, args: ReadArgs) -> (i32, Vec<u8>) {
+    if verbose {
+        prompt::syscall_nl(14, format!("read({}, {})", args.fd, args.len));
+    }
+
+    let mut vec = vec![0u8; args.len as usize];
+    let read = unsafe { libc::read(args.fd as i32, vec.as_mut_ptr().cast(), args.len as usize) };
+    (read as i32, vec)
 }
 
-#[allow(unused)]
-pub(crate) fn sys15_write(_verbose: bool, _args: WriteArgs) -> i32 {
-    todo!()
+#[cfg(feature = "raw_io")]
+pub(crate) fn sys15_write(verbose: bool, args: WriteArgs) -> i32 {
+    if verbose {
+        prompt::syscall_nl(15, format!("write({}, {:?})", args.fd, args.buf));
+    }
+
+    unsafe { libc::write(args.fd as i32, args.buf.as_ptr().cast(), args.buf.len()) as i32 }
 }
 
-#[allow(unused)]
-pub(crate) fn sys16_close(_verbose: bool, _args: CloseArgs) -> i32 {
-    todo!()
+#[cfg(feature = "raw_io")]
+pub(crate) fn sys16_close(verbose: bool, args: CloseArgs) -> i32 {
+    if verbose {
+        prompt::syscall_nl(16, format!("close({})", args.fd));
+    }
+
+    unsafe { libc::close(args.fd as i32) as i32 }
 }
 
 pub(crate) fn sys17_exit_status(verbose: bool, val: i32) {
