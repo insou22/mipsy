@@ -2,9 +2,9 @@ name: Test Mipsy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
         # windows can't build spim because of bison
         # TODO: find a way to build spim on windows (choco doesn't install bison somewhere we can use it)
         # macOS can't run tests because of how it handles SIGPIPE
@@ -28,25 +28,26 @@ jobs:
         experimental: [false]
 
     steps:
-    - name: Check out repository code
-      uses: actions/checkout@v2
+      - name: Check out repository code
+        uses: actions/checkout@v2
 
-    - name: Build
-      run: cargo build --verbose --package mipsy
+      - name: Build
+        run: cargo build --verbose --package mipsy
 
-    - name: Install SPIM
-      shell: bash
-      run: |
-        svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
-        cd spimsimulator-code/spim
-        make PREFIX="$HOME"
-        make PREFIX="$HOME" test
-        make PREFIX="$HOME" install
-        echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Install SPIM
+        shell: bash
+        run: |
+          sudo apt-get install -y subversion
+          svn checkout svn://svn.code.sf.net/p/spimsimulator/code/ spimsimulator-code
+          cd spimsimulator-code/spim
+          make PREFIX="$HOME"
+          make PREFIX="$HOME" test
+          make PREFIX="$HOME" install
+          echo "$HOME/bin" >> $GITHUB_PATH
 
-    - name: Test
-      shell: bash
-      run: |
-        echo "$HOME/bin" >> $GITHUB_PATH
-        cd ${{ github.workspace }}
-        bash scripts/compare.sh
+      - name: Test
+        shell: bash
+        run: |
+          echo "$HOME/bin" >> $GITHUB_PATH
+          cd ${{ github.workspace }}
+          bash scripts/compare.sh
