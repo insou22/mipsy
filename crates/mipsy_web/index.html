@@ -12,13 +12,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <script>
+      function waitForElm(selector) {
+        return new Promise(resolve => {
+            if (document.querySelector(selector)) {
+                return resolve(document.querySelector(selector));
+            }
+
+            const observer = new MutationObserver(mutations => {
+                if (document.querySelector(selector)) {
+                    observer.disconnect();
+                    resolve(document.querySelector(selector));
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+      };
+
       function split_setup() {
-        Split(["#file_data", "#information"], {
-          sizes: [70, 30],
-        });
-        Split(["#regs", "#output"], {
-          direction: "vertical",
-        });
+        // wait for the elements to be created
+        // then split them
+        waitForElm("#file_data").then(() => {
+          Split(["#file_data", "#information"], {
+            sizes: [70, 30],
+          });
+          Split(["#regs", "#output"], {
+            direction: "vertical",
+          });
+
+        })
       };
 
       function alarm() {

@@ -90,7 +90,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 label={"font size"}
                                 hide_label={true}
                                 // TODO - config selected, min max and font step
-                                selected_value={(*config).font_size.to_string()}
+                                selected_value={config.font_size.to_string()}
                                 options={
                                     (10..=70_i32)
                                         .step_by(2)
@@ -132,7 +132,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 })}
                                 label={"tab size"}
                                 hide_label={true}
-                                selected_value={(*config).tab_size.to_string()}
+                                selected_value={config.tab_size.to_string()}
                                 // TODO - config selected, min max and font step
                                 options={
                                     (2..=8_i32)
@@ -162,7 +162,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             })}
                             label={"register base"}
                             hide_label={true}
-                            selected_value={(*config).register_base.to_string()}
+                            selected_value={config.register_base.to_string()}
                             options={
                                 vec!["Hexadecimal".to_string(), "Decimal".to_string(), "Binary".to_string(), "Mixed".to_string()]
                             }
@@ -198,7 +198,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                             })}}
                             label={"monaco theme"}
                             hide_label={true}
-                            selected_value={(*config).monaco_theme.clone()}
+                            selected_value={config.monaco_theme.clone()}
                             options={
                                 vec![
                                     "vs".to_string(),
@@ -226,7 +226,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                 })
 
                             }
-                            color={(&*config.font_color.0).to_string()}
+                            color={(*config.font_color.0).to_string()}
                         />
                         <button
                             type="button"
@@ -238,7 +238,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                         font_color: FontColor::default(),
                                         ..(*config).clone()
                                     });
-                                    crate::update_font_color(&*FontColor::default().0);
+                                    crate::update_font_color(&FontColor::default().0);
                                 })
                             }
                         >
@@ -267,7 +267,7 @@ pub fn render_modal(props: &ModalProps) -> Html {
                                     crate::update_primary_color(&val);
                                 })
                             }
-                            color={(&*config.primary_color.0).to_string()}
+                            color={(*config.primary_color.0).to_string()}
                         />
 
                         <button
