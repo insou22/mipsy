@@ -98,6 +98,7 @@ pub fn render_output_area(props: &OutputProps) -> Html {
             <div
                 style={if *props.show_io {"height: 80%;"} else {"height: 90%;"}}
                 class="py-2 w-full flex overflow-y-auto flex-wrap-reverse bg-th-secondary px-2 border-2 border-current"
+                id={if *props.show_io {"program_io_output"} else {"program_mipsy_output"}}
             >
                 <div class="w-full overflow-y-auto">
                 <h1>
@@ -110,7 +111,11 @@ pub fn render_output_area(props: &OutputProps) -> Html {
                 </pre>
                 </div>
             </div>
-            <div style="height: 10%;" class={if *props.show_io {"border-l-2 border-r-2 border-b-2 border-current"} else {"hidden"}}>
+            <div 
+                style="height: 10%;" 
+                class={if *props.show_io {"border-l-2 border-r-2 border-b-2 border-current"} else {"hidden"}}
+                id="user_input_container"
+            >
                 <input
                     ref={props.input_ref.clone()}
                     id="user_input"

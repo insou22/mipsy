@@ -360,8 +360,9 @@ pub fn render_navbar(props: &NavBarProps) -> Html {
                             item.title.clone()
                         };
 
+                        let id_label = item.label.clone().to_lowercase().replace(" ", "_");
                         html! {
-                            <button tabindex=0 {title} disabled={is_disabled} {onclick} class={button_classes}>
+                            <button id={format!("{id_label}_button")} tabindex=0 {title} disabled={is_disabled} {onclick} class={button_classes}>
                                 { item.html.clone() }
                                 { item.label.clone() }
                             </button>

@@ -1,0 +1,7 @@
+{
+  "name": "mipsy_web",
+  "packageManager": "yarn@3.6.3",
+  "devDependencies": {
+    "@playwright/test": "^1.37.1"
+  }
+}
