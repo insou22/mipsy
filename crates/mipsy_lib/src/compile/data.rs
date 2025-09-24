@@ -259,8 +259,13 @@ pub(super) fn eval_directive(
             align(binary, segment, multiple)
         }
         MpDirective::Space((num, def)) => {
-            let num =
-                eval_constant_in_range(num, u32::MIN as _, u32::MAX as _, binary, file_tag.clone())? as u32;
+            let num = eval_constant_in_range(
+                num,
+                u32::MIN as _,
+                u32::MAX as _,
+                binary,
+                file_tag.clone(),
+            )? as u32;
 
             let space_byte = if let Some(def) = def {
                 Safe::Valid(eval_constant_in_range(

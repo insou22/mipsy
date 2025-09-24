@@ -161,7 +161,7 @@ fn parse_single_num_type<'a, T: Clone>(
         let (rem, (.., l)) = tuple((
             tag(tag_str),
             comment_multispace0,
-            parse_def_len_num_type(parser)
+            parse_def_len_num_type(parser),
         ))(i)?;
 
         Ok((rem, l))
@@ -178,7 +178,7 @@ fn parse_num_type<'a, T: Clone>(
             comment_multispace0,
             separated_list1(
                 map(tuple((space0, char(','), space0)), |_| ()),
-                parse_def_len_num_type(parser)
+                parse_def_len_num_type(parser),
             ),
             opt(char(',')),
         ))(i)?;
@@ -233,8 +233,8 @@ fn parse_space(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
             parse_single_num_type(".space", parse_constant_value),
             |(d, n)| match n {
                 Some(n) => (n, Some(d)),
-                None => (d, None)
-            }
+                None => (d, None),
+            },
         ),
         MpDirective::Space,
     )(i)
