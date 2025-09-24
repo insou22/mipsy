@@ -35,7 +35,7 @@ pub enum MpDirective {
     Float(Vec<(f32, Option<MpConstValueLoc>)>),
     Double(Vec<(f64, Option<MpConstValueLoc>)>),
     Align(MpConstValueLoc),
-    Space(MpConstValueLoc),
+    Space((MpConstValueLoc, Option<MpConstValueLoc>)),
     Globl(String),
 }
 
@@ -141,6 +141,33 @@ fn parse_asciiz(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
     map(parse_ascii_type(".asciiz"), MpDirective::Asciiz)(i)
 }
 
+fn parse_def_len_num_type<'a, T: Clone>(
+    parser: fn(Span<'a>) -> IResult<Span<'a>, T>,
+) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, (T, Option<MpConstValueLoc>)> {
+    alt((
+        map(
+            tuple((parser, space0, char(':'), space0, parse_constant_value)),
+            |(value, .., n)| (value, Some(n)),
+        ),
+        map(parser, |value| (value, None)),
+    ))
+}
+
+fn parse_single_num_type<'a, T: Clone>(
+    tag_str: &'static str,
+    parser: fn(Span<'a>) -> IResult<Span<'a>, T>,
+) -> impl FnMut(Span<'a>) -> IResult<Span<'a>, (T, Option<MpConstValueLoc>)> {
+    move |i| {
+        let (rem, (.., l)) = tuple((
+            tag(tag_str),
+            comment_multispace0,
+            parse_def_len_num_type(parser)
+        ))(i)?;
+
+        Ok((rem, l))
+    }
+}
+
 fn parse_num_type<'a, T: Clone>(
     tag_str: &'static str,
     parser: fn(Span<'a>) -> IResult<Span<'a>, T>,
@@ -151,13 +178,7 @@ fn parse_num_type<'a, T: Clone>(
             comment_multispace0,
             separated_list1(
                 map(tuple((space0, char(','), space0)), |_| ()),
-                alt((
-                    map(
-                        tuple((parser, space0, char(':'), space0, parse_constant_value)),
-                        |(value, _, _, _, n)| (value, Some(n)),
-                    ),
-                    map(parser, |value| (value, None)),
-                )),
+                parse_def_len_num_type(parser)
             ),
             opt(char(',')),
         ))(i)?;
@@ -207,7 +228,16 @@ fn parse_u32_type<'a>(
 }
 
 fn parse_space(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
-    map(parse_u32_type(".space"), MpDirective::Space)(i)
+    map(
+        map(
+            parse_single_num_type(".space", parse_constant_value),
+            |(d, n)| match n {
+                Some(n) => (n, Some(d)),
+                None => (d, None)
+            }
+        ),
+        MpDirective::Space,
+    )(i)
 }
 
 fn parse_align(i: Span<'_>) -> IResult<Span<'_>, MpDirective> {
