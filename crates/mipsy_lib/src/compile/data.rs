@@ -340,25 +340,7 @@ pub fn populate_labels_and_data(
                     ))) = arg.0
                     {
                         if let Some(&value) = binary.constants.get(label) {
-                            if u16::MIN as i64 <= value && u16::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(
-                                    value as _,
-                                )));
-                            } else if i16::MIN as i64 <= value && i16::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(
-                                    value as _,
-                                )));
-                            } else if u32::MIN as i64 <= value && u32::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U32(
-                                    value as _,
-                                )));
-                            } else if i32::MIN as i64 <= value && i32::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I32(
-                                    value as _,
-                                )));
-                            } else {
-                                todo!();
-                            }
+                            arg.0 = MpArgument::Number(MpNumber::Immediate(value.into()))
                         }
                     }
                 }
@@ -366,7 +348,7 @@ pub fn populate_labels_and_data(
                 // We can't compile instructions yet - so just keep track of
                 // how many bytes-worth we've seen so far
                 let inst_length =
-                    instruction_length(iset, instruction).into_compiler_mipsy_result(
+                    instruction_length(binary, iset, instruction).into_compiler_mipsy_result(
                         file_tag.clone(),
                         line,
                         instruction.col(),
@@ -456,7 +438,11 @@ pub fn populate_labels_and_data(
     Ok(())
 }
 
-pub fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> MipsyResult<i64> {
+pub fn eval_constant(
+    binary: &Binary,
+    constant: &MpConstValueLoc,
+    file: Rc<str>,
+) -> MipsyResult<i64> {
     Ok(match &constant.0 {
         &MpConstValue::Value(value) => value as _,
         MpConstValue::Const(label) => binary

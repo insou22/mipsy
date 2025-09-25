@@ -63,10 +63,12 @@ impl CompilerError {
     // TODO(zkol): Can't just pull tab_size from the config, since
     // file may have #![tabsize(...)]
     fn highlight_line(&self, config: &MipsyConfig, file: Rc<str>) {
-        let line = file
-            .lines()
-            .nth((self.line - 1) as usize)
-            .expect("invalid line position in compiler error");
+        let line = file.lines().nth((self.line - 1) as usize);
+        if line.is_none() {
+            return;
+        }
+        let line = line.unwrap();
+        // .expect("invalid line position in compiler error");
 
         let updated_line = {
             let mut updated_line = String::new();

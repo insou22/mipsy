@@ -2,10 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
-use crate::{error::MipsyInternalResult, Binary, TEXT_BOT, compile::data::eval_constant};
+use crate::{compile::data::eval_constant, error::MipsyInternalResult, Binary, TEXT_BOT};
 use mipsy_parser::{
-    parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber,
-    MpOffsetOperator, MpRegister, MpRegisterIdentifier,
+    parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister,
+    MpRegisterIdentifier,
 };
 
 #[derive(Debug, Clone)]
@@ -279,20 +279,20 @@ impl InstSet {
             .find(|&native_inst| native_inst.name == name)
     }
 
-    pub fn find_native(&self, inst: &MpInstruction) -> Option<&InstSignature> {
+    pub fn find_native(&self, inst: &MpInstruction, program: &Binary) -> Option<&InstSignature> {
         let name = inst.name().to_ascii_lowercase();
 
-        self.native_set
-            .iter()
-            .find(|&native_inst| native_inst.name == name && native_inst.compile.matches(inst))
+        self.native_set.iter().find(|&native_inst| {
+            native_inst.name == name && native_inst.compile.matches(inst, program)
+        })
     }
 
-    pub fn find_pseudo(&self, inst: &MpInstruction) -> Option<&PseudoSignature> {
+    pub fn find_pseudo(&self, inst: &MpInstruction, program: &Binary) -> Option<&PseudoSignature> {
         let name = inst.name().to_ascii_lowercase();
 
-        self.pseudo_set
-            .iter()
-            .find(|&pseudo_inst| pseudo_inst.name == name && pseudo_inst.compile.matches(inst))
+        self.pseudo_set.iter().find(|&pseudo_inst| {
+            pseudo_inst.name == name && pseudo_inst.compile.matches(inst, program)
+        })
     }
 }
 
@@ -374,7 +374,9 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         },
-                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "hi".into()).unwrap() as u32,
+                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
+                            .map_err(|e| e.into_internal_error())?
+                            as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
                     },
@@ -399,7 +401,9 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         },
-                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "hi".into()).unwrap() as u64 as u32,
+                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
+                            .map_err(|e| e.into_internal_error())?
+                            as u64 as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
                     },
@@ -464,11 +468,14 @@ impl InstSignature {
 }
 
 impl CompileSignature {
-    pub fn matches(&self, inst: &MpInstruction) -> bool {
-        self.matches_args(inst.arguments().iter().map(|(arg, _, _)| arg).collect())
+    pub fn matches(&self, inst: &MpInstruction, program: &Binary) -> bool {
+        self.matches_args(
+            inst.arguments().iter().map(|(arg, _, _)| arg).collect(),
+            program,
+        )
     }
 
-    pub fn matches_args(&self, args: Vec<&MpArgument>) -> bool {
+    pub fn matches_args(&self, args: Vec<&MpArgument>, program: &Binary) -> bool {
         if self.format.len() != args.len() {
             return false;
         }
@@ -476,7 +483,7 @@ impl CompileSignature {
         for (i, (my_arg, &their_arg)) in self.format.iter().zip(args.iter()).enumerate() {
             // labels are only relative as the final argument
             let relative_label = (i == args.len() - 1) && self.relative_label;
-            if !my_arg.matches(their_arg, relative_label) {
+            if !my_arg.matches(their_arg, relative_label, program) {
                 return false;
             }
         }
@@ -508,7 +515,7 @@ impl fmt::Display for ArgumentType {
 }
 
 impl ArgumentType {
-    fn matches(&self, arg: &MpArgument, relative_label: bool) -> bool {
+    fn matches(&self, arg: &MpArgument, relative_label: bool, program: &Binary) -> bool {
         match arg {
             MpArgument::Register(register) => match register {
                 MpRegister::Normal(_) => matches!(self, Self::Rd | Self::Rs | Self::Rt),
@@ -527,45 +534,46 @@ impl ArgumentType {
                 },
                 MpRegister::BinaryOpOffset(..) => matches!(self, Self::Off32Rs | Self::Off32Rt),
             },
-            MpArgument::Number(number) => {
-                match number {
-                    MpNumber::Immediate(immediate) => match immediate {
-                        &MpImmediate::I16(num) => match self {
-                            Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
-                            Self::U16 | Self::U32 => num >= 0,
-                            Self::Shamt => (0..=31).contains(&num),
-                            _ => false,
-                        },
-                        MpImmediate::U16(_) => matches!(
-                            self,
-                            Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt
-                        ),
-                        &MpImmediate::I32(num) => match self {
-                            Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
-                            Self::U32 => num >= 0,
-                            _ => false,
-                        },
-                        MpImmediate::U32(_) => {
-                            matches!(self, Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt)
-                        }
-                        MpImmediate::LabelReference(_) => match self {
-                            Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
-                            Self::I16 => relative_label,
-                            _ => false,
-                        },
+            MpArgument::Number(number) => match number {
+                MpNumber::Immediate(immediate) => match immediate {
+                    &MpImmediate::I16(num) => match self {
+                        Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
+                        Self::U16 | Self::U32 => num >= 0,
+                        Self::Shamt => (0..=31).contains(&num),
+                        _ => false,
                     },
-                    MpNumber::Constant(cnst) => {
-                        // self.matches(csnt, relative_label)
-                        // self.matches(csnt, relative_label)
-                        true
+                    MpImmediate::U16(_) => matches!(
+                        self,
+                        Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt
+                    ),
+                    &MpImmediate::I32(num) => match self {
+                        Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
+                        Self::U32 => num >= 0,
+                        _ => false,
+                    },
+                    MpImmediate::U32(_) => {
+                        matches!(self, Self::J | Self::U32 | Self::Off32Rs | Self::Off32Rt)
                     }
-                    MpNumber::Char(_) => {
-                        matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32)
-                    }
-                    MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
-                    MpNumber::Float64(_) => matches!(self, Self::F64),
+                    MpImmediate::LabelReference(_) => match self {
+                        Self::I32 | Self::U32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
+                        Self::I16 => relative_label,
+                        _ => false,
+                    },
+                },
+                MpNumber::Constant(cnst) => match eval_constant(program, cnst, "".into()) {
+                    Ok(c) => self.matches(
+                        &MpArgument::Number(MpNumber::Immediate(c.into())),
+                        relative_label,
+                        program,
+                    ),
+                    Err(_) => false,
+                },
+                MpNumber::Char(_) => {
+                    matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32)
                 }
-            } // MpArgument::LabelPlusConst(..)
+                MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
+                MpNumber::Float64(_) => matches!(self, Self::F64),
+            }, // MpArgument::LabelPlusConst(..)
         }
     }
 }
@@ -703,7 +711,7 @@ impl PseudoSignature {
                 },
                 &MpNumber::Char(chr) => (chr as u16, 0_u16),
                 MpNumber::Constant(cnst) => {
-                    let val = eval_constant(program, cnst, "hi".into()).unwrap();
+                    let val = eval_constant(program, cnst, "".into()).unwrap();
                     ((val as u16 & 0xFFFF) as u16, (val >> 16) as u16)
                 }
                 _ => unreachable!(),

@@ -1,7 +1,9 @@
 use std::fmt;
 
 use crate::{
-    constant::parse_constant_value, misc::{escape_char, parse_escaped_char, parse_ident}, MpConstValueLoc, Span
+    constant::parse_constant_value,
+    misc::{escape_char, parse_escaped_char, parse_ident},
+    MpConstValueLoc, Span,
 };
 use nom::{
     branch::alt,
@@ -31,6 +33,7 @@ pub enum MpImmediate {
     U32(u32),
     LabelReference(String),
 }
+
 impl fmt::Display for MpNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -51,6 +54,23 @@ impl fmt::Display for MpImmediate {
             Self::I32(i) => write!(f, "{}", i),
             Self::U32(i) => write!(f, "{}", i),
             Self::LabelReference(label) => write!(f, "{}", label),
+        }
+    }
+}
+
+impl From<i64> for MpImmediate {
+    fn from(n: i64) -> Self {
+        // immediate_in_range!(n, u16, i16, u32, i32)
+        if (u16::MIN as i64..=u16::MAX as i64).contains(&n) {
+            MpImmediate::U16(n as _)
+        } else if (i16::MIN as i64..=i16::MAX as i64).contains(&n) {
+            MpImmediate::I16(n as _)
+        } else if (u32::MIN as i64..=u32::MAX as i64).contains(&n) {
+            MpImmediate::U32(n as _)
+        } else if (i32::MIN as i64..=i32::MAX as i64).contains(&n) {
+            MpImmediate::I32(n as _)
+        } else {
+            todo!()
         }
     }
 }
