@@ -23,13 +23,10 @@ pub mod base;
 pub mod meta;
 
 use crate::meta::DeriveStatementYaml;
-#[cfg(feature = "rt_yaml")]
 use mipsy_lib::InstSet;
 
-#[cfg(feature = "rt_yaml")]
 static MIPS_YAML: &str = include_str!("../../../mips.yaml");
 
-#[cfg(feature = "rt_yaml")]
 pub fn inst_set() -> InstSet {
     let meta_yaml = serde_yaml::from_str(MIPS_YAML)
         .unwrap_or_else(|e| panic!("Failed to parse mips.yaml: {e}"));

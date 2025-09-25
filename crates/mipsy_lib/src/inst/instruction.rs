@@ -349,15 +349,17 @@ impl InstSignature {
                     MpArgument::Register(MpRegister::Normal(reg)) => reg.to_register()?.to_u32(),
                     _ => unreachable!(),
                 },
-                ArgumentType::Shamt => 0x1F & match arg {
-                    &MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
-                        num as u16 as u32
-                    },
-                    &MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(num))) => {
-                        num as u32
+                ArgumentType::Shamt => {
+                    0x1F & match arg {
+                        &MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
+                            num as u16 as u32
+                        }
+                        &MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(num))) => {
+                            num as u32
+                        }
+                        _ => unreachable!(),
                     }
-                    _ => unreachable!(),
-                },
+                }
                 ArgumentType::I16 => match arg {
                     MpArgument::Number(num) => match num {
                         MpNumber::Immediate(imm) => match imm {
@@ -538,7 +540,9 @@ impl ArgumentType {
                             _ => false,
                         },
                         MpImmediate::U16(num) => match self {
-                            Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
+                            Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => {
+                                true
+                            }
                             Self::Shamt => (0..=31).contains(num),
                             _ => false,
                         },
