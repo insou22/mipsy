@@ -2,7 +2,10 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
-use crate::{compile::data::eval_constant, error::MipsyInternalResult, Binary, TEXT_BOT};
+use crate::{
+    compile::data::eval_constant, error::compiler::Error::UnresolvedConstant,
+    error::MipsyInternalResult, Binary, TEXT_BOT,
+};
 use mipsy_parser::{
     parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister,
     MpRegisterIdentifier,
@@ -560,20 +563,31 @@ impl ArgumentType {
                         _ => false,
                     },
                 },
-                MpNumber::Constant(cnst) => match eval_constant(program, cnst, "".into()) {
-                    Ok(c) => self.matches(
-                        &MpArgument::Number(MpNumber::Immediate(c.into())),
-                        relative_label,
-                        program,
-                    ),
-                    Err(_) => false,
-                },
+                MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
+                    .or_else(|e| {
+                        if let crate::MipsyError::Compiler(c) = &e {
+                            if matches!(c.error(), UnresolvedConstant { .. }) {
+                                Ok(0)
+                            } else {
+                                Err(e)
+                            }
+                        } else {
+                            Err(e)
+                        }
+                    })
+                    .is_ok_and(|c| {
+                        self.matches(
+                            &MpArgument::Number(MpNumber::Immediate(c.into())),
+                            relative_label,
+                            program,
+                        )
+                    }),
                 MpNumber::Char(_) => {
                     matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32)
                 }
                 MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
                 MpNumber::Float64(_) => matches!(self, Self::F64),
-            }, // MpArgument::LabelPlusConst(..)
+            },
         }
     }
 }

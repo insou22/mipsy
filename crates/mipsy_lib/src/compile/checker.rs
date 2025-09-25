@@ -3,7 +3,6 @@ use std::rc::Rc;
 use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber};
 
 use crate::{
-    compile::data::eval_constant,
     error::{compiler, ToMipsyResult},
     inst::instruction::ToRegister,
     Binary, CompilerError, MipsyError, MipsyResult, MpProgram, DATA_BOT, HEAP_BOT,
@@ -32,7 +31,7 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
                                 *col_end,
                             )?;
                         }
-                        MpArgument::Number(_) => {} // MpArgument::LabelPlusConst(..) => {}
+                        MpArgument::Number(_) => {}
                     }
                 }
             }
@@ -58,24 +57,8 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
         match item {
             MpItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
-                    match argument {
-                        MpArgument::Register(_) => {}
-                        MpArgument::Number(number) => match number {
-                            MpNumber::Immediate(imm) => {
-                                check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
-                            }
-                            MpNumber::Constant(cnst) => check_imm(
-                                binary,
-                                &eval_constant(binary, cnst, file_tag.clone())?.into(),
-                                file_tag.clone(),
-                                line,
-                                *col,
-                                *col_end,
-                            )?,
-                            MpNumber::Float32(_) => {}
-                            MpNumber::Float64(_) => {}
-                            MpNumber::Char(_) => {}
-                        },
+                    if let MpArgument::Number(MpNumber::Immediate(imm)) = argument {
+                        check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
                     }
                 }
             }
