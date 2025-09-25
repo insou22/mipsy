@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
-use crate::{error::MipsyInternalResult, Binary, TEXT_BOT};
+use crate::{error::MipsyInternalResult, Binary, TEXT_BOT, compile::data::eval_constant};
 use mipsy_parser::{
-    parse_argument, MpArgument, MpImmediate, MpImmediateBinaryOp, MpInstruction, MpNumber,
+    parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber,
     MpOffsetOperator, MpRegister, MpRegisterIdentifier,
 };
 
@@ -374,6 +374,7 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         },
+                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "hi".into()).unwrap() as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
                     },
@@ -398,6 +399,7 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         },
+                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "hi".into()).unwrap() as u64 as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
                     },
@@ -552,9 +554,10 @@ impl ArgumentType {
                             _ => false,
                         },
                     },
-                    MpNumber::BinaryOpImmediate(_imm1, _op, _imm2) => {
-                        // TODO(zkol): this is brittle and based on faulty assumptions
-                        matches!(self, Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt)
+                    MpNumber::Constant(cnst) => {
+                        // self.matches(csnt, relative_label)
+                        // self.matches(csnt, relative_label)
+                        true
                     }
                     MpNumber::Char(_) => {
                         matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32)
@@ -699,27 +702,9 @@ impl PseudoSignature {
                     }
                 },
                 &MpNumber::Char(chr) => (chr as u16, 0_u16),
-                MpNumber::BinaryOpImmediate(imm1, op, imm2) => {
-                    let (lower1, upper1) = self.lower_upper(
-                        program,
-                        &MpArgument::Number(MpNumber::Immediate(imm1.clone())),
-                        last,
-                    )?;
-                    let (lower2, upper2) = self.lower_upper(
-                        program,
-                        &MpArgument::Number(MpNumber::Immediate(imm2.clone())),
-                        last,
-                    )?;
-
-                    let i1 = (((upper1 as u32) << 16) | lower1 as u32) as i32;
-                    let i2 = (((upper2 as u32) << 16) | lower2 as u32) as i32;
-
-                    let value = match op {
-                        MpImmediateBinaryOp::Plus => i1.wrapping_add(i2),
-                        MpImmediateBinaryOp::Minus => i1.wrapping_sub(i2),
-                    } as u32;
-
-                    ((value & 0xFFFF) as u16, (value >> 16) as u16)
+                MpNumber::Constant(cnst) => {
+                    let val = eval_constant(program, cnst, "hi".into()).unwrap();
+                    ((val as u16 & 0xFFFF) as u16, (val >> 16) as u16)
                 }
                 _ => unreachable!(),
             },

@@ -3,9 +3,7 @@ use std::rc::Rc;
 use mipsy_parser::{MpArgument, MpImmediate, MpItem, MpNumber};
 
 use crate::{
-    error::{compiler, ToMipsyResult},
-    inst::instruction::ToRegister,
-    Binary, CompilerError, MipsyError, MipsyResult, MpProgram, DATA_BOT, HEAP_BOT,
+    compile::data::eval_constant, error::{compiler, ToMipsyResult}, inst::instruction::ToRegister, Binary, CompilerError, MipsyError, MipsyResult, MpProgram, DATA_BOT, HEAP_BOT
 };
 
 pub enum Warning {}
@@ -62,20 +60,14 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
                         MpArgument::Number(number) => match number {
                             MpNumber::Immediate(imm) => {
                                 check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
-                            }
-                            MpNumber::BinaryOpImmediate(i1, _, i2) => {
-                                check_imm(binary, i1, file_tag.clone(), line, *col, *col_end)?;
-                                check_imm(binary, i2, file_tag.clone(), line, *col, *col_end)?;
+                            },
+                            MpNumber::Constant(cnst) => {
+                                check_imm(binary, &MpImmediate::I32(eval_constant(binary, cnst, file_tag.clone()).unwrap() as i32), file_tag.clone(), line, *col, *col_end)?
                             }
                             MpNumber::Float32(_) => {}
                             MpNumber::Float64(_) => {}
                             MpNumber::Char(_) => {}
-                        }, // MpArgument::LabelPlusConst(label, _const) => {
-                           //     if binary.constants.get(label).is_none() {
-                           //         binary.get_label(label)
-                           //             .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
-                           //     }
-                           // }
+                        }
                     }
                 }
             }

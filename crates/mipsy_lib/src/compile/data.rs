@@ -456,7 +456,7 @@ pub fn populate_labels_and_data(
     Ok(())
 }
 
-fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> MipsyResult<i64> {
+pub fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> MipsyResult<i64> {
     Ok(match &constant.0 {
         &MpConstValue::Value(value) => value as _,
         MpConstValue::Const(label) => binary
