@@ -23,7 +23,7 @@ pub mod base;
 pub mod meta;
 
 use crate::meta::DeriveStatementYaml;
-#[allow(unused_imports)] // rust-analyzer seems to think this is unused, but it's not
+#[cfg(feature = "rt_yaml")]
 use mipsy_lib::InstSet;
 
 #[cfg(feature = "rt_yaml")]
@@ -31,9 +31,8 @@ static MIPS_YAML: &str = include_str!("../../../mips.yaml");
 
 #[cfg(feature = "rt_yaml")]
 pub fn inst_set() -> InstSet {
-    let meta_yaml: meta::YamlFile =
-        serde_yaml::from_str(MIPS_YAML).unwrap_or_else(|_| panic!("Failed to parse mips.yaml"));
-
+    let meta_yaml = serde_yaml::from_str(MIPS_YAML)
+        .unwrap_or_else(|e| panic!("Failed to parse mips.yaml: {e}"));
     let base_yaml = load_instructions(meta_yaml);
 
     let inst_set_native = base_yaml.instructions.into_iter().map(Into::into).collect();

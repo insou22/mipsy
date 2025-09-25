@@ -349,9 +349,12 @@ impl InstSignature {
                     MpArgument::Register(MpRegister::Normal(reg)) => reg.to_register()?.to_u32(),
                     _ => unreachable!(),
                 },
-                ArgumentType::Shamt => match arg {
-                    MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
-                        (*num as u16 as u32) & 0x1F
+                ArgumentType::Shamt => 0x1F & match arg {
+                    &MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
+                        num as u16 as u32
+                    },
+                    &MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(num))) => {
+                        num as u32
                     }
                     _ => unreachable!(),
                 },
@@ -471,7 +474,7 @@ impl CompileSignature {
             return false;
         }
 
-        for (i, (my_arg, &their_arg)) in self.format.iter().zip(args.iter()).enumerate() {
+        for (i, (my_arg, their_arg)) in self.format.iter().zip(args.iter()).enumerate() {
             // labels are only relative as the final argument
             let relative_label = (i == args.len() - 1) && self.relative_label;
             if !my_arg.matches(their_arg, relative_label) {
@@ -534,10 +537,11 @@ impl ArgumentType {
                             Self::Shamt => (0..=31).contains(&num),
                             _ => false,
                         },
-                        MpImmediate::U16(_) => matches!(
-                            self,
-                            Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt
-                        ),
+                        MpImmediate::U16(num) => match self {
+                            Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
+                            Self::Shamt => (0..=31).contains(num),
+                            _ => false,
+                        },
                         &MpImmediate::I32(num) => match self {
                             Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                             Self::U32 => num >= 0,
