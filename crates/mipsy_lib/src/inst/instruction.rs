@@ -3,8 +3,9 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
 use crate::{
-    compile::data::eval_constant, error::compiler::Error::UnresolvedConstant,
-    error::MipsyInternalResult, Binary, TEXT_BOT,
+    compile::data::eval_constant,
+    error::{compiler::Error::UnresolvedConstant, InternalError, MipsyInternalResult},
+    Binary, TEXT_BOT,
 };
 use mipsy_parser::{
     parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister,
@@ -378,7 +379,7 @@ impl InstSignature {
                             _ => unreachable!(),
                         },
                         MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
-                            .map_err(|e| e.into_internal_error())?
+                            .map_err(InternalError::from)?
                             as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
@@ -405,7 +406,7 @@ impl InstSignature {
                             _ => unreachable!(),
                         },
                         MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
-                            .map_err(|e| e.into_internal_error())?
+                            .map_err(InternalError::from)?
                             as u64 as u32,
                         &MpNumber::Char(chr) => chr as u8 as u32,
                         _ => unreachable!(),
@@ -725,8 +726,9 @@ impl PseudoSignature {
                 },
                 &MpNumber::Char(chr) => (chr as u16, 0_u16),
                 MpNumber::Constant(cnst) => {
-                    let val = eval_constant(program, cnst, "".into()).unwrap();
-                    ((val as u16 & 0xFFFF) as u16, (val >> 16) as u16)
+                    let val =
+                        eval_constant(program, cnst, "".into()).map_err(InternalError::from)?;
+                    ((val & 0xFFFF) as u16, (val >> 16) as u16)
                 }
                 _ => unreachable!(),
             },

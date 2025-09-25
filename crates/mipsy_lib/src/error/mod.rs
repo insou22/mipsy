@@ -27,9 +27,9 @@ pub enum InternalError {
     Runtime(runtime::Error),
 }
 
-impl MipsyError {
-    pub fn into_internal_error(&self) -> InternalError {
-        match self {
+impl From<MipsyError> for InternalError {
+    fn from(value: MipsyError) -> InternalError {
+        match value {
             MipsyError::Parser(p) => InternalError::Parser(p.error().clone()),
             MipsyError::Compiler(c) => InternalError::Compiler(c.error().clone()),
             MipsyError::Runtime(r) => InternalError::Runtime(r.error().clone()),
