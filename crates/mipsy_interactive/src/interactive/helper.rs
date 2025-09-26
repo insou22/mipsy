@@ -29,10 +29,22 @@ impl MyHelper {
         self.defaults = defaults
     }
 
-    fn closest(&self, with: &Vec<String>, line: &str, pos: usize) -> Option<String> {
+    fn closest<'a>(&self, with: &Vec<&'a str>, line: &str, pos: usize) -> Vec<&'a str> {
+        if line.is_empty() || pos < line.len() {
+            vec![]
+        } else {
+            with.iter()
+                .filter(|m| m.len() != pos)
+                .filter(|m| m.starts_with(line))
+                .map(|m| *m)
+                .collect()
+        }
+    }
+
+    fn closest_default(&self, line: &str, pos: usize) -> Option<String> {
         if line.is_empty() || pos < line.len() {
             None
-        } else if let Some(found) = with.iter().find(|s| s.starts_with(line)) {
+        } else if let Some(found) = self.defaults.iter().find(|s| s.starts_with(line)) {
             if found.len() == pos {
                 None
             } else {
@@ -65,9 +77,10 @@ impl Completer for MyHelper {
                             ctx.history()
                                 .iter()
                                 .rev()
-                                .map(|h| h.to_owned())
-                                .collect::<Vec<String>>(),
-                            self.defaults.clone(),
+                                .filter(|h| !self.defaults.contains(h))
+                                .map(|h| &h[..])
+                                .collect::<Vec<&str>>(),
+                            self.defaults.iter().map(|s| &s[..]).collect(),
                         ]
                         .concat(),
                         line,
@@ -75,8 +88,8 @@ impl Completer for MyHelper {
                     )
                     .iter()
                     .map(|m| Pair {
-                        display: m.to_owned(),
-                        replacement: m.to_owned(),
+                        display: m.to_string(),
+                        replacement: m[pos..].to_owned(),
                     })
                     .collect(),
                 )
@@ -93,7 +106,7 @@ impl Hinter for MyHelper {
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
         self.hinter
             .hint(line, pos, ctx)
-            .or(self.closest(&self.defaults, line, pos))
+            .or(self.closest_default(line, pos))
     }
 }
 
