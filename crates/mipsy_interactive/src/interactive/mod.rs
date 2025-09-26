@@ -89,24 +89,18 @@ impl State {
     }
 
     fn do_exec(&mut self, line: &str) {
-        let parts = match shlex::split(line) {
-            Some(parts) => parts,
-            None => return,
-        };
-
-        let command_name = match parts.first() {
-            Some(command_name) => command_name,
-            None => return,
-        };
-
-        let command = self.find_command(&command_name.to_ascii_lowercase());
-
-        if command.is_none() {
-            prompt::unknown_command(command_name);
+        let Some(parts) = shlex::split(line) else {
             return;
-        }
+        };
 
-        let command = command.unwrap();
+        let Some(command_name) = parts.first() else {
+            return;
+        };
+
+        let Some(command) = self.find_command(&command_name.to_ascii_lowercase()) else {
+            return prompt::unknown_command(command_name);
+        };
+
         let required = match &command.args {
             Arguments::Exactly {
                 required,
@@ -119,7 +113,7 @@ impl State {
         };
 
         if (parts.len() - 1) < required.len() {
-            self.handle_error(
+            return self.handle_error(
                 CommandError::WithTip {
                     error: Box::new(CommandError::MissingArguments {
                         args: required.to_vec(),
@@ -129,14 +123,11 @@ impl State {
                 },
                 true,
             );
-            return;
         }
 
-        let result = command.exec(self, command_name, &parts[1..]);
-        match result {
-            Ok(_) => {}
-            Err(err) => self.handle_error(err, true),
-        };
+        if let Err(e) = command.exec(self, command_name, &parts[1..]) {
+            self.handle_error(e, true)
+        }
     }
 
     fn handle_error(&self, err: CommandError, nl: bool) {
@@ -661,21 +652,25 @@ pub(crate) fn editor() -> Editor<MyHelper> {
 fn state(config: MipsyConfig) -> State {
     let mut state = State::new(config);
 
-    state.add_command(commands::load_command());
-    state.add_command(commands::run_command());
-    state.add_command(commands::step_command());
-    state.add_command(commands::reset_command());
-    state.add_command(commands::watchpoint_command());
-    state.add_command(commands::breakpoint_command());
-    state.add_command(commands::disassemble_command());
-    state.add_command(commands::context_command());
-    state.add_command(commands::label_command());
-    state.add_command(commands::labels_command());
-    state.add_command(commands::examine_command());
-    state.add_command(commands::print_command());
-    state.add_command(commands::dot_command());
-    state.add_command(commands::help_command());
-    state.add_command(commands::exit_command());
+    for command in [
+        commands::load_command(),
+        commands::run_command(),
+        commands::step_command(),
+        commands::reset_command(),
+        commands::watchpoint_command(),
+        commands::breakpoint_command(),
+        commands::disassemble_command(),
+        commands::context_command(),
+        commands::label_command(),
+        commands::labels_command(),
+        commands::examine_command(),
+        commands::print_command(),
+        commands::dot_command(),
+        commands::help_command(),
+        commands::exit_command(),
+    ] {
+        state.add_command(command);
+    }
 
     state
 }
@@ -683,6 +678,10 @@ fn state(config: MipsyConfig) -> State {
 pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
     let mut state = state(config);
+    rl.helper_mut()
+        .unwrap()
+        .set_defaults(state.commands.iter().map(|c| c.name.to_owned()).collect());
+
     let interrupted = state.interrupted.clone();
     ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))
         .expect("Failed to set signal handler!");
@@ -706,7 +705,7 @@ pub fn launch(config: MipsyConfig) -> ! {
             }
             Err(ReadlineError::Interrupted) => {}
             Err(ReadlineError::Eof) => {
-                std::process::exit(0);
+                break;
             }
             Err(err) => {
                 println!("Error: {:?}", err);

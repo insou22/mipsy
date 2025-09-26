@@ -13,6 +13,7 @@ use std::borrow::Cow::{self, Borrowed, Owned};
 pub(crate) struct MyHelper {
     completer: FilenameCompleter,
     hinter: HistoryHinter,
+    defaults: Vec<String>,
 }
 
 impl MyHelper {
@@ -20,6 +21,25 @@ impl MyHelper {
         Self {
             completer: FilenameCompleter::new(),
             hinter: HistoryHinter {},
+            defaults: vec![],
+        }
+    }
+
+    pub(super) fn set_defaults(&mut self, defaults: Vec<String>) {
+        self.defaults = defaults
+    }
+
+    fn closest(&self, with: &Vec<String>, line: &str, pos: usize) -> Option<String> {
+        if line.is_empty() || pos < line.len() {
+            None
+        } else if let Some(found) = with.iter().find(|s| s.starts_with(line)) {
+            if found.len() == pos {
+                None
+            } else {
+                Some(found[pos..].to_owned())
+            }
+        } else {
+            None
         }
     }
 }
@@ -33,7 +53,37 @@ impl Completer for MyHelper {
         pos: usize,
         ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Pair>), ReadlineError> {
-        self.completer.complete(line, pos, ctx)
+        self.completer.complete(line, pos, ctx).and_then(|x| {
+            // will be 0 for first arg. kinda a hacky way to check if we should match
+            // against files or not but thats okay.
+            // TODO: something like `match self.arg_type() { label => , file => number => }`
+            Ok(if x.0 == 0 {
+                (
+                    pos,
+                    self.closest(
+                        &[
+                            ctx.history()
+                                .iter()
+                                .rev()
+                                .map(|h| h.to_owned())
+                                .collect::<Vec<String>>(),
+                            self.defaults.clone(),
+                        ]
+                        .concat(),
+                        line,
+                        pos,
+                    )
+                    .iter()
+                    .map(|m| Pair {
+                        display: m.to_owned(),
+                        replacement: m.to_owned(),
+                    })
+                    .collect(),
+                )
+            } else {
+                (0, vec![])
+            })
+        })
     }
 }
 
@@ -41,7 +91,9 @@ impl Hinter for MyHelper {
     type Hint = String;
 
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
-        self.hinter.hint(line, pos, ctx)
+        self.hinter
+            .hint(line, pos, ctx)
+            .or(self.closest(&self.defaults, line, pos))
     }
 }
 

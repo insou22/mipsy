@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt};
+use crate::{interactive::error::CommandError, prompt};
 
 use super::*;
 use colored::*;
