@@ -81,7 +81,7 @@ impl Completer for MyHelper {
                     .collect(),
                 )
             } else {
-                (0, vec![])
+                x
             })
         })
     }
