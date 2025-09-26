@@ -36,7 +36,7 @@ impl MyHelper {
             with.iter()
                 .filter(|m| m.len() != pos)
                 .filter(|m| m.starts_with(line))
-                .map(|m| *m)
+                .copied()
                 .collect()
         }
     }
@@ -78,9 +78,12 @@ impl Completer for MyHelper {
                                 .iter()
                                 .rev()
                                 .filter(|h| !self.defaults.contains(h))
-                                .map(|h| &h[..])
+                                .filter(|h| !ctx.history().iter().collect::<Vec<&String>>().contains(h))
+                                .map(String::as_str)
                                 .collect::<Vec<&str>>(),
-                            self.defaults.iter().map(|s| &s[..]).collect(),
+                            self.defaults.iter()
+                                .map(String::as_str)
+.collect(),
                         ]
                         .concat(),
                         line,
