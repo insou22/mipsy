@@ -5,24 +5,29 @@ use std::rc::Rc;
 use mipsy_lib::{compile, MpProgram};
 use mipsy_parser::{parser::MpAttributedItem, MpItem};
 
-use crate::interactive::error::CommandError;
+use crate::interactive::{commands::watchpoint::args_text, error::CommandError};
 
 use super::*;
 
-pub(crate) fn dot_command() -> Command {
-    command_varargs(
-        ".",
-        vec![],
-        vec!["instruction"],
-        "{args}".magenta().to_string(),
-        vec![],
-        "execute a MIPS instruction",
-        |_, state, label, args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name(".")
+        .with_desc("execute a MIPS instruction")
+        .with_var_args()
+        .with_required_arg(Argument::new("instruction", |a| {
+            Ok(ArgumentKind::Any(a.to_owned()))
+        }))
+        .with_varargs_format("{args}".magenta().to_string())
+        .with_exec(|_, state, label, args| {
             if label == "__help__" {
                 return Ok("Executes a MIPS instruction immediately".into());
             }
 
-            let line = args.join(" ");
+            let line = args_text(args)
+                .iter()
+                .map(|&a| a.clone())
+                .collect::<Vec<_>>()
+                .join(" ");
 
             let inst =
                 mipsy_parser::parse_instruction(&line, state.config.tab_size).map_err(|error| {
@@ -81,6 +86,5 @@ pub(crate) fn dot_command() -> Command {
             }
 
             Ok("".into())
-        },
-    )
+        })
 }

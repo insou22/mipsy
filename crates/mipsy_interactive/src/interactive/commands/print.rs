@@ -8,14 +8,26 @@ use mipsy_lib::{Binary, Register};
 use mipsy_parser::*;
 
 #[allow(clippy::format_in_format_args)]
-pub(crate) fn print_command() -> Command {
-    command(
-        "print",
-        vec!["p"],
-        vec!["item"],
-        vec!["format"],
-        vec![],
-        "print an item - a register, value in memory, etc.",
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("print")
+        .with_name("p")
+        .with_desc("print an item - a register, value in memory, etc.")
+        .with_exact_args()
+        .with_required_arg(Argument::new("item", |a| Ok(ArgumentKind::Item(a.to_owned()))))
+        .with_optional_arg(Argument::new("format", |a|
+            match a {
+                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
+                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => Ok(ArgumentKind::Any(a.to_owned())),
+                other => {
+                    Err(CommandError::BadArgument {
+                        arg: "[format]".magenta().to_string(),
+                        instead: other.to_string(),
+                    })
+                }
+            }))
+
+        .with_exec(
         |_, state, label, args| {
             if label == "__help__" {
                 return Ok(
@@ -63,20 +75,14 @@ pub(crate) fn print_command() -> Command {
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
+            let arg = mipsy_parser::parse_argument(if let ArgumentKind::Item(arg) = &args[0] { arg} else { unreachable!()}, state.config.tab_size)
                 .map_err(|_| get_error())?;
 
-            let print_type = &*args.get(1).cloned().unwrap_or_else(|| "word".to_string());
-            match print_type {
-                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
-                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {}
-                other => {
-                    return Err(CommandError::BadArgument {
-                        arg: "[format]".magenta().to_string(),
-                        instead: other.to_string(),
-                    });
-                }
-            }
+            let print_type = match args.get(1) {
+                Some(ArgumentKind::Any(t)) => t.as_str(),
+                None => "word",
+                _ => unreachable!()
+            };
 
             let empty_binary = Binary::default();
             let binary = state.binary.as_ref().unwrap_or(&empty_binary);

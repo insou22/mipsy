@@ -3,14 +3,12 @@ use crate::interactive::error::CommandError;
 use super::*;
 use colored::*;
 
-pub(crate) fn run_command() -> Command {
-    command(
-        "run",
-        vec!["r"],
-        vec![],
-        vec![],
-        vec![],
-        "run the currently loaded program until it finishes",
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("run")
+        .with_name("r")
+        .with_desc("run the currently loaded program until it finishes")
+        .with_exec(
         |_, state, label, _args| {
             if label == "__help__" {
                 return Ok(

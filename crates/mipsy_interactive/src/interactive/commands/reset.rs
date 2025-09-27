@@ -3,15 +3,12 @@ use crate::interactive::prompt;
 use super::*;
 use colored::*;
 
-pub(crate) fn reset_command() -> Command {
-    command(
-        "reset",
-        vec!["re"],
-        vec![],
-        vec![],
-        vec![],
-        "reset the currently loaded program to its initial state",
-        |_, state, label, _args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("reset")
+        .with_name("re")
+        .with_desc("reset the currently loaded program to its initial state")
+        .with_exec(|_, state, label, _args| {
             if label == "__help__" {
                 return Ok(format!(
                     "Resets the currently loaded program to its inital state. This is\n\
@@ -28,6 +25,5 @@ pub(crate) fn reset_command() -> Command {
             prompt::success_nl("program reset");
 
             Ok("".into())
-        },
-    )
+        })
 }

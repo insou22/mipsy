@@ -66,9 +66,6 @@ impl Completer for MyHelper {
         ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Pair>), ReadlineError> {
         self.completer.complete(line, pos, ctx).and_then(|x| {
-            // will be 0 for first arg. kinda a hacky way to check if we should match
-            // against files or not but thats okay.
-            // TODO: something like `match self.arg_type() { label => , file => number => }`
             Ok(if x.0 == 0 {
                 (
                     pos,
@@ -78,12 +75,12 @@ impl Completer for MyHelper {
                                 .iter()
                                 .rev()
                                 .filter(|h| !self.defaults.contains(h))
-                                .filter(|h| !ctx.history().iter().collect::<Vec<&String>>().contains(h))
-                                .map(String::as_str)
+                                .filter(|h| {
+                                    !ctx.history().iter().collect::<Vec<&String>>().contains(h)
+                                })
+                                .map(|h| h.trim())
                                 .collect::<Vec<&str>>(),
-                            self.defaults.iter()
-                                .map(String::as_str)
-.collect(),
+                            self.defaults.iter().map(String::as_str).collect(),
                         ]
                         .concat(),
                         line,

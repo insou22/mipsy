@@ -6,18 +6,25 @@ use mipsy_lib::KTEXT_BOT;
 use mipsy_lib::TEXT_BOT;
 
 #[allow(unreachable_code)]
-pub(crate) fn context_command() -> Command {
-    command(
-        "context",
-        vec!["c", "ctx"],
-        vec![],
-        vec!["n"],
-        vec![],
-        &format!(
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("context")
+        .with_name("c")
+        .with_name("ctx")
+        .with_exact_args()
+        .with_optional_arg(Argument::new("n", |a| {
+            Ok(ArgumentKind::Number(expect_u32(
+                "",
+                &"[n]".bright_magenta(),
+                a,
+                None as Option<&dyn Fn(i32) -> String>,
+            )? as _))
+        }))
+        .with_desc(format!(
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
-        ),
-        |_, state, label, args| {
+        ))
+        .with_exec(|_, state, label, args| {
             if label == "__help__" {
                 return Ok(format!(
                     "prints the current and surrounding 3 (or {}) instructions",
@@ -25,12 +32,11 @@ pub(crate) fn context_command() -> Command {
                 ));
             }
 
-            let f: Option<&dyn Fn(i32) -> String> = None;
-
             let n = match args.first() {
-                Some(arg) => expect_u32(label, &"[n]".bright_magenta(), arg, f),
-                None => Ok(3),
-            }? as i32;
+                Some(ArgumentKind::Number(a)) => *a as _,
+                None => 3,
+                _ => unreachable!(),
+            };
 
             if state.exited {
                 return Err(CommandError::ProgramExited);
@@ -69,6 +75,5 @@ pub(crate) fn context_command() -> Command {
 
             println!();
             Ok("".into())
-        },
-    )
+        })
 }

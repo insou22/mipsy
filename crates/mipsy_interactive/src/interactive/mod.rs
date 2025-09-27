@@ -84,7 +84,7 @@ impl State {
     fn find_command(&self, cmd: &str) -> Option<Command> {
         self.commands
             .iter()
-            .find(|command| command.name == cmd || command.aliases.iter().any(|alias| alias == cmd))
+            .find(|command| command.names.contains(&cmd.to_string()))
             .cloned()
     }
 
@@ -116,8 +116,8 @@ impl State {
             return self.handle_error(
                 CommandError::WithTip {
                     error: Box::new(CommandError::MissingArguments {
-                        args: required.to_vec(),
-                        instead: parts.to_vec(),
+                        args: required.iter().map(|a| a.name().to_owned()).collect(),
+                        instead: parts.clone(),
                     }),
                     tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
                 },
@@ -653,21 +653,21 @@ fn state(config: MipsyConfig) -> State {
     let mut state = State::new(config);
 
     for command in [
-        commands::load_command(),
-        commands::run_command(),
-        commands::step_command(),
-        commands::reset_command(),
-        commands::watchpoint_command(),
-        commands::breakpoint_command(),
-        commands::disassemble_command(),
-        commands::context_command(),
-        commands::label_command(),
-        commands::labels_command(),
-        commands::examine_command(),
-        commands::print_command(),
-        commands::dot_command(),
-        commands::help_command(),
-        commands::exit_command(),
+        commands::load::command(),
+        commands::run::command(),
+        commands::step::command(),
+        commands::reset::command(),
+        commands::watchpoint::command(),
+        commands::breakpoint::command(),
+        commands::disassemble::command(),
+        commands::context::command(),
+        commands::label::command(),
+        commands::labels::command(),
+        commands::examine::command(),
+        commands::print::command(),
+        commands::dot::command(),
+        commands::help::command(),
+        commands::exit::command(),
     ] {
         state.add_command(command);
     }
@@ -678,9 +678,13 @@ fn state(config: MipsyConfig) -> State {
 pub fn launch(config: MipsyConfig) -> ! {
     let mut rl = editor();
     let mut state = state(config);
-    rl.helper_mut()
-        .unwrap()
-        .set_defaults(state.commands.iter().map(|c| c.name.to_owned()).collect());
+    rl.helper_mut().unwrap().set_defaults(
+        state
+            .commands
+            .iter()
+            .map(|c| c.names[0].to_owned())
+            .collect(),
+    );
 
     let interrupted = state.interrupted.clone();
     ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))

@@ -6,19 +6,26 @@ use mipsy_lib::{
 use mipsy_parser::{MpArgument, MpImmediate, MpNumber};
 use std::{fmt::Display, str::FromStr};
 
-use crate::interactive::error::CommandError;
+use crate::interactive::{commands::watchpoint::args_text, error::CommandError};
 
 use super::*;
 
-pub(crate) fn examine_command() -> Command {
-    command(
-        "examine",
-        vec!["e", "ex", "x", "dump"],
-        vec![],
-        vec!["section", "len", "addr", "-nolabels"],
-        vec![],
-        "examine memory contents",
-        |_, state, label, mut args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("examine")
+        .with_name("e")
+        .with_name("ex")
+        .with_name("x")
+        .with_name("dump")
+        .with_desc("examine memory contents")
+        .with_exact_args()
+        .with_optional_arg(Argument::new("section", |a| Ok(ArgumentKind::Any(a.to_owned()))))
+        .with_optional_arg(Argument::new("len", |a| Ok(ArgumentKind::Any(a.to_owned()))))
+        .with_optional_arg(Argument::new("addr", |a| Ok(ArgumentKind::Any(a.to_owned()))))
+        .with_optional_arg(Argument::new("-nolabels", |a| Ok(ArgumentKind::Any(a.to_owned()))))
+        .with_exec(
+        |_, state, label, args| {
+            let mut args = &args_text(args)[..];
             // TODO: <enter> to examine the next chunk of memory
             if label == "__help__" {
                 return Ok(
@@ -81,7 +88,7 @@ pub(crate) fn examine_command() -> Command {
 
             let hide_labels = args
                 .get(0)
-                .map_or(false, |a| a == &String::from("-nolabels"));
+                .map_or(false, |&a| a.as_str() == "-nolabels");
             if hide_labels && base_addr.is_err() {
                 // if -labels was provided, ensure base_addr is valid
                 base_addr = Ok(segment.get_lower_bound());

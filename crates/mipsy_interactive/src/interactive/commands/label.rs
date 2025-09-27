@@ -3,15 +3,18 @@ use crate::interactive::{error::CommandError, prompt};
 use super::*;
 use colored::*;
 
-pub(crate) fn label_command() -> Command {
-    command(
-        "label",
-        vec!["la", "lbl"],
-        vec!["label"],
-        vec![],
-        vec![],
-        "print the address of a label",
-        |_, state, label, args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("label")
+        .with_name("la")
+        .with_name("lbl")
+        .with_exact_args()
+        // TODO: somehow get some context to sanitise this
+        .with_required_arg(Argument::new("label", |a| {
+            Ok(ArgumentKind::Label(a.to_owned()))
+        }))
+        .with_desc("print the address of a label")
+        .with_exec(|_, state, label, args| {
             if label == "__help__" {
                 return Ok(format!(
                     "Prints the address of the specified {0}.\n\
@@ -20,7 +23,9 @@ pub(crate) fn label_command() -> Command {
                 ));
             }
 
-            let label = &args[0];
+            let ArgumentKind::Label(label) = &args[0] else {
+                unreachable!()
+            };
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             match binary.get_label(label) {
@@ -31,6 +36,5 @@ pub(crate) fn label_command() -> Command {
             }
 
             Ok("".into())
-        },
-    )
+        })
 }

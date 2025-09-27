@@ -1,5 +1,4 @@
 use std::sync::atomic::Ordering;
-use std::vec;
 
 use crate::interactive::error::CommandError;
 use crate::prompt;
@@ -9,138 +8,107 @@ use super::*;
 use colored::*;
 use mipsy_lib::Register;
 
-pub(crate) fn step_command() -> Command {
-    let subcommands = vec![
-        command(
-            "back",
-            vec!["b"],
-            vec![],
-            vec!["times"],
-            vec![],
-            "",
-            |_, state, label, args| step_back(state, label, args),
-        ),
-        command(
-            "syscall",
-            vec!["s", "sys"],
-            vec![],
-            vec![],
-            vec![
-                command(
-                    "input",
-                    vec!["in"],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_input(state, label, args),
-                ),
-                command(
-                    "output",
-                    vec!["out"],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_output(state, label, args),
-                ),
-                command(
-                    "integer",
-                    vec!["int"],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_integer(state, label, args),
-                ),
-                command(
-                    "float",
-                    vec![],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_float(state, label, args),
-                ),
-                command(
-                    "double",
-                    vec![],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_double(state, label, args),
-                ),
-                command(
-                    "string",
-                    vec!["str"],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_string(state, label, args),
-                ),
-                command(
-                    "character",
-                    vec!["char"],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_character(state, label, args),
-                ),
-                command(
-                    "file",
-                    vec![],
-                    vec![],
-                    vec![],
-                    vec![],
-                    "",
-                    |_, state, label, args| step_file(state, label, args),
-                ),
-            ],
-            "",
-            |cmd, state, label, args| {
-                let cmd = args.get(0).and_then(|arg| {
-                    cmd.subcommands
-                        .iter()
-                        .find(|c| &c.name == arg || c.aliases.contains(arg))
-                });
-                match cmd {
-                    Some(cmd) => cmd.exec(state, label, &args[1..]),
-                    None => step_syscall(state, label, args),
-                }
-            },
-        ),
-    ];
-
-    command(
-        "step",
-        vec!["s", "back"],
-        vec![],
-        vec!["times", "subcommand"],
-        subcommands,
-        "step forwards or execute a subcommand",
-        |cmd, state, label, args| {
-            if label == "__help__" && args.is_empty() {
-                return Ok(get_long_help());
+fn call_subcmds(
+    cmd: &Command,
+    state: &mut State,
+    label: &str,
+    args: &[ArgumentKind],
+) -> CommandResult<String> {
+    match args.get(0) {
+        Some(ArgumentKind::SubCommand(arg)) => {
+            if let Some(cmd) = cmd.subcommands.iter().find(|c| c.names.contains(arg)) {
+                return (cmd._internal_exec)(cmd, state, label, &args[1..]);
             }
+        }
+        None | Some(ArgumentKind::Number(_)) => {}
+        _ => unreachable!(),
+    }
 
-            if label == "back" {
-                return step_back(state, label, args);
-            }
+    step_syscall(state, label)
+}
 
-            let cmd = args.get(0).and_then(|arg| {
-                cmd.subcommands
-                    .iter()
-                    .find(|c| &c.name == arg || c.aliases.contains(arg))
-            });
-            match cmd {
-                Some(cmd) => cmd.exec(state, label, &args[1..]),
-                None => step_forward(state, label, args),
-            }
-        },
-    )
+pub(crate) fn command() -> Command {
+    let subcmd = Command::new()
+        .with_name("syscall")
+        .with_name("s")
+        .with_name("sys")
+        .with_subcommand(
+            Command::new()
+                .with_name("input")
+                .with_name("in")
+                .with_exec(|_, state, label, _| step_input(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("output")
+                .with_name("out")
+                .with_exec(|_, state, label, _| step_output(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("integer")
+                .with_name("int")
+                .with_exec(|_, state, label, _| step_integer(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("float")
+                .with_exec(|_, state, label, _| step_float(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("double")
+                .with_exec(|_, state, label, _| step_double(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("string")
+                .with_name("str")
+                .with_exec(|_, state, label, _| step_string(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("character")
+                .with_name("char")
+                .with_exec(|_, state, label, _| step_character(state, label)),
+        )
+        .with_subcommand(
+            Command::new()
+                .with_name("file")
+                .with_exec(|_, state, label, _| step_file(state, label)),
+        )
+        .with_exec(call_subcmds);
+
+    let times_arg = Argument::new("times", |a| match a.parse::<i32>() {
+        Ok(i) => Ok(ArgumentKind::Number(i as _)),
+        Err(_) => Err(CommandError::WithTip {
+            error: Box::new(CommandError::ArgExpectedI32 {
+                arg: "[times]".bright_magenta().to_string(),
+                instead: a.to_owned(),
+            }),
+            // tip: format!("try `{} {}`", "help".bold(), label.bold()),
+            tip: format!("try TODOTODOIJJDSKJAKDJTODOOOOOOOOOOOOOTODOOOOOOOOOOOO"),
+        }),
+    });
+
+    Command::new()
+        .with_name("step")
+        .with_desc("step forwards or execute a subcommand")
+        .with_name("s")
+        .with_name("back")
+        .with_optional_arg(times_arg.clone())
+        .with_optional_arg(Argument::new("subcommand", |a| {
+            Ok(ArgumentKind::SubCommand(a.to_owned()))
+        }))
+        .with_subcommand(
+            Command::new()
+                .with_name("back")
+                .with_name("b")
+                .with_optional_arg(times_arg)
+                .with_exec(|_, state, label, args| step_back(state, label, args)),
+        )
+        .with_subcommand(subcmd.clone())
+        .with_exec(call_subcmds)
 }
 
 fn get_long_help() -> String {
@@ -167,34 +135,30 @@ fn get_long_help() -> String {
     )
 }
 
-fn step_forward(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+fn step_forward(
+    state: &mut State,
+    label: &str,
+    args: &[ArgumentKind],
+) -> Result<String, CommandError> {
     let times = match args.first() {
-        Some(arg) => match arg.parse::<i32>() {
-            Ok(num) => {
-                if num.is_negative() {
-                    return step_back(
-                        state,
-                        label,
-                        [num.abs().to_string()]
-                            .into_iter()
-                            .chain(args.iter().skip(1).cloned())
-                            .collect::<Vec<String>>()
-                            .as_ref(),
-                    );
-                }
-
-                Ok(num)
+        Some(&ArgumentKind::Number(num)) => {
+            if num.is_negative() {
+                return step_back(
+                    state,
+                    label,
+                    [ArgumentKind::Number(num as _)]
+                        .into_iter()
+                        .chain(args.iter().skip(1).cloned())
+                        .collect::<Vec<_>>()
+                        .as_ref(),
+                );
             }
-            Err(_) => Err(CommandError::WithTip {
-                error: Box::new(CommandError::ArgExpectedI32 {
-                    arg: "[times]".bright_magenta().to_string(),
-                    instead: arg.to_owned(),
-                }),
-                tip: format!("try `{} {}`", "help".bold(), label.bold()),
-            }),
-        },
-        None => Ok(1),
-    }?;
+
+            num as _
+        }
+        None => 1,
+        _ => unreachable!(),
+    };
 
     if state.exited {
         return Err(CommandError::ProgramExited);
@@ -225,7 +189,7 @@ fn step_forward(state: &mut State, label: &str, args: &[String]) -> Result<Strin
     Ok("".into())
 }
 
-fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, CommandError> {
+fn step_back(state: &mut State, label: &str, args: &[ArgumentKind]) -> CommandResult<String> {
     if label == "__help__" {
         return Ok(format!(
             "Steps backwards one instruction, or {0} instructions if specified.\n\
@@ -238,32 +202,24 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
     }
 
     let times = match args.first() {
-        Some(arg) => match arg.parse::<i32>() {
-            Ok(num) => {
-                if num.is_negative() {
-                    return step_forward(
-                        state,
-                        label,
-                        [num.abs().to_string()]
-                            .into_iter()
-                            .chain(args.iter().skip(1).cloned())
-                            .collect::<Vec<String>>()
-                            .as_ref(),
-                    );
-                }
-
-                Ok(num)
+        Some(ArgumentKind::Number(num)) => {
+            if num.is_negative() {
+                return step_forward(
+                    state,
+                    label,
+                    [ArgumentKind::Number(num.abs())]
+                        .into_iter()
+                        .chain(args.iter().skip(1).cloned())
+                        .collect::<Vec<_>>()
+                        .as_ref(),
+                );
             }
-            Err(_) => Err(CommandError::WithTip {
-                error: Box::new(CommandError::ArgExpectedI32 {
-                    arg: "[times]".bright_magenta().to_string(),
-                    instead: arg.to_owned(),
-                }),
-                tip: format!("try `{} {}`", "help".bold(), label.bold()),
-            }),
-        },
-        None => Ok(1),
-    }?;
+
+            *num as _
+        }
+        None => 1,
+        _ => unreachable!(),
+    };
 
     let mut backs = 0;
     let mut ran_out_of_history = false;
@@ -325,7 +281,7 @@ fn step_back(state: &mut State, label: &str, args: &[String]) -> Result<String, 
     Ok("".into())
 }
 
-fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_syscall(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             format!(
@@ -364,7 +320,7 @@ fn step_syscall(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
     step_till_condition(state, |_| true)
 }
 
-fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_input(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program asks for its next input, or finishes.",
@@ -374,7 +330,7 @@ fn step_input(state: &mut State, label: &str, _args: &[String]) -> Result<String
     step_till_condition(state, |syscall| matches!(syscall, 5 | 6 | 7 | 8 | 12))
 }
 
-fn step_output(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_output(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program asks for its next output, or finishes.",
@@ -384,7 +340,7 @@ fn step_output(state: &mut State, label: &str, _args: &[String]) -> Result<Strin
     step_till_condition(state, |syscall| matches!(syscall, 1 | 2 | 3 | 4 | 11))
 }
 
-fn step_integer(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_integer(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that requires\n\
@@ -395,7 +351,7 @@ fn step_integer(state: &mut State, label: &str, _args: &[String]) -> Result<Stri
     step_till_condition(state, |syscall| matches!(syscall, 1 | 5))
 }
 
-fn step_float(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_float(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that requires\n\
@@ -406,7 +362,7 @@ fn step_float(state: &mut State, label: &str, _args: &[String]) -> Result<String
     step_till_condition(state, |syscall| matches!(syscall, 2 | 6))
 }
 
-fn step_double(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_double(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that requires\n\
@@ -417,7 +373,7 @@ fn step_double(state: &mut State, label: &str, _args: &[String]) -> Result<Strin
     step_till_condition(state, |syscall| matches!(syscall, 3 | 7))
 }
 
-fn step_string(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_string(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that requires\n\
@@ -428,11 +384,7 @@ fn step_string(state: &mut State, label: &str, _args: &[String]) -> Result<Strin
     step_till_condition(state, |syscall| matches!(syscall, 4 | 8))
 }
 
-fn step_character(
-    state: &mut State,
-    label: &str,
-    _args: &[String],
-) -> Result<String, CommandError> {
+fn step_character(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that requires\n\
@@ -443,7 +395,7 @@ fn step_character(
     step_till_condition(state, |syscall| matches!(syscall, 11 | 12))
 }
 
-fn step_file(state: &mut State, label: &str, _args: &[String]) -> Result<String, CommandError> {
+fn step_file(state: &mut State, label: &str) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(get_step_help_text(
             "Steps forwards until your program executes a syscall that opens,\n\

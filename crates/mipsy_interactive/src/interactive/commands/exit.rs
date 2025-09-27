@@ -1,20 +1,18 @@
 use super::*;
 
 #[allow(unreachable_code)]
-pub(crate) fn exit_command() -> Command {
-    command(
-        "exit",
-        vec!["ex", "quit", "q"],
-        vec![],
-        vec![],
-        vec![],
-        "exit mipsy",
-        |_, _state, label, _args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("exit")
+        .with_name("ex")
+        .with_name("quit")
+        .with_name("q")
+        .with_desc("exit mipsy")
+        .with_exec(|_, _, label, _| {
             if label == "__help__" {
-                return Ok("Immediately exits mipsy".into());
+                Ok("Immediately exits mipsy".into())
+            } else {
+                std::process::exit(0)
             }
-
-            std::process::exit(0)
-        },
-    )
+        })
 }

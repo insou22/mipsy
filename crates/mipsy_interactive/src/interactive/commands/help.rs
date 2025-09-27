@@ -3,15 +3,17 @@ use crate::{interactive::error::CommandError, prompt};
 use super::*;
 use colored::*;
 
-pub(crate) fn help_command() -> Command {
-    command(
-        "help",
-        vec!["h", "?"],
-        vec![],
-        vec!["command"],
-        vec![],
-        "print this help text, or specific help for a command",
-        |_, state, label, args| {
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("help")
+        .with_name("h")
+        .with_name("?")
+        .with_desc("print this help text, or specific help for a command")
+        .with_exact_args()
+        .with_optional_arg(Argument::new("command", |a| {
+            Ok(ArgumentKind::Command(a.to_owned()))
+        }))
+        .with_exec(|_, state, label, args| {
             if label == "__help__" {
                 return Ok(format!(
                     "Prints the general help text for all mipsy commands, or more in-depth\n\
@@ -20,7 +22,7 @@ pub(crate) fn help_command() -> Command {
                 ));
             }
 
-            if let Some(command) = args.first() {
+            if let Some(ArgumentKind::Command(command)) = args.first() {
                 let mut command =
                     &state
                         .find_command(command)
@@ -28,31 +30,62 @@ pub(crate) fn help_command() -> Command {
                             command: command.clone(),
                         })?;
 
-                let mut args = &args[1..];
-                let mut parts = vec![command.name.yellow().bold().to_string()];
+                let mut args = &args[1..]
+                    .iter()
+                    .map(|a| match a {
+                        ArgumentKind::Any(a) => a,
+                        _ => unreachable!(),
+                    })
+                    .collect::<Vec<_>>()[..];
+                let mut parts = vec![command
+                    .names
+                    .get(0)
+                    .expect("no command name")
+                    .yellow()
+                    .bold()
+                    .to_string()];
 
                 while !args.is_empty() {
                     let subcmd = command
                         .subcommands
                         .iter()
-                        .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
+                        .find(|c| c.names.contains(&args[0]));
                     if let Some(subcmd) = subcmd {
                         command = subcmd;
-                        parts.push(subcmd.name.yellow().bold().to_string());
+                        parts.push(
+                            subcmd
+                                .names
+                                .get(0)
+                                .expect("command has no name")
+                                .yellow()
+                                .bold()
+                                .to_string(),
+                        );
                     }
 
                     args = &args[1..];
                 }
 
                 println!("\n{}\n", get_command_formatted(command, parts));
-                println!("{}", command.exec(state, "__help__", args).unwrap());
+                println!(
+                    "{}",
+                    command
+                        .exec(
+                            state,
+                            "__help__",
+                            args.iter()
+                                .map(|&a| a.clone())
+                                .collect::<Vec<_>>()
+                                .as_slice()
+                        )
+                        .unwrap()
+                );
 
-                if !command.aliases.is_empty() {
+                if !command.names[1..].is_empty() {
                     prompt::banner("\naliases".green().bold());
                     println!(
                         "{}",
-                        command
-                            .aliases
+                        command.names[1..]
                             .iter()
                             .map(|s| s.yellow().bold().to_string())
                             .collect::<Vec<String>>()
@@ -66,24 +99,24 @@ pub(crate) fn help_command() -> Command {
             let mut max_len = 0;
 
             for command in state.commands.iter() {
-                let mut len = command.name.len();
+                let mut len = command.names.get(0).expect("no named command").len();
 
                 match &command.args {
                     Arguments::Exactly { required, optional } => {
                         len += required.len();
                         for arg in required.iter() {
-                            len += arg.len() + 2;
+                            len += arg.name.len() + 2;
                         }
 
                         len += optional.len();
                         for arg in optional.iter() {
-                            len += arg.len() + 2;
+                            len += arg.name.len() + 2;
                         }
                     }
                     Arguments::VarArgs { required, format } => {
                         len += required.len();
                         for arg in required.iter() {
-                            len += arg.len() + 2;
+                            len += arg.name.len() + 2;
                         }
 
                         len += 1;
@@ -114,7 +147,13 @@ pub(crate) fn help_command() -> Command {
                         }
                     };
 
-                let parts = vec![command.name.yellow().bold().to_string()];
+                let parts = vec![command
+                    .names
+                    .get(0)
+                    .expect("command has no name")
+                    .yellow()
+                    .bold()
+                    .to_string()];
                 let name_args = get_command_formatted(command, parts);
 
                 let char_len = name_args.len() - extra_color_len;
@@ -136,8 +175,7 @@ pub(crate) fn help_command() -> Command {
             println!();
 
             Ok("".into())
-        },
-    )
+        })
 }
 
 fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
@@ -146,14 +184,14 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
             parts.append(
                 &mut required
                     .iter()
-                    .map(|arg| format!("<{}>", arg).magenta().to_string())
+                    .map(|arg| format!("<{}>", arg.name).magenta().to_string())
                     .collect::<Vec<String>>(),
             );
 
             parts.append(
                 &mut optional
                     .iter()
-                    .map(|arg| format!("[{}]", arg).bright_magenta().to_string())
+                    .map(|arg| format!("[{}]", arg.name).bright_magenta().to_string())
                     .collect::<Vec<String>>(),
             );
         }
@@ -161,7 +199,7 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
             parts.append(
                 &mut required
                     .iter()
-                    .map(|arg| format!("<{}>", arg).magenta().to_string())
+                    .map(|arg| format!("<{}>", arg.name).magenta().to_string())
                     .collect::<Vec<String>>(),
             );
 
