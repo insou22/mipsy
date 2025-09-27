@@ -21,14 +21,12 @@ pub fn find_instruction<'a>(
     } else if let Some(pseudo) = iset.find_pseudo(inst, program) {
         Ok(SignatureRef::Pseudo(pseudo))
     } else {
+        iset.find_errors(inst, program)?;
+
         let mut matching_names: Vec<SignatureRef<'a>> = vec![];
         let mut close_names: Vec<SignatureRef<'a>> = vec![];
 
-        let all_instns = iset
-            .native_set()
-            .iter()
-            .map(SignatureRef::Native)
-            .chain(iset.pseudo_set().iter().map(SignatureRef::Pseudo));
+        let all_instns = iset.both_sets();
 
         for real_inst in all_instns {
             if real_inst.name() == inst.name() {

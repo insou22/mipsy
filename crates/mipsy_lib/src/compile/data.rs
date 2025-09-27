@@ -443,57 +443,66 @@ pub fn eval_constant(
     constant: &MpConstValueLoc,
     file: Rc<str>,
 ) -> MipsyResult<i64> {
-    Ok(match &constant.0 {
-        &MpConstValue::Value(value) => value as _,
-        MpConstValue::Const(label) => binary
-            .constants
-            .get(label)
-            .copied()
-            .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
-            .ok_or_else(|| {
-                MipsyError::Compiler(CompilerError::new(
-                    Error::UnresolvedConstant {
-                        label: label.to_string(),
-                    },
-                    file.clone(),
-                    constant.1.line(),
-                    constant.1.col(),
-                    constant.1.col_end(),
-                ))
-            })?,
-        MpConstValue::Minus(value) => -eval_constant(binary, value, file)?,
+    let err = MipsyError::Compiler(CompilerError::new(
+        Error::ConstantEvaluationDoesNotFit,
+        file.clone(),
+        constant.1.line(),
+        constant.1.col(),
+        constant.1.col_end(),
+    ));
+
+    match &constant.0 {
+        &MpConstValue::Value(value) => Some(value as _),
+        MpConstValue::Const(label) => Some(
+            binary
+                .constants
+                .get(label)
+                .copied()
+                .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
+                .ok_or_else(|| {
+                    MipsyError::Compiler(CompilerError::new(
+                        Error::UnresolvedConstant {
+                            label: label.to_string(),
+                        },
+                        file.clone(),
+                        constant.1.line(),
+                        constant.1.col(),
+                        constant.1.col_end(),
+                    ))
+                })?,
+        ),
+        MpConstValue::Minus(value) => Some(-eval_constant(binary, value, file)?),
         MpConstValue::Sum(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? + eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_add(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Sub(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? - eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_sub(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Div(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? / eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_div(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Mult(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? * eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_mul(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Mod(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? % eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_rem(eval_constant(binary, v2, file)?)
         }
         MpConstValue::And(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? & eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? & eval_constant(binary, v2, file)?)
         }
         MpConstValue::Or(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? | eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? | eval_constant(binary, v2, file)?)
         }
         MpConstValue::Xor(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? ^ eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? ^ eval_constant(binary, v2, file)?)
         }
-        MpConstValue::Neg(value) => !eval_constant(binary, value, file)?,
-        MpConstValue::Shl(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? << eval_constant(binary, v2, file)?
-        }
-        MpConstValue::Shr(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? >> eval_constant(binary, v2, file)?
-        }
-    })
+        MpConstValue::Neg(value) => Some(!eval_constant(binary, value, file)?),
+        MpConstValue::Shl(v1, v2) => (eval_constant(binary, v1, file.clone())?)
+            .checked_shl(eval_constant(binary, v2, file)? as _),
+        MpConstValue::Shr(v1, v2) => (eval_constant(binary, v1, file.clone())?)
+            .checked_shr(eval_constant(binary, v2, file)? as _),
+    }
+    .ok_or(err)
 }
 
 fn eval_constant_in_range(

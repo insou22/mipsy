@@ -58,20 +58,23 @@ impl fmt::Display for MpImmediate {
     }
 }
 
+macro_rules! immediate_in_range {
+    ($n:ident, $($ty:ty),* $(,)?) => {
+        if false { unreachable!() }
+        $(else if (<$ty>::MIN as i64..=<$ty>::MAX as i64).contains(&$n) {
+            paste::paste!{
+                MpImmediate::[<$ty:camel>]($n as _)
+            }
+        })*
+        else {
+            unimplemented!()
+        }
+    }
+}
+
 impl From<i64> for MpImmediate {
     fn from(n: i64) -> Self {
-        // immediate_in_range!(n, u16, i16, u32, i32)
-        if (u16::MIN as i64..=u16::MAX as i64).contains(&n) {
-            MpImmediate::U16(n as _)
-        } else if (i16::MIN as i64..=i16::MAX as i64).contains(&n) {
-            MpImmediate::I16(n as _)
-        } else if (u32::MIN as i64..=u32::MAX as i64).contains(&n) {
-            MpImmediate::U32(n as _)
-        } else if (i32::MIN as i64..=i32::MAX as i64).contains(&n) {
-            MpImmediate::I32(n as _)
-        } else {
-            todo!()
-        }
+        immediate_in_range!(n, u16, i16, u32, i32)
     }
 }
 

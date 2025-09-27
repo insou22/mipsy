@@ -33,6 +33,11 @@ impl InstSet {
     pub fn pseudo_set(&self) -> &[PseudoSignature] {
         &self.pseudo_set
     }
+
+    pub fn both_sets(&self) -> Vec<SignatureRef<'_>> {
+        self.native_set.iter().map(SignatureRef::Native).chain(self.pseudo_set.iter().map(SignatureRef::Pseudo)).collect()
+    }
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -287,7 +292,8 @@ impl InstSet {
         let name = inst.name().to_ascii_lowercase();
 
         self.native_set.iter().find(|&native_inst| {
-            native_inst.name == name && native_inst.compile.matches(inst, program)
+            native_inst.name == name
+                && matches!(native_inst.compile.matches(inst, program), Ok(true))
         })
     }
 
@@ -295,8 +301,24 @@ impl InstSet {
         let name = inst.name().to_ascii_lowercase();
 
         self.pseudo_set.iter().find(|&pseudo_inst| {
-            pseudo_inst.name == name && pseudo_inst.compile.matches(inst, program)
+            pseudo_inst.name == name
+                && matches!(pseudo_inst.compile.matches(inst, program), Ok(true))
         })
+    }
+
+    pub fn find_errors(
+        &self,
+        inst: &MpInstruction,
+        program: &Binary,
+    ) -> MipsyInternalResult<()> {
+        self.both_sets().iter()
+            .filter(|i| inst.name() == i.name())
+            .map(|i| match i.compile_sig().matches(inst, program) {
+                Ok(_) => Ok(()),
+                Err(e) => Err(e),
+            })
+            .find(Result::is_err)
+            .unwrap_or(Ok(()))
     }
 }
 
@@ -472,27 +494,33 @@ impl InstSignature {
 }
 
 impl CompileSignature {
-    pub fn matches(&self, inst: &MpInstruction, program: &Binary) -> bool {
+    pub fn matches(&self, inst: &MpInstruction, program: &Binary) -> MipsyInternalResult<bool> {
         self.matches_args(
             inst.arguments().iter().map(|(arg, _, _)| arg).collect(),
             program,
         )
     }
 
-    pub fn matches_args(&self, args: Vec<&MpArgument>, program: &Binary) -> bool {
+    pub fn matches_args(
+        &self,
+        args: Vec<&MpArgument>,
+        program: &Binary,
+    ) -> MipsyInternalResult<bool> {
         if self.format.len() != args.len() {
-            return false;
+            return Ok(false);
         }
 
         for (i, (my_arg, &their_arg)) in self.format.iter().zip(args.iter()).enumerate() {
             // labels are only relative as the final argument
             let relative_label = (i == args.len() - 1) && self.relative_label;
-            if !my_arg.matches(their_arg, relative_label, program) {
-                return false;
+            match my_arg.matches(their_arg, relative_label, program) {
+                Ok(false) => return Ok(false),
+                Err(e) => return Err(e),
+                _ => {}
             }
         }
 
-        true
+        Ok(true)
     }
 }
 
@@ -519,8 +547,16 @@ impl fmt::Display for ArgumentType {
 }
 
 impl ArgumentType {
-    fn matches(&self, arg: &MpArgument, relative_label: bool, program: &Binary) -> bool {
-        match arg {
+    /// Ok(true) => no special error & found  a match
+    /// Ok(false)=> no special error & found no match
+    /// Err      =>  a special error & found no match
+    fn matches(
+        &self,
+        arg: &MpArgument,
+        relative_label: bool,
+        program: &Binary,
+    ) -> MipsyInternalResult<bool> {
+        Ok(match arg {
             MpArgument::Register(register) => match register {
                 MpRegister::Normal(_) => matches!(self, Self::Rd | Self::Rs | Self::Rt),
                 MpRegister::Offset(imm, _) => match imm {
@@ -565,31 +601,31 @@ impl ArgumentType {
                     },
                 },
                 MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
+                    // skip over the unresolved constant error here
+                    // since immediate constants wouldnt be defined
                     .or_else(|e| {
                         if let crate::MipsyError::Compiler(c) = &e {
                             if matches!(c.error(), UnresolvedConstant { .. }) {
-                                Ok(0)
-                            } else {
-                                Err(e)
+                                return Ok(0);
                             }
-                        } else {
-                            Err(e)
                         }
+                        return Err(e);
                     })
-                    .is_ok_and(|c| {
+                    .map_err(InternalError::from)
+                    .and_then(|c| {
                         self.matches(
                             &MpArgument::Number(MpNumber::Immediate(c.into())),
                             relative_label,
                             program,
                         )
-                    }),
+                    })?,
                 MpNumber::Char(_) => {
                     matches!(self, Self::I16 | Self::I32 | Self::U16 | Self::U32)
                 }
                 MpNumber::Float32(_) => matches!(self, Self::F32 | Self::F64),
                 MpNumber::Float64(_) => matches!(self, Self::F64),
             },
-        }
+        })
     }
 }
 
