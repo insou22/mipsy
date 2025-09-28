@@ -3,8 +3,13 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
 use crate::{
-    compile::data::eval_constant,
-    error::{compiler::Error::UnresolvedConstant, InternalError, MipsyInternalResult},
+    compile::data::{eval_constant, eval_value_in_range},
+    error::{
+        compiler::{
+            DirectiveType, Error::{self, UnresolvedConstant}
+        },
+        InternalError, MipsyInternalResult,
+    },
     Binary, TEXT_BOT,
 };
 use mipsy_parser::{
@@ -35,9 +40,12 @@ impl InstSet {
     }
 
     pub fn both_sets(&self) -> Vec<SignatureRef<'_>> {
-        self.native_set.iter().map(SignatureRef::Native).chain(self.pseudo_set.iter().map(SignatureRef::Pseudo)).collect()
+        self.native_set
+            .iter()
+            .map(SignatureRef::Native)
+            .chain(self.pseudo_set.iter().map(SignatureRef::Pseudo))
+            .collect()
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -306,12 +314,9 @@ impl InstSet {
         })
     }
 
-    pub fn find_errors(
-        &self,
-        inst: &MpInstruction,
-        program: &Binary,
-    ) -> MipsyInternalResult<()> {
-        self.both_sets().iter()
+    pub fn find_errors(&self, inst: &MpInstruction, program: &Binary) -> MipsyInternalResult<()> {
+        self.both_sets()
+            .iter()
             .filter(|i| inst.name() == i.name())
             .map(|i| match i.compile_sig().matches(inst, program) {
                 Ok(_) => Ok(()),
@@ -579,7 +584,7 @@ impl ArgumentType {
                     &MpImmediate::I16(num) => match self {
                         Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
                         Self::U16 | Self::U32 => num >= 0,
-                        Self::Shamt => (0..=31).contains(&num),
+                        Self::Shamt => eval_value_in_range(num as _, 0..32).and(Ok(true))?,
                         _ => false,
                     },
                     MpImmediate::U16(_) => matches!(
@@ -614,7 +619,14 @@ impl ArgumentType {
                     .map_err(InternalError::from)
                     .and_then(|c| {
                         self.matches(
-                            &MpArgument::Number(MpNumber::Immediate(c.into())),
+                            &MpArgument::Number(MpNumber::Immediate(c.try_into().or(Err(InternalError::Compiler(
+                                Error::ConstantValueDoesNotFit {
+                                    directive_type: DirectiveType::Byte,
+                                    value: c,
+                                    range_low: i32::MIN as _,
+                                    range_high: i32::MAX as _,
+                                },
+                            )))?)),
                             relative_label,
                             program,
                         )

@@ -62,19 +62,20 @@ macro_rules! immediate_in_range {
     ($n:ident, $($ty:ty),* $(,)?) => {
         if false { unreachable!() }
         $(else if (<$ty>::MIN as i64..=<$ty>::MAX as i64).contains(&$n) {
-            paste::paste!{
+            Some(paste::paste!{
                 MpImmediate::[<$ty:camel>]($n as _)
-            }
+            })
         })*
         else {
-            unimplemented!()
+            None
         }
     }
 }
 
-impl From<i64> for MpImmediate {
-    fn from(n: i64) -> Self {
-        immediate_in_range!(n, u16, i16, u32, i32)
+impl TryFrom<i64> for MpImmediate {
+    type Error = ();
+    fn try_from(n: i64) -> Result<Self, Self::Error> {
+        immediate_in_range!(n, u16, i16, u32, i32).ok_or(())
     }
 }
 

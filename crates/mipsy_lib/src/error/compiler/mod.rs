@@ -186,7 +186,9 @@ pub enum Error {
         range_low: i64,
         range_high: i64,
     },
-    ConstantEvaluationDoesNotFit,
+    ConstantExpressionDoesNotFit {
+        eval: String,
+    },
 
     DataInTextSegment {
         directive_type: MpDirective,
@@ -298,17 +300,17 @@ impl Error {
                 let low = range_low.to_string().bold();
                 let high = range_high.to_string().bold();
 
-                format!("{message_1} `{value}` {message_2} {low} {message_3} {high}",)
+                format!("{message_1} `{value}` {message_2} {low} {message_3} {high}")
             }
 
-            Error::ConstantEvaluationDoesNotFit => {
-                let message_1 = "constant value".bright_red().bold();
+            Error::ConstantExpressionDoesNotFit { eval } => {
+                let message_1 = "constant expression".bright_red().bold();
                 let message_2 = "must be between".bright_red().bold();
                 let and = "and".bright_red().bold();
                 let low = i64::MIN.to_string().bold();
-                let high = i64::MAX.to_string().bold();
+                let high = u64::MAX.to_string().bold();
 
-                format!("{message_1} {message_2} {low} {and} {high}",)
+                format!("{message_1} `{eval}` {message_2} {low} {and} {high}")
             }
 
             Error::DataInTextSegment { directive_type } => {
@@ -515,7 +517,7 @@ impl Error {
                 vec![tip]
             }
 
-            Error::ConstantEvaluationDoesNotFit { .. } => {
+            Error::ConstantExpressionDoesNotFit { .. } => {
                 vec!["try compute less".to_owned()]
             }
 
