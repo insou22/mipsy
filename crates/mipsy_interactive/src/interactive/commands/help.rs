@@ -10,9 +10,12 @@ pub(crate) fn command() -> Command {
         .with_name("?")
         .with_desc("print this help text, or specific help for a command")
         .with_exact_args()
-        .with_optional_arg(Argument::new("command", |a| {
-            Ok(ArgumentKind::Command(a.to_owned()))
-        }))
+        // TODO: context for sanitisation
+        .with_optional_arg(Argument::new(
+            "command",
+            |a| Ok(ArgumentKind::Command(a.to_owned())),
+            |_, h| h.commands.iter().map(|c| c.name().to_owned()).collect(),
+        ))
         .with_exec(|_, state, label, args| {
             if label == "__help__" {
                 return Ok(format!(

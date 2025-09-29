@@ -27,8 +27,8 @@ fn call_subcmds(
     step_syscall(state, label)
 }
 
-pub(crate) fn command() -> Command {
-    let subcmd = Command::new()
+fn subcmd() -> Command {
+    Command::new()
         .with_name("syscall")
         .with_name("s")
         .with_name("sys")
@@ -77,19 +77,25 @@ pub(crate) fn command() -> Command {
                 .with_name("file")
                 .with_exec(|_, state, label, _| step_file(state, label)),
         )
-        .with_exec(call_subcmds);
+        .with_exec(call_subcmds)
+}
 
-    let times_arg = Argument::new("times", |a| match a.parse::<i32>() {
-        Ok(i) => Ok(ArgumentKind::Number(i as _)),
-        Err(_) => Err(CommandError::WithTip {
-            error: Box::new(CommandError::ArgExpectedI32 {
-                arg: "[times]".bright_magenta().to_string(),
-                instead: a.to_owned(),
+pub(crate) fn command() -> Command {
+    let times_arg = Argument::new(
+        "times",
+        |a| match a.parse::<i32>() {
+            Ok(i) => Ok(ArgumentKind::Number(i as _)),
+            Err(_) => Err(CommandError::WithTip {
+                error: Box::new(CommandError::ArgExpectedI32 {
+                    arg: "[times]".bright_magenta().to_string(),
+                    instead: a.to_owned(),
+                }),
+                // tip: format!("try `{} {}`", "help".bold(), label.bold()),
+                tip: format!("try TODOTODOIJJDSKJAKDJTODOOOOOOOOOOOOOTODOOOOOOOOOOOO"),
             }),
-            // tip: format!("try `{} {}`", "help".bold(), label.bold()),
-            tip: format!("try TODOTODOIJJDSKJAKDJTODOOOOOOOOOOOOOTODOOOOOOOOOOOO"),
-        }),
-    });
+        },
+        |_, _| vec![],
+    );
 
     Command::new()
         .with_name("step")
@@ -97,9 +103,7 @@ pub(crate) fn command() -> Command {
         .with_name("s")
         .with_name("back")
         .with_optional_arg(times_arg.clone())
-        .with_optional_arg(Argument::new("subcommand", |a| {
-            Ok(ArgumentKind::SubCommand(a.to_owned()))
-        }))
+        .with_optional_arg(Argument::subcommands())
         .with_subcommand(
             Command::new()
                 .with_name("back")
@@ -107,7 +111,7 @@ pub(crate) fn command() -> Command {
                 .with_optional_arg(times_arg)
                 .with_exec(|_, state, label, args| step_back(state, label, args)),
         )
-        .with_subcommand(subcmd.clone())
+        .with_subcommand(subcmd())
         .with_exec(call_subcmds)
 }
 

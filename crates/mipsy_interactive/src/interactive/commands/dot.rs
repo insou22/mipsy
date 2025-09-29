@@ -14,9 +14,12 @@ pub(crate) fn command() -> Command {
         .with_name(".")
         .with_desc("execute a MIPS instruction")
         .with_var_args()
-        .with_required_arg(Argument::new("instruction", |a| {
-            Ok(ArgumentKind::Any(a.to_owned()))
-        }))
+        // TODO: context for hints and sanitisation
+        .with_required_arg(Argument::new(
+            "instruction",
+            |a| Ok(ArgumentKind::Any(a.to_owned())),
+            |_, _| vec![],
+        ))
         .with_varargs_format("{args}".magenta().to_string())
         .with_exec(|_, state, label, args| {
             if label == "__help__" {

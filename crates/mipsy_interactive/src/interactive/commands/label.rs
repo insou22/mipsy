@@ -9,10 +9,12 @@ pub(crate) fn command() -> Command {
         .with_name("la")
         .with_name("lbl")
         .with_exact_args()
-        // TODO: somehow get some context to sanitise this
-        .with_required_arg(Argument::new("label", |a| {
-            Ok(ArgumentKind::Label(a.to_owned()))
-        }))
+        // TODO: somehow get some context to sanitise & hint this
+        .with_required_arg(Argument::new(
+            "label",
+            |a| Ok(ArgumentKind::Label(a.to_owned())),
+            |_, _| vec![],
+        ))
         .with_desc("print the address of a label")
         .with_exec(|_, state, label, args| {
             if label == "__help__" {

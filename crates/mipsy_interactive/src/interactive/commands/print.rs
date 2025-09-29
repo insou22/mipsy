@@ -14,7 +14,7 @@ pub(crate) fn command() -> Command {
         .with_name("p")
         .with_desc("print an item - a register, value in memory, etc.")
         .with_exact_args()
-        .with_required_arg(Argument::new("item", |a| Ok(ArgumentKind::Item(a.to_owned()))))
+        .with_required_arg(Argument::new("item", |a| Ok(ArgumentKind::Item(a.to_owned())), |_, _| vec![]))
         .with_optional_arg(Argument::new("format", |a|
             match a {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
@@ -25,8 +25,9 @@ pub(crate) fn command() -> Command {
                         instead: other.to_string(),
                     })
                 }
-            }))
-
+            }, |_, _|
+                vec!["byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char"
+               , "string", "b", "h", "w", "xb", "xh", "xw", "x", "c", "s"].into_iter().map(str::to_owned).collect()))
         .with_exec(
         |_, state, label, args| {
             if label == "__help__" {

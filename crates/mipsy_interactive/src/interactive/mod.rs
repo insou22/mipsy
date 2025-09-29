@@ -629,12 +629,12 @@ impl State {
     }
 }
 
-pub(crate) fn editor() -> Editor<MyHelper> {
+pub(crate) fn editor(commands: &[Command]) -> Editor<MyHelper<'_>> {
     let mut rl = Editor::new().unwrap();
 
     rl.set_check_cursor_position(true);
 
-    let helper = MyHelper::new();
+    let helper = MyHelper::new(commands);
     rl.set_helper(Some(helper));
 
     rl.bind_sequence(
@@ -676,15 +676,9 @@ fn state(config: MipsyConfig) -> State {
 }
 
 pub fn launch(config: MipsyConfig) -> ! {
-    let mut rl = editor();
     let mut state = state(config);
-    rl.helper_mut().unwrap().set_defaults(
-        state
-            .commands
-            .iter()
-            .map(|c| c.names[0].to_owned())
-            .collect(),
-    );
+    let commands = state.commands.clone();
+    let mut rl = editor(&commands);
 
     let interrupted = state.interrupted.clone();
     ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))

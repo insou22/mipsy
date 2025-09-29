@@ -12,14 +12,18 @@ pub(crate) fn command() -> Command {
         .with_name("c")
         .with_name("ctx")
         .with_exact_args()
-        .with_optional_arg(Argument::new("n", |a| {
-            Ok(ArgumentKind::Number(expect_u32(
-                "",
-                &"[n]".bright_magenta(),
-                a,
-                None as Option<&dyn Fn(i32) -> String>,
-            )? as _))
-        }))
+        .with_optional_arg(Argument::new(
+            "n",
+            |a| {
+                Ok(ArgumentKind::Number(expect_u32(
+                    "",
+                    &"[n]".bright_magenta(),
+                    a,
+                    None as Option<&dyn Fn(i32) -> String>,
+                )? as _))
+            },
+            |_, _| vec![],
+        ))
         .with_desc(format!(
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),

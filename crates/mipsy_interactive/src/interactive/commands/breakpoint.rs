@@ -39,9 +39,7 @@ pub(crate) fn command() -> Command {
             "manage breakpoints ({} to list subcommands)",
             "help breakpoint".bold()
         ))
-        .with_optional_arg(Argument::new("subcommand", |a| {
-            Ok(ArgumentKind::Any(a.to_owned()))
-        }))
+        .with_optional_arg(Argument::subcommands())
         .with_subcommand(
             Command::new()
                 .with_name("list")

@@ -44,9 +44,7 @@ pub(crate) fn command() -> Command {
         .with_name("wa")
         .with_name("wp")
         .with_name("watch")
-        .with_optional_arg(Argument::new("subcommand", |a| {
-            Ok(ArgumentKind::SubCommand(a.to_owned()))
-        }))
+        .with_optional_arg(Argument::subcommands())
         .with_subcommand(
             Command::new()
                 .with_name("list")

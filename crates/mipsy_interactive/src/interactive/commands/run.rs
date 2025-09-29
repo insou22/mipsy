@@ -9,7 +9,7 @@ pub(crate) fn command() -> Command {
         .with_name("r")
         .with_desc("run the currently loaded program until it finishes")
         .with_exec(
-        |_, state, label, _args| {
+        |_, state, label, _| {
             if label == "__help__" {
                 return Ok(
                     format!(

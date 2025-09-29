@@ -13,7 +13,11 @@ pub(crate) fn command() -> Command {
         .with_var_args()
         .with_required_arg(
             // TODO: better fs filter
-            Argument::new("files", |a| Ok(ArgumentKind::File(a.into())))
+            Argument::new(
+                "files",
+                |a| Ok(ArgumentKind::File(a.into())),
+                |a, h| h.file_hints(a)
+            )
         )
         .with_varargs_format(
             "-- {args}".magenta().to_string()

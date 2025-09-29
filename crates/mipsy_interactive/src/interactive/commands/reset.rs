@@ -8,7 +8,7 @@ pub(crate) fn command() -> Command {
         .with_name("reset")
         .with_name("re")
         .with_desc("reset the currently loaded program to its initial state")
-        .with_exec(|_, state, label, _args| {
+        .with_exec(|_, state, label, _| {
             if label == "__help__" {
                 return Ok(format!(
                     "Resets the currently loaded program to its inital state. This is\n\

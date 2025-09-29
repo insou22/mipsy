@@ -73,7 +73,7 @@ fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResu
         "end".bold().yellow()
     );
 
-    let mut rl = editor();
+    let mut rl = editor(&[]);
     loop {
         let readline = rl.readline("");
 

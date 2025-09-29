@@ -19,10 +19,11 @@ pub(crate) fn command() -> Command {
         .with_name("dump")
         .with_desc("examine memory contents")
         .with_exact_args()
-        .with_optional_arg(Argument::new("section", |a| Ok(ArgumentKind::Any(a.to_owned()))))
-        .with_optional_arg(Argument::new("len", |a| Ok(ArgumentKind::Any(a.to_owned()))))
-        .with_optional_arg(Argument::new("addr", |a| Ok(ArgumentKind::Any(a.to_owned()))))
-        .with_optional_arg(Argument::new("-nolabels", |a| Ok(ArgumentKind::Any(a.to_owned()))))
+        // TODO: again, get a context to sanitise and hint this
+        .with_optional_arg(Argument::new("section", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("len", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("addr", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("-nolabels", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
         .with_exec(
         |_, state, label, args| {
             let mut args = &args_text(args)[..];

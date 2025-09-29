@@ -20,6 +20,8 @@ pub(super) mod run;
 pub(super) mod step;
 pub(super) mod watchpoint;
 
+use crate::interactive::helper::{HintArgs, MyHelper};
+
 use super::{error::CommandResult, State};
 
 // TODO: remove once if-let chaining is in
@@ -54,27 +56,55 @@ impl From<ArgumentKind> for String {
     }
 }
 
-// TODO: maybe this should be a trait actually. oh well
+// TODO: another callback for __help__ label?
 // TODO: remove once if-let chaining is in
 #[derive(Clone)]
 pub(crate) struct Argument {
     name: String,
     sanitiser: fn(arg: &str) -> CommandResult<ArgumentKind>,
+    hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
 }
 
 impl Argument {
     fn new<S: Into<String>>(
         name: S,
         sanitiser: fn(arg: &str) -> CommandResult<ArgumentKind>,
+        hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
     ) -> Self {
         Self {
             name: name.into(),
             sanitiser,
+            hints,
         }
     }
 
     pub(crate) fn name(&self) -> &str {
         &self.name
+    }
+
+    pub(crate) fn hints(&self, mut harg: HintArgs, helper: &MyHelper) -> Vec<String> {
+        helper
+            .closest_hints(
+                &(self.hints)(&harg, helper)
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+                &harg.subcmd(),
+            )
+            .iter()
+            .map(|s| harg.recontextualize(s))
+            .collect::<Vec<_>>()
+    }
+
+    pub(crate) fn subcommands() -> Self {
+        Argument::new(
+            "subcommand",
+            |a| {
+                // TODO: match with subcmd hints
+                Ok(ArgumentKind::SubCommand(a.to_owned()))
+            },
+            |_, _| vec![],
+        )
     }
 }
 
@@ -83,7 +113,6 @@ impl Argument {
 pub(crate) enum Arguments {
     Exactly {
         required: Vec<Argument>,
-        // TODO: default values
         optional: Vec<Argument>,
     },
     VarArgs {
@@ -121,6 +150,16 @@ impl Command {
         Ok(res)
     }
 
+    pub(crate) fn args(&self) -> Vec<&Argument> {
+        match &self.args {
+            Arguments::Exactly { required, optional } => {
+                required.iter().chain(optional.iter()).collect::<Vec<_>>()
+            }
+            // TODO: varargs
+            Arguments::VarArgs { required, .. } => required.iter().collect(),
+        }
+    }
+
     pub(crate) fn exec(
         &self,
         state: &mut State,
@@ -141,6 +180,10 @@ impl Command {
             _internal_exec: |_, _, _, _| Ok(Default::default()),
             subcommands: Default::default(),
         }
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        &self.names.get(0).expect("command has no name")
     }
 
     pub(crate) fn with_name<S: Into<String>>(mut self, name: S) -> Self {
