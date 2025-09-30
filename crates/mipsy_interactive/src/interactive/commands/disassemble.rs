@@ -15,16 +15,11 @@ pub(crate) fn command() -> Command {
         .with_name("dec")
         .with_name("decompile")
         .with_desc("disassembles the currently loaded file")
-        .with_exec(|_, state, _, label, _| {
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
-                        "step".bold(),
-                    ),
-                );
-            }
-
+        .with_help(format!(
+            "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
+            "step".bold(),
+        ))
+        .with_exec(|_, state, _, _| {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let mut decompiled = decompile_into_parts(binary, &state.iset)
@@ -51,6 +46,5 @@ pub(crate) fn command() -> Command {
             println!();
 
             Ok("".into())
-        },
-    )
+        })
 }

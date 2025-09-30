@@ -18,7 +18,12 @@ pub(super) mod run;
 pub(super) mod step;
 pub(super) mod watchpoint;
 
-use crate::interactive::helper::{HintArgs, MyHelper};
+use colored::Colorize;
+
+use crate::interactive::{
+    error::CommandError,
+    helper::{HintArgs, MyHelper},
+};
 
 use super::{error::CommandResult, State};
 
@@ -120,8 +125,8 @@ pub(crate) struct Command {
     pub(crate) names: Vec<String>,
     pub(crate) args: Arguments,
     description: String,
-    _internal_exec:
-        fn(&Command, &mut State, &MyHelper, &str, &[ArgumentKind]) -> CommandResult<String>,
+    help: String,
+    _internal_exec: fn(&Command, &mut State, &MyHelper, &[ArgumentKind]) -> CommandResult<String>,
     subcommands: Vec<Command>,
 }
 
@@ -159,20 +164,40 @@ impl Command {
         }
     }
 
+    pub(super) fn required_args(&self) -> &[Argument] {
+        match &self.args {
+            Arguments::Exactly { required, .. } => required,
+            Arguments::VarArgs { required, .. } => required,
+        }
+    }
+
     pub(crate) fn exec(
         &self,
         state: &mut State,
         helper: &MyHelper,
-        label: &str,
         args: &[String],
     ) -> CommandResult<String> {
-        (self._internal_exec)(
-            self,
-            state,
-            helper,
-            label,
-            self.args_from_strings(args, &helper)?.as_slice(),
-        )
+        let required = self.required_args();
+        if args.len() < required.len() {
+            Err(CommandError::WithTip {
+                error: Box::new(CommandError::MissingArguments {
+                    args: required
+                        .iter()
+                        .map(Argument::name)
+                        .map(str::to_owned)
+                        .collect(),
+                    instead: args.to_vec(),
+                }),
+                tip: format!("try `{} {}`", "help".bold(), self.name().bold()),
+            })
+        } else {
+            (self._internal_exec)(
+                self,
+                state,
+                helper,
+                self.args_from_strings(args, &helper)?.as_slice(),
+            )
+        }
     }
 
     pub(crate) fn new() -> Self {
@@ -183,7 +208,8 @@ impl Command {
                 optional: Default::default(),
             },
             description: Default::default(),
-            _internal_exec: |_, _, _, _, _| Ok(Default::default()),
+            help: Default::default(),
+            _internal_exec: |_, _, _, _| Ok(Default::default()),
             subcommands: Default::default(),
         }
     }
@@ -197,8 +223,13 @@ impl Command {
         self
     }
 
-    pub(crate) fn with_desc<S: Into<String>>(mut self, name: S) -> Self {
-        self.description = name.into();
+    pub(crate) fn with_desc<S: Into<String>>(mut self, desc: S) -> Self {
+        self.description = desc.into();
+        self
+    }
+
+    pub(crate) fn with_help<S: Into<String>>(mut self, help: S) -> Self {
+        self.help = help.into();
         self
     }
 
@@ -209,13 +240,7 @@ impl Command {
 
     pub(crate) fn with_exec(
         mut self,
-        exec: fn(
-            &Command,
-            &mut State,
-            helper: &MyHelper,
-            &str,
-            &[ArgumentKind],
-        ) -> CommandResult<String>,
+        exec: fn(&Command, &mut State, helper: &MyHelper, &[ArgumentKind]) -> CommandResult<String>,
     ) -> Self {
         self._internal_exec = exec;
         self

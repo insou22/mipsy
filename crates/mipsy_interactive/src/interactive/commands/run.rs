@@ -8,10 +8,7 @@ pub(crate) fn command() -> Command {
         .with_name("run")
         .with_name("r")
         .with_desc("run the currently loaded program until it finishes")
-        .with_exec(
-        |_, state, helper, label, _| {
-            if label == "__help__" {
-                return Ok(
+        .with_help(
                     format!(
                         "Runs the currently loaded program. It will run from wherever execution\n\
                      \x20 is currently (i.e. if you have used `{0}`, it will start from where you\n\
@@ -21,9 +18,9 @@ pub(crate) fn command() -> Command {
                         "step".bold(),
                         "not".red().bold(),
                     ),
-                );
-            }
-
+        )
+        .with_exec(
+        |_, state, helper, _| {
             if state.binary.is_none() {
                 return Err(CommandError::MustLoadFile);
             }

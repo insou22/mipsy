@@ -12,23 +12,57 @@ pub(super) fn args_numbers(args: &[ArgumentKind]) -> Vec<i64> {
     args.iter().cloned().map(i64::from).collect()
 }
 
+fn subcmd_help() -> String {
+    get_step_help_text(
+        format!(
+            "\
+                Available {1}s are:\n\
+                \n\
+                {0} {2}     : syscalls 5, 6, 7, 8, 12\n\
+                {0} {3}    : syscalls 1, 2, 3, 4, 11\n\
+                {0} {4}   : syscalls 1, 5\n\
+                {0} {5}     : syscalls 2, 6\n\
+                {0} {6}    : syscalls 3, 7\n\
+                {0} {7}    : syscalls 4, 8\n\
+                {0} {8} : syscalls 11, 12\n\
+                {0} {9}      : syscalls 13, 14, 15, 16\n\
+                \n\
+                {10} {11} will provide more information about the specified subcommand.\n\
+                \n\
+                By default, this steps forwards until your program's next syscall, or finishes.",
+            "step syscall".bold().yellow(),
+            "[type]".magenta(),
+            "input".purple(),
+            "output".purple(),
+            "integer".purple(),
+            "float".purple(),
+            "double".purple(),
+            "string".purple(),
+            "character".purple(),
+            "file".purple(),
+            "help step syscall".white().bold(),
+            "[type]".magenta().bold(),
+        )
+        .as_ref(),
+    )
+}
+
 fn call_subcmds(
     cmd: &Command,
     state: &mut State,
     helper: &MyHelper,
-    label: &str,
     args: &[ArgumentKind],
 ) -> CommandResult<String> {
     match args.get(0) {
         Some(ArgumentKind::String(arg)) => {
             if let Some(cmd) = cmd.subcommands.iter().find(|c| c.names.contains(arg)) {
-                return (cmd._internal_exec)(cmd, state, helper, label, &args[1..]);
+                return (cmd._internal_exec)(cmd, state, helper, &args[1..]);
             }
         }
         None | Some(ArgumentKind::Number(_)) => {}
     }
 
-    step_syscall(state, label, helper)
+    step_syscall(state, helper)
 }
 
 fn subcmd() -> Command {
@@ -40,47 +74,78 @@ fn subcmd() -> Command {
             Command::new()
                 .with_name("input")
                 .with_name("in")
-                .with_exec(|_, state, helper, label, _| step_input(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program asks for its next input, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_input(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("output")
                 .with_name("out")
-                .with_exec(|_, state, helper, label, _| step_output(state, label, helper)),
+                .with_name(get_step_help_text(
+                    "Steps forwards until your program asks for its next output, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_output(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("integer")
                 .with_name("int")
-                .with_exec(|_, state, helper, label, _| step_integer(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing an integer, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_integer(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("float")
-                .with_exec(|_, state, helper, label, _| step_float(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a float, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_float(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("double")
-                .with_exec(|_, state, helper, label, _| step_double(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a double, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_double(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("string")
                 .with_name("str")
-                .with_exec(|_, state, helper, label, _| step_string(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a string, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_string(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("character")
                 .with_name("char")
-                .with_exec(|_, state, helper, label, _| step_character(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that requires\n\
+                 reading or writing a character, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_character(state, helper)),
         )
         .with_subcommand(
             Command::new()
                 .with_name("file")
-                .with_exec(|_, state, helper, label, _| step_file(state, label, helper)),
+                .with_help(get_step_help_text(
+                    "Steps forwards until your program executes a syscall that opens,\n\
+                 reads from, writes to, or closes a file, or finishes.",
+                ))
+                .with_exec(|_, state, helper, _| step_file(state, helper)),
         )
+        .with_help(subcmd_help())
         .with_exec(call_subcmds)
 }
 
@@ -113,11 +178,18 @@ pub(crate) fn command() -> Command {
                 .with_name("back")
                 .with_name("b")
                 .with_optional_arg(times_arg)
-                .with_exec(|_, state, helper, label, args| {
-                    step_back(state, label, &args_numbers(args), helper)
-                }),
+                .with_help(format!(
+                    "Steps backwards one instruction, or {0} instructions if specified.\n\
+                 It will then print out which instruction will be executed next --\n\
+             \x20 i.e. using `{1}` will immediately execute said printed instruction.\n\
+                 To step fowards (i.e. normal stepping), use `{1}`.",
+                    "[times]".magenta(),
+                    "step".bold(),
+                ))
+                .with_exec(|_, state, helper, args| step_back(state, &args_numbers(args), helper)),
         )
         .with_subcommand(subcmd())
+        .with_help(subcmd_help())
         .with_exec(call_subcmds)
 }
 
@@ -147,7 +219,6 @@ fn get_long_help() -> String {
 
 fn step_forward(
     state: &mut State,
-    label: &str,
     args: &[i64],
     helper: &MyHelper,
 ) -> Result<String, CommandError> {
@@ -159,7 +230,6 @@ fn step_forward(
     if times.is_negative() {
         return step_back(
             state,
-            label,
             [times]
                 .into_iter()
                 .chain(args.iter().skip(1).cloned())
@@ -198,28 +268,11 @@ fn step_forward(
     Ok("".into())
 }
 
-fn step_back(
-    state: &mut State,
-    label: &str,
-    args: &[i64],
-    helper: &MyHelper,
-) -> CommandResult<String> {
-    if label == "__help__" {
-        return Ok(format!(
-            "Steps backwards one instruction, or {0} instructions if specified.\n\
-                 It will then print out which instruction will be executed next --\n\
-             \x20 i.e. using `{1}` will immediately execute said printed instruction.\n\
-                 To step fowards (i.e. normal stepping), use `{1}`.",
-            "[times]".magenta(),
-            "step".bold(),
-        ));
-    }
-
+fn step_back(state: &mut State, args: &[i64], helper: &MyHelper) -> CommandResult<String> {
     let times = *args.first().or(Some(&1)).unwrap();
     if times.is_negative() {
         return step_forward(
             state,
-            label,
             [times.abs()]
                 .into_iter()
                 .chain(args.iter().skip(1).cloned())
@@ -289,52 +342,11 @@ fn step_back(
     Ok("".into())
 }
 
-fn step_syscall(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            format!(
-                "\
-                Available {1}s are:\n\
-                \n\
-                {0} {2}     : syscalls 5, 6, 7, 8, 12\n\
-                {0} {3}    : syscalls 1, 2, 3, 4, 11\n\
-                {0} {4}   : syscalls 1, 5\n\
-                {0} {5}     : syscalls 2, 6\n\
-                {0} {6}    : syscalls 3, 7\n\
-                {0} {7}    : syscalls 4, 8\n\
-                {0} {8} : syscalls 11, 12\n\
-                {0} {9}      : syscalls 13, 14, 15, 16\n\
-                \n\
-                {10} {11} will provide more information about the specified subcommand.\n\
-                \n\
-                By default, this steps forwards until your program's next syscall, or finishes.",
-                "step syscall".bold().yellow(),
-                "[type]".magenta(),
-                "input".purple(),
-                "output".purple(),
-                "integer".purple(),
-                "float".purple(),
-                "double".purple(),
-                "string".purple(),
-                "character".purple(),
-                "file".purple(),
-                "help step syscall".white().bold(),
-                "[type]".magenta().bold(),
-            )
-            .as_ref(),
-        ));
-    }
-
+fn step_syscall(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |_| true, helper)
 }
 
-fn step_input(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program asks for its next input, or finishes.",
-        ));
-    }
-
+fn step_input(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(
         state,
         |syscall| matches!(syscall, 5 | 6 | 7 | 8 | 12),
@@ -342,13 +354,7 @@ fn step_input(state: &mut State, label: &str, helper: &MyHelper) -> Result<Strin
     )
 }
 
-fn step_output(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program asks for its next output, or finishes.",
-        ));
-    }
-
+fn step_output(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(
         state,
         |syscall| matches!(syscall, 1 | 2 | 3 | 4 | 11),
@@ -356,73 +362,27 @@ fn step_output(state: &mut State, label: &str, helper: &MyHelper) -> Result<Stri
     )
 }
 
-fn step_integer(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing an integer, or finishes.",
-        ));
-    }
-
+fn step_integer(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |syscall| matches!(syscall, 1 | 5), helper)
 }
 
-fn step_float(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a float, or finishes.",
-        ));
-    }
-
+fn step_float(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |syscall| matches!(syscall, 2 | 6), helper)
 }
 
-fn step_double(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a double, or finishes.",
-        ));
-    }
-
+fn step_double(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |syscall| matches!(syscall, 3 | 7), helper)
 }
 
-fn step_string(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a string, or finishes.",
-        ));
-    }
-
+fn step_string(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |syscall| matches!(syscall, 4 | 8), helper)
 }
 
-fn step_character(
-    state: &mut State,
-    label: &str,
-    helper: &MyHelper,
-) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that requires\n\
-                 reading or writing a character, or finishes.",
-        ));
-    }
-
+fn step_character(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(state, |syscall| matches!(syscall, 11 | 12), helper)
 }
 
-fn step_file(state: &mut State, label: &str, helper: &MyHelper) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(get_step_help_text(
-            "Steps forwards until your program executes a syscall that opens,\n\
-                 reads from, writes to, or closes a file, or finishes.",
-        ));
-    }
-
+fn step_file(state: &mut State, helper: &MyHelper) -> Result<String, CommandError> {
     step_till_condition(
         state,
         |syscall| matches!(syscall, 13 | 14 | 15 | 16),

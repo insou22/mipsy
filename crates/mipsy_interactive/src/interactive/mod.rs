@@ -25,7 +25,7 @@ use mipsy_lib::{
 };
 
 use colored::*;
-use commands::{Arguments, Command};
+use commands::Command;
 use rustyline::{
     config::Configurer, error::ReadlineError, At, Cmd, Editor, KeyCode, KeyEvent, Modifiers,
     Movement, Word,
@@ -102,25 +102,7 @@ impl State {
             return prompt::unknown_command(command_name);
         };
 
-        let required = match &command.args {
-            Arguments::Exactly { required, .. } => required,
-            Arguments::VarArgs { required, .. } => required,
-        };
-
-        if (parts.len() - 1) < required.len() {
-            return self.handle_error(
-                CommandError::WithTip {
-                    error: Box::new(CommandError::MissingArguments {
-                        args: required.iter().map(|a| a.name().to_owned()).collect(),
-                        instead: parts.clone(),
-                    }),
-                    tip: format!("try `{} {}`", "help".bold(), command_name.bold()),
-                },
-                true,
-            );
-        }
-
-        if let Err(e) = command.exec(self, helper, command_name, &parts[1..]) {
+        if let Err(e) = command.exec(self, helper, &parts[1..]) {
             self.handle_error(e, true)
         }
     }

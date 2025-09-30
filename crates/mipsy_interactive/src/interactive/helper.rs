@@ -24,7 +24,7 @@ impl From<String> for HintArgs {
     fn from(value: String) -> Self {
         Self {
             pos: value.len(),
-            line: value
+            line: value,
         }
     }
 }
@@ -58,12 +58,16 @@ impl HintArgs {
     }
 
     pub(crate) fn command(&self) -> Option<Self> {
-        self.line.split_whitespace().nth(0).filter(|l| l != &self.line).and_then(|l|
-            Some(Self {
-                line: l.to_owned(),
-                pos: l.len()
+        self.line
+            .split_whitespace()
+            .nth(0)
+            .filter(|l| l != &self.line)
+            .and_then(|l| {
+                Some(Self {
+                    line: l.to_owned(),
+                    pos: l.len(),
+                })
             })
-            )
     }
 
     pub(crate) fn subcmd(&self) -> Self {
@@ -101,12 +105,9 @@ impl<'a> MyHelper<'a> {
     }
 
     fn find_command_name(&self, hargs: &HintArgs) -> Option<&Command> {
-        hargs.command().and_then(|l| {
-            self.state
-                .commands
-                .iter()
-                .find(|c| c.name() == l.line)
-        })
+        hargs
+            .command()
+            .and_then(|l| self.state.commands.iter().find(|c| c.name() == l.line))
     }
 
     fn find_command_aliases(&self, hargs: &HintArgs) -> Option<&Command> {
@@ -124,26 +125,6 @@ impl<'a> MyHelper<'a> {
             .filter(|m| m.starts_with(&hargs.line))
             .copied()
             .collect()
-    }
-
-    fn closest_command(&self, hargs: &HintArgs) -> Option<String> {
-        if hargs.line.is_empty() || hargs.pos < hargs.line.len() {
-            None
-        } else if let Some(found) = self
-            .state
-            .commands
-            .iter()
-            .find(|s| s.name().starts_with(&hargs.line))
-        {
-            let found = found.name();
-            if found.len() == hargs.pos {
-                None
-            } else {
-                Some(found[hargs.pos..].to_owned())
-            }
-        } else {
-            None
-        }
     }
 
     fn history_hints(&self, hargs: &HintArgs, ctx: &Context<'_>) -> Vec<String> {

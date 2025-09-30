@@ -21,100 +21,96 @@ pub(crate) fn command() -> Command {
                     } else {
                         Err(CommandError::BadArgument {
                             arg: "file".to_owned(),
-                            instead: a.to_owned()
+                            instead: a.to_owned(),
                         })
                     }
                 },
-                |a, h| h.file_hints(a)
-            )
+                |a, h| h.file_hints(a),
+            ),
         )
-        .with_varargs_format(
-            "-- {args}".magenta().to_string()
-        )
+        .with_varargs_format("-- {args}".magenta().to_string())
         .with_desc("load a MIPS file to run")
-        .with_exec(
-            |_, state, _, label, args| {
-                if label == "__help__" {
-                    return Ok(
-                        format!(
-                            "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
-                            This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
-                            "run".bold(),
-                            "step".bold(),
-                            "print".bold(),
-                        ),
-                    );
-                }
+        .with_help(format!(
+            "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
+                This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
+            "run".bold(),
+            "step".bold(),
+            "print".bold(),
+        ))
+        .with_exec(|_, state, _, args| {
+            let args = &args_text(args)[..];
 
-                let args = &args_text(args)[..];
+            let (files, arguments) = {
+                if let Some(index) = args.iter().position(|arg| arg == "--") {
+                    let (files, arguments) = args.split_at(index);
 
-                let (files, arguments) = {
-                    if let Some(index) = args.iter().position(|arg| arg == "--") {
-                        let (files, arguments) = args.split_at(index);
-
-                        (files, &arguments[1..])
-                    } else {
-                        (args, &[][..])
-                    }
-                };
-
-                #[cfg(unix)]
-                let stdin = String::from("/dev/stdin");
-
-                let program = {
-                    let mut program = Vec::with_capacity(files.len());
-                for file in files
-                    .iter()
-                    .map(|mut name| {
-                        #[cfg(unix)]
-                        if name == "-" {
-                            name = &stdin;
-                        }
-
-                        match std::fs::read_to_string(expand_tilde(name)) {
-                            Ok(content) => Ok((name.to_string(), content)),
-                            Err(err) => Err(CommandError::CannotReadFile {
-                                path: name.to_string(),
-                                os_error: err.to_string(),
-                            }),
-                        }
-                    }) {
-                        program.push(file?)
-                    }
-                    program
-                };
-
-                state.program = Some(program);
-                let program = state.program.as_ref().unwrap();
-
-                let binary_files = program
-                    .iter()
-                    .map(|(path, file)| TaggedFile::new(Some(path), file))
-                    .collect();
-
-                let binary = mipsy_lib::compile(
-                    &state.iset,
-                    binary_files,
-                    &CompilerOptions::default(),
-                    &state.config,
-                )
-                    .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
-
-                let runtime = mipsy_lib::runtime(&binary, arguments.iter().map(String::as_str).collect::<Vec<_>>().as_slice());
-
-                state.binary = Some(binary);
-                state.runtime = runtime;
-                state.exited = false;
-
-                let loaded = if program.len() == 1 {
-                    "file loaded"
+                    (files, &arguments[1..])
                 } else {
-                    "files loaded"
-                };
+                    (args, &[][..])
+                }
+            };
 
-                prompt::success_nl(loaded);
+            #[cfg(unix)]
+            let stdin = String::from("/dev/stdin");
 
-                Ok("".into())
-            },
-    )
+            let program = {
+                let mut program = Vec::with_capacity(files.len());
+                for file in files.iter().map(|mut name| {
+                    #[cfg(unix)]
+                    if name == "-" {
+                        name = &stdin;
+                    }
+
+                    match std::fs::read_to_string(expand_tilde(name)) {
+                        Ok(content) => Ok((name.to_string(), content)),
+                        Err(err) => Err(CommandError::CannotReadFile {
+                            path: name.to_string(),
+                            os_error: err.to_string(),
+                        }),
+                    }
+                }) {
+                    program.push(file?)
+                }
+                program
+            };
+
+            state.program = Some(program);
+            let program = state.program.as_ref().unwrap();
+
+            let binary_files = program
+                .iter()
+                .map(|(path, file)| TaggedFile::new(Some(path), file))
+                .collect();
+
+            let binary = mipsy_lib::compile(
+                &state.iset,
+                binary_files,
+                &CompilerOptions::default(),
+                &state.config,
+            )
+            .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
+
+            let runtime = mipsy_lib::runtime(
+                &binary,
+                arguments
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
+
+            state.binary = Some(binary);
+            state.runtime = runtime;
+            state.exited = false;
+
+            let loaded = if program.len() == 1 {
+                "file loaded"
+            } else {
+                "files loaded"
+            };
+
+            prompt::success_nl(loaded);
+
+            Ok("".into())
+        })
 }

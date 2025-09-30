@@ -24,188 +24,185 @@ pub(crate) fn command() -> Command {
         .with_optional_arg(Argument::new("len", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
         .with_optional_arg(Argument::new("addr", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
         .with_optional_arg(Argument::new("-nolabels", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
-        .with_exec(
-        |_, state, _, label, args| {
-            let mut args = &args_text(args)[..];
-            // TODO: <enter> to examine the next chunk of memory
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Examine memory contents in a format akin to the tool `xxd`.\n\
-                         {0} may be: `.data` (default), `.text`, `.stack`, `.kdata`, `.ktext`.\n\
-                         {1} controls the maximum number of bytes displayed.\n\
-                         {2} controls where the memory dump starts (by default the start of the section).\n\
-                         {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14),\n\
-                    \x20             a decimal address (`4194304`), a hex address (`{3}400000`),\n\
-                    \x20             or a label (`{4}`).\n\
-                         If {7} is provided, then label names will be included in the output.\n\
-                         Unprintable bytes are displayed as {5}, and uninitialized bytes are displayed as {6}.\n\
-                        ",
-                        "<section>".magenta(),
-                        "<length>".magenta(),
-                        "<addr>".magenta(),
-                        "0x".yellow(),
-                        "main".yellow().bold(),
-                        ".".bright_black(),
-                        "_".bright_black(),
-                        "-nolabels".magenta(),
-                    )
-                );
-            }
+        .with_help(
+            format!(
+                "Examine memory contents in a format akin to the tool `xxd`.\n\
+                {0} may be: `.data` (default), `.text`, `.stack`, `.kdata`, `.ktext`.\n\
+                {1} controls the maximum number of bytes displayed.\n\
+                {2} controls where the memory dump starts (by default the start of the section).\n\
+                {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14),\n\
+                \x20             a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+                \x20             or a label (`{4}`).\n\
+                If {7} is provided, then label names will be included in the output.\n\
+                Unprintable bytes are displayed as {5}, and uninitialized bytes are displayed as {6}.\n\
+                ",
+                "<section>".magenta(),
+                "<length>".magenta(),
+                "<addr>".magenta(),
+                "0x".yellow(),
+                "main".yellow().bold(),
+                ".".bright_black(),
+                "_".bright_black(),
+                "-nolabels".magenta(),
+            )
+            )
+            .with_exec(
+                |_, state, _, args| {
+                    let mut args = &args_text(args)[..];
+                    // TODO: <enter> to examine the next chunk of memory
+                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+                    let mut segment = if let Some(segment) =
+                        args.get(0).and_then(|segment| match segment.as_ref() {
+                            ".data" => Some(Segment::Data),
+                            ".text" => Some(Segment::Text),
+                            ".stack" => Some(Segment::Stack),
+                            ".kdata" => Some(Segment::KData),
+                            ".ktext" => Some(Segment::KText),
+                            _ => None,
+                        }) {
+                            args = &args[1..];
+                            segment
+                        } else {
+                            Segment::Data
+                        };
 
-            let mut segment = if let Some(segment) =
-                args.get(0).and_then(|segment| match segment.as_ref() {
-                    ".data" => Some(Segment::Data),
-                    ".text" => Some(Segment::Text),
-                    ".stack" => Some(Segment::Stack),
-                    ".kdata" => Some(Segment::KData),
-                    ".ktext" => Some(Segment::KText),
-                    _ => None,
-                }) {
-                args = &args[1..];
-                segment
-            } else {
-                Segment::Data
-            };
+                    let dump_len = if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok())
+                    {
+                        args = &args[1..];
+                        len
+                    } else {
+                        128
+                    };
 
-            let dump_len = if let Some(len) = args.get(0).and_then(|num| num.parse::<usize>().ok())
-            {
-                args = &args[1..];
-                len
-            } else {
-                128
-            };
+                    let mut base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
+                        if base.is_ok() {
+                            args = &args[1..];
+                        }
+                        base
+                    } else {
+                        Ok(segment.get_lower_bound())
+                    };
 
-            let mut base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
-                if base.is_ok() {
-                    args = &args[1..];
-                }
-                base
-            } else {
-                Ok(segment.get_lower_bound())
-            };
-
-            let hide_labels = args
-                .get(0)
-                .map_or(false, |a| a == "-nolabels");
-            if hide_labels && base_addr.is_err() {
-                // if -labels was provided, ensure base_addr is valid
-                base_addr = Ok(segment.get_lower_bound());
-            }
-
-            let base_addr = base_addr? as usize;
-
-            // for most cases this is a no-op, but if given an address in the stack we should
-            // reverse the order of the scan
-            segment = get_segment(base_addr as u32);
-
-            let default_size = 16;
-            let row_size: usize = termsize::get()
-                .map_or(default_size, |size|
-                // subtract "0x{:8x}: " length and allow for extra length in representation
-                // TODO: allow rows longer than 16 bytes? can be done by removing .min() but not very readable
-                (((size.cols - 12 - 1) * 2 / 7) as usize).min(default_size))
-                .max(1);
-
-            let mut rows: usize = dump_len / row_size;
-            if dump_len % row_size != 0 {
-                rows += 1;
-            }
-            let offset: usize = row_size * 5 / 2;
-
-            for nth in 0..rows {
-                let mut label_strs: Vec<WrappedString> = Vec::new();
-                let mut arrow_tips = WrappedString::new();
-                let mut byte_repr = String::with_capacity(row_size * 3);
-                let mut printable_repr = String::with_capacity(row_size);
-
-                for offset in 0..row_size {
-                    // print in groups of 2 (`xxd` format)
-                    if offset % 2 == 0 {
-                        byte_repr.push(' ');
+                    let hide_labels = args
+                        .get(0)
+                        .map_or(false, |a| a == "-nolabels");
+                    if hide_labels && base_addr.is_err() {
+                        // if -labels was provided, ensure base_addr is valid
+                        base_addr = Ok(segment.get_lower_bound());
                     }
 
-                    // reached end of dump and/or allocated memory
-                    let index = nth * row_size + offset;
-                    if index >= dump_len {
-                        break;
-                    };
+                    let base_addr = base_addr? as usize;
 
-                    // automatically move upwards when displaying stack
-                    let address = if segment == Segment::Stack {
-                        base_addr - index
-                    } else {
-                        base_addr + index
-                    };
+                    // for most cases this is a no-op, but if given an address in the stack we should
+                    // reverse the order of the scan
+                    segment = get_segment(base_addr as u32);
 
-                    let byte = state
-                        .runtime
-                        .timeline()
-                        .state()
-                        .read_mem_byte_uninit_unchecked(address as u32)
-                        .unwrap();
+                    let default_size = 16;
+                    let row_size: usize = termsize::get()
+                        .map_or(default_size, |size|
+                            // subtract "0x{:8x}: " length and allow for extra length in representation
+                            // TODO: allow rows longer than 16 bytes? can be done by removing .min() but not very readable
+                            (((size.cols - 12 - 1) * 2 / 7) as usize).min(default_size))
+                        .max(1);
 
-                    // TODO: combine these when if-let chaining is stabilised
-                    if !hide_labels {
-                        if let Some((label, addr)) = binary
-                            .labels
-                            .iter()
-                            .find(|(_, &addr)| addr == address as u32)
-                        {
-                            let offset = byte_repr.len();
-                            label_strs.push(arrow_tips.clone());
-                            label_strs.last_mut().unwrap().pad_insert(
-                                offset,
-                                format!(
-                                    "{}: {}{}",
-                                    label.bold().yellow(),
-                                    "0x".yellow(),
-                                    format!("{addr:08x}").purple()
-                                )
+                    let mut rows: usize = dump_len / row_size;
+                    if dump_len % row_size != 0 {
+                        rows += 1;
+                    }
+                    let offset: usize = row_size * 5 / 2;
+
+                    for nth in 0..rows {
+                        let mut label_strs: Vec<WrappedString> = Vec::new();
+                        let mut arrow_tips = WrappedString::new();
+                        let mut byte_repr = String::with_capacity(row_size * 3);
+                        let mut printable_repr = String::with_capacity(row_size);
+
+                        for offset in 0..row_size {
+                            // print in groups of 2 (`xxd` format)
+                            if offset % 2 == 0 {
+                                byte_repr.push(' ');
+                            }
+
+                            // reached end of dump and/or allocated memory
+                            let index = nth * row_size + offset;
+                            if index >= dump_len {
+                                break;
+                            };
+
+                            // automatically move upwards when displaying stack
+                            let address = if segment == Segment::Stack {
+                                base_addr - index
+                            } else {
+                                base_addr + index
+                            };
+
+                            let byte = state
+                                .runtime
+                                .timeline()
+                                .state()
+                                .read_mem_byte_uninit_unchecked(address as u32)
+                                .unwrap();
+
+                            // TODO: combine these when if-let chaining is stabilised
+                            if !hide_labels {
+                                if let Some((label, addr)) = binary
+                                    .labels
+                                        .iter()
+                                        .find(|(_, &addr)| addr == address as u32)
+                                {
+                                    let offset = byte_repr.len();
+                                    label_strs.push(arrow_tips.clone());
+                                    label_strs.last_mut().unwrap().pad_insert(
+                                        offset,
+                                        format!(
+                                            "{}: {}{}",
+                                            label.bold().yellow(),
+                                            "0x".yellow(),
+                                            format!("{addr:08x}").purple()
+                                        )
+                                        .as_ref(),
+                                    );
+                                    arrow_tips.pad_insert(offset, "|");
+                                }
+                            }
+
+                            byte_repr.push_str(render_data(byte).as_ref());
+                            printable_repr.push_str(
+                                byte.as_option()
+                                .map(|&value| value as u32)
+                                .and_then(char::from_u32)
+                                .map(|c| c.escape())
+                                .unwrap_or("_".bright_black().to_string())
                                 .as_ref(),
                             );
-                            arrow_tips.pad_insert(offset, "|");
                         }
+
+                        let marker = if segment == Segment::Stack {
+                            base_addr - nth * row_size
+                        } else {
+                            base_addr + nth * row_size
+                        };
+
+                        if !label_strs.is_empty() {
+                            label_strs
+                                .iter()
+                                .for_each(|l| println!("{} {}", " ".repeat(10), l));
+
+                            println!("{} {}", " ".repeat(10), arrow_tips);
+                        }
+
+                        println!(
+                            "{}{:08x}:{:offset$}  {}",
+                            "0x".yellow(),
+                            marker,
+                            byte_repr,
+                            printable_repr,
+                        );
                     }
 
-                    byte_repr.push_str(render_data(byte).as_ref());
-                    printable_repr.push_str(
-                        byte.as_option()
-                            .map(|&value| value as u32)
-                            .and_then(char::from_u32)
-                            .map(|c| c.escape())
-                            .unwrap_or("_".bright_black().to_string())
-                            .as_ref(),
-                    );
-                }
-
-                let marker = if segment == Segment::Stack {
-                    base_addr - nth * row_size
-                } else {
-                    base_addr + nth * row_size
-                };
-
-                if !label_strs.is_empty() {
-                    label_strs
-                        .iter()
-                        .for_each(|l| println!("{} {}", " ".repeat(10), l));
-
-                    println!("{} {}", " ".repeat(10), arrow_tips);
-                }
-
-                println!(
-                    "{}{:08x}:{:offset$}  {}",
-                    "0x".yellow(),
-                    marker,
-                    byte_repr,
-                    printable_repr,
-                );
-            }
-
-            Ok("".into())
-        },
+                    Ok("".into())
+                },
     )
 }
 

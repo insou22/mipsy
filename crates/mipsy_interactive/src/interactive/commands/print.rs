@@ -14,75 +14,85 @@ pub(crate) fn command() -> Command {
         .with_name("p")
         .with_desc("print an item - a register, value in memory, etc.")
         .with_exact_args()
-        .with_required_arg(Argument::new("item", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
-        .with_optional_arg(Argument::new("format", |a, _|
-            match a {
+        .with_required_arg(Argument::new(
+            "item",
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _| vec![],
+        ))
+        .with_optional_arg(Argument::new(
+            "format",
+            |a, _| match a {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
-                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => Ok(ArgumentKind::String(a.to_owned())),
-                other => {
-                    Err(CommandError::BadArgument {
-                        arg: "[format]".magenta().to_string(),
-                        instead: other.to_string(),
-                    })
+                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {
+                    Ok(ArgumentKind::String(a.to_owned()))
                 }
-            }, |_, _|
-                vec!["byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char"
-               , "string", "b", "h", "w", "xb", "xh", "xw", "x", "c", "s"].into_iter().map(str::to_owned).collect()))
-        .with_exec(
-        |_, state, _, label, args| {
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Prints the current value of an {0} in the loaded program.\n\
-                         {0} can be one of:\n\
-                    \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
-                    \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
-                    \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
-                    \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
-                         {14} can optionally be specified (default: `{15}`) to specify how the value\n\
-                    \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
-                    \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
-                        "<item>".magenta(),
-                        "register".yellow().bold(),
-                        "$".yellow(),
-                        "t3".bold(),
-                        "12".bold(),
-                        "special".yellow().bold(),
-                        "pc".bold(),
-                        "hi".bold(),
-                        "lo".bold(),
-                        "address".yellow().bold(),
-                        "0x".yellow(),
-                        "my_label".yellow().bold(),
-                        "all registers".yellow().bold(),
-                        "all".bold(),
-                        "[format]".magenta(),
-                        format!("{}{}", "w".yellow().bold(), "ord".bold()),
-                        format!("{}{}", "b".yellow().bold(), "yte".bold()),
-                        format!("{}{}", "h".yellow().bold(), "alf".bold()),
-                        "x".yellow().bold(),
-                        "he".bold(),
-                        format!("{}{}", "c".yellow().bold(), "har".bold()),
-                        format!("{}{}", "s".yellow().bold(), "tring".bold()),
-                    ),
-                );
-            }
-
+                other => Err(CommandError::BadArgument {
+                    arg: "[format]".magenta().to_string(),
+                    instead: other.to_string(),
+                }),
+            },
+            |_, _| {
+                vec![
+                    "byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char", "string",
+                    "b", "h", "w", "xb", "xh", "xw", "x", "c", "s",
+                ]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+            },
+        ))
+        .with_help(format!(
+            "Prints the current value of an {0} in the loaded program.\n\
+                {0} can be one of:\n\
+                \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
+                \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
+                \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
+                \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
+                {14} can optionally be specified (default: `{15}`) to specify how the value\n\
+                \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
+                \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
+            "<item>".magenta(),
+            "register".yellow().bold(),
+            "$".yellow(),
+            "t3".bold(),
+            "12".bold(),
+            "special".yellow().bold(),
+            "pc".bold(),
+            "hi".bold(),
+            "lo".bold(),
+            "address".yellow().bold(),
+            "0x".yellow(),
+            "my_label".yellow().bold(),
+            "all registers".yellow().bold(),
+            "all".bold(),
+            "[format]".magenta(),
+            format!("{}{}", "w".yellow().bold(), "ord".bold()),
+            format!("{}{}", "b".yellow().bold(), "yte".bold()),
+            format!("{}{}", "h".yellow().bold(), "alf".bold()),
+            "x".yellow().bold(),
+            "he".bold(),
+            format!("{}{}", "c".yellow().bold(), "har".bold()),
+            format!("{}{}", "s".yellow().bold(), "tring".bold()),
+        ))
+        .with_exec(|_, state, _, args| {
             let get_error = || CommandError::WithTip {
                 error: Box::new(CommandError::BadArgument {
                     arg: "<item>".magenta().to_string(),
-                    instead: args[0].to_owned().into()
+                    instead: args[0].to_owned().into(),
                 }),
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(String::from(args[0].to_owned()), state.config.tab_size)
-                .map_err(|_| get_error())?;
+            let arg = mipsy_parser::parse_argument(
+                String::from(args[0].to_owned()),
+                state.config.tab_size,
+            )
+            .map_err(|_| get_error())?;
 
             let print_type = match args.get(1) {
                 Some(ArgumentKind::String(t)) => t,
                 None => "word",
-                _ => unreachable!()
+                _ => unreachable!(),
             };
 
             let empty_binary = Binary::default();
@@ -317,8 +327,7 @@ pub(crate) fn command() -> Command {
             }
 
             Ok("".into())
-        },
-    )
+        })
 }
 
 fn format_simple_print(val: i32, print_type: &str) -> String {

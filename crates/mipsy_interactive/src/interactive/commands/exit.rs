@@ -8,11 +8,6 @@ pub(crate) fn command() -> Command {
         .with_name("quit")
         .with_name("q")
         .with_desc("exit mipsy")
-        .with_exec(|_, _, _, label, _| {
-            if label == "__help__" {
-                Ok("Immediately exits mipsy".into())
-            } else {
-                std::process::exit(0)
-            }
-        })
+        .with_help("Immediately exits mipsy".to_owned())
+        .with_exec(|_, _, _, _| std::process::exit(0))
 }

@@ -25,16 +25,13 @@ pub(crate) fn command() -> Command {
                     .collect()
             },
         ))
-        .with_exec(|_, state, helper, label, args| {
+        .with_help(format!(
+            "Prints the general help text for all mipsy commands, or more in-depth\n\
+                \x20 help for a specific {} if specified, including available aliases.",
+            "[command]".magenta()
+        ))
+        .with_exec(|_, state, _, args| {
             let args = &args_text(args);
-            if label == "__help__" {
-                return Ok(format!(
-                    "Prints the general help text for all mipsy commands, or more in-depth\n\
-                     \x20 help for a specific {} if specified, including available aliases.",
-                    "[command]".magenta()
-                ));
-            }
-
             if let Some(command) = args.first() {
                 let mut command =
                     &state
@@ -74,8 +71,7 @@ pub(crate) fn command() -> Command {
                 }
 
                 println!("\n{}\n", get_command_formatted(command, parts));
-                // TODO: better help than "__help__"
-                println!("{}", command.exec(state, helper, "__help__", args).unwrap());
+                println!("{}", command.help);
 
                 if !command.names[1..].is_empty() {
                     prompt::banner("\naliases".green().bold());

@@ -28,14 +28,11 @@ pub(crate) fn command() -> Command {
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
         ))
-        .with_exec(|_, state, _, label, args| {
-            if label == "__help__" {
-                return Ok(format!(
-                    "prints the current and surrounding 3 (or {}) instructions",
-                    "[n]".magenta(),
-                ));
-            }
-
+        .with_help(format!(
+            "prints the current and surrounding 3 (or {}) instructions",
+            "[n]".magenta(),
+        ))
+        .with_exec(|_, state, _, args| {
             let n = match args.first() {
                 Some(ArgumentKind::Number(a)) => *a as _,
                 None => 3,

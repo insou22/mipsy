@@ -16,15 +16,12 @@ pub(crate) fn command() -> Command {
             |_, _| vec![],
         ))
         .with_desc("print the address of a label")
-        .with_exec(|_, state, _, label, args| {
-            if label == "__help__" {
-                return Ok(format!(
-                    "Prints the address of the specified {0}.\n\
-                         May error if the specified {0} doesn't exist.",
-                    "<label>".magenta()
-                ));
-            }
-
+        .with_help(format!(
+            "Prints the address of the specified {0}.\n\
+                May error if the specified {0} doesn't exist.",
+            "<label>".magenta()
+        ))
+        .with_exec(|_, state, _, args| {
             let label = String::from(args[0].to_owned());
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 

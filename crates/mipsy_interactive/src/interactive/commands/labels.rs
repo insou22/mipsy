@@ -11,13 +11,8 @@ pub(crate) fn command() -> Command {
         .with_name("las")
         .with_name("lbls")
         .with_desc("prints the addresses of all labels")
-        .with_exec(|_, state, _, label, _| {
-            if label == "__help__" {
-                return Ok(
-                    "Prints the addresses of all labels in the currently loaded program.".into(),
-                );
-            }
-
+        .with_help("Prints the addresses of all labels in the currently loaded program.".to_owned())
+        .with_exec(|_, state, _, _| {
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             let max_len = binary

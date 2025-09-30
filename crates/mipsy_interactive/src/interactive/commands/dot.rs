@@ -20,12 +20,9 @@ pub(crate) fn command() -> Command {
             |a, _| Ok(ArgumentKind::String(a.to_owned())),
             |_, _| vec![],
         ))
+        .with_help("Executes a MIPS instruction immediately".to_owned())
         .with_varargs_format("{args}".magenta().to_string())
-        .with_exec(|_, state, helper, label, args| {
-            if label == "__help__" {
-                return Ok("Executes a MIPS instruction immediately".into());
-            }
-
+        .with_exec(|_, state, helper, args| {
             let line = args_text(args).join(" ");
 
             let inst =
