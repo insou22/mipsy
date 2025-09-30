@@ -1,4 +1,4 @@
-use std::{ops::Range, rc::Rc};
+use std::{ops::{Bound, Range, RangeBounds}, rc::Rc};
 
 use super::{bytes::ToBytes, text::instruction_length, Binary, DATA_BOT, TEXT_BOT};
 use crate::{
@@ -101,14 +101,14 @@ pub(super) fn eval_directive(
                 Ok((
                     eval_constant_in_range(
                         byte,
-                        i8::MIN as _..u8::MAX as _,
+                        i8::MIN as i64..=u8::MAX as _,
                         binary,
                         file_tag.clone(),
                     )? as u8,
                     if let Some(n) = n {
                         eval_constant_in_range(
                             n,
-                            u32::MIN as _..u32::MAX as _,
+                            u32::MIN as i64..=u32::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u32
@@ -130,14 +130,14 @@ pub(super) fn eval_directive(
                     Ok((
                         eval_constant_in_range(
                             half,
-                            i16::MIN as _..u16::MAX as _,
+                            i16::MIN as i64..=u16::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u16,
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _..u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -163,14 +163,14 @@ pub(super) fn eval_directive(
                     Ok((
                         eval_constant_in_range(
                             word,
-                            i32::MIN as _..u32::MAX as _,
+                            i32::MIN as i64..=u32::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u32,
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _..u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -198,7 +198,7 @@ pub(super) fn eval_directive(
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _..u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -226,7 +226,7 @@ pub(super) fn eval_directive(
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _..u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -244,7 +244,7 @@ pub(super) fn eval_directive(
             alignment.into_iter().chain(doubles).collect()
         }
         MpDirective::Align(num) => {
-            let num = eval_constant_in_range(num, u32::MIN as _..31, binary, file_tag)? as u32;
+            let num = eval_constant_in_range(num, u32::MIN as _..32, binary, file_tag)? as u32;
 
             let multiple = 2usize.pow(num);
 
@@ -252,7 +252,7 @@ pub(super) fn eval_directive(
         }
         MpDirective::Space(num) => {
             let num =
-                eval_constant_in_range(num, u32::MIN as _..u32::MAX as _, binary, file_tag)? as u32;
+                eval_constant_in_range(num, u32::MIN as i64..=u32::MAX as _, binary, file_tag)? as u32;
 
             let space_byte = if config.spim {
                 Safe::Valid(0)
@@ -522,7 +522,7 @@ pub fn eval_constant(
 
 fn eval_constant_in_range(
     constant: &MpConstValueLoc,
-    range: Range<i64>,
+    range: impl RangeBounds<i64>,
     binary: &Binary,
     file: Rc<str>,
 ) -> MipsyResult<i64> {
@@ -542,13 +542,19 @@ fn eval_constant_in_range(
     )
 }
 
-pub fn eval_value_in_range(value: i64, range: Range<i64>) -> MipsyInternalResult<i64> {
-    if value < range.start || value > range.end.saturating_sub(1) {
+pub fn eval_value_in_range(value: i64, range: impl RangeBounds<i64>) -> MipsyInternalResult<i64> {
+    let bound_val = |b: Bound<&i64>| match b {
+        Bound::Included(&x) => x,
+        Bound::Excluded(&x) => x.saturating_sub(1),
+        Bound::Unbounded => unreachable!()
+    };
+    let (start, end) = (bound_val(range.start_bound()), bound_val(range.end_bound()));
+    if value < start || value > end {
         Err(InternalError::Compiler(Error::ConstantValueDoesNotFit {
             directive_type: DirectiveType::Byte,
             value,
-            range_low: range.end.saturating_sub(1),
-            range_high: range.start,
+            range_low: start,
+            range_high: end,
         }))
     } else {
         Ok(value)
