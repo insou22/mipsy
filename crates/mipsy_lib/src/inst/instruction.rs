@@ -3,14 +3,13 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
 use crate::{
-    compile::data::{eval_constant, eval_value_in_range},
-    error::{
+    compile::data::{eval_constant, eval_value_in_range}, error::{
         compiler::{
-            DirectiveType, Error::{self, UnresolvedConstant}
+            DirectiveType,
+            Error::{self, UnresolvedConstant},
         },
         InternalError, MipsyInternalResult,
-    },
-    Binary, TEXT_BOT,
+    }, Binary, MipsyResult, TEXT_BOT
 };
 use mipsy_parser::{
     parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister,
@@ -380,12 +379,20 @@ impl InstSignature {
                     MpArgument::Register(MpRegister::Normal(reg)) => reg.to_register()?.to_u32(),
                     _ => unreachable!(),
                 },
-                ArgumentType::Shamt => match arg {
-                    MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
-                        (*num as u16 as u32) & 0x1F
+                ArgumentType::Shamt => {
+                    0x1F & match arg {
+                        &MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(num))) => {
+                            num as u16 as u32
+                        }
+                        &MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(num))) => {
+                            num as u32
+                        }
+                        MpArgument::Number(MpNumber::Constant(cnst)) => {
+                            eval_constant(program, cnst, "".into()).map_err(InternalError::from)? as u32
+                        }
+                        _ => unreachable!(),
                     }
-                    _ => unreachable!(),
-                },
+                }
                 ArgumentType::I16 => match arg {
                     MpArgument::Number(num) => match num {
                         MpNumber::Immediate(imm) => match imm {
@@ -585,12 +592,14 @@ impl ArgumentType {
                         Self::I16 | Self::I32 | Self::Off32Rs | Self::Off32Rt => true,
                         Self::U16 | Self::U32 => num >= 0,
                         Self::Shamt => eval_value_in_range(num as _, 0..32).and(Ok(true))?,
+                        // Self::Shamt => eval_value_in_range(num as _, 0..32).into_compiler_mipsy_result("".into(), line, col, col_end).and(Ok(true))?,
                         _ => false,
                     },
-                    MpImmediate::U16(_) => matches!(
-                        self,
-                        Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt
-                    ),
+                    &MpImmediate::U16(num) => match self {
+                        Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
+                        Self::Shamt => eval_value_in_range(num as _, 0..32).and(Ok(true))?,
+                        _ => false
+                    },
                     &MpImmediate::I32(num) => match self {
                         Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
                         Self::U32 => num >= 0,
@@ -609,24 +618,24 @@ impl ArgumentType {
                     // skip over the unresolved constant error here
                     // since immediate constants wouldnt be defined
                     .or_else(|e| {
-                        if let crate::MipsyError::Compiler(c) = &e {
-                            if matches!(c.error(), UnresolvedConstant { .. }) {
-                                return Ok(0);
-                            }
+                        if matches!(&e, crate::MipsyError::Compiler(c)
+                            if matches!(c.error(), UnresolvedConstant { .. }))
+                        {
+                            return Ok(0);
                         }
                         return Err(e);
                     })
                     .map_err(InternalError::from)
                     .and_then(|c| {
                         self.matches(
-                            &MpArgument::Number(MpNumber::Immediate(c.try_into().or(Err(InternalError::Compiler(
-                                Error::ConstantValueDoesNotFit {
+                            &MpArgument::Number(MpNumber::Immediate(c.try_into().or(Err(
+                                InternalError::Compiler(Error::ConstantValueDoesNotFit {
                                     directive_type: DirectiveType::Byte,
                                     value: c,
                                     range_low: i32::MIN as _,
                                     range_high: i32::MAX as _,
-                                },
-                            )))?)),
+                                }),
+                            ))?)),
                             relative_label,
                             program,
                         )

@@ -455,7 +455,7 @@ pub fn eval_constant(
 ) -> MipsyResult<i64> {
     let err = MipsyError::Compiler(CompilerError::new(
         Error::ConstantExpressionDoesNotFit {
-            eval: "test".into(),
+            eval: "anon".into(),
         },
         file.clone(),
         constant.1.line(),
@@ -465,24 +465,27 @@ pub fn eval_constant(
 
     match &constant.0 {
         &MpConstValue::Value(value) => Some(value as _),
-        MpConstValue::Const(label) => Some(
-            binary
-                .constants
-                .get(label)
-                .copied()
-                .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
-                .ok_or_else(|| {
-                    MipsyError::Compiler(CompilerError::new(
-                        Error::UnresolvedConstant {
-                            label: label.to_string(),
-                        },
-                        file.clone(),
-                        constant.1.line(),
-                        constant.1.col(),
-                        constant.1.col_end(),
-                    ))
-                })?,
-        ),
+        MpConstValue::Const(label) => {
+            println!("{label:?}");
+            Some(
+                binary
+                    .constants
+                    .get(label)
+                    .copied()
+                    .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
+                    .ok_or_else(|| {
+                        MipsyError::Compiler(CompilerError::new(
+                            Error::UnresolvedConstant {
+                                label: label.to_string(),
+                            },
+                            file.clone(),
+                            constant.1.line(),
+                            constant.1.col(),
+                            constant.1.col_end(),
+                        ))
+                    })?,
+            )
+        }
         MpConstValue::Minus(value) => Some(-eval_constant(binary, value, file)?),
         MpConstValue::Sum(v1, v2) => {
             eval_constant(binary, v1, file.clone())?.checked_add(eval_constant(binary, v2, file)?)
@@ -540,12 +543,12 @@ fn eval_constant_in_range(
 }
 
 pub fn eval_value_in_range(value: i64, range: Range<i64>) -> MipsyInternalResult<i64> {
-    if value < range.start || value > range.end {
+    if value < range.start || value > range.end.saturating_sub(1) {
         Err(InternalError::Compiler(Error::ConstantValueDoesNotFit {
             directive_type: DirectiveType::Byte,
             value,
+            range_low: range.end.saturating_sub(1),
             range_high: range.start,
-            range_low: range.end,
         }))
     } else {
         Ok(value)
