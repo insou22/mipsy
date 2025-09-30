@@ -53,7 +53,7 @@ macro_rules! try_owned_self {
     };
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Runtime {
     timeline: Timeline,
 }

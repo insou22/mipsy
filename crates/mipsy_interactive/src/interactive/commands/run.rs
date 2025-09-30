@@ -9,7 +9,7 @@ pub(crate) fn command() -> Command {
         .with_name("r")
         .with_desc("run the currently loaded program until it finishes")
         .with_exec(
-        |_, state, label, _| {
+        |_, state, helper, label, _| {
             if label == "__help__" {
                 return Ok(
                     format!(
@@ -28,7 +28,7 @@ pub(crate) fn command() -> Command {
                 return Err(CommandError::MustLoadFile);
             }
 
-            state.run()
+            state.run(helper)
         },
     )
 }

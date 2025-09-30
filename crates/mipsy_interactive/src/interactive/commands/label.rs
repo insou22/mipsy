@@ -12,11 +12,11 @@ pub(crate) fn command() -> Command {
         // TODO: somehow get some context to sanitise & hint this
         .with_required_arg(Argument::new(
             "label",
-            |a| Ok(ArgumentKind::Label(a.to_owned())),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
             |_, _| vec![],
         ))
         .with_desc("print the address of a label")
-        .with_exec(|_, state, label, args| {
+        .with_exec(|_, state, _, label, args| {
             if label == "__help__" {
                 return Ok(format!(
                     "Prints the address of the specified {0}.\n\
@@ -25,12 +25,10 @@ pub(crate) fn command() -> Command {
                 ));
             }
 
-            let ArgumentKind::Label(label) = &args[0] else {
-                unreachable!()
-            };
+            let label = String::from(args[0].to_owned());
             let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
-            match binary.get_label(label) {
+            match binary.get_label(&label) {
                 Ok(addr) => {
                     prompt::success_nl(format!("{} => 0x{:08x}", label.yellow().bold(), addr))
                 }

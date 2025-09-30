@@ -1,8 +1,6 @@
 #[allow(clippy::module_inception)]
 pub(crate) mod util;
 
-use std::fmt::Display;
-
 pub(super) mod breakpoint;
 pub(super) mod commands;
 pub(super) mod context;
@@ -28,31 +26,26 @@ use super::{error::CommandResult, State};
 #[derive(Clone)]
 pub(crate) enum ArgumentKind {
     Number(i64),
-    File(String),
-    Label(String),
-    Item(String),
-    Command(String),
-    SubCommand(String),
-    Any(String),
-}
-
-impl Display for ArgumentKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Number(_) => write!(f, "Number"),
-            Self::File(_) => write!(f, "File"),
-            Self::Label(_) => write!(f, "Label"),
-            Self::Item(_) => write!(f, "Item"),
-            Self::Command(_) => write!(f, "Command"),
-            Self::SubCommand(_) => write!(f, "Sub command"),
-            Self::Any(_) => write!(f, "Any"),
-        }
-    }
+    String(String),
 }
 
 impl From<ArgumentKind> for String {
     fn from(value: ArgumentKind) -> Self {
-        format!("{value}")
+        if let ArgumentKind::String(s) = value {
+            s
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+impl From<ArgumentKind> for i64 {
+    fn from(value: ArgumentKind) -> Self {
+        if let ArgumentKind::Number(n) = value {
+            n
+        } else {
+            unreachable!()
+        }
     }
 }
 
@@ -61,14 +54,14 @@ impl From<ArgumentKind> for String {
 #[derive(Clone)]
 pub(crate) struct Argument {
     name: String,
-    sanitiser: fn(arg: &str) -> CommandResult<ArgumentKind>,
+    sanitiser: fn(arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
     hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
 }
 
 impl Argument {
     fn new<S: Into<String>>(
         name: S,
-        sanitiser: fn(arg: &str) -> CommandResult<ArgumentKind>,
+        sanitiser: fn(arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
         hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
     ) -> Self {
         Self {
@@ -82,7 +75,7 @@ impl Argument {
         &self.name
     }
 
-    pub(crate) fn hints(&self, mut harg: HintArgs, helper: &MyHelper) -> Vec<String> {
+    pub(crate) fn hints(&self, harg: &HintArgs, helper: &MyHelper) -> Vec<String> {
         helper
             .closest_hints(
                 &(self.hints)(&harg, helper)
@@ -93,15 +86,15 @@ impl Argument {
             )
             .iter()
             .map(|s| harg.recontextualize(s))
-            .collect::<Vec<_>>()
+            .collect()
     }
 
     pub(crate) fn subcommands() -> Self {
         Argument::new(
             "subcommand",
-            |a| {
+            |a, _| {
                 // TODO: match with subcmd hints
-                Ok(ArgumentKind::SubCommand(a.to_owned()))
+                Ok(ArgumentKind::String(a.to_owned()))
             },
             |_, _| vec![],
         )
@@ -127,22 +120,28 @@ pub(crate) struct Command {
     pub(crate) names: Vec<String>,
     pub(crate) args: Arguments,
     description: String,
-    _internal_exec: fn(&Command, &mut State, &str, &[ArgumentKind]) -> CommandResult<String>,
+    _internal_exec:
+        fn(&Command, &mut State, &MyHelper, &str, &[ArgumentKind]) -> CommandResult<String>,
     subcommands: Vec<Command>,
 }
 
 impl Command {
-    fn args_from_strings(&self, args: &[String]) -> CommandResult<Vec<ArgumentKind>> {
+    fn args_from_strings(
+        &self,
+        args: &[String],
+        helper: &MyHelper,
+    ) -> CommandResult<Vec<ArgumentKind>> {
         let mut res = Vec::with_capacity(args.len());
         for arg in args.iter().flat_map(|strarg| match &self.args {
             Arguments::Exactly { required, optional } => required
                 .iter()
-                .map(|a| (a.sanitiser)(strarg))
-                .chain(optional.iter().map(|a| (a.sanitiser)(strarg)))
+                .map(|a| (a.sanitiser)(strarg, helper))
+                .chain(optional.iter().map(|a| (a.sanitiser)(strarg, helper)))
                 .collect::<Vec<CommandResult<ArgumentKind>>>(),
-            Arguments::VarArgs { required, .. } => {
-                required.iter().map(|a| (a.sanitiser)(strarg)).collect()
-            }
+            Arguments::VarArgs { required, .. } => required
+                .iter()
+                .map(|a| (a.sanitiser)(strarg, helper))
+                .collect(),
         }) {
             res.push(arg?)
         }
@@ -163,10 +162,17 @@ impl Command {
     pub(crate) fn exec(
         &self,
         state: &mut State,
+        helper: &MyHelper,
         label: &str,
         args: &[String],
     ) -> CommandResult<String> {
-        (self._internal_exec)(self, state, label, self.args_from_strings(args)?.as_slice())
+        (self._internal_exec)(
+            self,
+            state,
+            helper,
+            label,
+            self.args_from_strings(args, &helper)?.as_slice(),
+        )
     }
 
     pub(crate) fn new() -> Self {
@@ -177,7 +183,7 @@ impl Command {
                 optional: Default::default(),
             },
             description: Default::default(),
-            _internal_exec: |_, _, _, _| Ok(Default::default()),
+            _internal_exec: |_, _, _, _, _| Ok(Default::default()),
             subcommands: Default::default(),
         }
     }
@@ -203,7 +209,13 @@ impl Command {
 
     pub(crate) fn with_exec(
         mut self,
-        exec: fn(&Command, &mut State, &str, &[ArgumentKind]) -> CommandResult<String>,
+        exec: fn(
+            &Command,
+            &mut State,
+            helper: &MyHelper,
+            &str,
+            &[ArgumentKind],
+        ) -> CommandResult<String>,
     ) -> Self {
         self._internal_exec = exec;
         self

@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt};
+use crate::interactive::{commands::watchpoint::args_text, error::CommandError, prompt};
 
 use super::*;
 use colored::*;
@@ -15,7 +15,16 @@ pub(crate) fn command() -> Command {
             // TODO: better fs filter
             Argument::new(
                 "files",
-                |a| Ok(ArgumentKind::File(a.into())),
+                |a, h| {
+                    if h.file_hints(&HintArgs::default()).contains(&a.to_owned()) {
+                        Ok(ArgumentKind::String(a.into()))
+                    } else {
+                        Err(CommandError::BadArgument {
+                            arg: "file".to_owned(),
+                            instead: a.to_owned()
+                        })
+                    }
+                },
                 |a, h| h.file_hints(a)
             )
         )
@@ -24,7 +33,7 @@ pub(crate) fn command() -> Command {
         )
         .with_desc("load a MIPS file to run")
         .with_exec(
-            |_, state, label, args| {
+            |_, state, _, label, args| {
                 if label == "__help__" {
                     return Ok(
                         format!(
@@ -37,14 +46,10 @@ pub(crate) fn command() -> Command {
                     );
                 }
 
-                let args = args.iter().map(|a| match a {
-                    ArgumentKind::File(f) => f,
-                    _ => unreachable!()
-                }).map(String::as_str).collect::<Vec<&str>>();
-                let args = args.as_slice();
+                let args = &args_text(args)[..];
 
                 let (files, arguments) = {
-                    if let Some(index) = args.iter().position(|&arg| arg == "--") {
+                    if let Some(index) = args.iter().position(|arg| arg == "--") {
                         let (files, arguments) = args.split_at(index);
 
                         (files, &arguments[1..])
@@ -60,8 +65,7 @@ pub(crate) fn command() -> Command {
                     let mut program = Vec::with_capacity(files.len());
                 for file in files
                     .iter()
-                    .map(|&name| {
-                        let mut name = name;
+                    .map(|mut name| {
                         #[cfg(unix)]
                         if name == "-" {
                             name = &stdin;
@@ -96,7 +100,7 @@ pub(crate) fn command() -> Command {
                 )
                     .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
-                let runtime = mipsy_lib::runtime(&binary, arguments);
+                let runtime = mipsy_lib::runtime(&binary, arguments.iter().map(String::as_str).collect::<Vec<_>>().as_slice());
 
                 state.binary = Some(binary);
                 state.runtime = runtime;

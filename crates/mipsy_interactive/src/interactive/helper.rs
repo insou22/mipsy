@@ -2,7 +2,7 @@ use rustyline::{
     completion::{Candidate, Completer, FilenameCompleter, Pair},
     error::ReadlineError,
     highlight::Highlighter,
-    hint::{Hinter, HistoryHinter},
+    hint::Hinter,
     validate::{ValidationContext, ValidationResult, Validator},
     Context,
 };
@@ -12,12 +12,21 @@ use std::{
     ptr::NonNull,
 };
 
-use crate::interactive::commands::{Argument, ArgumentKind, Arguments, Command};
+use crate::interactive::{commands::Command, State};
 
-#[derive(Clone)]
+#[derive(Default)]
 pub(crate) struct HintArgs {
     pub(crate) line: String,
     pub(crate) pos: usize,
+}
+
+impl From<String> for HintArgs {
+    fn from(value: String) -> Self {
+        Self {
+            pos: value.len(),
+            line: value
+        }
+    }
 }
 
 impl HintArgs {
@@ -33,8 +42,8 @@ impl HintArgs {
 
     fn pair(&self, s: String) -> Pair {
         Pair {
-            display: s.clone(),
             replacement: s[self.pos.min(s.len())..].to_owned(),
+            display: s,
         }
     }
 
@@ -48,8 +57,24 @@ impl HintArgs {
             + self.line[..self.pos].split_whitespace().skip(1).count()
     }
 
+    pub(crate) fn command(&self) -> Option<Self> {
+        self.line.split_whitespace().nth(0).filter(|l| l != &self.line).and_then(|l|
+            Some(Self {
+                line: l.to_owned(),
+                pos: l.len()
+            })
+            )
+    }
+
     pub(crate) fn subcmd(&self) -> Self {
-        let line = self.line.split_whitespace().last().expect("impossible");
+        let line = self
+            .line
+            .split_whitespace()
+            .last()
+            .filter(|l| l.trim() != self.line.trim())
+            .or(Some(""))
+            .unwrap();
+
         Self {
             line: line.to_owned(),
             pos: line.len(),
@@ -64,23 +89,33 @@ impl HintArgs {
 #[derive(Helper)]
 pub(crate) struct MyHelper<'a> {
     completer: FilenameCompleter,
-    hinter: HistoryHinter,
-    pub(crate) commands: &'a [Command],
+    pub(crate) state: &'a State,
 }
 
 impl<'a> MyHelper<'a> {
-    pub(super) fn new(commands: &'a [Command]) -> Self {
+    pub(super) fn new(state: &'a State) -> Self {
         Self {
             completer: FilenameCompleter::new(),
-            hinter: HistoryHinter {},
-            commands: commands,
+            state,
         }
     }
 
-    fn command(&self, line: &str) -> Option<&Command> {
-        line.split_whitespace()
-            .nth(0)
-            .and_then(|c| self.commands.iter().find(|d| d.name() == c))
+    fn find_command_name(&self, hargs: &HintArgs) -> Option<&Command> {
+        hargs.command().and_then(|l| {
+            self.state
+                .commands
+                .iter()
+                .find(|c| c.name() == l.line)
+        })
+    }
+
+    fn find_command_aliases(&self, hargs: &HintArgs) -> Option<&Command> {
+        hargs.command().and_then(|l| {
+            self.state
+                .commands
+                .iter()
+                .find(|c| c.names.contains(&l.line))
+        })
     }
 
     pub(crate) fn closest_hints<'b>(&self, with: &[&'b str], hargs: &HintArgs) -> Vec<&'b str> {
@@ -95,6 +130,7 @@ impl<'a> MyHelper<'a> {
         if hargs.line.is_empty() || hargs.pos < hargs.line.len() {
             None
         } else if let Some(found) = self
+            .state
             .commands
             .iter()
             .find(|s| s.name().starts_with(&hargs.line))
@@ -110,12 +146,12 @@ impl<'a> MyHelper<'a> {
         }
     }
 
-    fn history_hints(&self, hargs: &HintArgs, ctx: &'a Context<'_>) -> Vec<String> {
+    fn history_hints(&self, hargs: &HintArgs, ctx: &Context<'_>) -> Vec<String> {
         self.closest_hints(
             &ctx.history()
                 .iter()
                 .rev()
-                .filter(|h| self.command(h).is_none())
+                .filter(|&h| self.find_command_name(&h.to_owned().into()).is_none())
                 .filter(|h| !ctx.history().iter().find(|a| a == h).is_none())
                 .map(|h| h.trim())
                 .collect::<Vec<_>>(),
@@ -129,7 +165,12 @@ impl<'a> MyHelper<'a> {
 
     fn close_command_hints(&self, hargs: &HintArgs) -> Vec<String> {
         self.closest_hints(
-            &self.commands.iter().map(Command::name).collect::<Vec<_>>(),
+            &self
+                .state
+                .commands
+                .iter()
+                .map(Command::name)
+                .collect::<Vec<_>>(),
             hargs,
         )
         .iter()
@@ -192,16 +233,13 @@ impl Completer for MyHelper<'_> {
             hints.extend(history)
         }
 
-        hints.extend_from_slice(
-            match self.command(line) {
-                Some(cmd) => cmd
-                    .args()
-                    .get(hargs.subcmd_index().saturating_sub(1))
-                    .map_or(vec![], |a| a.hints(hargs.clone(), self)),
-                None => self.close_command_hints(&hargs),
-            }
-            .as_slice(),
-        );
+        hints.extend(match self.find_command_aliases(&line.to_owned().into()) {
+            Some(cmd) => cmd
+                .args()
+                .get(hargs.subcmd_index().saturating_sub(1))
+                .map_or(vec![], |a| a.hints(&hargs, self)),
+            None => self.close_command_hints(&hargs),
+        });
 
         Ok(hargs.hints(hints.iter().collect::<Vec<_>>().as_slice()))
     }
@@ -214,11 +252,6 @@ impl Hinter for MyHelper<'_> {
         self.complete(line, pos, ctx)
             .ok()
             .and_then(|(_, p)| p.get(0).and_then(|p| Some(p.replacement.clone())))
-
-        // let hargs = HintArgs { line, pos };
-        // self.hinter
-        //     .hint(line, pos, ctx)
-        //     .or(self.closest_command(&hargs))
     }
 }
 

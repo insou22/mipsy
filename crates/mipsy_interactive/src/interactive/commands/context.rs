@@ -14,7 +14,7 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_optional_arg(Argument::new(
             "n",
-            |a| {
+            |a, _| {
                 Ok(ArgumentKind::Number(expect_u32(
                     "",
                     &"[n]".bright_magenta(),
@@ -28,7 +28,7 @@ pub(crate) fn command() -> Command {
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
         ))
-        .with_exec(|_, state, label, args| {
+        .with_exec(|_, state, _, label, args| {
             if label == "__help__" {
                 return Ok(format!(
                     "prints the current and surrounding 3 (or {}) instructions",

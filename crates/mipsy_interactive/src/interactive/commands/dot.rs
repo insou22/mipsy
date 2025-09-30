@@ -17,20 +17,16 @@ pub(crate) fn command() -> Command {
         // TODO: context for hints and sanitisation
         .with_required_arg(Argument::new(
             "instruction",
-            |a| Ok(ArgumentKind::Any(a.to_owned())),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
             |_, _| vec![],
         ))
         .with_varargs_format("{args}".magenta().to_string())
-        .with_exec(|_, state, label, args| {
+        .with_exec(|_, state, helper, label, args| {
             if label == "__help__" {
                 return Ok("Executes a MIPS instruction immediately".into());
             }
 
-            let line = args_text(args)
-                .iter()
-                .map(|&a| a.clone())
-                .collect::<Vec<_>>()
-                .join(" ");
+            let line = args_text(args).join(" ");
 
             let inst =
                 mipsy_parser::parse_instruction(&line, state.config.tab_size).map_err(|error| {
@@ -75,7 +71,7 @@ pub(crate) fn command() -> Command {
                 })?;
 
             for opcode in opcodes {
-                state.exec_inst(opcode, true).map_err(|err| {
+                state.exec_inst(opcode, true, helper).map_err(|err| {
                     let mipsy_error = match err {
                         CommandError::RuntimeError { mipsy_error } => mipsy_error,
                         _ => unreachable!(),

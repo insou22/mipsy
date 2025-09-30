@@ -35,6 +35,7 @@ use mipsy_utils::MipsyConfig;
 
 use self::error::{CommandError, CommandResult};
 
+#[derive(Clone)]
 pub(crate) struct State {
     pub(crate) config: MipsyConfig,
     pub(crate) iset: InstSet,
@@ -88,7 +89,7 @@ impl State {
             .cloned()
     }
 
-    fn do_exec(&mut self, line: &str) {
+    fn do_exec(&mut self, line: &str, helper: &MyHelper) {
         let Some(parts) = shlex::split(line) else {
             return;
         };
@@ -102,14 +103,8 @@ impl State {
         };
 
         let required = match &command.args {
-            Arguments::Exactly {
-                required,
-                optional: _,
-            } => required,
-            Arguments::VarArgs {
-                required,
-                format: _,
-            } => required,
+            Arguments::Exactly { required, .. } => required,
+            Arguments::VarArgs { required, .. } => required,
         };
 
         if (parts.len() - 1) < required.len() {
@@ -125,7 +120,7 @@ impl State {
             );
         }
 
-        if let Err(e) = command.exec(self, command_name, &parts[1..]) {
+        if let Err(e) = command.exec(self, helper, command_name, &parts[1..]) {
             self.handle_error(e, true)
         }
     }
@@ -350,6 +345,7 @@ impl State {
         result: Result<SteppedRuntime, (Runtime, MipsyError)>,
         inst: u32,
         original_pc: u32,
+        helper: &MyHelper,
     ) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
@@ -542,7 +538,7 @@ impl State {
                     runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
                     if let Some(bp) = bp {
                         bp.commands.clone().iter().for_each(|command| {
-                            self.exec_command(command.to_owned());
+                            self.exec_command(command.to_owned(), helper);
                         });
                     }
 
@@ -568,7 +564,7 @@ impl State {
                 // TODO(joshh): would be nice to have the watchpoint notification in between
                 // the actions for each watchpoint
                 to_exec.into_iter().for_each(|command| {
-                    self.exec_command(command);
+                    self.exec_command(command, helper);
                 });
 
                 if all_ignored {
@@ -582,27 +578,38 @@ impl State {
         })
     }
 
-    pub(crate) fn step(&mut self, verbose: bool) -> CommandResult<bool> {
+    pub(crate) fn step(&mut self, verbose: bool, helper: &MyHelper) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
         let original_pc = runtime.timeline().state().pc();
         let inst = runtime.current_inst();
-        self.eval_stepped_runtime(verbose, runtime.step(), inst, original_pc)
+        self.eval_stepped_runtime(verbose, runtime.step(), inst, original_pc, helper)
     }
 
-    pub(crate) fn exec_inst(&mut self, opcode: u32, verbose: bool) -> CommandResult<bool> {
+    pub(crate) fn exec_inst(
+        &mut self,
+        opcode: u32,
+        verbose: bool,
+        helper: &MyHelper,
+    ) -> CommandResult<bool> {
         let runtime = take(&mut self.runtime);
         let original_pc = runtime.timeline().state().pc();
-        self.eval_stepped_runtime(verbose, runtime.exec_inst(opcode), opcode, original_pc)
+        self.eval_stepped_runtime(
+            verbose,
+            runtime.exec_inst(opcode),
+            opcode,
+            original_pc,
+            helper,
+        )
     }
 
-    pub(crate) fn run(&mut self) -> CommandResult<String> {
+    pub(crate) fn run(&mut self, helper: &MyHelper) -> CommandResult<String> {
         if self.exited {
             return Err(CommandError::ProgramExited);
         }
 
         self.interrupted.store(false, Ordering::SeqCst);
         while !self.interrupted.load(Ordering::SeqCst) {
-            if self.step(false)? {
+            if self.step(false, helper)? {
                 break;
             }
         }
@@ -617,24 +624,24 @@ impl State {
         Ok(())
     }
 
-    fn exec_command(&mut self, line: String) {
-        self.do_exec(&line);
+    fn exec_command(&mut self, line: String, helper: &MyHelper) {
+        self.do_exec(&line, helper);
         self.cleanup_cmd(line);
     }
 
-    fn exec_prev(&mut self) {
+    fn exec_prev(&mut self, helper: &MyHelper) {
         if let Some(cmd) = self.prev_command.take() {
-            self.exec_command(cmd);
+            self.exec_command(cmd, helper);
         }
     }
 }
 
-pub(crate) fn editor(commands: &[Command]) -> Editor<MyHelper<'_>> {
+pub(crate) fn editor(state: &State) -> Editor<MyHelper<'_>> {
     let mut rl = Editor::new().unwrap();
 
     rl.set_check_cursor_position(true);
 
-    let helper = MyHelper::new(commands);
+    let helper = MyHelper::new(state);
     rl.set_helper(Some(helper));
 
     rl.bind_sequence(
@@ -677,8 +684,8 @@ fn state(config: MipsyConfig) -> State {
 
 pub fn launch(config: MipsyConfig) -> ! {
     let mut state = state(config);
-    let commands = state.commands.clone();
-    let mut rl = editor(&commands);
+    let cs = state.clone();
+    let mut rl = editor(&cs);
 
     let interrupted = state.interrupted.clone();
     ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))
@@ -691,7 +698,7 @@ pub fn launch(config: MipsyConfig) -> ! {
             Ok(line) => {
                 if line.is_empty() {
                     if !state.confirm_exit {
-                        state.exec_prev();
+                        state.exec_prev(rl.helper().unwrap());
                     }
 
                     state.confirm_exit = false;
@@ -699,7 +706,7 @@ pub fn launch(config: MipsyConfig) -> ! {
                 }
 
                 rl.add_history_entry(&line);
-                state.exec_command(line);
+                state.exec_command(line, rl.helper().unwrap());
             }
             Err(ReadlineError::Interrupted) => {}
             Err(ReadlineError::Eof) => {

@@ -15,7 +15,7 @@ pub(crate) fn command() -> Command {
         .with_name("dec")
         .with_name("decompile")
         .with_desc("disassembles the currently loaded file")
-        .with_exec(|_, state, label, _| {
+        .with_exec(|_, state, _, label, _| {
             if label == "__help__" {
                 return Ok(
                     format!(

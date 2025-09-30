@@ -73,35 +73,35 @@ fn add_commands<K, V: Point>(points: &mut HashMap<K, V>, id: u32) -> CommandResu
         "end".bold().yellow()
     );
 
-    let mut rl = editor(&[]);
-    loop {
-        let readline = rl.readline("");
-
-        match readline {
-            Ok(line) => {
-                if line.is_empty() || line == "\n" || line == "end" {
-                    break;
-                }
-
-                commands.push(line);
-            }
-            Err(ReadlineError::Interrupted) => {
-                std::process::exit(0);
-            }
-            Err(ReadlineError::Eof) => {
-                break;
-            }
-            Err(err) => {
-                println!("Error: {:?}", err);
-                break;
-            }
-        }
-    }
-
-    prompt::success_nl(format!(
-        "commands attached to breakpoint {}",
-        format!("!{id}").blue()
-    ));
+    // let mut rl = editor(state);
+    // loop {
+    //     let readline = rl.readline("");
+    //
+    //     match readline {
+    //         Ok(line) => {
+    //             if line.is_empty() || line == "\n" || line == "end" {
+    //                 break;
+    //             }
+    //
+    //             commands.push(line);
+    //         }
+    //         Err(ReadlineError::Interrupted) => {
+    //             std::process::exit(0);
+    //         }
+    //         Err(ReadlineError::Eof) => {
+    //             break;
+    //         }
+    //         Err(err) => {
+    //             println!("Error: {:?}", err);
+    //             break;
+    //         }
+    //     }
+    // }
+    //
+    // prompt::success_nl(format!(
+    //     "commands attached to breakpoint {}",
+    //     format!("!{id}").blue()
+    // ));
     Ok("".into())
 }
 

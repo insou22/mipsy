@@ -11,7 +11,7 @@ pub(crate) fn command() -> Command {
         .with_name("las")
         .with_name("lbls")
         .with_desc("prints the addresses of all labels")
-        .with_exec(|_, state, label, _| {
+        .with_exec(|_, state, _, label, _| {
             if label == "__help__" {
                 return Ok(
                     "Prints the addresses of all labels in the currently loaded program.".into(),

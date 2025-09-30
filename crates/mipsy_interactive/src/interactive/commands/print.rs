@@ -14,11 +14,11 @@ pub(crate) fn command() -> Command {
         .with_name("p")
         .with_desc("print an item - a register, value in memory, etc.")
         .with_exact_args()
-        .with_required_arg(Argument::new("item", |a| Ok(ArgumentKind::Item(a.to_owned())), |_, _| vec![]))
-        .with_optional_arg(Argument::new("format", |a|
+        .with_required_arg(Argument::new("item", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("format", |a, _|
             match a {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
-                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => Ok(ArgumentKind::Any(a.to_owned())),
+                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => Ok(ArgumentKind::String(a.to_owned())),
                 other => {
                     Err(CommandError::BadArgument {
                         arg: "[format]".magenta().to_string(),
@@ -29,7 +29,7 @@ pub(crate) fn command() -> Command {
                 vec!["byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char"
                , "string", "b", "h", "w", "xb", "xh", "xw", "x", "c", "s"].into_iter().map(str::to_owned).collect()))
         .with_exec(
-        |_, state, label, args| {
+        |_, state, _, label, args| {
             if label == "__help__" {
                 return Ok(
                     format!(
@@ -71,16 +71,16 @@ pub(crate) fn command() -> Command {
             let get_error = || CommandError::WithTip {
                 error: Box::new(CommandError::BadArgument {
                     arg: "<item>".magenta().to_string(),
-                    instead: args[0].to_string(),
+                    instead: args[0].to_owned().into()
                 }),
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(if let ArgumentKind::Item(arg) = &args[0] { arg} else { unreachable!()}, state.config.tab_size)
+            let arg = mipsy_parser::parse_argument(String::from(args[0].to_owned()), state.config.tab_size)
                 .map_err(|_| get_error())?;
 
             let print_type = match args.get(1) {
-                Some(ArgumentKind::Any(t)) => t.as_str(),
+                Some(ArgumentKind::String(t)) => t,
                 None => "word",
                 _ => unreachable!()
             };
@@ -311,7 +311,7 @@ pub(crate) fn command() -> Command {
                         _ => unreachable!(),
                     };
 
-                    prompt::success_nl(format!("{} = {}", args[0], value));
+                    prompt::success_nl(format!("{} = {}", String::from(args[0].to_owned()), value));
                 }
                 _ => return Err(get_error()),
             }

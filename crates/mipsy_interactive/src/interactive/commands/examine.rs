@@ -20,12 +20,12 @@ pub(crate) fn command() -> Command {
         .with_desc("examine memory contents")
         .with_exact_args()
         // TODO: again, get a context to sanitise and hint this
-        .with_optional_arg(Argument::new("section", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
-        .with_optional_arg(Argument::new("len", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
-        .with_optional_arg(Argument::new("addr", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
-        .with_optional_arg(Argument::new("-nolabels", |a| Ok(ArgumentKind::Any(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("section", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("len", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("addr", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("-nolabels", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
         .with_exec(
-        |_, state, label, args| {
+        |_, state, _, label, args| {
             let mut args = &args_text(args)[..];
             // TODO: <enter> to examine the next chunk of memory
             if label == "__help__" {
@@ -89,7 +89,7 @@ pub(crate) fn command() -> Command {
 
             let hide_labels = args
                 .get(0)
-                .map_or(false, |&a| a.as_str() == "-nolabels");
+                .map_or(false, |a| a == "-nolabels");
             if hide_labels && base_addr.is_err() {
                 // if -labels was provided, ensure base_addr is valid
                 base_addr = Ok(segment.get_lower_bound());

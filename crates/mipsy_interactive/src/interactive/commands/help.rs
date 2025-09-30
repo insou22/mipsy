@@ -1,4 +1,7 @@
-use crate::{interactive::error::CommandError, prompt};
+use crate::{
+    interactive::{commands::watchpoint::args_text, error::CommandError},
+    prompt,
+};
 
 use super::*;
 use colored::*;
@@ -13,10 +16,17 @@ pub(crate) fn command() -> Command {
         // TODO: context for sanitisation
         .with_optional_arg(Argument::new(
             "command",
-            |a| Ok(ArgumentKind::Command(a.to_owned())),
-            |_, h| h.commands.iter().map(|c| c.name().to_owned()).collect(),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, h| {
+                h.state
+                    .commands
+                    .iter()
+                    .map(|c| c.name().to_owned())
+                    .collect()
+            },
         ))
-        .with_exec(|_, state, label, args| {
+        .with_exec(|_, state, helper, label, args| {
+            let args = &args_text(args);
             if label == "__help__" {
                 return Ok(format!(
                     "Prints the general help text for all mipsy commands, or more in-depth\n\
@@ -25,21 +35,15 @@ pub(crate) fn command() -> Command {
                 ));
             }
 
-            if let Some(ArgumentKind::Command(command)) = args.first() {
+            if let Some(command) = args.first() {
                 let mut command =
                     &state
-                        .find_command(command)
+                        .find_command(&command)
                         .ok_or(CommandError::HelpUnknownCommand {
-                            command: command.clone(),
+                            command: command.to_owned(),
                         })?;
 
-                let mut args = &args[1..]
-                    .iter()
-                    .map(|a| match a {
-                        ArgumentKind::Any(a) => a,
-                        _ => unreachable!(),
-                    })
-                    .collect::<Vec<_>>()[..];
+                let mut args = &args[1..];
                 let mut parts = vec![command
                     .names
                     .get(0)
@@ -70,19 +74,8 @@ pub(crate) fn command() -> Command {
                 }
 
                 println!("\n{}\n", get_command_formatted(command, parts));
-                println!(
-                    "{}",
-                    command
-                        .exec(
-                            state,
-                            "__help__",
-                            args.iter()
-                                .map(|&a| a.clone())
-                                .collect::<Vec<_>>()
-                                .as_slice()
-                        )
-                        .unwrap()
-                );
+                // TODO: better help than "__help__"
+                println!("{}", command.exec(state, helper, "__help__", args).unwrap());
 
                 if !command.names[1..].is_empty() {
                     prompt::banner("\naliases".green().bold());

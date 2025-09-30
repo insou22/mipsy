@@ -28,13 +28,8 @@ enum MipsyArgType {
     Id,
 }
 
-pub(super) fn args_text(args: &[ArgumentKind]) -> Vec<&String> {
-    args.iter()
-        .map(|a| match a {
-            ArgumentKind::Any(a) => a,
-            _ => unreachable!(),
-        })
-        .collect()
+pub(crate) fn args_text(args: &[ArgumentKind]) -> Vec<String> {
+    args.iter().cloned().map(String::from).collect()
 }
 
 pub(crate) fn command() -> Command {
@@ -49,7 +44,7 @@ pub(crate) fn command() -> Command {
             Command::new()
                 .with_name("list")
                 .with_name("l")
-                .with_exec(|_, state, label, _| watchpoint_list(state, label)),
+                .with_exec(|_, state, _, label, _| watchpoint_list(state, label)),
         )
         .with_subcommand(
             Command::new()
@@ -58,8 +53,8 @@ pub(crate) fn command() -> Command {
                 .with_name("in")
                 .with_name("ins")
                 .with_name("add")
-                .with_exec(|_, state, label, args| {
-                    watchpoint_insert(state, label, args, InsertOp::Insert)
+                .with_exec(|_, state, _, label, args| {
+                    watchpoint_insert(state, label, &args_text(args), InsertOp::Insert)
                 }),
         )
         .with_subcommand(
@@ -69,8 +64,8 @@ pub(crate) fn command() -> Command {
                 .with_name("delete")
                 .with_name("r")
                 .with_name("rm")
-                .with_exec(|_, state, label, args| {
-                    watchpoint_insert(state, label, args, InsertOp::Delete)
+                .with_exec(|_, state, _, label, args| {
+                    watchpoint_insert(state, label, &args_text(args), InsertOp::Delete)
                 }),
         )
         .with_subcommand(
@@ -78,29 +73,31 @@ pub(crate) fn command() -> Command {
                 .with_name("temporary")
                 .with_name("temp")
                 .with_name("tmp")
-                .with_exec(|_, state, label, args| {
-                    watchpoint_insert(state, label, args, InsertOp::Temporary)
+                .with_exec(|_, state, _, label, args| {
+                    watchpoint_insert(state, label, &args_text(args), InsertOp::Temporary)
                 }),
         )
         .with_subcommand(Command::new().with_name("enable").with_name("e").with_exec(
-            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Enable),
+            |_, state, _, label, args| {
+                watchpoint_toggle(state, label, &args_text(args), WpState::Enable)
+            },
         ))
         .with_subcommand(
             Command::new()
                 .with_name("disable")
                 .with_name("d")
-                .with_exec(|_, state, label, args| {
-                    watchpoint_toggle(state, label, args, WpState::Disable)
+                .with_exec(|_, state, _, label, args| {
+                    watchpoint_toggle(state, label, &args_text(args), WpState::Disable)
                 }),
         )
         .with_subcommand(Command::new().with_name("toggle").with_name("t").with_exec(
-            |_, state, label, args| watchpoint_toggle(state, label, args, WpState::Toggle),
+            |_, state, _, label, args| {
+                watchpoint_toggle(state, label, &args_text(args), WpState::Toggle)
+            },
         ))
-        .with_subcommand(
-            Command::new()
-                .with_name("ignore")
-                .with_exec(|_, state, label, args| watchpoint_ignore(state, label, args)),
-        )
+        .with_subcommand(Command::new().with_name("ignore").with_exec(
+            |_, state, _, label, args| watchpoint_ignore(state, label, &args_text(args)),
+        ))
         .with_subcommand(
             Command::new()
                 .with_name("commands")
@@ -109,25 +106,27 @@ pub(crate) fn command() -> Command {
                 .with_name("cmd")
                 .with_name("cmds")
                 .with_name("command")
-                .with_exec(|_, state, label, args| watchpoint_commands(state, label, args)),
+                .with_exec(|_, state, _, label, args| {
+                    watchpoint_commands(state, label, &args_text(args))
+                }),
         )
         .with_desc(format!(
             "manage watchpoints ({} to list subcommands)",
             "help watchpoint".bold()
         ))
-        .with_exec(|cmd, state, label, args| {
+        .with_exec(|cmd, state, helper, label, args| {
             if label == "__help__" || args.is_empty() {
                 return Ok(get_long_help());
             }
 
-            match if let ArgumentKind::SubCommand(arg) = &args[0] {
-                cmd.subcommands.iter().find(|c| c.names.contains(&arg))
-            } else {
-                None
-            } {
+            match cmd
+                .subcommands
+                .iter()
+                .find(|c| c.names.contains(&args[0].to_owned().into()))
+            {
                 None if label == "__help__" => Ok(get_long_help()),
-                Some(cmd) => (cmd._internal_exec)(cmd, state, label, &args[1..]),
-                None => watchpoint_insert(state, label, args, InsertOp::Insert),
+                Some(cmd) => (cmd._internal_exec)(cmd, state, helper, label, &args[1..]),
+                None => watchpoint_insert(state, label, &args_text(args), InsertOp::Insert),
             }
         })
 }
@@ -166,7 +165,7 @@ fn get_long_help() -> String {
 fn watchpoint_insert(
     state: &mut State,
     label: &str,
-    args: &[ArgumentKind],
+    args: &[String],
     op: InsertOp,
 ) -> Result<String, CommandError> {
     if label == "__help__" {
@@ -215,8 +214,7 @@ fn watchpoint_insert(
         ));
     }
 
-    let args = args_text(args);
-    let (target, arg_type) = parse_watchpoint_arg(state, args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
     let id;
@@ -243,7 +241,7 @@ fn watchpoint_insert(
             return Err(generate_err(
                 CommandError::MissingArguments {
                     args: vec!["action".to_string()],
-                    instead: args.iter().map(|&s| s.clone()).collect(),
+                    instead: args.to_vec(),
                 },
                 "rm",
             ));
@@ -283,7 +281,7 @@ fn watchpoint_insert(
 
     let label = match arg_type {
         MipsyArgType::Target => None,
-        MipsyArgType::Label => Some(args[0]),
+        MipsyArgType::Label => Some(&args[0]),
         MipsyArgType::Id => match target {
             WatchpointTarget::Register(_) => None,
             WatchpointTarget::MemAddr(addr) => binary
@@ -403,7 +401,7 @@ fn watchpoint_list(state: &State, label: &str) -> Result<String, CommandError> {
 fn watchpoint_toggle(
     state: &mut State,
     label: &str,
-    args: &[ArgumentKind],
+    args: &[String],
     op: WpState,
 ) -> Result<String, CommandError> {
     if label == "__help__" {
@@ -441,8 +439,7 @@ fn watchpoint_toggle(
         ));
     }
 
-    let args = args_text(args);
-    let (target, arg_type) = parse_watchpoint_arg(state, args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 
@@ -474,7 +471,7 @@ fn watchpoint_toggle(
 
     let label = match arg_type {
         MipsyArgType::Target => None,
-        MipsyArgType::Label => Some(args[0]),
+        MipsyArgType::Label => Some(&args[0]),
         MipsyArgType::Id => match target {
             WatchpointTarget::Register(_) => None,
             WatchpointTarget::MemAddr(addr) => binary
@@ -505,7 +502,7 @@ fn watchpoint_toggle(
 fn watchpoint_ignore(
     state: &mut State,
     label: &str,
-    args: &[ArgumentKind],
+    args: &[String],
 ) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(
@@ -537,15 +534,14 @@ fn watchpoint_ignore(
         ));
     }
 
-    let args = args_text(args);
-    let (target, arg_type) = parse_watchpoint_arg(state, args[0])?;
+    let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
 
     let args = &args[1..];
     if args.is_empty() {
         return Err(generate_err(
             CommandError::MissingArguments {
                 args: vec!["ignore count".to_string()],
-                instead: args.iter().map(|&s| s.clone()).collect(),
+                instead: args.to_vec(),
             },
             "ignore",
         ));
@@ -586,7 +582,7 @@ fn watchpoint_ignore(
 fn watchpoint_commands(
     state: &mut State,
     label: &str,
-    args: &[ArgumentKind],
+    args: &[String],
 ) -> Result<String, CommandError> {
     if label == "__help__" {
         return Ok(format!(
@@ -607,14 +603,7 @@ fn watchpoint_commands(
 
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
     state.confirm_exit = true;
-    handle_commands(
-        args_text(args)
-            .into_iter()
-            .map(String::clone)
-            .collect::<Vec<_>>()
-            .as_slice(),
-        &mut binary.watchpoints,
-    )
+    handle_commands(&args, &mut binary.watchpoints)
 }
 
 fn generate_err(error: CommandError, command_name: impl Into<String>) -> CommandError {
