@@ -1,4 +1,7 @@
-use std::{ops::{Bound, Range, RangeBounds}, rc::Rc};
+use std::{
+    ops::{Bound, Range, RangeBounds},
+    rc::Rc,
+};
 
 use super::{bytes::ToBytes, text::instruction_length, Binary, DATA_BOT, TEXT_BOT};
 use crate::{
@@ -252,7 +255,8 @@ pub(super) fn eval_directive(
         }
         MpDirective::Space(num) => {
             let num =
-                eval_constant_in_range(num, u32::MIN as i64..=u32::MAX as _, binary, file_tag)? as u32;
+                eval_constant_in_range(num, u32::MIN as i64..=u32::MAX as _, binary, file_tag)?
+                    as u32;
 
             let space_byte = if config.spim {
                 Safe::Valid(0)
@@ -546,7 +550,7 @@ pub fn eval_value_in_range(value: i64, range: impl RangeBounds<i64>) -> MipsyInt
     let bound_val = |b: Bound<&i64>| match b {
         Bound::Included(&x) => x,
         Bound::Excluded(&x) => x.saturating_sub(1),
-        Bound::Unbounded => unreachable!()
+        Bound::Unbounded => unreachable!(),
     };
     let (start, end) = (bound_val(range.start_bound()), bound_val(range.end_bound()));
     if value < start || value > end {

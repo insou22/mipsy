@@ -3,13 +3,15 @@ use std::{collections::HashMap, fmt, str::FromStr};
 
 use super::register::Register;
 use crate::{
-    compile::data::{eval_constant, eval_value_in_range}, error::{
+    compile::data::{eval_constant, eval_value_in_range},
+    error::{
         compiler::{
             DirectiveType,
             Error::{self, UnresolvedConstant},
         },
         InternalError, MipsyInternalResult,
-    }, Binary, MipsyResult, TEXT_BOT
+    },
+    Binary, MipsyResult, TEXT_BOT,
 };
 use mipsy_parser::{
     parse_argument, MpArgument, MpImmediate, MpInstruction, MpNumber, MpOffsetOperator, MpRegister,
@@ -388,7 +390,8 @@ impl InstSignature {
                             num as u32
                         }
                         MpArgument::Number(MpNumber::Constant(cnst)) => {
-                            eval_constant(program, cnst, "".into()).map_err(InternalError::from)? as u32
+                            eval_constant(program, cnst, "".into()).map_err(InternalError::from)?
+                                as u32
                         }
                         _ => unreachable!(),
                     }
@@ -598,7 +601,7 @@ impl ArgumentType {
                     &MpImmediate::U16(num) => match self {
                         Self::U16 | Self::I32 | Self::U32 | Self::Off32Rs | Self::Off32Rt => true,
                         Self::Shamt => eval_value_in_range(num as _, 0..32).and(Ok(true))?,
-                        _ => false
+                        _ => false,
                     },
                     &MpImmediate::I32(num) => match self {
                         Self::I32 | Self::J | Self::Off32Rs | Self::Off32Rt => true,
