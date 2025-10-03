@@ -9,4 +9,5 @@ edition = "2021"
 [dependencies]
 nom = "7" # parser
 nom_locate = "4"
+paste = "1.0.15"
 serde = { version = "1.0", features = ["derive"] }

@@ -1,10 +1,13 @@
-use std::rc::Rc;
+use std::{
+    ops::{Bound, Range, RangeBounds},
+    rc::Rc,
+};
 
 use super::{bytes::ToBytes, text::instruction_length, Binary, DATA_BOT, TEXT_BOT};
 use crate::{
     error::{
         compiler::{DirectiveType, Error},
-        ToMipsyResult,
+        InternalError, MipsyInternalResult, ToMipsyResult,
     },
     inst::instruction::InstSet,
     util::Safe,
@@ -101,16 +104,14 @@ pub(super) fn eval_directive(
                 Ok((
                     eval_constant_in_range(
                         byte,
-                        i8::MIN as _,
-                        u8::MAX as _,
+                        i8::MIN as i64..=u8::MAX as _,
                         binary,
                         file_tag.clone(),
                     )? as u8,
                     if let Some(n) = n {
                         eval_constant_in_range(
                             n,
-                            u32::MIN as _,
-                            u32::MAX as _,
+                            u32::MIN as i64..=u32::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u32
@@ -132,16 +133,14 @@ pub(super) fn eval_directive(
                     Ok((
                         eval_constant_in_range(
                             half,
-                            i16::MIN as _,
-                            u16::MAX as _,
+                            i16::MIN as i64..=u16::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u16,
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _,
-                                u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -167,16 +166,14 @@ pub(super) fn eval_directive(
                     Ok((
                         eval_constant_in_range(
                             word,
-                            i32::MIN as _,
-                            u32::MAX as _,
+                            i32::MIN as i64..=u32::MAX as _,
                             binary,
                             file_tag.clone(),
                         )? as u32,
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _,
-                                u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -204,8 +201,7 @@ pub(super) fn eval_directive(
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _,
-                                u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -233,8 +229,7 @@ pub(super) fn eval_directive(
                         if let Some(n) = n {
                             eval_constant_in_range(
                                 n,
-                                u32::MIN as _,
-                                u32::MAX as _,
+                                u32::MIN as i64..=u32::MAX as _,
                                 binary,
                                 file_tag.clone(),
                             )? as u32
@@ -252,7 +247,7 @@ pub(super) fn eval_directive(
             alignment.into_iter().chain(doubles).collect()
         }
         MpDirective::Align(num) => {
-            let num = eval_constant_in_range(num, u32::MIN as _, 31, binary, file_tag)? as u32;
+            let num = eval_constant_in_range(num, u32::MIN as _..32, binary, file_tag)? as u32;
 
             let multiple = 2usize.pow(num);
 
@@ -260,7 +255,8 @@ pub(super) fn eval_directive(
         }
         MpDirective::Space(num) => {
             let num =
-                eval_constant_in_range(num, u32::MIN as _, u32::MAX as _, binary, file_tag)? as u32;
+                eval_constant_in_range(num, u32::MIN as i64..=u32::MAX as _, binary, file_tag)?
+                    as u32;
 
             let space_byte = if config.spim {
                 Safe::Valid(0)
@@ -334,31 +330,29 @@ pub fn populate_labels_and_data(
                 }
             }
             MpItem::Instruction(instruction) => {
+                let is = instruction.clone();
                 for arg in instruction.arguments_mut() {
                     if let MpArgument::Number(MpNumber::Immediate(MpImmediate::LabelReference(
                         ref label,
                     ))) = arg.0
                     {
                         if let Some(&value) = binary.constants.get(label) {
-                            if u16::MIN as i64 <= value && u16::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U16(
-                                    value as _,
-                                )));
-                            } else if i16::MIN as i64 <= value && i16::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I16(
-                                    value as _,
-                                )));
-                            } else if u32::MIN as i64 <= value && u32::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::U32(
-                                    value as _,
-                                )));
-                            } else if i32::MIN as i64 <= value && i32::MAX as i64 >= value {
-                                arg.0 = MpArgument::Number(MpNumber::Immediate(MpImmediate::I32(
-                                    value as _,
-                                )));
-                            } else {
-                                todo!();
-                            }
+                            arg.0 = MpArgument::Number(MpNumber::Immediate(
+                                value.try_into().map_err(|_| {
+                                    MipsyError::Compiler(CompilerError::new(
+                                        Error::ConstantValueDoesNotFit {
+                                            directive_type: DirectiveType::Byte,
+                                            value: value,
+                                            range_low: i32::MIN as _,
+                                            range_high: u32::MAX as _,
+                                        },
+                                        file_tag.clone(),
+                                        is.line(),
+                                        is.col(),
+                                        is.col_end(),
+                                    ))
+                                })?,
+                            ))
                         }
                     }
                 }
@@ -366,7 +360,7 @@ pub fn populate_labels_and_data(
                 // We can't compile instructions yet - so just keep track of
                 // how many bytes-worth we've seen so far
                 let inst_length =
-                    instruction_length(iset, instruction).into_compiler_mipsy_result(
+                    instruction_length(binary, iset, instruction).into_compiler_mipsy_result(
                         file_tag.clone(),
                         line,
                         instruction.col(),
@@ -377,13 +371,15 @@ pub fn populate_labels_and_data(
                     Segment::Text => (TEXT_BOT, &mut text_len),
                     Segment::KText => (KTEXT_BOT, &mut ktext_len),
                     _ => {
-                        return Err(MipsyError::Compiler(CompilerError::new(
-                            Error::InstructionInDataSegment,
-                            file_tag,
-                            instruction.line(),
-                            instruction.col(),
-                            instruction.col_end(),
-                        )));
+                        return Err(MipsyError::Compiler(
+                            crate::error::compiler::CompilerError::new(
+                                Error::InstructionInDataSegment,
+                                file_tag,
+                                instruction.line(),
+                                instruction.col(),
+                                instruction.col_end(),
+                            ),
+                        ));
                     }
                 };
 
@@ -456,85 +452,114 @@ pub fn populate_labels_and_data(
     Ok(())
 }
 
-fn eval_constant(binary: &Binary, constant: &MpConstValueLoc, file: Rc<str>) -> MipsyResult<i64> {
-    Ok(match &constant.0 {
-        &MpConstValue::Value(value) => value as _,
-        MpConstValue::Const(label) => binary
-            .constants
-            .get(label)
-            .copied()
-            .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
-            .ok_or_else(|| {
-                MipsyError::Compiler(CompilerError::new(
-                    Error::UnresolvedConstant {
-                        label: label.to_string(),
-                    },
-                    file.clone(),
-                    constant.1.line(),
-                    constant.1.col(),
-                    constant.1.col_end(),
-                ))
-            })?,
-        MpConstValue::Minus(value) => -eval_constant(binary, value, file)?,
+pub fn eval_constant(
+    binary: &Binary,
+    constant: &MpConstValueLoc,
+    file: Rc<str>,
+) -> MipsyResult<i64> {
+    let err = MipsyError::Compiler(CompilerError::new(
+        Error::ConstantExpressionDoesNotFit {
+            eval: "anonymous expression".into(),
+        },
+        file.clone(),
+        constant.1.line(),
+        constant.1.col(),
+        constant.1.col_end(),
+    ));
+
+    match &constant.0 {
+        &MpConstValue::Value(value) => Some(value as _),
+        MpConstValue::Const(label) => Some(
+            binary
+                .constants
+                .get(label)
+                .copied()
+                .or_else(|| binary.get_label(label).map(|x| x as i64).ok())
+                .ok_or_else(|| {
+                    MipsyError::Compiler(CompilerError::new(
+                        Error::UnresolvedConstant {
+                            label: label.to_string(),
+                        },
+                        file.clone(),
+                        constant.1.line(),
+                        constant.1.col(),
+                        constant.1.col_end(),
+                    ))
+                })?,
+        ),
+        MpConstValue::Minus(value) => Some(-eval_constant(binary, value, file)?),
         MpConstValue::Sum(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? + eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_add(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Sub(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? - eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_sub(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Div(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? / eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_div(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Mult(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? * eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_mul(eval_constant(binary, v2, file)?)
         }
         MpConstValue::Mod(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? % eval_constant(binary, v2, file)?
+            eval_constant(binary, v1, file.clone())?.checked_rem(eval_constant(binary, v2, file)?)
         }
         MpConstValue::And(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? & eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? & eval_constant(binary, v2, file)?)
         }
         MpConstValue::Or(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? | eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? | eval_constant(binary, v2, file)?)
         }
         MpConstValue::Xor(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? ^ eval_constant(binary, v2, file)?
+            Some(eval_constant(binary, v1, file.clone())? ^ eval_constant(binary, v2, file)?)
         }
-        MpConstValue::Neg(value) => !eval_constant(binary, value, file)?,
-        MpConstValue::Shl(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? << eval_constant(binary, v2, file)?
-        }
-        MpConstValue::Shr(v1, v2) => {
-            eval_constant(binary, v1, file.clone())? >> eval_constant(binary, v2, file)?
-        }
-    })
+        MpConstValue::Neg(value) => Some(!eval_constant(binary, value, file)?),
+        MpConstValue::Shl(v1, v2) => (eval_constant(binary, v1, file.clone())?)
+            .checked_shl(eval_constant(binary, v2, file)? as _),
+        MpConstValue::Shr(v1, v2) => (eval_constant(binary, v1, file.clone())?)
+            .checked_shr(eval_constant(binary, v2, file)? as _),
+    }
+    .ok_or(err)
 }
 
 fn eval_constant_in_range(
     constant: &MpConstValueLoc,
-    range_low: i64,
-    range_high: i64,
+    range: impl RangeBounds<i64>,
     binary: &Binary,
     file: Rc<str>,
 ) -> MipsyResult<i64> {
-    let value = eval_constant(binary, constant, file.clone())?;
+    eval_value_in_range(eval_constant(binary, constant, file.clone())?, range).map_err(
+        |e| match e {
+            InternalError::Compiler(c) if matches!(c, Error::ConstantValueDoesNotFit { .. }) => {
+                MipsyError::Compiler(CompilerError::new(
+                    c,
+                    file,
+                    constant.1.line(),
+                    constant.1.col(),
+                    constant.1.col_end(),
+                ))
+            }
+            _ => unreachable!(),
+        },
+    )
+}
 
-    if value < range_low || value > range_high {
-        return Err(MipsyError::Compiler(CompilerError::new(
-            Error::ConstantValueDoesNotFit {
-                directive_type: DirectiveType::Byte,
-                value,
-                range_low,
-                range_high,
-            },
-            file,
-            constant.1.line(),
-            constant.1.col(),
-            constant.1.col_end(),
-        )));
+pub fn eval_value_in_range(value: i64, range: impl RangeBounds<i64>) -> MipsyInternalResult<i64> {
+    let bound_val = |b: Bound<&i64>| match b {
+        Bound::Included(&x) => x,
+        Bound::Excluded(&x) => x.saturating_sub(1),
+        Bound::Unbounded => unreachable!(),
+    };
+    let (start, end) = (bound_val(range.start_bound()), bound_val(range.end_bound()));
+    if value < start || value > end {
+        Err(InternalError::Compiler(Error::ConstantValueDoesNotFit {
+            directive_type: DirectiveType::Byte,
+            value,
+            range_low: start,
+            range_high: end,
+        }))
+    } else {
+        Ok(value)
     }
-
-    Ok(value)
 }
 
 fn insert_safe_data(segment: &Segment, binary: &mut Binary, values: &[Safe<u8>]) {

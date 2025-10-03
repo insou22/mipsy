@@ -12,7 +12,7 @@ pub mod breakpoints;
 mod checker;
 pub use checker::{check_post_data_label, check_pre};
 
-mod data;
+pub mod data;
 use data::populate_labels_and_data;
 
 mod text;

@@ -31,7 +31,7 @@ pub fn check_pre(program: &MpProgram) -> MipsyResult<Vec<Warning>> {
                                 *col_end,
                             )?;
                         }
-                        MpArgument::Number(_) => {} // MpArgument::LabelPlusConst(..) => {}
+                        MpArgument::Number(_) => {}
                     }
                 }
             }
@@ -57,25 +57,8 @@ pub fn check_post_data_label(program: &MpProgram, binary: &Binary) -> MipsyResul
         match item {
             MpItem::Instruction(ref instruction) => {
                 for (argument, col, col_end) in instruction.arguments() {
-                    match argument {
-                        MpArgument::Register(_) => {}
-                        MpArgument::Number(number) => match number {
-                            MpNumber::Immediate(imm) => {
-                                check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
-                            }
-                            MpNumber::BinaryOpImmediate(i1, _, i2) => {
-                                check_imm(binary, i1, file_tag.clone(), line, *col, *col_end)?;
-                                check_imm(binary, i2, file_tag.clone(), line, *col, *col_end)?;
-                            }
-                            MpNumber::Float32(_) => {}
-                            MpNumber::Float64(_) => {}
-                            MpNumber::Char(_) => {}
-                        }, // MpArgument::LabelPlusConst(label, _const) => {
-                           //     if binary.constants.get(label).is_none() {
-                           //         binary.get_label(label)
-                           //             .into_compiler_mipsy_result(file_tag.clone(), line, *col, *col_end)?;
-                           //     }
-                           // }
+                    if let MpArgument::Number(MpNumber::Immediate(imm)) = argument {
+                        check_imm(binary, imm, file_tag.clone(), line, *col, *col_end)?
                     }
                 }
             }

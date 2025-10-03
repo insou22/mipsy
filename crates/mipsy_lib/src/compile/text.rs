@@ -12,22 +12,21 @@ use mipsy_parser::{MpInstruction, MpItem};
 use mipsy_utils::MipsyConfig;
 
 pub fn find_instruction<'a>(
+    program: &Binary,
     iset: &'a InstSet,
     inst: &MpInstruction,
 ) -> MipsyInternalResult<SignatureRef<'a>> {
-    if let Some(native) = iset.find_native(inst) {
+    if let Some(native) = iset.find_native(inst, program) {
         Ok(SignatureRef::Native(native))
-    } else if let Some(pseudo) = iset.find_pseudo(inst) {
+    } else if let Some(pseudo) = iset.find_pseudo(inst, program) {
         Ok(SignatureRef::Pseudo(pseudo))
     } else {
+        iset.find_errors(inst, program)?;
+
         let mut matching_names: Vec<SignatureRef<'a>> = vec![];
         let mut close_names: Vec<SignatureRef<'a>> = vec![];
 
-        let all_instns = iset
-            .native_set()
-            .iter()
-            .map(SignatureRef::Native)
-            .chain(iset.pseudo_set().iter().map(SignatureRef::Pseudo));
+        let all_instns = iset.both_sets();
 
         for real_inst in all_instns {
             if real_inst.name() == inst.name() {
@@ -63,8 +62,12 @@ pub fn find_instruction<'a>(
     }
 }
 
-pub fn instruction_length(iset: &InstSet, inst: &MpInstruction) -> MipsyInternalResult<usize> {
-    Ok(match find_instruction(iset, inst)? {
+pub fn instruction_length(
+    binary: &Binary,
+    iset: &InstSet,
+    inst: &MpInstruction,
+) -> MipsyInternalResult<usize> {
+    Ok(match find_instruction(binary, iset, inst)? {
         SignatureRef::Native(_) => 1,
         SignatureRef::Pseudo(pseudo) => pseudo.expansion().len(),
     })
@@ -75,7 +78,7 @@ pub fn compile1(
     iset: &InstSet,
     inst: &MpInstruction,
 ) -> MipsyInternalResult<Vec<u32>> {
-    find_instruction(iset, inst)?.compile_ops(binary, iset, inst)
+    find_instruction(binary, iset, inst)?.compile_ops(binary, iset, inst)
 }
 
 pub fn populate_text(

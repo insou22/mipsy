@@ -1,13 +1,14 @@
 use std::fmt;
 
 use crate::{
+    constant::parse_constant_value,
     misc::{escape_char, parse_escaped_char, parse_ident},
-    Span,
+    MpConstValueLoc, Span,
 };
 use nom::{
     branch::alt,
     bytes::complete::{is_a, tag},
-    character::complete::{char, digit1, hex_digit1, oct_digit1, one_of, space0},
+    character::complete::{char, digit1, hex_digit1, oct_digit1},
     combinator::{map, map_res, opt},
     number::complete::{double, float},
     sequence::tuple,
@@ -18,7 +19,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum MpNumber {
     Immediate(MpImmediate),
-    BinaryOpImmediate(MpImmediate, MpImmediateBinaryOp, MpImmediate),
+    Constant(MpConstValueLoc),
     Float32(f32),
     Float64(f64),
     Char(char),
@@ -33,17 +34,11 @@ pub enum MpImmediate {
     LabelReference(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum MpImmediateBinaryOp {
-    Plus,
-    Minus,
-}
-
 impl fmt::Display for MpNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Immediate(imm) => write!(f, "{}", imm),
-            Self::BinaryOpImmediate(i1, op, i2) => write!(f, "{} {} {}", i1, op, i2),
+            Self::Constant(expr) => write!(f, "{}", expr.0),
             Self::Float32(float) => write!(f, "{}", float),
             Self::Float64(float) => write!(f, "{}", float),
             Self::Char(char) => write!(f, "'{}'", escape_char(*char)),
@@ -63,39 +58,36 @@ impl fmt::Display for MpImmediate {
     }
 }
 
-impl fmt::Display for MpImmediateBinaryOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Plus => write!(f, "+"),
-            Self::Minus => write!(f, "-"),
+macro_rules! immediate_in_range {
+    ($n:ident, $($ty:ty),* $(,)?) => {
+        if false { unreachable!() }
+        $(else if (<$ty>::MIN as i64..=<$ty>::MAX as i64).contains(&$n) {
+            Some(paste::paste!{
+                MpImmediate::[<$ty:camel>]($n as _)
+            })
+        })*
+        else {
+            None
         }
+    }
+}
+
+impl TryFrom<i64> for MpImmediate {
+    type Error = ();
+    fn try_from(n: i64) -> Result<Self, Self::Error> {
+        immediate_in_range!(n, u16, i16, u32, i32).ok_or(())
     }
 }
 
 pub fn parse_number(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
     alt((
-        parse_binary_op_immedaite,
+        // map(map(parse_labelref, MpImmediate::LabelReference), MpNumber::Immediate),
+        map(parse_constant_value, MpNumber::Constant),
         map(parse_immediate, MpNumber::Immediate),
         map(parse_f32, MpNumber::Float32),
         map(parse_f64, MpNumber::Float64),
         map(parse_char, MpNumber::Char),
     ))(i)
-}
-
-pub fn parse_binary_op_immedaite(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
-    let (remaining_data, (i1, _, op, _, i2)) = tuple((
-        parse_immediate,
-        space0,
-        map(one_of("+-"), |op| match op {
-            '+' => MpImmediateBinaryOp::Plus,
-            '-' => MpImmediateBinaryOp::Minus,
-            _ => unreachable!(),
-        }),
-        space0,
-        parse_immediate,
-    ))(i)?;
-
-    Ok((remaining_data, MpNumber::BinaryOpImmediate(i1, op, i2)))
 }
 
 pub fn parse_immediate(i: Span<'_>) -> IResult<Span<'_>, MpImmediate> {
@@ -228,10 +220,9 @@ pub fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
 }
 
 fn get_sign(neg: Option<char>) -> &'static str {
-    if let Some('-') = neg {
-        "-"
-    } else {
-        ""
+    match neg {
+        Some('-') => "-",
+        _ => "",
     }
 }
 

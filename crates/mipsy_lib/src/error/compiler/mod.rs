@@ -180,12 +180,14 @@ pub enum Error {
     UnresolvedConstant {
         label: String,
     },
-
     ConstantValueDoesNotFit {
         directive_type: DirectiveType,
         value: i64,
         range_low: i64,
         range_high: i64,
+    },
+    ConstantExpressionDoesNotFit {
+        eval: String,
     },
 
     DataInTextSegment {
@@ -215,7 +217,7 @@ impl Error {
                 let register_dollar = "$".yellow().bold();
                 let register_num = reg_num.to_string().bold();
 
-                format!("{} {}{}", message, register_dollar, register_num)
+                format!("{message} {register_dollar}{register_num}")
             }
 
             Error::NamedRegisterOutOfRange {
@@ -227,7 +229,7 @@ impl Error {
                 let reg_name = reg_name.to_string().bold();
                 let reg_index = reg_index.to_string().bold();
 
-                format!("{} {}{}{}", message, register_dollar, reg_name, reg_index)
+                format!("{message} {register_dollar}{reg_name}{reg_index}")
             }
 
             Error::UnknownRegister { reg_name } => {
@@ -235,13 +237,13 @@ impl Error {
                 let register_dollar = "$".yellow().bold();
                 let name = reg_name.bold();
 
-                format!("{} {}{}", message, register_dollar, name)
+                format!("{message} {register_dollar}{name}")
             }
             Error::UnknownInstruction { inst_ast } | Error::InstructionSimName { inst_ast, .. } => {
                 let message = "unknown instruction".bright_red().bold();
                 let inst_name = inst_ast.name().bold();
 
-                format!("{} `{}`", message, inst_name)
+                format!("{message} `{inst_name}`")
             }
 
             Error::InstructionBadFormat { inst_ast, .. } => {
@@ -251,7 +253,7 @@ impl Error {
                     .bold();
                 let inst_name = inst_ast.name().bold();
 
-                format!("{} `{}` {}", message_1, inst_name, message_2)
+                format!("{message_1} `{inst_name}` {message_2}")
             }
 
             Error::RedefinedLabel { label } => {
@@ -259,7 +261,7 @@ impl Error {
                 let message_2 = "is defined multiple times".bright_red().bold();
                 let label = label.bold();
 
-                format!("{} `{}` {}", message_1, label, message_2)
+                format!("{message_1} `{label}` {message_2}")
             }
 
             Error::UnresolvedLabel { label, .. } => {
@@ -267,7 +269,7 @@ impl Error {
                 let message_2 = "in program".bright_red().bold();
                 let label = label.bold();
 
-                format!("{} `{}` {}", message_1, label, message_2)
+                format!("{message_1} `{label}` {message_2}")
             }
 
             Error::RedefinedConstant { label } => {
@@ -275,7 +277,7 @@ impl Error {
                 let message_2 = "is defined multiple times".bright_red().bold();
                 let label = label.bold();
 
-                format!("{} `{}` {}", message_1, label, message_2)
+                format!("{message_1} `{label}` {message_2}")
             }
 
             Error::UnresolvedConstant { label } => {
@@ -283,7 +285,7 @@ impl Error {
                 let message_2 = "in program".bright_red().bold();
                 let label = label.bold();
 
-                format!("{} `{}` {}", message_1, label, message_2)
+                format!("{message_1} `{label}` {message_2}")
             }
 
             Error::ConstantValueDoesNotFit {
@@ -298,18 +300,26 @@ impl Error {
                 let low = range_low.to_string().bold();
                 let high = range_high.to_string().bold();
 
-                format!(
-                    "{} `{}` {} {} {} {}",
-                    message_1, value, message_2, low, message_3, high
-                )
+                format!("{message_1} `{value}` {message_2} {low} {message_3} {high}")
+            }
+
+            Error::ConstantExpressionDoesNotFit { eval } => {
+                let message_1 = "constant expression".bright_red().bold();
+                let message_2 = "must be between".bright_red().bold();
+                let and = "and".bright_red().bold();
+                let low = i64::MIN.to_string().bold();
+                let high = u64::MAX.to_string().bold();
+
+                format!("{message_1} `{eval}` {message_2} {low} {and} {high}")
             }
 
             Error::DataInTextSegment { directive_type } => {
                 let message_1 = "cannot put".bright_red().bold();
+                let dot = ".".bold();
                 let message_2 = directive_type.to_string().bold();
                 let message_3 = "directive into text segment".bright_red().bold();
 
-                format!("{} `{}{}` {}", message_1, ".".bold(), message_2, message_3)
+                format!("{message_1} `{dot}{message_2}` {message_3}")
             }
 
             Error::InstructionInDataSegment => {
@@ -317,7 +327,7 @@ impl Error {
                     .bright_red()
                     .bold();
 
-                format!("{}", message_1)
+                format!("{message_1}")
             }
 
             Error::TooMuchData { .. } => {
@@ -325,7 +335,7 @@ impl Error {
                 let message_2 = ".data".bold();
                 let message_3 = "segment".bright_red().bold();
 
-                format!("{} `{}` {}", message_1, message_2, message_3)
+                format!("{message_1} `{message_2}` {message_3}")
             }
         }
     }
@@ -505,6 +515,10 @@ impl Error {
                 let tip = format!("required by `{}` directive\n", directive);
 
                 vec![tip]
+            }
+
+            Error::ConstantExpressionDoesNotFit { .. } => {
+                vec!["try compute less".to_owned()]
             }
 
             Error::DataInTextSegment { directive_type } => {

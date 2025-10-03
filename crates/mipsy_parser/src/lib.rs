@@ -10,7 +10,7 @@ pub use constant::{MpConst, MpConstValue, MpConstValueLoc};
 pub use directive::MpDirective;
 pub use instruction::{MpArgument, MpInstruction};
 pub use misc::{tabs_to_spaces, ErrorLocation};
-pub use number::{MpImmediate, MpImmediateBinaryOp, MpNumber};
+pub use number::{MpImmediate, MpNumber};
 pub use parser::{MpItem, MpProgram, TaggedFile};
 pub use register::{MpOffsetOperator, MpRegister, MpRegisterIdentifier};
 
