@@ -12,64 +12,31 @@ pub(super) fn args_numbers(args: &[ArgumentKind]) -> Vec<i64> {
     args.iter().cloned().map(i64::from).collect()
 }
 
-fn subcmd_help() -> String {
-    get_step_help_text(
-        format!(
-            "\
-                Available {1}s are:\n\
-                \n\
-                {0} {2}     : syscalls 5, 6, 7, 8, 12\n\
-                {0} {3}    : syscalls 1, 2, 3, 4, 11\n\
-                {0} {4}   : syscalls 1, 5\n\
-                {0} {5}     : syscalls 2, 6\n\
-                {0} {6}    : syscalls 3, 7\n\
-                {0} {7}    : syscalls 4, 8\n\
-                {0} {8} : syscalls 11, 12\n\
-                {0} {9}      : syscalls 13, 14, 15, 16\n\
-                \n\
-                {10} {11} will provide more information about the specified subcommand.\n\
-                \n\
-                By default, this steps forwards until your program's next syscall, or finishes.",
-            "step syscall".bold().yellow(),
-            "[type]".magenta(),
-            "input".purple(),
-            "output".purple(),
-            "integer".purple(),
-            "float".purple(),
-            "double".purple(),
-            "string".purple(),
-            "character".purple(),
-            "file".purple(),
-            "help step syscall".white().bold(),
-            "[type]".magenta().bold(),
-        )
-        .as_ref(),
-    )
-}
-
 fn call_subcmds(
     cmd: &Command,
     state: &mut State,
     helper: &MyHelper,
     args: &[ArgumentKind],
 ) -> CommandResult<String> {
-    match args.get(0) {
-        Some(ArgumentKind::String(arg)) => {
-            if let Some(cmd) = cmd.subcommands.iter().find(|c| c.names.contains(arg)) {
-                return (cmd._internal_exec)(cmd, state, helper, &args[1..]);
-            }
+    if let Some(arg) = args.get(0) {
+        if let Some(cmd) = cmd
+            .subcommands
+            .iter()
+            .find(|c| c.names.contains(&arg.clone().into()))
+        {
+            return (cmd._internal_exec)(cmd, state, helper, &args[1..]);
         }
-        None | Some(ArgumentKind::Number(_)) => {}
     }
 
     step_syscall(state, helper)
 }
 
-fn subcmd() -> Command {
-    Command::new()
+pub(crate) fn command() -> Command {
+    let subcmd = Command::new()
         .with_name("syscall")
         .with_name("s")
         .with_name("sys")
+        .with_help(subcmd_help())
         .with_subcommand(
             Command::new()
                 .with_name("input")
@@ -145,25 +112,22 @@ fn subcmd() -> Command {
                 ))
                 .with_exec(|_, state, helper, _| step_file(state, helper)),
         )
-        .with_help(subcmd_help())
-        .with_exec(call_subcmds)
-}
+        .with_required_arg(Argument::subcommands())
+        .with_exec(call_subcmds);
 
-pub(crate) fn command() -> Command {
     let times_arg = Argument::new(
         "times",
-        |a, _| match a.parse::<i32>() {
+        |_, a, _| match a.parse::<i32>() {
             Ok(i) => Ok(ArgumentKind::Number(i as _)),
             Err(_) => Err(CommandError::WithTip {
                 error: Box::new(CommandError::ArgExpectedI32 {
                     arg: "[times]".bright_magenta().to_string(),
                     instead: a.to_owned(),
                 }),
-                // tip: format!("try `{} {}`", "help".bold(), label.bold()),
-                tip: format!("try TODOTODOIJJDSKJAKDJTODOOOOOOOOOOOOOTODOOOOOOOOOOOO"),
+                tip: format!("try `{} {}`", "help".bold(), "step".bold()),
             }),
         },
-        |_, _| vec![],
+        |_, _, _| vec![],
     );
 
     Command::new()
@@ -188,8 +152,8 @@ pub(crate) fn command() -> Command {
                 ))
                 .with_exec(|_, state, helper, args| step_back(state, &args_numbers(args), helper)),
         )
-        .with_subcommand(subcmd())
-        .with_help(subcmd_help())
+        .with_subcommand(subcmd)
+        .with_help(get_long_help())
         .with_exec(call_subcmds)
 }
 
@@ -448,5 +412,40 @@ fn get_step_help_text(unique_text: &str) -> String {
          To step backwards (i.e. back in time), use `{}`.",
         unique_text,
         "step back".bold(),
+    )
+}
+
+fn subcmd_help() -> String {
+    get_step_help_text(
+        format!(
+            "\
+                Available {1}s are:\n\
+                \n\
+                {0} {2}\t\t: syscalls 5, 6, 7, 8, 12\n\
+                {0} {3}\t\t: syscalls 1, 2, 3, 4, 11\n\
+                {0} {4}\t\t: syscalls 1, 5\n\
+                {0} {5}\t\t: syscalls 2, 6\n\
+                {0} {6}\t\t: syscalls 3, 7\n\
+                {0} {7}\t\t: syscalls 4, 8\n\
+                {0} {8}\t\t: syscalls 11, 12\n\
+                {0} {9}\t\t: syscalls 13, 14, 15, 16\n\
+                \n\
+                {10} {11} will provide more information about the specified subcommand.\n\
+                \n\
+                By default, this steps forwards until your program's next syscall, or finishes.",
+            "step syscall".bold().yellow(),
+            "[type]".magenta(),
+            "input".purple(),
+            "output".purple(),
+            "integer".purple(),
+            "float".purple(),
+            "double".purple(),
+            "string".purple(),
+            "character".purple(),
+            "file".purple(),
+            "help step syscall".white().bold(),
+            "[type]".magenta().bold(),
+        )
+        .as_ref(),
     )
 }

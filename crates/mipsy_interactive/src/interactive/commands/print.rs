@@ -16,12 +16,12 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_required_arg(Argument::new(
             "item",
-            |a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _| vec![],
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _, _| vec![],
         ))
         .with_optional_arg(Argument::new(
             "format",
-            |a, _| match a {
+            |_, a, _| match a {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
                 | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {
                     Ok(ArgumentKind::String(a.to_owned()))
@@ -31,7 +31,7 @@ pub(crate) fn command() -> Command {
                     instead: other.to_string(),
                 }),
             },
-            |_, _| {
+            |_, _, _| {
                 vec![
                     "byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char", "string",
                     "b", "h", "w", "xb", "xh", "xw", "x", "c", "s",

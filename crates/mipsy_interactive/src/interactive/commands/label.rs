@@ -12,8 +12,8 @@ pub(crate) fn command() -> Command {
         // TODO: somehow get some context to sanitise & hint this
         .with_required_arg(Argument::new(
             "label",
-            |a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _| vec![],
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _, _| vec![],
         ))
         .with_desc("print the address of a label")
         .with_help(format!(

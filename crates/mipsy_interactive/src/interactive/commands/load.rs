@@ -11,23 +11,20 @@ pub(crate) fn command() -> Command {
         .with_name("load")
         .with_name("l")
         .with_var_args()
-        .with_required_arg(
-            // TODO: better fs filter
-            Argument::new(
-                "files",
-                |a, h| {
-                    if h.file_hints(&HintArgs::default()).contains(&a.to_owned()) {
-                        Ok(ArgumentKind::String(a.into()))
-                    } else {
-                        Err(CommandError::BadArgument {
-                            arg: "file".to_owned(),
-                            instead: a.to_owned(),
-                        })
-                    }
-                },
-                |a, h| h.file_hints(a),
-            ),
-        )
+        .with_required_arg(Argument::new(
+            "files",
+            |_, a, h| {
+                if h.file_hints(&HintArgs::default()).contains(&a.to_owned()) {
+                    Ok(ArgumentKind::String(a.into()))
+                } else {
+                    Err(CommandError::BadArgument {
+                        arg: "file".to_owned(),
+                        instead: a.to_owned(),
+                    })
+                }
+            },
+            |_, a, h| h.file_hints(a),
+        ))
         .with_varargs_format("-- {args}".magenta().to_string())
         .with_desc("load a MIPS file to run")
         .with_help(format!(

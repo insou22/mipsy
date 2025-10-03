@@ -20,8 +20,9 @@ pub(crate) struct HintArgs {
     pub(crate) pos: usize,
 }
 
-impl From<String> for HintArgs {
-    fn from(value: String) -> Self {
+impl<S: Into<String>> From<S> for HintArgs {
+    fn from(value: S) -> Self {
+        let value = value.into();
         Self {
             pos: value.len(),
             line: value,
@@ -62,27 +63,18 @@ impl HintArgs {
             .split_whitespace()
             .nth(0)
             .filter(|l| l != &self.line)
-            .and_then(|l| {
-                Some(Self {
-                    line: l.to_owned(),
-                    pos: l.len(),
-                })
-            })
+            .and_then(|l| Some(Self::from(l)))
     }
 
     pub(crate) fn subcmd(&self) -> Self {
-        let line = self
-            .line
-            .split_whitespace()
-            .last()
-            .filter(|l| l.trim() != self.line.trim())
-            .or(Some(""))
-            .unwrap();
-
-        Self {
-            line: line.to_owned(),
-            pos: line.len(),
-        }
+        Self::from(
+            self.line
+                .split_whitespace()
+                .last()
+                .filter(|l| l.trim() != self.line.trim())
+                .or(Some(""))
+                .unwrap(),
+        )
     }
 
     pub(crate) fn recontextualize(&self, sub: &str) -> String {
@@ -105,9 +97,12 @@ impl<'a> MyHelper<'a> {
     }
 
     fn find_command_name(&self, hargs: &HintArgs) -> Option<&Command> {
-        hargs
-            .command()
-            .and_then(|l| self.state.commands.iter().find(|c| c.name() == l.line))
+        hargs.command().and_then(|l| {
+            self.state
+                .commands
+                .iter()
+                .find(|c| c.name() == l.line.trim())
+        })
     }
 
     fn find_command_aliases(&self, hargs: &HintArgs) -> Option<&Command> {
@@ -115,7 +110,7 @@ impl<'a> MyHelper<'a> {
             self.state
                 .commands
                 .iter()
-                .find(|c| c.names.contains(&l.line))
+                .find(|c| c.names.contains(&l.line.trim().to_owned()))
         })
     }
 
@@ -132,8 +127,7 @@ impl<'a> MyHelper<'a> {
             &ctx.history()
                 .iter()
                 .rev()
-                .filter(|&h| self.find_command_name(&h.to_owned().into()).is_none())
-                .filter(|h| !ctx.history().iter().find(|a| a == h).is_none())
+                // .filter(|&h| self.find_command_name(&h.into()).is_none())
                 .map(|h| h.trim())
                 .collect::<Vec<_>>(),
             hargs,
@@ -158,6 +152,24 @@ impl<'a> MyHelper<'a> {
         .copied()
         .map(str::to_owned)
         .collect()
+    }
+
+    pub(crate) fn command_hints(&self, hargs: &HintArgs) -> Vec<String> {
+        let mut hints = vec![];
+
+        if let None = self.find_command_name(&hargs) {
+            hints.extend(self.close_command_hints(&hargs))
+        }
+
+        if let Some(cmd) = self.find_command_aliases(hargs) {
+            hints.extend(
+                cmd.args()
+                    .get(hargs.subcmd_index().saturating_sub(1))
+                    .map_or(vec![], |a| a.hints(cmd, &hargs, self)),
+            )
+        }
+
+        hints
     }
 
     pub(crate) fn file_hints(&self, hargs: &HintArgs) -> Vec<String> {
@@ -214,13 +226,7 @@ impl Completer for MyHelper<'_> {
             hints.extend(history)
         }
 
-        hints.extend(match self.find_command_aliases(&line.to_owned().into()) {
-            Some(cmd) => cmd
-                .args()
-                .get(hargs.subcmd_index().saturating_sub(1))
-                .map_or(vec![], |a| a.hints(&hargs, self)),
-            None => self.close_command_hints(&hargs),
-        });
+        hints.extend(self.command_hints(&hargs));
 
         Ok(hargs.hints(hints.iter().collect::<Vec<_>>().as_slice()))
     }

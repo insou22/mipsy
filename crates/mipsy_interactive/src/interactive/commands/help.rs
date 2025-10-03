@@ -16,8 +16,8 @@ pub(crate) fn command() -> Command {
         // TODO: context for sanitisation
         .with_optional_arg(Argument::new(
             "command",
-            |a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, h| {
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _, h| {
                 h.state
                     .commands
                     .iter()

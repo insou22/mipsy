@@ -136,28 +136,28 @@ pub(crate) fn command() -> Command {
                 .with_name("cmds")
                 .with_name("command")
                 .with_help(
-format!(
-            "Takes in a list of commands seperated by newlines,\n\
-                 and attaches the commands to the specified {0}.\n\
-                 If no watchpoint is specified, the most recently created watchpoint is chosen.\n\
-                 Whenever that watchpoint is hit, the commands will automatically be executed\n\
-                 in the provided order.\n\
-                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
-                 To view the commands attached to a particular watchpoint,\n\
-                 use {2} {0}
-                ",
-            "<watchpoint id>".purple(),
-            "end".yellow().bold(),
-            "commands list".bold().yellow(),
-        )
+                    format!(
+                        "Takes in a list of commands seperated by newlines,\n\
+                        and attaches the commands to the specified {0}.\n\
+                        If no watchpoint is specified, the most recently created watchpoint is chosen.\n\
+                        Whenever that watchpoint is hit, the commands will automatically be executed\n\
+                        in the provided order.\n\
+                        The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                        To view the commands attached to a particular watchpoint,\n\
+                        use {2} {0}
+                        ",
+                        "<watchpoint id>".purple(),
+                        "end".yellow().bold(),
+                        "commands list".bold().yellow(),
+                    )
                 )
                 .with_exec(|_, state, _, args| {
                     watchpoint_commands(state, &args_text(args))
                 }),
-        )
+    )
         .with_desc(format!(
-            "manage watchpoints ({} to list subcommands)",
-            "help watchpoint".bold()
+                "manage watchpoints ({} to list subcommands)",
+                "help watchpoint".bold()
         ))
         .with_help(get_long_help())
         .with_exec(|cmd, state, helper, args| {
@@ -165,10 +165,10 @@ format!(
                 .subcommands
                 .iter()
                 .find(|c| c.names.contains(&args[0].to_owned().into()))
-            {
-                Some(cmd) => (cmd._internal_exec)(cmd, state, helper, &args[1..]),
-                None => watchpoint_insert(state, &args_text(args), InsertOp::Insert),
-            }
+                {
+                    Some(cmd) => (cmd._internal_exec)(cmd, state, helper, &args[1..]),
+                    None => watchpoint_insert(state, &args_text(args), InsertOp::Insert),
+                }
         })
 }
 
@@ -587,16 +587,16 @@ fn parse_watchpoint_arg(
 fn get_long_help() -> String {
     format!(
         "A collection of commands for managing watchpoints. Available {10}s are:\n\n\
-         {0} {2}    : insert/delete a watchpoint\n\
-         {1} {3}\n\
-         {0} {12} : insert a temporary watchpoint that deletes itself after being hit\n\
-         {0} {13}  : attach commands to a watchpoint\n\
-         {0} {5}    : enable/disable an existing watchpoint\n\
-         {1} {6}\n\
-         {1} {7}\n\
-         {0} {11}    : ignore a watchpoint for a specified number of hits\n\
-         {0} {4}      : list currently set watchpoints\n\n\
-         {8} {9} will provide more information about the specified subcommand.
+        {0} {2}    : insert/delete a watchpoint\n\
+        {1} {3}\n\
+        {0} {12} : insert a temporary watchpoint that deletes itself after being hit\n\
+        {0} {13}  : attach commands to a watchpoint\n\
+        {0} {5}    : enable/disable an existing watchpoint\n\
+        {1} {6}\n\
+        {1} {7}\n\
+        {0} {11}    : ignore a watchpoint for a specified number of hits\n\
+        {0} {4}      : list currently set watchpoints\n\n\
+        {8} {9} will provide more information about the specified subcommand.
         ",
         "watchpoint".yellow().bold(),
         "          ".yellow().bold(),
@@ -618,19 +618,19 @@ fn get_long_help() -> String {
 fn watchpoint_insert_help() -> String {
     format!(
         "Usage: {5} {6} {2} {7}\n\
-         {0}s or {1}s a watchpoint at the specified {2}.\n\
-         {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, `14`),\n\
-         a decimal address (`4194304`), a hex address (`{8}400000`), or a label (`{9}`).\n\
-         If you are removing a watchpoint, you can also use its id (`{3}`).\n\
-         {4} must be `i`, `in`, `ins`, `insert`, or `add` to insert the watchpoint, or\n\
-                     `del`, `delete`, `rm` or `remove` to remove the watchpoint.\n\
-         If {10}, `tmp`, or `temp` is provided as the {4}, the watchpoint will\n\
-         be created as a temporary watchpoint, which automatically deletes itself after being hit.\n\
-         If {4} is none of these option, it defaults to inserting a watchpoint at {4}.\n\
-         When running or stepping through your program, a watchpoint will cause execution to\n\
-         pause temporarily when the specified register is read from or written to,\n\
-         allowing you to debug the current state.\n\
-         May error if provided a {2} that doesn't exist.",
+        {0}s or {1}s a watchpoint at the specified {2}.\n\
+        {2} may be: a register name (`$t0`, `t0`), a register number (`$14`, `14`),\n\
+        a decimal address (`4194304`), a hex address (`{8}400000`), or a label (`{9}`).\n\
+        If you are removing a watchpoint, you can also use its id (`{3}`).\n\
+        {4} must be `i`, `in`, `ins`, `insert`, or `add` to insert the watchpoint, or\n\
+        `del`, `delete`, `rm` or `remove` to remove the watchpoint.\n\
+        If {10}, `tmp`, or `temp` is provided as the {4}, the watchpoint will\n\
+        be created as a temporary watchpoint, which automatically deletes itself after being hit.\n\
+        If {4} is none of these option, it defaults to inserting a watchpoint at {4}.\n\
+        When running or stepping through your program, a watchpoint will cause execution to\n\
+        pause temporarily when the specified register is read from or written to,\n\
+        allowing you to debug the current state.\n\
+        May error if provided a {2} that doesn't exist.",
         "<insert>".magenta(),
         "<delete>".magenta(),
         "<target>".magenta(),
@@ -642,16 +642,16 @@ fn watchpoint_insert_help() -> String {
         "0x".yellow(),
         "main".yellow().bold(),
         "<temporary>".purple(),
-        )
+    )
 }
 
 fn watchpoint_toggle_help() -> String {
     format!(
         "Usage: {5} {6} {3}\n\
-         {0}s, {1}s, or {2}s a watchpoint at the specified {3}.\n\
-         {3} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14), or an id (`{4}`).\n\
-         a decimal address (`4194304`), a hex address (`{7}400000`), or a label (`{8}`).\n\
-         watchpoints that are disabled do not trigger when they are hit.",
+        {0}s, {1}s, or {2}s a watchpoint at the specified {3}.\n\
+        {3} may be: a register name (`$t0`, `t0`), a register number (`$14`, 14), or an id (`{4}`).\n\
+        a decimal address (`4194304`), a hex address (`{7}400000`), or a label (`{8}`).\n\
+        watchpoints that are disabled do not trigger when they are hit.",
         "<enable>".purple(),
         "<disable>".purple(),
         "<toggle>".purple(),

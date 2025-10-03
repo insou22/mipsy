@@ -54,20 +54,20 @@ impl From<ArgumentKind> for i64 {
     }
 }
 
-// TODO: another callback for __help__ label?
+// TODO: remove cmd callback params. find another way because currently its only use is for getting subcommands
 // TODO: remove once if-let chaining is in
 #[derive(Clone)]
 pub(crate) struct Argument {
     name: String,
-    sanitiser: fn(arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
-    hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
+    sanitiser: fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
+    hints: fn(cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
 }
 
 impl Argument {
     fn new<S: Into<String>>(
         name: S,
-        sanitiser: fn(arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
-        hints: fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
+        sanitiser: fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
+        hints: fn(cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
     ) -> Self {
         Self {
             name: name.into(),
@@ -80,10 +80,10 @@ impl Argument {
         &self.name
     }
 
-    pub(crate) fn hints(&self, harg: &HintArgs, helper: &MyHelper) -> Vec<String> {
+    pub(crate) fn hints(&self, cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String> {
         helper
             .closest_hints(
-                &(self.hints)(&harg, helper)
+                &(self.hints)(cmd, &harg, helper)
                     .iter()
                     .map(String::as_str)
                     .collect::<Vec<_>>(),
@@ -97,11 +97,19 @@ impl Argument {
     pub(crate) fn subcommands() -> Self {
         Argument::new(
             "subcommand",
-            |a, _| {
-                // TODO: match with subcmd hints
-                Ok(ArgumentKind::String(a.to_owned()))
+            |c, a, _| match c
+                .subcommands
+                .iter()
+                .flat_map(|c| &c.names)
+                .find(|&s| s == &a.to_owned())
+            {
+                Some(_) => Ok(ArgumentKind::String(a.to_owned())),
+                None => Err(CommandError::BadArgument {
+                    arg: "any subcommand".to_owned(),
+                    instead: a.to_owned(),
+                }),
             },
-            |_, _| vec![],
+            |c, _, _| c.subcommands.iter().map(Command::name).map(str::to_owned).collect(),
         )
     }
 }
@@ -140,12 +148,12 @@ impl Command {
         for arg in args.iter().flat_map(|strarg| match &self.args {
             Arguments::Exactly { required, optional } => required
                 .iter()
-                .map(|a| (a.sanitiser)(strarg, helper))
-                .chain(optional.iter().map(|a| (a.sanitiser)(strarg, helper)))
+                .map(|a| (a.sanitiser)(self, strarg, helper))
+                .chain(optional.iter().map(|a| (a.sanitiser)(self, strarg, helper)))
                 .collect::<Vec<CommandResult<ArgumentKind>>>(),
             Arguments::VarArgs { required, .. } => required
                 .iter()
-                .map(|a| (a.sanitiser)(strarg, helper))
+                .map(|a| (a.sanitiser)(self, strarg, helper))
                 .collect(),
         }) {
             res.push(arg?)

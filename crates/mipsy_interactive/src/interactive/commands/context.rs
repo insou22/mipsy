@@ -14,7 +14,7 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_optional_arg(Argument::new(
             "n",
-            |a, _| {
+            |_, a, _| {
                 Ok(ArgumentKind::Number(expect_u32(
                     "",
                     &"[n]".bright_magenta(),
@@ -22,7 +22,7 @@ pub(crate) fn command() -> Command {
                     None as Option<&dyn Fn(i32) -> String>,
                 )? as _))
             },
-            |_, _| vec![],
+            |_, _, _| vec![],
         ))
         .with_desc(format!(
             "prints the current and surrounding 3 (or {}) instructions",

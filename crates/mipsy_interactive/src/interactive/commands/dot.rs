@@ -17,8 +17,8 @@ pub(crate) fn command() -> Command {
         // TODO: context for hints and sanitisation
         .with_required_arg(Argument::new(
             "instruction",
-            |a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _| vec![],
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _, _| vec![],
         ))
         .with_help("Executes a MIPS instruction immediately".to_owned())
         .with_varargs_format("{args}".magenta().to_string())
