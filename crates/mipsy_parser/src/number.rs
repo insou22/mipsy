@@ -81,6 +81,7 @@ impl TryFrom<i64> for MpImmediate {
 
 pub fn parse_number(i: Span<'_>) -> IResult<Span<'_>, MpNumber> {
     alt((
+        // map(map(parse_labelref, MpImmediate::LabelReference), MpNumber::Immediate),
         map(parse_constant_value, MpNumber::Constant),
         map(parse_immediate, MpNumber::Immediate),
         map(parse_f32, MpNumber::Float32),
@@ -219,10 +220,9 @@ pub fn parse_char(i: Span<'_>) -> IResult<Span<'_>, char> {
 }
 
 fn get_sign(neg: Option<char>) -> &'static str {
-    if let Some('-') = neg {
-        "-"
-    } else {
-        ""
+    match neg {
+        Some('-') => "-",
+        _ => "",
     }
 }
 

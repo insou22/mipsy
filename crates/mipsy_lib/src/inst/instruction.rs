@@ -462,6 +462,9 @@ impl InstSignature {
                             }
                             _ => unreachable!(),
                         },
+                        MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
+                            .map_err(InternalError::from)?
+                            as i32 as u32,
                         _ => unreachable!(),
                     },
                     _ => unreachable!(),
@@ -529,9 +532,9 @@ impl CompileSignature {
             // labels are only relative as the final argument
             let relative_label = (i == args.len() - 1) && self.relative_label;
             match my_arg.matches(their_arg, relative_label, program) {
+                Ok(true) => {}
                 Ok(false) => return Ok(false),
                 Err(e) => return Err(e),
-                _ => {}
             }
         }
 
@@ -618,27 +621,30 @@ impl ArgumentType {
                     },
                 },
                 MpNumber::Constant(cnst) => eval_constant(program, cnst, "".into())
-                    // skip over the unresolved constant error here
+                    .map_err(InternalError::from)
+                    .and_then(|v| {
+                        v.try_into().or(Err(InternalError::Compiler(
+                            Error::ConstantValueDoesNotFit {
+                                directive_type: DirectiveType::Byte,
+                                value: v,
+                                range_low: i32::MIN as _,
+                                range_high: u32::MAX as _,
+                            },
+                        )))
+                    })
+                    // skip over the unrsolved constant error here
                     // since immediate constants wouldnt be defined
                     .or_else(|e| {
-                        if matches!(&e, crate::MipsyError::Compiler(c)
-                            if matches!(c.error(), UnresolvedConstant { .. }))
-                        {
-                            return Ok(0);
-                        }
-                        return Err(e);
+                        matches!(&e, InternalError::Compiler(UnresolvedConstant { .. }))
+                            .then_some(match self {
+                                Self::J => MpImmediate::U32(0),
+                                _ => MpImmediate::U16(0),
+                            })
+                            .ok_or(e)
                     })
-                    .map_err(InternalError::from)
-                    .and_then(|c| {
+                    .and_then(|i| {
                         self.matches(
-                            &MpArgument::Number(MpNumber::Immediate(c.try_into().or(Err(
-                                InternalError::Compiler(Error::ConstantValueDoesNotFit {
-                                    directive_type: DirectiveType::Byte,
-                                    value: c,
-                                    range_low: i32::MIN as _,
-                                    range_high: i32::MAX as _,
-                                }),
-                            ))?)),
+                            &MpArgument::Number(MpNumber::Immediate(i)),
                             relative_label,
                             program,
                         )
