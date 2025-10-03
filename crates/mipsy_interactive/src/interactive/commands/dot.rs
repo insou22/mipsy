@@ -47,10 +47,7 @@ pub(crate) fn dot_command() -> Command {
                 error,
             })?;
 
-            let binary = match state.binary.as_ref() {
-                Some(b) => b,
-                None => return Err(CommandError::MustLoadFile)
-            };
+            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             compile::check_post_data_label(&program, binary).map_err(|error| {
                 CommandError::CannotCompileLine {
