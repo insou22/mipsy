@@ -47,8 +47,7 @@ pub(crate) fn dot_command() -> Command {
                 error,
             })?;
 
-            let empty_binary = Binary::default();
-            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
+            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
             compile::check_post_data_label(&program, binary).map_err(|error| {
                 CommandError::CannotCompileLine {
