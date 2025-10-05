@@ -30,15 +30,14 @@ pub(crate) fn command() -> Command {
                 \x20 help for a specific {} if specified, including available aliases.",
             "[command]".magenta()
         ))
-        .with_exec(|_, state, _, args| {
+        .with_exec(|_, helper, args| {
             let args = &args_text(args);
             if let Some(command) = args.first() {
-                let mut command =
-                    &state
-                        .find_command(&command)
-                        .ok_or(CommandError::HelpUnknownCommand {
-                            command: command.to_owned(),
-                        })?;
+                let mut command = &helper.state.find_command(&command).ok_or(
+                    CommandError::HelpUnknownCommand {
+                        command: command.to_owned(),
+                    },
+                )?;
 
                 let mut args = &args[1..];
                 let mut parts = vec![command
@@ -90,7 +89,7 @@ pub(crate) fn command() -> Command {
 
             let mut max_len = 0;
 
-            for command in state.commands.iter() {
+            for command in helper.state.commands.iter() {
                 let mut len = command.names.get(0).expect("no named command").len();
 
                 match &command.args {
@@ -123,7 +122,7 @@ pub(crate) fn command() -> Command {
             }
 
             println!("{}", "\nCOMMANDS:".green().bold());
-            for command in state.commands.iter() {
+            for command in helper.state.commands.iter() {
                 let extra_color_len = "".yellow().bold().to_string().len()
                     + match &command.args {
                         Arguments::Exactly { required, optional } => {

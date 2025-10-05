@@ -32,23 +32,27 @@ pub(crate) fn command() -> Command {
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
         ))
-        .with_exec(|_, state, _, args| {
-            let n = match args.first() {
-                Some(ArgumentKind::Number(a)) => *a as _,
-                None => 3,
-                _ => unreachable!(),
-            };
+        .with_exec(|_, helper, args| {
+            let n = args.first().cloned().map(i64::from).or(Some(3)).unwrap();
 
-            if state.exited {
+            if helper.state.exited {
                 return Err(CommandError::ProgramExited);
             }
 
-            let program = state.program.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = &state.runtime;
+            let program = helper
+                .state
+                .program
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let runtime = &helper.state.runtime;
 
             let base_addr = runtime.timeline().state().pc();
-            for i in (-n)..=n {
+            for i in (-n)..n {
                 let addr = {
                     let addr = base_addr.wrapping_add((i * 4) as u32);
                     if addr < TEXT_BOT {
@@ -70,7 +74,8 @@ pub(crate) fn command() -> Command {
                     }
                 };
 
-                let parts = decompile::decompile_inst_into_parts(binary, &state.iset, inst, addr);
+                let parts =
+                    decompile::decompile_inst_into_parts(binary, &helper.state.iset, inst, addr);
                 util::print_inst_parts(binary, &Ok(parts), Some(program), i == 0);
             }
 

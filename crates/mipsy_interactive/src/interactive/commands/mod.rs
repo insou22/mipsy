@@ -28,7 +28,7 @@ use crate::interactive::{
 use super::{error::CommandResult, State};
 
 // TODO: remove once if-let chaining is in
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum ArgumentKind {
     Number(i64),
     String(String),
@@ -56,7 +56,7 @@ impl From<ArgumentKind> for i64 {
 
 // TODO: remove cmd callback params. find another way because currently its only use is for getting subcommands
 // TODO: remove once if-let chaining is in
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Argument {
     name: String,
     sanitiser: fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
@@ -109,13 +109,19 @@ impl Argument {
                     instead: a.to_owned(),
                 }),
             },
-            |c, _, _| c.subcommands.iter().map(Command::name).map(str::to_owned).collect(),
+            |c, _, _| {
+                c.subcommands
+                    .iter()
+                    .map(Command::name)
+                    .map(str::to_owned)
+                    .collect()
+            },
         )
     }
 }
 
 // TODO(joshh): remove once if-let chaining is in
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum Arguments {
     Exactly {
         required: Vec<Argument>,
@@ -128,13 +134,13 @@ pub(crate) enum Arguments {
 }
 
 // TODO(joshh): remove once if-let chaining is in
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Command {
     pub(crate) names: Vec<String>,
     pub(crate) args: Arguments,
     description: String,
     help: String,
-    _internal_exec: fn(&Command, &mut State, &MyHelper, &[ArgumentKind]) -> CommandResult<String>,
+    _internal_exec: fn(&Command, &mut MyHelper, &[ArgumentKind]) -> CommandResult<String>,
     subcommands: Vec<Command>,
 }
 
@@ -179,12 +185,7 @@ impl Command {
         }
     }
 
-    pub(crate) fn exec(
-        &self,
-        state: &mut State,
-        helper: &MyHelper,
-        args: &[String],
-    ) -> CommandResult<String> {
+    pub(crate) fn exec(&self, helper: &mut MyHelper, args: &[String]) -> CommandResult<String> {
         let required = self.required_args();
         if args.len() < required.len() {
             Err(CommandError::WithTip {
@@ -201,7 +202,6 @@ impl Command {
         } else {
             (self._internal_exec)(
                 self,
-                state,
                 helper,
                 self.args_from_strings(args, &helper)?.as_slice(),
             )
@@ -217,7 +217,7 @@ impl Command {
             },
             description: Default::default(),
             help: Default::default(),
-            _internal_exec: |_, _, _, _| Ok(Default::default()),
+            _internal_exec: |_, _, _| Ok(Default::default()),
             subcommands: Default::default(),
         }
     }
@@ -248,7 +248,7 @@ impl Command {
 
     pub(crate) fn with_exec(
         mut self,
-        exec: fn(&Command, &mut State, helper: &MyHelper, &[ArgumentKind]) -> CommandResult<String>,
+        exec: fn(&Command, helper: &mut MyHelper, &[ArgumentKind]) -> CommandResult<String>,
     ) -> Self {
         self._internal_exec = exec;
         self

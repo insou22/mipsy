@@ -17,8 +17,8 @@ pub(crate) fn command() -> Command {
             "run".bold(),
             "step".bold(),
         ))
-        .with_exec(|_, state, _, _| {
-            state.reset()?;
+        .with_exec(|_, helper, _| {
+            helper.state.reset()?;
             prompt::success_nl("program reset");
 
             Ok("".into())

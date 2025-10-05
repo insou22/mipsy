@@ -47,10 +47,10 @@ pub(crate) fn command() -> Command {
             )
             )
             .with_exec(
-                |_, state, _, args| {
+                |_, helper, args| {
                     let mut args = &args_text(args)[..];
                     // TODO: <enter> to examine the next chunk of memory
-                    let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+                    let binary = helper.state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
                     let mut segment = if let Some(segment) =
                         args.get(0).and_then(|segment| match segment.as_ref() {
@@ -75,7 +75,7 @@ pub(crate) fn command() -> Command {
                         128
                     };
 
-                    let mut base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(state, arg)) {
+                    let mut base_addr = if let Some(base) = args.get(0).map(|arg| parse_arg(&helper.state, arg)) {
                         if base.is_ok() {
                             args = &args[1..];
                         }
@@ -137,7 +137,7 @@ pub(crate) fn command() -> Command {
                                 base_addr + index
                             };
 
-                            let byte = state
+                            let byte = helper.state
                                 .runtime
                                 .timeline()
                                 .state()

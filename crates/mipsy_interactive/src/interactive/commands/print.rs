@@ -4,7 +4,7 @@ use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
 use colored::*;
-use mipsy_lib::{Binary, Register};
+use mipsy_lib::Register;
 use mipsy_parser::*;
 
 #[allow(clippy::format_in_format_args)]
@@ -74,7 +74,7 @@ pub(crate) fn command() -> Command {
             format!("{}{}", "c".yellow().bold(), "har".bold()),
             format!("{}{}", "s".yellow().bold(), "tring".bold()),
         ))
-        .with_exec(|_, state, _, args| {
+        .with_exec(|_, helper, args| {
             let get_error = || CommandError::WithTip {
                 error: Box::new(CommandError::BadArgument {
                     arg: "<item>".magenta().to_string(),
@@ -85,7 +85,7 @@ pub(crate) fn command() -> Command {
 
             let arg = mipsy_parser::parse_argument(
                 String::from(args[0].to_owned()),
-                state.config.tab_size,
+                helper.state.config.tab_size,
             )
             .map_err(|_| get_error())?;
 
@@ -95,9 +95,12 @@ pub(crate) fn command() -> Command {
                 _ => unreachable!(),
             };
 
-            let empty_binary = Binary::default();
-            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
-            let runtime = &state.runtime;
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let runtime = &helper.state.runtime;
 
             match arg {
                 MpArgument::Register(MpRegister::Normal(ident)) => {

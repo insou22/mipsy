@@ -45,7 +45,6 @@ pub(crate) struct State {
     pub(crate) runtime: Runtime,
     pub(crate) exited: bool,
     pub(crate) prev_command: Option<String>,
-    pub(crate) confirm_exit: bool,
     pub(crate) interrupted: Arc<AtomicBool>,
 }
 
@@ -60,7 +59,6 @@ impl State {
             runtime: Runtime::new_without_binary(),
             exited: false,
             prev_command: None,
-            confirm_exit: false,
             interrupted: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -69,16 +67,7 @@ impl State {
         self.commands.push(command);
     }
 
-    fn prompt(&self) -> &str {
-        if self.confirm_exit {
-            ""
-        } else {
-            "[mipsy] "
-        }
-    }
-
     fn cleanup_cmd(&mut self, cmd: String) {
-        self.confirm_exit = false;
         self.prev_command = Some(cmd);
     }
 
@@ -87,24 +76,6 @@ impl State {
             .iter()
             .find(|command| command.names.contains(&cmd.to_string()))
             .cloned()
-    }
-
-    fn do_exec(&mut self, line: &str, helper: &MyHelper) {
-        let Some(parts) = shlex::split(line) else {
-            return;
-        };
-
-        let Some(command_name) = parts.first() else {
-            return;
-        };
-
-        let Some(command) = self.find_command(&command_name.to_ascii_lowercase()) else {
-            return prompt::unknown_command(command_name);
-        };
-
-        if let Err(e) = command.exec(self, helper, &parts[1..]) {
-            self.handle_error(e, true)
-        }
     }
 
     fn handle_error(&self, err: CommandError, nl: bool) {
@@ -315,26 +286,57 @@ impl State {
                         .collect()
                 },
                 &self.iset,
-                self.binary.as_ref().unwrap(),
+                self.binary.as_ref().expect("no binary"),
                 &self.runtime,
             ),
         }
     }
 
+    fn do_exec(helper: &mut MyHelper, line: &str) {
+        let Some(parts) = shlex::split(line) else {
+            return;
+        };
+
+        let Some(command_name) = parts.first() else {
+            return;
+        };
+
+        let Some(command) = helper
+            .state
+            .find_command(&command_name.to_ascii_lowercase())
+        else {
+            return prompt::unknown_command(command_name);
+        };
+
+        if let Err(e) = command.exec(helper, &parts[1..]) {
+            helper.state.handle_error(e, true)
+        }
+    }
+
+    fn exec_command(helper: &mut MyHelper, line: String) {
+        Self::do_exec(helper, &line);
+        helper.state.cleanup_cmd(line);
+    }
+
+    fn exec_prev(helper: &mut MyHelper) {
+        if let Some(cmd) = helper.state.prev_command.take() {
+            Self::exec_command(helper, cmd);
+        }
+    }
+
     pub(crate) fn eval_stepped_runtime(
-        &mut self,
+        helper: &mut MyHelper,
         verbose: bool,
         result: Result<SteppedRuntime, (Runtime, MipsyError)>,
         inst: u32,
         original_pc: u32,
-        helper: &MyHelper,
     ) -> CommandResult<bool> {
         let mut breakpoint = false;
         let mut trapped = false;
 
         match result {
             Ok(Ok(new_runtime)) => {
-                self.runtime = new_runtime;
+                helper.state.runtime = new_runtime;
             }
             Ok(Err(guard)) => {
                 // Ok(true) on exit or breakpoint, see self::exec_status
@@ -342,61 +344,61 @@ impl State {
 
                 match guard {
                     PrintInt(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys1_print_int(verbose, args.value);
                     }
                     PrintFloat(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys2_print_float(verbose, args.value);
                     }
                     PrintDouble(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys3_print_double(verbose, args.value);
                     }
                     PrintString(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys4_print_string(verbose, &args.value);
                     }
                     ReadInt(guard) => {
                         let value = runtime_handler::sys5_read_int(verbose);
-                        self.runtime = guard(value);
+                        helper.state.runtime = guard(value);
                     }
                     ReadFloat(guard) => {
                         let value = runtime_handler::sys6_read_float(verbose);
-                        self.runtime = guard(value);
+                        helper.state.runtime = guard(value);
                     }
                     ReadDouble(guard) => {
                         let value = runtime_handler::sys7_read_double(verbose);
-                        self.runtime = guard(value);
+                        helper.state.runtime = guard(value);
                     }
                     ReadString(args, guard) => {
                         let value = runtime_handler::sys8_read_string(verbose, args.max_len);
-                        self.runtime = guard(value);
+                        helper.state.runtime = guard(value);
                     }
                     Sbrk(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys9_sbrk(verbose, args.bytes);
                     }
                     Exit(new_runtime) => {
-                        self.runtime = new_runtime;
-                        self.exited = true;
+                        helper.state.runtime = new_runtime;
+                        helper.state.exited = true;
 
                         runtime_handler::sys10_exit(verbose);
                     }
                     PrintChar(args, new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::sys11_print_char(verbose, args.value);
                     }
                     ReadChar(guard) => {
                         let value = runtime_handler::sys12_read_char(verbose);
-                        self.runtime = guard(value);
+                        helper.state.runtime = guard(value);
                     }
                     Open(_args, guard) => {
                         // TODO: implement file open for mipsy interactive frontend
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
@@ -407,14 +409,14 @@ impl State {
                         });
 
                         // let value = runtime_handler::sys13_open(verbose, args);
-                        // self.runtime = Some(guard(value));
+                        // helper.state.runtime = Some(guard(value));
                     }
                     Read(_args, guard) => {
                         // TODO: implement file read for mipsy interactive frontend
 
                         let mut new_runtime = guard((-1, Vec::new()));
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
@@ -425,14 +427,14 @@ impl State {
                         });
 
                         // let value = runtime_handler::sys14_read(verbose, args);
-                        // self.runtime = Some(guard(value));
+                        // helper.state.runtime = Some(guard(value));
                     }
                     Write(_args, guard) => {
                         // TODO: implement file write for mipsy interactive frontend
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
@@ -443,14 +445,14 @@ impl State {
                         });
 
                         // let value = runtime_handler::sys15_write(verbose, args);
-                        // self.runtime = Some(guard(value));
+                        // helper.state.runtime = Some(guard(value));
                     }
                     Close(_args, guard) => {
                         // TODO: implement file close for mipsy interactive frontend
 
                         let mut new_runtime = guard(-1);
                         new_runtime.timeline_mut().pop_last_state();
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         return Err(CommandError::RuntimeError {
                             mipsy_error: MipsyError::Runtime(RuntimeError::new(
                                 Error::InvalidSyscall {
@@ -461,35 +463,35 @@ impl State {
                         });
 
                         // let value = runtime_handler::sys16_close(verbose, args);
-                        // self.runtime = Some(guard(value));
+                        // helper.state.runtime = Some(guard(value));
                     }
                     ExitStatus(args, new_runtime) => {
-                        self.runtime = new_runtime;
-                        self.exited = true;
+                        helper.state.runtime = new_runtime;
+                        helper.state.exited = true;
 
                         runtime_handler::sys17_exit_status(verbose, args.exit_code);
                     }
                     Breakpoint(new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         breakpoint = true;
                     }
                     Trap(new_runtime) => {
-                        self.runtime = new_runtime;
+                        helper.state.runtime = new_runtime;
                         runtime_handler::trap(verbose);
                         trapped = true;
                     }
                 }
             }
             Err((new_runtime, err)) => {
-                self.runtime = new_runtime;
+                helper.state.runtime = new_runtime;
 
                 return Err(CommandError::RuntimeError { mipsy_error: err });
             }
         };
 
         let mut empty_binary = Binary::default();
-        let binary = self.binary.as_mut().unwrap_or(&mut empty_binary);
-        let affected_registers = get_affected_registers(&self.runtime, inst);
+        let binary = helper.state.binary.as_mut().unwrap_or(&mut empty_binary);
+        let affected_registers = get_affected_registers(&helper.state.runtime, inst);
         // TODO(joshh): move this into else if once let-chains are stabilised (1.64 baited me smh)
         let watchpoints = affected_registers
             .iter()
@@ -500,10 +502,10 @@ impl State {
             })
             .collect::<Vec<_>>();
 
-        Ok(if self.exited {
+        Ok(if helper.state.exited {
             true
         } else {
-            let pc = self.runtime.timeline().state().pc();
+            let pc = helper.state.runtime.timeline().state().pc();
             let bp = binary.breakpoints.get_mut(&pc);
 
             if breakpoint || (bp.is_some() && bp.as_ref().unwrap().enabled) {
@@ -520,7 +522,7 @@ impl State {
                     runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
                     if let Some(bp) = bp {
                         bp.commands.clone().iter().for_each(|command| {
-                            self.exec_command(command.to_owned(), helper);
+                            Self::exec_command(helper, command.to_owned());
                         });
                     }
 
@@ -546,7 +548,7 @@ impl State {
                 // TODO(joshh): would be nice to have the watchpoint notification in between
                 // the actions for each watchpoint
                 to_exec.into_iter().for_each(|command| {
-                    self.exec_command(command, helper);
+                    Self::exec_command(helper, command);
                 });
 
                 if all_ignored {
@@ -560,38 +562,37 @@ impl State {
         })
     }
 
-    pub(crate) fn step(&mut self, verbose: bool, helper: &MyHelper) -> CommandResult<bool> {
-        let runtime = take(&mut self.runtime);
+    pub(crate) fn step(helper: &mut MyHelper, verbose: bool) -> CommandResult<bool> {
+        let runtime = take(&mut helper.state.runtime);
         let original_pc = runtime.timeline().state().pc();
         let inst = runtime.current_inst();
-        self.eval_stepped_runtime(verbose, runtime.step(), inst, original_pc, helper)
+        Self::eval_stepped_runtime(helper, verbose, runtime.step(), inst, original_pc)
     }
 
     pub(crate) fn exec_inst(
-        &mut self,
+        helper: &mut MyHelper,
         opcode: u32,
         verbose: bool,
-        helper: &MyHelper,
     ) -> CommandResult<bool> {
-        let runtime = take(&mut self.runtime);
-        let original_pc = runtime.timeline().state().pc();
-        self.eval_stepped_runtime(
+        let runtime = take(&mut helper.state.runtime);
+        let original_pc = helper.state.runtime.timeline().state().pc();
+        Self::eval_stepped_runtime(
+            helper,
             verbose,
             runtime.exec_inst(opcode),
             opcode,
             original_pc,
-            helper,
         )
     }
 
-    pub(crate) fn run(&mut self, helper: &MyHelper) -> CommandResult<String> {
-        if self.exited {
+    pub(crate) fn run(helper: &mut MyHelper) -> CommandResult<String> {
+        if helper.state.exited {
             return Err(CommandError::ProgramExited);
         }
 
-        self.interrupted.store(false, Ordering::SeqCst);
-        while !self.interrupted.load(Ordering::SeqCst) {
-            if self.step(false, helper)? {
+        helper.state.interrupted.store(false, Ordering::SeqCst);
+        while !helper.state.interrupted.load(Ordering::SeqCst) {
+            if Self::step(helper, false)? {
                 break;
             }
         }
@@ -605,20 +606,9 @@ impl State {
 
         Ok(())
     }
-
-    fn exec_command(&mut self, line: String, helper: &MyHelper) {
-        self.do_exec(&line, helper);
-        self.cleanup_cmd(line);
-    }
-
-    fn exec_prev(&mut self, helper: &MyHelper) {
-        if let Some(cmd) = self.prev_command.take() {
-            self.exec_command(cmd, helper);
-        }
-    }
 }
 
-pub(crate) fn editor(state: &State) -> Editor<MyHelper<'_>> {
+pub(crate) fn editor(state: State) -> Editor<MyHelper> {
     let mut rl = Editor::new().unwrap();
 
     rl.set_check_cursor_position(true);
@@ -665,30 +655,17 @@ fn state(config: MipsyConfig) -> State {
 }
 
 pub fn launch(config: MipsyConfig) -> ! {
-    let mut state = state(config);
-    let cs = state.clone();
-    let mut rl = editor(&cs);
+    let mut rl = editor(state(config));
 
-    let interrupted = state.interrupted.clone();
+    let interrupted = rl.helper().unwrap().state.interrupted.clone();
     ctrlc::set_handler(move || interrupted.store(true, Ordering::SeqCst))
         .expect("Failed to set signal handler!");
 
     loop {
-        let readline = rl.readline(state.prompt());
-
-        match readline {
+        match rl.readline("[mipsy] ") {
             Ok(line) => {
-                if line.is_empty() {
-                    if !state.confirm_exit {
-                        state.exec_prev(rl.helper().unwrap());
-                    }
-
-                    state.confirm_exit = false;
-                    continue;
-                }
-
                 rl.add_history_entry(&line);
-                state.exec_command(line, rl.helper().unwrap());
+                State::exec_command(rl.helper_mut().unwrap(), line);
             }
             Err(ReadlineError::Interrupted) => {}
             Err(ReadlineError::Eof) => {

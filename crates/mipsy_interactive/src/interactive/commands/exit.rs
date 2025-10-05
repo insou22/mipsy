@@ -9,5 +9,5 @@ pub(crate) fn command() -> Command {
         .with_name("q")
         .with_desc("exit mipsy")
         .with_help("Immediately exits mipsy".to_owned())
-        .with_exec(|_, _, _, _| std::process::exit(0))
+        .with_exec(|_, _, _| std::process::exit(0))
 }

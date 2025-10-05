@@ -34,7 +34,7 @@ pub(crate) fn command() -> Command {
             "step".bold(),
             "print".bold(),
         ))
-        .with_exec(|_, state, _, args| {
+        .with_exec(|_, helper, args| {
             let args = &args_text(args)[..];
 
             let (files, arguments) = {
@@ -71,8 +71,8 @@ pub(crate) fn command() -> Command {
                 program
             };
 
-            state.program = Some(program);
-            let program = state.program.as_ref().unwrap();
+            helper.state.program = Some(program);
+            let program = helper.state.program.as_ref().unwrap();
 
             let binary_files = program
                 .iter()
@@ -80,10 +80,10 @@ pub(crate) fn command() -> Command {
                 .collect();
 
             let binary = mipsy_lib::compile(
-                &state.iset,
+                &helper.state.iset,
                 binary_files,
                 &CompilerOptions::default(),
-                &state.config,
+                &helper.state.config,
             )
             .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
@@ -96,9 +96,9 @@ pub(crate) fn command() -> Command {
                     .as_slice(),
             );
 
-            state.binary = Some(binary);
-            state.runtime = runtime;
-            state.exited = false;
+            helper.state.binary = Some(binary);
+            helper.state.runtime = runtime;
+            helper.state.exited = false;
 
             let loaded = if program.len() == 1 {
                 "file loaded"

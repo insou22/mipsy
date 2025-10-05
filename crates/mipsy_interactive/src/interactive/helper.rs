@@ -67,14 +67,13 @@ impl HintArgs {
     }
 
     pub(crate) fn subcmd(&self) -> Self {
-        Self::from(
-            self.line
-                .split_whitespace()
-                .last()
-                .filter(|l| l.trim() != self.line.trim())
-                .or(Some(""))
-                .unwrap(),
-        )
+        self.line
+            .split_whitespace()
+            .last()
+            .filter(|l| l.trim() != self.line.trim())
+            .or(Some(""))
+            .unwrap()
+            .into()
     }
 
     pub(crate) fn recontextualize(&self, sub: &str) -> String {
@@ -83,16 +82,16 @@ impl HintArgs {
 }
 
 #[derive(Helper)]
-pub(crate) struct MyHelper<'a> {
+pub(crate) struct MyHelper {
+    pub(crate) state: State,
     completer: FilenameCompleter,
-    pub(crate) state: &'a State,
 }
 
-impl<'a> MyHelper<'a> {
-    pub(super) fn new(state: &'a State) -> Self {
+impl MyHelper {
+    pub(super) fn new(state: State) -> Self {
         Self {
-            completer: FilenameCompleter::new(),
             state,
+            completer: FilenameCompleter::new(),
         }
     }
 
@@ -198,7 +197,7 @@ impl<'a> MyHelper<'a> {
     }
 }
 
-impl Completer for MyHelper<'_> {
+impl Completer for MyHelper {
     type Candidate = Pair;
 
     fn complete(
@@ -232,7 +231,7 @@ impl Completer for MyHelper<'_> {
     }
 }
 
-impl Hinter for MyHelper<'_> {
+impl Hinter for MyHelper {
     type Hint = String;
 
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<String> {
@@ -242,7 +241,7 @@ impl Hinter for MyHelper<'_> {
     }
 }
 
-impl Highlighter for MyHelper<'_> {
+impl Highlighter for MyHelper {
     fn highlight_prompt<'b, 's: 'b, 'p: 'b>(
         &'s self,
         prompt: &'p str,
@@ -264,7 +263,7 @@ impl Highlighter for MyHelper<'_> {
     }
 }
 
-impl Validator for MyHelper<'_> {
+impl Validator for MyHelper {
     fn validate(&self, _ctx: &mut ValidationContext) -> rustyline::Result<ValidationResult> {
         Ok(ValidationResult::Valid(None))
     }

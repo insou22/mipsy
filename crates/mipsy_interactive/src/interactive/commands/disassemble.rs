@@ -19,10 +19,14 @@ pub(crate) fn command() -> Command {
             "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
             "step".bold(),
         ))
-        .with_exec(|_, state, _, _| {
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+        .with_exec(|_, helper, _| {
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
 
-            let mut decompiled = decompile_into_parts(binary, &state.iset)
+            let mut decompiled = decompile_into_parts(binary, &helper.state.iset)
                 .into_iter()
                 .collect::<Vec<(u32, Result<Decompiled, Uninit>)>>();
 
@@ -40,7 +44,7 @@ pub(crate) fn command() -> Command {
             }
 
             for (_, inst) in decompiled {
-                util::print_inst_parts(binary, &inst, state.program.as_deref(), false);
+                util::print_inst_parts(binary, &inst, helper.state.program.as_deref(), false);
             }
 
             println!();

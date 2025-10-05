@@ -17,11 +17,11 @@ pub(crate) fn command() -> Command {
             "step".bold(),
             "not".red().bold(),
         ))
-        .with_exec(|_, state, helper, _| {
-            if state.binary.is_none() {
+        .with_exec(|_, helper, _| {
+            if helper.state.binary.is_none() {
                 return Err(CommandError::MustLoadFile);
             }
 
-            state.run(helper)
+            State::run(helper)
         })
 }

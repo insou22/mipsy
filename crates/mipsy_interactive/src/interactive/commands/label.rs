@@ -9,11 +9,37 @@ pub(crate) fn command() -> Command {
         .with_name("la")
         .with_name("lbl")
         .with_exact_args()
-        // TODO: somehow get some context to sanitise & hint this
         .with_required_arg(Argument::new(
             "label",
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _, _| vec![],
+            |_, a, h| {
+                h.state
+                    .binary
+                    .as_ref()
+                    .ok_or(CommandError::MustLoadFile)?
+                    .get_label(a)
+                    .map_err(|_| CommandError::BadArgument {
+                        arg: "<label>".magenta().to_string(),
+                        instead: a.to_owned(),
+                    })
+                    // have to keep it as a string here because
+                    // it gets printed later
+                    .and_then(|_| Ok(ArgumentKind::String(a.to_owned())))
+            },
+            |_, _, h| {
+                h.state
+                    .binary
+                    .as_ref()
+                    .and_then(|b| {
+                        Some(
+                            b.labels
+                                .keys()
+                                .filter(|k| !(k.starts_with("kernel__") || k.starts_with("_start")))
+                                .cloned()
+                                .collect(),
+                        )
+                    })
+                    .unwrap_or_default()
+            },
         ))
         .with_desc("print the address of a label")
         .with_help(format!(
@@ -21,9 +47,13 @@ pub(crate) fn command() -> Command {
                 May error if the specified {0} doesn't exist.",
             "<label>".magenta()
         ))
-        .with_exec(|_, state, _, args| {
+        .with_exec(|_, helper, args| {
             let label = String::from(args[0].to_owned());
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
 
             match binary.get_label(&label) {
                 Ok(addr) => {

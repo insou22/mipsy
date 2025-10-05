@@ -47,7 +47,7 @@ pub(crate) fn command() -> Command {
                 .with_help(
 "Lists currently set watchpoints.".to_string()
                 )
-                .with_exec(|_, state, _, _| watchpoint_list(state)),
+                .with_exec(|_, helper, _| watchpoint_list(&helper.state)),
         )
         .with_subcommand(
             Command::new()
@@ -57,8 +57,8 @@ pub(crate) fn command() -> Command {
                 .with_name("ins")
                 .with_name("add")
                 .with_help(watchpoint_insert_help())
-                .with_exec(|_, state, _, args| {
-                    watchpoint_insert(state, &args_text(args), InsertOp::Insert)
+                .with_exec(|_, helper, args| {
+                    watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert)
                 }),
         )
         .with_subcommand(
@@ -69,8 +69,8 @@ pub(crate) fn command() -> Command {
                 .with_name("r")
                 .with_name("rm")
                 .with_help(watchpoint_insert_help())
-                .with_exec(|_, state, _, args| {
-                    watchpoint_insert(state, &args_text(args), InsertOp::Delete)
+                .with_exec(|_, helper, args| {
+                    watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Delete)
                 }),
         )
         .with_subcommand(
@@ -79,15 +79,15 @@ pub(crate) fn command() -> Command {
                 .with_name("temp")
                 .with_name("tmp")
                 .with_help(watchpoint_insert_help())
-                .with_exec(|_, state, _, args| {
-                    watchpoint_insert(state, &args_text(args), InsertOp::Temporary)
+                .with_exec(|_, helper, args| {
+                    watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Temporary)
                 }),
         )
         .with_subcommand(Command::new().with_name("enable").with_name("e")
             .with_help(watchpoint_toggle_help())
             .with_exec(
-            |_, state, _, args| {
-                watchpoint_toggle(state, &args_text(args), WpState::Enable)
+            |_, helper, args| {
+                watchpoint_toggle(&mut helper.state, &args_text(args), WpState::Enable)
             },
         ))
         .with_subcommand(
@@ -95,15 +95,15 @@ pub(crate) fn command() -> Command {
                 .with_name("disable")
                 .with_name("d")
                 .with_help(watchpoint_toggle_help())
-                .with_exec(|_, state, _, args| {
-                    watchpoint_toggle(state, &args_text(args), WpState::Disable)
+                .with_exec(|_, helper, args| {
+                    watchpoint_toggle(&mut helper.state, &args_text(args), WpState::Disable)
                 }),
         )
         .with_subcommand(Command::new().with_name("toggle").with_name("t")
             .with_help(watchpoint_toggle_help())
             .with_exec(
-            |_, state, _, args| {
-                watchpoint_toggle(state, &args_text(args), WpState::Toggle)
+            |_, helper, args| {
+                watchpoint_toggle(&mut helper.state, &args_text(args), WpState::Toggle)
             },
         ))
         .with_subcommand(Command::new().with_name("ignore")
@@ -125,7 +125,7 @@ pub(crate) fn command() -> Command {
             )
             )
             .with_exec(
-            |_, state, _, args| watchpoint_ignore(state, &args_text(args)),
+            |_, helper, args| watchpoint_ignore(&mut helper.state, &args_text(args)),
         ))
         .with_subcommand(
             Command::new()
@@ -151,8 +151,8 @@ pub(crate) fn command() -> Command {
                         "commands list".bold().yellow(),
                     )
                 )
-                .with_exec(|_, state, _, args| {
-                    watchpoint_commands(state, &args_text(args))
+                .with_exec(|_, helper, args| {
+                    watchpoint_commands(&mut helper.state, &args_text(args))
                 }),
     )
         .with_desc(format!(
@@ -160,14 +160,14 @@ pub(crate) fn command() -> Command {
                 "help watchpoint".bold()
         ))
         .with_help(get_long_help())
-        .with_exec(|cmd, state, helper, args| {
+        .with_exec(|cmd, helper, args| {
             match cmd
                 .subcommands
                 .iter()
                 .find(|c| c.names.contains(&args[0].to_owned().into()))
                 {
-                    Some(cmd) => (cmd._internal_exec)(cmd, state, helper, &args[1..]),
-                    None => watchpoint_insert(state, &args_text(args), InsertOp::Insert),
+                    Some(cmd) => (cmd._internal_exec)(cmd, helper, &args[1..]),
+                    None => watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert),
                 }
         })
 }
@@ -508,7 +508,6 @@ fn watchpoint_ignore(state: &mut State, args: &[String]) -> Result<String, Comma
 
 fn watchpoint_commands(state: &mut State, args: &[String]) -> Result<String, CommandError> {
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
-    state.confirm_exit = true;
     handle_commands(&args, &mut binary.watchpoints)
 }
 
