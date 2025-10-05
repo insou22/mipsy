@@ -12,19 +12,19 @@ pub(crate) fn command() -> Command {
         .with_name("h")
         .with_name("?")
         .with_desc("print this help text, or specific help for a command")
-        .with_exact_args()
-        // TODO: context for sanitisation
-        .with_optional_arg(Argument::new(
-            "command",
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _, h| {
-                h.state
-                    .commands
-                    .iter()
-                    .map(|c| c.name().to_owned())
-                    .collect()
-            },
-        ))
+        // .with_exact_args()
+        // .with_optional_arg(Argument::new(
+        //     "command",
+        //     |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+        //     |_, _, h| {
+        //         h.state
+        //             .commands
+        //             .iter()
+        //             .map(|c| c.name().to_owned())
+        //             .collect()
+        //     },
+        // ))
+        .with_var_args(Argument::from_name("command"))
         .with_help(format!(
             "Prints the general help text for all mipsy commands, or more in-depth\n\
                 \x20 help for a specific {} if specified, including available aliases.",
@@ -41,9 +41,7 @@ pub(crate) fn command() -> Command {
 
                 let mut args = &args[1..];
                 let mut parts = vec![command
-                    .names
-                    .get(0)
-                    .expect("no command name")
+                    .name()
                     .yellow()
                     .bold()
                     .to_string()];
@@ -57,9 +55,7 @@ pub(crate) fn command() -> Command {
                         command = subcmd;
                         parts.push(
                             subcmd
-                                .names
-                                .get(0)
-                                .expect("command has no name")
+                                .name()
                                 .yellow()
                                 .bold()
                                 .to_string(),
@@ -90,7 +86,7 @@ pub(crate) fn command() -> Command {
             let mut max_len = 0;
 
             for command in helper.state.commands.iter() {
-                let mut len = command.names.get(0).expect("no named command").len();
+                let mut len = command.name().len();
 
                 match &command.args {
                     Arguments::Exactly { required, optional } => {
@@ -104,7 +100,7 @@ pub(crate) fn command() -> Command {
                             len += arg.name.len() + 2;
                         }
                     }
-                    Arguments::VarArgs { required, format } => {
+                    Arguments::VarArgs { required, variadic } => {
                         len += required.len();
                         for arg in required.iter() {
                             len += arg.name.len() + 2;
@@ -112,7 +108,7 @@ pub(crate) fn command() -> Command {
 
                         len += 1;
 
-                        len += format.len();
+                        len += variadic.name().len();
                     }
                 }
 
@@ -131,7 +127,7 @@ pub(crate) fn command() -> Command {
                         }
                         Arguments::VarArgs {
                             required,
-                            format: _,
+                            ..
                         } => {
                             "".magenta().to_string().len() * required.len()
                                 + "".bright_magenta().to_string().len()
@@ -139,15 +135,13 @@ pub(crate) fn command() -> Command {
                     };
 
                 let parts = vec![command
-                    .names
-                    .get(0)
-                    .expect("command has no name")
+                    .name()
                     .yellow()
                     .bold()
                     .to_string()];
                 let name_args = get_command_formatted(command, parts);
 
-                let char_len = name_args.len() - extra_color_len;
+                let char_len = name_args.len().saturating_sub(extra_color_len);
                 let extra_padding = max_len - char_len;
 
                 println!(
@@ -186,7 +180,7 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
                     .collect::<Vec<String>>(),
             );
         }
-        Arguments::VarArgs { required, format } => {
+        Arguments::VarArgs { required, variadic } => {
             parts.append(
                 &mut required
                     .iter()
@@ -194,7 +188,7 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
                     .collect::<Vec<String>>(),
             );
 
-            parts.push(format.to_string());
+            parts.push(variadic.name().to_string());
         }
     }
 

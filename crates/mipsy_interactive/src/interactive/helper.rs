@@ -70,6 +70,7 @@ impl HintArgs {
         self.line
             .split_whitespace()
             .last()
+            .filter(|_| !self.line.ends_with(' '))
             .filter(|l| l.trim() != self.line.trim())
             .or(Some(""))
             .unwrap()
@@ -162,7 +163,7 @@ impl MyHelper {
 
         if let Some(cmd) = self.find_command_aliases(hargs) {
             hints.extend(
-                cmd.args()
+                cmd.args(hargs.line.split_whitespace().count())
                     .get(hargs.subcmd_index().saturating_sub(1))
                     .map_or(vec![], |a| a.hints(cmd, &hargs, self)),
             )

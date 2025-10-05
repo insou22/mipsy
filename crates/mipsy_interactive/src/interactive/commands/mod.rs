@@ -39,7 +39,7 @@ impl From<ArgumentKind> for String {
         if let ArgumentKind::String(s) = value {
             s
         } else {
-            unreachable!()
+            unreachable!("tried to interpret as a string but argument was sanitised into a number")
         }
     }
 }
@@ -49,7 +49,7 @@ impl From<ArgumentKind> for i64 {
         if let ArgumentKind::Number(n) = value {
             n
         } else {
-            unreachable!()
+            unreachable!("tried to interpret as a number but argument was sanitised into a string")
         }
     }
 }
@@ -74,6 +74,14 @@ impl Argument {
             sanitiser,
             hints,
         }
+    }
+
+    pub(crate) fn from_name(name: impl Into<String>) -> Self {
+        Argument::new(
+            name,
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _, _| vec![]
+        )
     }
 
     pub(crate) fn name(&self) -> &str {
@@ -129,7 +137,7 @@ pub(crate) enum Arguments {
     },
     VarArgs {
         required: Vec<Argument>,
-        format: String,
+        variadic: Argument,
     },
 }
 
@@ -150,31 +158,30 @@ impl Command {
         args: &[String],
         helper: &MyHelper,
     ) -> CommandResult<Vec<ArgumentKind>> {
-        let mut res = Vec::with_capacity(args.len());
-        for arg in args.iter().flat_map(|strarg| match &self.args {
-            Arguments::Exactly { required, optional } => required
-                .iter()
-                .map(|a| (a.sanitiser)(self, strarg, helper))
-                .chain(optional.iter().map(|a| (a.sanitiser)(self, strarg, helper)))
-                .collect::<Vec<CommandResult<ArgumentKind>>>(),
-            Arguments::VarArgs { required, .. } => required
-                .iter()
-                .map(|a| (a.sanitiser)(self, strarg, helper))
-                .collect(),
-        }) {
-            res.push(arg?)
-        }
-
-        Ok(res)
+        args.iter()
+            .zip(match &self.args {
+                Arguments::Exactly { required, optional } => required
+                    .iter()
+                    .map(|a| a.sanitiser)
+                    .chain(optional.iter().map(|a| a.sanitiser))
+                    .collect::<Vec<_>>(),
+                Arguments::VarArgs { required, variadic } => required
+                    .iter()
+                    .map(|a| a.sanitiser)
+                    .chain(std::iter::repeat_n(variadic.sanitiser, (args.len() - required.len()) + 1))
+                    .collect(),
+            })
+            // TODO: give varargs the whole arg instead of `strarg`
+            .map(|(strarg, san)| san(self, strarg, helper))
+            .collect()
     }
 
-    pub(crate) fn args(&self) -> Vec<&Argument> {
+    pub(crate) fn args(&self, vararg_count: usize) -> Vec<&Argument> {
         match &self.args {
             Arguments::Exactly { required, optional } => {
                 required.iter().chain(optional.iter()).collect::<Vec<_>>()
             }
-            // TODO: varargs
-            Arguments::VarArgs { required, .. } => required.iter().collect(),
+            Arguments::VarArgs { required, variadic } => required.iter().chain(std::iter::repeat_n(variadic, vararg_count)).collect(),
         }
     }
 
@@ -254,18 +261,27 @@ impl Command {
         self
     }
 
-    pub(crate) fn with_exact_args(mut self) -> Self {
-        self.args = Arguments::Exactly {
+    /// NOTE: resets the argument kind to [`Arguments::VarArgs`]
+    ///       this resets any
+    ///         - [`Arguments::VarArgs::required`]
+    ///         - [`Arguments::Exactly::required`]
+    ///         - [`Arguments::Exactly::optional`]
+    ///       Argumets, so call this before adding any other arguments
+    ///       \
+    ///       The [`Argument::name`] of `arg` is set to the vararg format
+    ///       and the [`Argument::sanitiser`] and [`Argument::hints`] for variadic arguments
+    pub(crate) fn with_var_args(mut self, arg: Argument) -> Self {
+        self.args = Arguments::VarArgs {
             required: vec![],
-            optional: vec![],
+            variadic: arg
         };
         self
     }
 
-    pub(crate) fn with_var_args(mut self) -> Self {
-        self.args = Arguments::VarArgs {
+    pub(crate) fn with_exact_args(mut self) -> Self {
+        self.args = Arguments::Exactly {
             required: vec![],
-            format: Default::default(),
+            optional: vec![],
         };
         self
     }
@@ -289,17 +305,9 @@ impl Command {
             Arguments::Exactly {
                 ref mut optional, ..
             } => optional.push(arg),
-            Arguments::VarArgs { .. } => unreachable!(),
+            Arguments::VarArgs { .. } => unreachable!("tried to supply an optional argument while being in the VarArgs argument state\ntry use `self.with_exact_args()` to set the argument state"),
         }
 
-        self
-    }
-
-    pub(crate) fn with_varargs_format(mut self, vfmt: impl Into<String>) -> Self {
-        match self.args {
-            Arguments::VarArgs { ref mut format, .. } => *format = vfmt.into(),
-            Arguments::Exactly { .. } => unreachable!(),
-        }
         self
     }
 }

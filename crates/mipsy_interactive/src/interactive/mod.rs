@@ -44,7 +44,6 @@ pub(crate) struct State {
     pub(crate) binary: Option<Binary>,
     pub(crate) runtime: Runtime,
     pub(crate) exited: bool,
-    pub(crate) prev_command: Option<String>,
     pub(crate) interrupted: Arc<AtomicBool>,
 }
 
@@ -58,17 +57,12 @@ impl State {
             binary: None,
             runtime: Runtime::new_without_binary(),
             exited: false,
-            prev_command: None,
             interrupted: Arc::new(AtomicBool::new(false)),
         }
     }
 
     fn add_command(&mut self, command: Command) {
         self.commands.push(command);
-    }
-
-    fn cleanup_cmd(&mut self, cmd: String) {
-        self.prev_command = Some(cmd);
     }
 
     fn find_command(&self, cmd: &str) -> Option<Command> {
@@ -292,7 +286,7 @@ impl State {
         }
     }
 
-    fn do_exec(helper: &mut MyHelper, line: &str) {
+    fn exec_command(helper: &mut MyHelper, line: &str) {
         let Some(parts) = shlex::split(line) else {
             return;
         };
@@ -310,17 +304,6 @@ impl State {
 
         if let Err(e) = command.exec(helper, &parts[1..]) {
             helper.state.handle_error(e, true)
-        }
-    }
-
-    fn exec_command(helper: &mut MyHelper, line: String) {
-        Self::do_exec(helper, &line);
-        helper.state.cleanup_cmd(line);
-    }
-
-    fn exec_prev(helper: &mut MyHelper) {
-        if let Some(cmd) = helper.state.prev_command.take() {
-            Self::exec_command(helper, cmd);
         }
     }
 
@@ -522,7 +505,7 @@ impl State {
                     runtime_handler::breakpoint(label.as_deref(), pc, &binary.line_numbers);
                     if let Some(bp) = bp {
                         bp.commands.clone().iter().for_each(|command| {
-                            Self::exec_command(helper, command.to_owned());
+                            Self::exec_command(helper, command);
                         });
                     }
 
@@ -547,7 +530,7 @@ impl State {
 
                 // TODO(joshh): would be nice to have the watchpoint notification in between
                 // the actions for each watchpoint
-                to_exec.into_iter().for_each(|command| {
+                to_exec.iter().for_each(|command| {
                     Self::exec_command(helper, command);
                 });
 
@@ -665,7 +648,7 @@ pub fn launch(config: MipsyConfig) -> ! {
         match rl.readline("[mipsy] ") {
             Ok(line) => {
                 rl.add_history_entry(&line);
-                State::exec_command(rl.helper_mut().unwrap(), line);
+                State::exec_command(rl.helper_mut().unwrap(), &line);
             }
             Err(ReadlineError::Interrupted) => {}
             Err(ReadlineError::Eof) => {

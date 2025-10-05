@@ -10,22 +10,16 @@ pub(crate) fn command() -> Command {
     Command::new()
         .with_name("load")
         .with_name("l")
-        .with_var_args()
+        .with_var_args(Argument::new(
+            "<files>".magenta().to_string(),
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, a, h| h.file_hints(a),
+        ) )
         .with_required_arg(Argument::new(
             "files",
-            |_, a, h| {
-                if h.file_hints(&HintArgs::default()).contains(&a.to_owned()) {
-                    Ok(ArgumentKind::String(a.into()))
-                } else {
-                    Err(CommandError::BadArgument {
-                        arg: "file".to_owned(),
-                        instead: a.to_owned(),
-                    })
-                }
-            },
+            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
             |_, a, h| h.file_hints(a),
         ))
-        .with_varargs_format("-- {args}".magenta().to_string())
         .with_desc("load a MIPS file to run")
         .with_help(format!(
             "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\

@@ -39,13 +39,13 @@ pub(crate) fn command() -> Command {
         .with_name("wa")
         .with_name("wp")
         .with_name("watch")
-        .with_optional_arg(Argument::subcommands())
+        .with_required_arg(Argument::subcommands())
         .with_subcommand(
             Command::new()
                 .with_name("list")
                 .with_name("l")
                 .with_help(
-"Lists currently set watchpoints.".to_string()
+                    "Lists currently set watchpoints.".to_string()
                 )
                 .with_exec(|_, helper, _| watchpoint_list(&helper.state)),
         )

@@ -17,6 +17,7 @@ pub(crate) fn command() -> Command {
         .with_required_arg(Argument::new(
             "item",
             |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            // TODO: maybe register and label hinting idk
             |_, _, _| vec![],
         ))
         .with_optional_arg(Argument::new(
@@ -34,7 +35,6 @@ pub(crate) fn command() -> Command {
             |_, _, _| {
                 vec![
                     "byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char", "string",
-                    "b", "h", "w", "xb", "xh", "xw", "x", "c", "s",
                 ]
                 .into_iter()
                 .map(str::to_owned)
