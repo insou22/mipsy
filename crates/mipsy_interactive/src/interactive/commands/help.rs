@@ -24,7 +24,7 @@ pub(crate) fn command() -> Command {
         //             .collect()
         //     },
         // ))
-        .with_var_args(Argument::from_name("command"))
+        .with_var_args(Argument::from_name("[command]".magenta().to_string()))
         .with_help(format!(
             "Prints the general help text for all mipsy commands, or more in-depth\n\
                 \x20 help for a specific {} if specified, including available aliases.",
@@ -40,11 +40,7 @@ pub(crate) fn command() -> Command {
                 )?;
 
                 let mut args = &args[1..];
-                let mut parts = vec![command
-                    .name()
-                    .yellow()
-                    .bold()
-                    .to_string()];
+                let mut parts = vec![command.name().yellow().bold().to_string()];
 
                 while !args.is_empty() {
                     let subcmd = command
@@ -53,13 +49,7 @@ pub(crate) fn command() -> Command {
                         .find(|c| c.names.contains(&args[0]));
                     if let Some(subcmd) = subcmd {
                         command = subcmd;
-                        parts.push(
-                            subcmd
-                                .name()
-                                .yellow()
-                                .bold()
-                                .to_string(),
-                        );
+                        parts.push(subcmd.name().yellow().bold().to_string());
                     }
 
                     args = &args[1..];
@@ -125,22 +115,16 @@ pub(crate) fn command() -> Command {
                             "".magenta().to_string().len() * required.len()
                                 + "".bright_magenta().to_string().len() * optional.len()
                         }
-                        Arguments::VarArgs {
-                            required,
-                            ..
-                        } => {
+                        Arguments::VarArgs { required, .. } => {
                             "".magenta().to_string().len() * required.len()
                                 + "".bright_magenta().to_string().len()
                         }
                     };
 
-                let parts = vec![command
-                    .name()
-                    .yellow()
-                    .bold()
-                    .to_string()];
+                let parts = vec![command.name().yellow().bold().to_string()];
                 let name_args = get_command_formatted(command, parts);
 
+                // TODO: doesnt work with non coloured text :/
                 let char_len = name_args.len().saturating_sub(extra_color_len);
                 let extra_padding = max_len - char_len;
 

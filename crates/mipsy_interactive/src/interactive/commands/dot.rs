@@ -24,9 +24,7 @@ pub(crate) fn command() -> Command {
     Command::new()
         .with_name(".")
         .with_desc("execute a MIPS instruction")
-        .with_var_args(Argument::from_name(
-            "{args}".magenta().to_string()
-        ))
+        .with_var_args(Argument::from_name("{args}".magenta().to_string()))
         .with_required_arg(Argument::new(
             "instruction",
             |_, a, h| match instruction_names(h).contains(&a.to_owned()) {

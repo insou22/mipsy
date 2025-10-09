@@ -14,7 +14,7 @@ pub(crate) fn command() -> Command {
             "<files>".magenta().to_string(),
             |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
             |_, a, h| h.file_hints(a),
-        ) )
+        ))
         .with_required_arg(Argument::new(
             "files",
             |_, a, _| Ok(ArgumentKind::String(a.to_owned())),

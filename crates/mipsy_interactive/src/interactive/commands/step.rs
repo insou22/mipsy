@@ -153,7 +153,7 @@ pub(crate) fn command() -> Command {
             )
             .with_required_arg(Argument::subcommands())
             .with_exec(call_subcmds)
-            )
+        )
 }
 
 fn get_long_help() -> String {

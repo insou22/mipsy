@@ -56,6 +56,7 @@ pub(crate) fn command() -> Command {
                 .with_name("in")
                 .with_name("ins")
                 .with_name("add")
+                .with_required_arg(Argument::from_name("target"))
                 .with_help(watchpoint_insert_help())
                 .with_exec(|_, helper, args| {
                     watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert)
@@ -177,20 +178,6 @@ fn watchpoint_insert(
     args: &[String],
     op: InsertOp,
 ) -> Result<String, CommandError> {
-    if args.is_empty() {
-        return Err(generate_err(
-            CommandError::MissingArguments {
-                args: vec!["target".to_string()],
-                instead: vec![],
-            },
-            match op {
-                InsertOp::Insert => "insert",
-                InsertOp::Delete => "delete",
-                InsertOp::Temporary => "temporary",
-            },
-        ));
-    }
-
     let (target, arg_type) = parse_watchpoint_arg(state, &args[0])?;
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
 

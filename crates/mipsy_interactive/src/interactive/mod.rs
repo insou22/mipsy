@@ -86,7 +86,7 @@ impl State {
                 err_msg.push_str(
                     &args[(instead.len().saturating_sub(1))..(args.len())]
                         .iter()
-                        .map(|s| format!("{}{}{}", "<".magenta(), s.magenta(), ">".magenta()))
+                        .map(|s| format!("<{s}>").magenta().to_string())
                         .collect::<Vec<String>>()
                         .join(" "),
                 );
