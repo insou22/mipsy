@@ -39,7 +39,7 @@ pub(crate) fn command() -> Command {
                 "manage breakpoints ({} to list subcommands)",
                 "help breakpoint".bold()
         ))
-        .with_required_arg(Argument::subcommands())
+        .with_required_arg(Argument::Subcommand)
         .with_subcommand(
             Command::new()
             .with_name("list")
@@ -168,7 +168,7 @@ pub(crate) fn command() -> Command {
                     match cmd
                         .subcommands
                         .iter()
-                        .find(|c| c.names.contains(&args[0].to_owned().into()))
+                        .find(|c| c.names.contains(&args[0].to_owned().try_into().unwrap()))
                         {
                             Some(cmd) => (cmd._internal_exec)(cmd, helper, &args[1..]),
                             None => breakpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert),

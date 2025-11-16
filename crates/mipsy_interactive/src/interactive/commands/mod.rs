@@ -32,99 +32,115 @@ use super::{error::CommandResult, State};
 pub(crate) enum ArgumentKind {
     Number(i64),
     String(String),
+    Correct,
 }
 
-impl From<ArgumentKind> for String {
-    fn from(value: ArgumentKind) -> Self {
+impl TryFrom<ArgumentKind> for String {
+    type Error = String;
+    fn try_from(value: ArgumentKind) -> Result<String, Self::Error> {
         match value {
-            ArgumentKind::String(s) => s,
-            ArgumentKind::Number(_) => unreachable!("tried to interpret as a string but argument was sanitised into a number")
+            ArgumentKind::String(s) => Ok(s),
+            _ => Err(format!(
+                "tried to interpret argument as a string but argument was not sanitised into a string"
+            )),
         }
     }
 }
 
-impl From<ArgumentKind> for i64 {
-    fn from(value: ArgumentKind) -> Self {
+impl TryFrom<ArgumentKind> for i64 {
+    type Error = String;
+    fn try_from(value: ArgumentKind) -> Result<i64, String> {
         match value {
-            ArgumentKind::Number(n) => n,
-            ArgumentKind::String(_) => unreachable!("tried to interpret as a number but argument was sanitised into a string")
+            ArgumentKind::Number(n) => Ok(n),
+            _ => Err(format!(
+                "tried to interpret argument as a number but argument was not sanitised into a number"
+            )),
         }
     }
 }
 
 // TODO: remove cmd callback params. find another way because currently its only use is for getting subcommands
+type Sanitiser = fn(arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>;
+type Hints = fn(harg: &HintArgs, helper: &MyHelper) -> Vec<String>;
 // TODO: remove once if-let chaining is in
 #[derive(Clone, Debug)]
-pub(crate) struct Argument {
-    name: String,
-    sanitiser: fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
-    hints: fn(cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
+pub(crate) enum Argument {
+    Normal {
+        name: String,
+        sanitiser: Sanitiser,
+        hints: Hints,
+    },
+    Subcommand,
 }
 
 impl Argument {
-    fn new<S: Into<String>>(
-        name: S,
-        sanitiser: fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>,
-        hints: fn(cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String>,
-    ) -> Self {
-        Self {
+    fn new(name: impl Into<String>, sanitiser: Sanitiser, hints: Hints) -> Self {
+        Self::Normal {
             name: name.into(),
             sanitiser,
             hints,
         }
     }
 
+    fn sanitiser<'a, 'b: 'a>(
+        &'a self,
+        cmd: &'b Command,
+    ) -> Box<dyn FnMut(&'a str, &'b MyHelper) -> CommandResult<ArgumentKind> + 'a> {
+        match self {
+            Argument::Normal { sanitiser, .. } => Box::new(sanitiser),
+            Argument::Subcommand => Box::new(|a: &str, _| {
+                match cmd
+                    .subcommands
+                    .iter()
+                    .flat_map(|c| &c.names)
+                    .find(|&s| s == &a)
+                {
+                    Some(_) => Ok(ArgumentKind::Correct),
+                    None => Err(CommandError::BadArgument {
+                        arg: "any subcommand".to_owned(),
+                        instead: a.to_owned(),
+                    }),
+                }
+            }),
+        }
+    }
+
     pub(crate) fn from_name(name: impl Into<String>) -> Self {
         Argument::new(
             name,
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, _, _| vec![],
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |_, _| vec![],
         )
     }
 
     pub(crate) fn name(&self) -> &str {
-        &self.name
+        match self {
+            Self::Normal { name, .. } => name,
+            Self::Subcommand => "subcommand",
+        }
     }
 
     pub(crate) fn hints(&self, cmd: &Command, harg: &HintArgs, helper: &MyHelper) -> Vec<String> {
         helper
             .closest_hints(
-                &(self.hints)(cmd, &harg, helper)
-                    .iter()
-                    .map(String::as_str)
-                    .collect::<Vec<_>>(),
+                match self {
+                    Self::Normal { hints, .. } => hints(&harg, helper),
+                    Self::Subcommand => cmd
+                        .subcommands
+                        .iter()
+                        .map(Command::name)
+                        .map(str::to_owned)
+                        .collect(),
+                }
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .as_slice(),
                 &harg.subcmd(),
             )
             .iter()
             .map(|s| harg.recontextualize(s))
             .collect()
-    }
-
-    // TODO: remove command param from callback and have a seperate argument
-    //       allowing us to forward arguments to subcommand params
-    pub(crate) fn subcommands() -> Self {
-        Argument::new(
-            "subcommand",
-            |c, a, _| match c
-                .subcommands
-                .iter()
-                .flat_map(|c| &c.names)
-                .find(|&s| s == a)
-            {
-                Some(_) => Ok(ArgumentKind::String(a.to_owned())),
-                None => Err(CommandError::BadArgument {
-                    arg: "any subcommand".to_owned(),
-                    instead: a.to_owned(),
-                }),
-            },
-            |c, _, _| {
-                c.subcommands
-                    .iter()
-                    .map(Command::name)
-                    .map(str::to_owned)
-                    .collect()
-            },
-        )
     }
 }
 
@@ -158,40 +174,64 @@ impl Command {
         args: &[String],
         helper: &MyHelper,
     ) -> CommandResult<Vec<ArgumentKind>> {
+        let mut optional_sans: Vec<_> = match &self.args {
+            Arguments::Exactly { optional, .. } => {
+                optional.iter().map(|arg| arg.sanitiser(self)).collect()
+            }
+            Arguments::VarArgs { required, variadic } => {
+                std::iter::repeat_n(variadic, (args.len() - required.len()) + 1)
+                    .map(|v| v.sanitiser(self))
+                    .collect()
+            }
+        };
+
+        // required args must be zipped with their sanitisers
+        // optional args, however, are able to pick which sanitiser they work with
+        // e.g.
+        //      for 'step 1' and 'step back' comamnds, the count num and subcommand
+        //      arguments are both optional, so when supplying 'back' it must choose
+        //      a sanitiser which works (the subcommand sanitiser) instead of zipping
+        //      which would result in 'back' being sanitised as the count num argument
+
+        // only to please the borrow checker, this could be expressed more logically by
+        // making `optional_sans` a mutable iterator if it were possible:(
+        let mut skip = 0;
+
+        println!("hi");
         args.iter()
-            .zip(match &self.args {
-                Arguments::Exactly { required, optional } => required
+            .zip(self.required_args())
+            .map(|(strarg, arg)| (arg.sanitiser(self))(strarg, helper))
+            .chain(
+                args
                     .iter()
-                    .map(|a| a.sanitiser)
-                    .chain(optional.iter().map(|a| a.sanitiser))
-                    // TODO: this isnt great, we assume the last argument is a subcommand
-                    // and forward its args. not an ideal solution.
-                    //       a better way would be to have an explicit subcommand
-                    //       argument type but that would make the usual normal arguments
-                    //       clunky
-                    .chain(std::iter::repeat_n(
-                        (|_, a, _| Ok(ArgumentKind::String(a.to_owned())))
-                        as fn(cmd: &Command, arg: &str, helper: &MyHelper) -> CommandResult<ArgumentKind>
-                    , args.len() - required.len()))
-                    .collect::<Vec<_>>(),
-                Arguments::VarArgs { required, variadic } => required
-                    .iter()
-                    .map(|a| a.sanitiser)
-                    .chain(std::iter::repeat_n(
-                        variadic.sanitiser,
-                        (args.len() - required.len()) + 1,
-                    ))
-                    .collect(),
-            })
-            // TODO: give varargs the whole arg instead of `strarg`
-            .map(|(strarg, san)| san(self, strarg, helper))
+                    .skip(self.required_args().len())
+                    // TODO: give varargs the whole arg instead of just one `strarg`
+                    .map(|strarg| {
+                        println!("{skip}");
+                        let (skipped, san) = optional_sans
+                            .iter_mut()
+                            .map(|san| san(strarg, helper))
+                            .skip(skip)
+                            .enumerate()
+                            .skip_while(|(_, san)| san.is_err())
+                            .next()
+                            .map_or(
+                                (1, optional_sans.iter_mut().nth(skip).expect(
+                                    "somehow there are not enough input sanitisers left (impossible)",
+                                )(strarg, helper)),
+                                |(skipped, san)| (skipped + 1, san)
+                            );
+                        skip += skipped;
+                        san
+                    }),
+            )
             .collect()
     }
 
     pub(crate) fn args(&self, vararg_count: usize) -> Vec<&Argument> {
         match &self.args {
             Arguments::Exactly { required, optional } => {
-                required.iter().chain(optional.iter()).collect::<Vec<_>>()
+                required.iter().chain(optional.iter()).collect()
             }
             Arguments::VarArgs { required, variadic } => required
                 .iter()
@@ -211,7 +251,8 @@ impl Command {
         if args.len() < self.required_args().len() {
             Err(CommandError::WithTip {
                 error: Box::new(CommandError::MissingArguments {
-                    args: self.required_args()
+                    args: self
+                        .required_args()
                         .iter()
                         .map(Argument::name)
                         .map(str::to_owned)
@@ -224,11 +265,7 @@ impl Command {
             // TODO this is not great, it assumes that the last argument is a subcommand
             // and will forward all the arguments to them
 
-            (self._internal_exec)(
-                self,
-                helper,
-                &self.sanitise_args(args, &helper)?
-            )
+            (self._internal_exec)(self, helper, &self.sanitise_args(args, &helper)?)
         }
     }
 

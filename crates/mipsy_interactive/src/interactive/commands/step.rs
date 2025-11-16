@@ -9,7 +9,11 @@ use colored::*;
 use mipsy_lib::Register;
 
 pub(super) fn args_numbers(args: &[ArgumentKind]) -> Vec<i64> {
-    args.iter().cloned().map(i64::from).collect()
+    args.iter()
+        .cloned()
+        .map(i64::try_from)
+        .map(Result::unwrap)
+        .collect()
 }
 
 fn call_subcmds(
@@ -17,12 +21,8 @@ fn call_subcmds(
     helper: &mut MyHelper,
     args: &[ArgumentKind],
 ) -> CommandResult<String> {
-    if let Some(arg) = args.get(0) {
-        if let Some(cmd) = cmd
-            .subcommands
-            .iter()
-            .find(|c| c.names.contains(&arg.clone().into()))
-        {
+    if let Some(ArgumentKind::String(arg)) = args.get(0) {
+        if let Some(cmd) = cmd.subcommands.iter().find(|c| c.names.contains(arg)) {
             return (cmd._internal_exec)(cmd, helper, &args[1..]);
         }
     }
@@ -33,8 +33,11 @@ fn call_subcmds(
 pub(crate) fn command() -> Command {
     let times_arg = Argument::new(
         "times",
-        |_, a, _| match a.parse::<i32>() {
-            Ok(i) => Ok(ArgumentKind::Number(i as _)),
+        |a, _| match a.parse::<i32>() {
+            Ok(i) => {
+                println!("{a}");
+                Ok(ArgumentKind::Number(i as _))
+            }
             Err(_) => Err(CommandError::WithTip {
                 error: Box::new(CommandError::ArgExpectedI32 {
                     arg: "[times]".bright_magenta().to_string(),
@@ -43,17 +46,17 @@ pub(crate) fn command() -> Command {
                 tip: format!("try `{} {}`", "help".bold(), "step".bold()),
             }),
         },
-        |_, _, _| vec![],
+        |_, _| vec![],
     );
 
     Command::new()
         .with_name("step")
-        .with_desc("step forwards or execute a subcommand")
         .with_name("s")
-        .with_name("back")
+        .with_desc("step forwards or execute a subcommand")
         .with_optional_arg(times_arg.clone())
-        .with_optional_arg(Argument::subcommands())
+        .with_optional_arg(Argument::Subcommand)
         .with_subcommand(
+            // TODO: make this subcommand a normal command too
             Command::new()
             .with_name("back")
             .with_name("b")
@@ -81,7 +84,7 @@ pub(crate) fn command() -> Command {
                 .with_name("input")
                 .with_name("in")
                 .with_help(get_step_help_text(
-                        "Steps forwards until your program asks for its next input, or finishes.",
+                    "Steps forwards until your program asks for its next input, or finishes.",
                 ))
                 .with_exec(|_, helper, _| step_input(helper)),
             )
@@ -90,7 +93,7 @@ pub(crate) fn command() -> Command {
                 .with_name("output")
                 .with_name("out")
                 .with_name(get_step_help_text(
-                        "Steps forwards until your program asks for its next output, or finishes.",
+                    "Steps forwards until your program asks for its next output, or finishes.",
                 ))
                 .with_exec(|_, helper, _| step_output(helper)),
             )
@@ -108,8 +111,8 @@ pub(crate) fn command() -> Command {
                 Command::new()
                 .with_name("float")
                 .with_help(get_step_help_text(
-                        "Steps forwards until your program executes a syscall that requires\n\
-                        reading or writing a float, or finishes.",
+                    "Steps forwards until your program executes a syscall that requires\n\
+                    reading or writing a float, or finishes.",
                 ))
                 .with_exec(|_, helper, _| step_float(helper)),
             )
@@ -151,7 +154,7 @@ pub(crate) fn command() -> Command {
                 ))
                 .with_exec(|_, helper, _| step_file(helper)),
             )
-            .with_required_arg(Argument::subcommands())
+            .with_required_arg(Argument::Subcommand)
             .with_exec(call_subcmds)
         )
 }

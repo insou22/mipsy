@@ -27,14 +27,14 @@ pub(crate) fn command() -> Command {
         .with_var_args(Argument::from_name("{args}".magenta().to_string()))
         .with_required_arg(Argument::new(
             "instruction",
-            |_, a, h| match instruction_names(h).contains(&a.to_owned()) {
+            |a, h| match instruction_names(h).contains(&a.to_owned()) {
                 true => Ok(ArgumentKind::String(a.to_owned())),
                 false => Err(CommandError::BadArgument {
                     arg: "instruction".to_owned(),
                     instead: a.to_owned(),
                 }),
             },
-            |_, _, h| instruction_names(h),
+            |_, h| instruction_names(h),
         ))
         .with_help("Executes a MIPS instruction immediately".to_owned())
         .with_exec(|_, helper, args| {

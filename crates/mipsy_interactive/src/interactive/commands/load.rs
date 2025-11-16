@@ -12,13 +12,13 @@ pub(crate) fn command() -> Command {
         .with_name("l")
         .with_var_args(Argument::new(
             "<files>".magenta().to_string(),
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, a, h| h.file_hints(a),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |a, h| h.file_hints(a),
         ))
         .with_required_arg(Argument::new(
             "files",
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
-            |_, a, h| h.file_hints(a),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |a, h| h.file_hints(a),
         ))
         .with_desc("load a MIPS file to run")
         .with_help(format!(

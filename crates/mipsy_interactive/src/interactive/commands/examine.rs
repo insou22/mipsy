@@ -20,7 +20,7 @@ pub(crate) fn command() -> Command {
         .with_desc("examine memory contents")
         .with_exact_args()
         // TODO: again, get a context to sanitise and hint this
-        .with_optional_arg(Argument::new("section", |_, a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _, _| vec![
+        .with_optional_arg(Argument::new("section", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![
                 "",
                 ".data",
                 ".text",
@@ -28,10 +28,10 @@ pub(crate) fn command() -> Command {
                 ".kdata",
                 ".ktext",
         ].into_iter().map(str::to_owned).collect()))
-        .with_optional_arg(Argument::new("len", |_, a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _, _| vec![]))
+        .with_optional_arg(Argument::new("len", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
         // TODO: maybe lable or register hints depending on
-        .with_optional_arg(Argument::new("addr", |_, a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _, _| vec![]))
-        .with_optional_arg(Argument::new("-nolabels", |_, a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _, _| vec![]))
+        .with_optional_arg(Argument::new("addr", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
+        .with_optional_arg(Argument::new("-nolabels", |a, _| Ok(ArgumentKind::String(a.to_owned())), |_, _| vec![]))
         .with_help(
             format!(
                 "Examine memory contents in a format akin to the tool `xxd`.\n\

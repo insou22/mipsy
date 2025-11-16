@@ -11,7 +11,7 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_required_arg(Argument::new(
             "label",
-            |_, a, h| {
+            |a, h| {
                 h.state
                     .binary
                     .as_ref()
@@ -25,7 +25,7 @@ pub(crate) fn command() -> Command {
                     // it gets printed later
                     .and_then(|_| Ok(ArgumentKind::String(a.to_owned())))
             },
-            |_, _, h| {
+            |_, h| {
                 h.state
                     .binary
                     .as_ref()
@@ -48,7 +48,7 @@ pub(crate) fn command() -> Command {
             "<label>".magenta()
         ))
         .with_exec(|_, helper, args| {
-            let label = String::from(args[0].to_owned());
+            let label = String::try_from(args[0].to_owned()).unwrap();
             let binary = helper
                 .state
                 .binary

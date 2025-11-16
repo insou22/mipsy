@@ -14,7 +14,7 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_optional_arg(Argument::new(
             "n",
-            |_, a, _| {
+            |a, _| {
                 Ok(ArgumentKind::Number(expect_u32(
                     "",
                     &"[n]".bright_magenta(),
@@ -22,7 +22,7 @@ pub(crate) fn command() -> Command {
                     None as Option<&dyn Fn(i32) -> String>,
                 )? as _))
             },
-            |_, _, _| vec![],
+            |_, _| vec![],
         ))
         .with_desc(format!(
             "prints the current and surrounding 3 (or {}) instructions",
@@ -33,7 +33,12 @@ pub(crate) fn command() -> Command {
             "[n]".magenta(),
         ))
         .with_exec(|_, helper, args| {
-            let n = args.first().cloned().map(i64::from).or(Some(3)).unwrap();
+            let n = args
+                .first()
+                .cloned()
+                .map(|a| i64::try_from(a).unwrap())
+                .or(Some(3))
+                .unwrap();
 
             if helper.state.exited {
                 return Err(CommandError::ProgramExited);

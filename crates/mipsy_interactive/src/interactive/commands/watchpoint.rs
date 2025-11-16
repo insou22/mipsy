@@ -29,7 +29,11 @@ enum MipsyArgType {
 }
 
 pub(crate) fn args_text(args: &[ArgumentKind]) -> Vec<String> {
-    args.iter().cloned().map(String::from).collect()
+    args.iter()
+        .cloned()
+        .map(String::try_from)
+        .map(Result::unwrap)
+        .collect()
 }
 
 pub(crate) fn command() -> Command {
@@ -39,7 +43,7 @@ pub(crate) fn command() -> Command {
         .with_name("wa")
         .with_name("wp")
         .with_name("watch")
-        .with_required_arg(Argument::subcommands())
+        .with_required_arg(Argument::Subcommand)
         .with_subcommand(
             Command::new()
                 .with_name("list")
@@ -165,7 +169,7 @@ pub(crate) fn command() -> Command {
             match cmd
                 .subcommands
                 .iter()
-                .find(|c| c.names.contains(&args[0].to_owned().into()))
+                .find(|c| c.names.contains(&args[0].to_owned().try_into().unwrap()))
                 {
                     Some(cmd) => (cmd._internal_exec)(cmd, helper, &args[1..]),
                     None => watchpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert),

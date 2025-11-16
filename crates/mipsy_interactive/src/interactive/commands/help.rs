@@ -82,18 +82,18 @@ pub(crate) fn command() -> Command {
                     Arguments::Exactly { required, optional } => {
                         len += required.len();
                         for arg in required.iter() {
-                            len += arg.name.len() + 2;
+                            len += arg.name().len() + 2;
                         }
 
                         len += optional.len();
                         for arg in optional.iter() {
-                            len += arg.name.len() + 2;
+                            len += arg.name().len() + 2;
                         }
                     }
                     Arguments::VarArgs { required, variadic } => {
                         len += required.len();
                         for arg in required.iter() {
-                            len += arg.name.len() + 2;
+                            len += arg.name().len() + 2;
                         }
 
                         len += 1;
@@ -153,14 +153,14 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
             parts.append(
                 &mut required
                     .iter()
-                    .map(|arg| format!("<{}>", arg.name).magenta().to_string())
+                    .map(|arg| format!("<{}>", arg.name()).magenta().to_string())
                     .collect::<Vec<String>>(),
             );
 
             parts.append(
                 &mut optional
                     .iter()
-                    .map(|arg| format!("[{}]", arg.name).bright_magenta().to_string())
+                    .map(|arg| format!("[{}]", arg.name()).bright_magenta().to_string())
                     .collect::<Vec<String>>(),
             );
         }
@@ -168,7 +168,7 @@ fn get_command_formatted(cmd: &Command, mut parts: Vec<String>) -> String {
             parts.append(
                 &mut required
                     .iter()
-                    .map(|arg| format!("<{}>", arg.name).magenta().to_string())
+                    .map(|arg| format!("<{}>", arg.name()).magenta().to_string())
                     .collect::<Vec<String>>(),
             );
 

@@ -16,13 +16,13 @@ pub(crate) fn command() -> Command {
         .with_exact_args()
         .with_required_arg(Argument::new(
             "item",
-            |_, a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
             // TODO: maybe register and label hinting idk
-            |_, _, _| vec![],
+            |_, _| vec![],
         ))
         .with_optional_arg(Argument::new(
             "format",
-            |_, a, _| match a {
+            |a, _| match a {
                 "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
                 | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {
                     Ok(ArgumentKind::String(a.to_owned()))
@@ -32,7 +32,7 @@ pub(crate) fn command() -> Command {
                     instead: other.to_string(),
                 }),
             },
-            |_, _, _| {
+            |_, _| {
                 vec![
                     "byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char", "string",
                 ]
@@ -78,13 +78,13 @@ pub(crate) fn command() -> Command {
             let get_error = || CommandError::WithTip {
                 error: Box::new(CommandError::BadArgument {
                     arg: "<item>".magenta().to_string(),
-                    instead: args[0].to_owned().into(),
+                    instead: args[0].to_owned().try_into().unwrap(),
                 }),
                 tip: format!("try `{}`", "help print".bold()),
             };
 
             let arg = mipsy_parser::parse_argument(
-                String::from(args[0].to_owned()),
+                String::try_from(args[0].to_owned()).unwrap(),
                 helper.state.config.tab_size,
             )
             .map_err(|_| get_error())?;
@@ -324,7 +324,11 @@ pub(crate) fn command() -> Command {
                         _ => unreachable!(),
                     };
 
-                    prompt::success_nl(format!("{} = {}", String::from(args[0].to_owned()), value));
+                    prompt::success_nl(format!(
+                        "{} = {}",
+                        String::try_from(args[0].to_owned()).unwrap(),
+                        value
+                    ));
                 }
                 _ => return Err(get_error()),
             }
