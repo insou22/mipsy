@@ -1,35 +1,49 @@
 use colored::Colorize;
-use mipsy_lib::Binary;
+use mipsy_lib::inst::{InstSignature, PseudoSignature};
 use std::rc::Rc;
 
 use mipsy_lib::{compile, MpProgram};
 use mipsy_parser::{parser::MpAttributedItem, MpItem};
 
-use crate::interactive::error::CommandError;
+use crate::interactive::{commands::watchpoint::args_text, error::CommandError};
 
 use super::*;
 
-pub(crate) fn dot_command() -> Command {
-    command_varargs(
-        ".",
-        vec![],
-        vec!["instruction"],
-        "{args}".magenta().to_string(),
-        vec![],
-        "execute a MIPS instruction",
-        |_, state, label, args| {
-            if label == "__help__" {
-                return Ok("Executes a MIPS instruction immediately".into());
-            }
+fn instruction_names(h: &MyHelper) -> Vec<String> {
+    h.state
+        .iset
+        .native_set()
+        .iter()
+        .map(InstSignature::name)
+        .chain(h.state.iset.pseudo_set().iter().map(PseudoSignature::name))
+        .map(str::to_owned)
+        .collect()
+}
 
-            let line = args.join(" ");
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name(".")
+        .with_desc("execute a MIPS instruction")
+        .with_var_args(Argument::from_name("{args}".magenta().to_string()))
+        .with_required_arg(Argument::new(
+            "instruction",
+            |a, h| match instruction_names(h).contains(&a.to_owned()) {
+                true => Ok(ArgumentKind::String(a.to_owned())),
+                false => Err(CommandError::BadArgument {
+                    arg: "instruction".to_owned(),
+                    instead: a.to_owned(),
+                }),
+            },
+            |_, h| instruction_names(h),
+        ))
+        .with_help("Executes a MIPS instruction immediately".to_owned())
+        .with_exec(|_, helper, args| {
+            let line = args_text(args).join(" ");
 
-            let inst =
-                mipsy_parser::parse_instruction(&line, state.config.tab_size).map_err(|error| {
-                    CommandError::CannotParseLine {
-                        line: line.to_string(),
-                        error,
-                    }
+            let inst = mipsy_parser::parse_instruction(&line, helper.state.config.tab_size)
+                .map_err(|error| CommandError::CannotParseLine {
+                    line: line.to_string(),
+                    error,
                 })?;
 
             let program = MpProgram::new(
@@ -47,8 +61,11 @@ pub(crate) fn dot_command() -> Command {
                 error,
             })?;
 
-            let empty_binary = Binary::default();
-            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
 
             compile::check_post_data_label(&program, binary).map_err(|error| {
                 CommandError::CannotCompileLine {
@@ -57,7 +74,7 @@ pub(crate) fn dot_command() -> Command {
                 }
             })?;
 
-            let opcodes = mipsy_lib::compile1(binary, &state.iset, &inst)
+            let opcodes = mipsy_lib::compile1(binary, &helper.state.iset, &inst)
                 .map_err(|error| {
                     error.into_compiler_mipsy_error(Rc::from(""), 1, inst.col(), inst.col_end())
                 })
@@ -67,7 +84,7 @@ pub(crate) fn dot_command() -> Command {
                 })?;
 
             for opcode in opcodes {
-                state.exec_inst(opcode, true).map_err(|err| {
+                State::exec_inst(helper, opcode, true).map_err(|err| {
                     let mipsy_error = match err {
                         CommandError::RuntimeError { mipsy_error } => mipsy_error,
                         _ => unreachable!(),
@@ -81,6 +98,5 @@ pub(crate) fn dot_command() -> Command {
             }
 
             Ok("".into())
-        },
-    )
+        })
 }

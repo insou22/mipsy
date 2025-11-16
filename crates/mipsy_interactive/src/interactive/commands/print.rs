@@ -4,83 +4,103 @@ use crate::interactive::{error::CommandError, prompt};
 
 use super::*;
 use colored::*;
-use mipsy_lib::{Binary, Register};
+use mipsy_lib::Register;
 use mipsy_parser::*;
 
 #[allow(clippy::format_in_format_args)]
-pub(crate) fn print_command() -> Command {
-    command(
-        "print",
-        vec!["p"],
-        vec!["item"],
-        vec!["format"],
-        vec![],
-        "print an item - a register, value in memory, etc.",
-        |_, state, label, args| {
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Prints the current value of an {0} in the loaded program.\n\
-                         {0} can be one of:\n\
-                    \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
-                    \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
-                    \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
-                    \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
-                         {14} can optionally be specified (default: `{15}`) to specify how the value\n\
-                    \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
-                    \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
-                        "<item>".magenta(),
-                        "register".yellow().bold(),
-                        "$".yellow(),
-                        "t3".bold(),
-                        "12".bold(),
-                        "special".yellow().bold(),
-                        "pc".bold(),
-                        "hi".bold(),
-                        "lo".bold(),
-                        "address".yellow().bold(),
-                        "0x".yellow(),
-                        "my_label".yellow().bold(),
-                        "all registers".yellow().bold(),
-                        "all".bold(),
-                        "[format]".magenta(),
-                        format!("{}{}", "w".yellow().bold(), "ord".bold()),
-                        format!("{}{}", "b".yellow().bold(), "yte".bold()),
-                        format!("{}{}", "h".yellow().bold(), "alf".bold()),
-                        "x".yellow().bold(),
-                        "he".bold(),
-                        format!("{}{}", "c".yellow().bold(), "har".bold()),
-                        format!("{}{}", "s".yellow().bold(), "tring".bold()),
-                    ),
-                );
-            }
-
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("print")
+        .with_name("p")
+        .with_desc("print an item - a register, value in memory, etc.")
+        .with_exact_args()
+        .with_required_arg(Argument::new(
+            "item",
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            // TODO: maybe register and label hinting idk
+            |_, _| vec![],
+        ))
+        .with_optional_arg(Argument::new(
+            "format",
+            |a, _| match a {
+                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
+                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {
+                    Ok(ArgumentKind::String(a.to_owned()))
+                }
+                other => Err(CommandError::BadArgument {
+                    arg: "[format]".magenta().to_string(),
+                    instead: other.to_string(),
+                }),
+            },
+            |_, _| {
+                vec![
+                    "byte", "half", "word", "xbyte", "xhalf", "xword", "hex", "char", "string",
+                ]
+                .into_iter()
+                .map(str::to_owned)
+                .collect()
+            },
+        ))
+        .with_help(format!(
+            "Prints the current value of an {0} in the loaded program.\n\
+                {0} can be one of:\n\
+                \x20- a {1}: named (`{2}{3}`) or numbered (`{2}{4}`),\n\
+                \x20- a {5} {1}: `{2}{6}`, `{2}{7}`, `{2}{8}`,\n\
+                \x20- an {9}: decimal (`4194304`), hex (`{10}400000`), labelled (`{11}`),\n\
+                \x20- {12}: `{2}{13}` - prints all currently initialised registers.\n\
+                {14} can optionally be specified (default: `{15}`) to specify how the value\n\
+                \x20 should be printed. Options: `{16}`, `{17}`, `{15}`, `{18}{16}`, `{18}{17}`,\n\
+                \x20                             `{18}{15}` / `{19}{18}`, `{20}`, `{21}`.",
+            "<item>".magenta(),
+            "register".yellow().bold(),
+            "$".yellow(),
+            "t3".bold(),
+            "12".bold(),
+            "special".yellow().bold(),
+            "pc".bold(),
+            "hi".bold(),
+            "lo".bold(),
+            "address".yellow().bold(),
+            "0x".yellow(),
+            "my_label".yellow().bold(),
+            "all registers".yellow().bold(),
+            "all".bold(),
+            "[format]".magenta(),
+            format!("{}{}", "w".yellow().bold(), "ord".bold()),
+            format!("{}{}", "b".yellow().bold(), "yte".bold()),
+            format!("{}{}", "h".yellow().bold(), "alf".bold()),
+            "x".yellow().bold(),
+            "he".bold(),
+            format!("{}{}", "c".yellow().bold(), "har".bold()),
+            format!("{}{}", "s".yellow().bold(), "tring".bold()),
+        ))
+        .with_exec(|_, helper, args| {
             let get_error = || CommandError::WithTip {
                 error: Box::new(CommandError::BadArgument {
                     arg: "<item>".magenta().to_string(),
-                    instead: args[0].to_string(),
+                    instead: args[0].to_owned().try_into().unwrap(),
                 }),
                 tip: format!("try `{}`", "help print".bold()),
             };
 
-            let arg = mipsy_parser::parse_argument(&args[0], state.config.tab_size)
-                .map_err(|_| get_error())?;
+            let arg = mipsy_parser::parse_argument(
+                String::try_from(args[0].to_owned()).unwrap(),
+                helper.state.config.tab_size,
+            )
+            .map_err(|_| get_error())?;
 
-            let print_type = &*args.get(1).cloned().unwrap_or_else(|| "word".to_string());
-            match print_type {
-                "byte" | "half" | "word" | "xbyte" | "xhalf" | "xword" | "hex" | "char"
-                | "string" | "b" | "h" | "w" | "xb" | "xh" | "xw" | "x" | "c" | "s" => {}
-                other => {
-                    return Err(CommandError::BadArgument {
-                        arg: "[format]".magenta().to_string(),
-                        instead: other.to_string(),
-                    });
-                }
-            }
+            let print_type = match args.get(1) {
+                Some(ArgumentKind::String(t)) => t,
+                None => "word",
+                _ => unreachable!(),
+            };
 
-            let empty_binary = Binary::default();
-            let binary = state.binary.as_ref().unwrap_or(&empty_binary);
-            let runtime = &state.runtime;
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let runtime = &helper.state.runtime;
 
             match arg {
                 MpArgument::Register(MpRegister::Normal(ident)) => {
@@ -304,14 +324,17 @@ pub(crate) fn print_command() -> Command {
                         _ => unreachable!(),
                     };
 
-                    prompt::success_nl(format!("{} = {}", args[0], value));
+                    prompt::success_nl(format!(
+                        "{} = {}",
+                        String::try_from(args[0].to_owned()).unwrap(),
+                        value
+                    ));
                 }
                 _ => return Err(get_error()),
             }
 
             Ok("".into())
-        },
-    )
+        })
 }
 
 fn format_simple_print(val: i32, print_type: &str) -> String {

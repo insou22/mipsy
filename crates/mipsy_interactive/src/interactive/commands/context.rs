@@ -6,42 +6,58 @@ use mipsy_lib::KTEXT_BOT;
 use mipsy_lib::TEXT_BOT;
 
 #[allow(unreachable_code)]
-pub(crate) fn context_command() -> Command {
-    command(
-        "context",
-        vec!["c", "ctx"],
-        vec![],
-        vec!["n"],
-        vec![],
-        &format!(
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("context")
+        .with_name("c")
+        .with_name("ctx")
+        .with_exact_args()
+        .with_optional_arg(Argument::new(
+            "n",
+            |a, _| {
+                Ok(ArgumentKind::Number(expect_u32(
+                    "",
+                    &"[n]".bright_magenta(),
+                    a,
+                    None as Option<&dyn Fn(i32) -> String>,
+                )? as _))
+            },
+            |_, _| vec![],
+        ))
+        .with_desc(format!(
             "prints the current and surrounding 3 (or {}) instructions",
             "[n]".magenta(),
-        ),
-        |_, state, label, args| {
-            if label == "__help__" {
-                return Ok(format!(
-                    "prints the current and surrounding 3 (or {}) instructions",
-                    "[n]".magenta(),
-                ));
-            }
+        ))
+        .with_help(format!(
+            "prints the current and surrounding 3 (or {}) instructions",
+            "[n]".magenta(),
+        ))
+        .with_exec(|_, helper, args| {
+            let n = args
+                .first()
+                .cloned()
+                .map(|a| i64::try_from(a).unwrap())
+                .or(Some(3))
+                .unwrap();
 
-            let f: Option<&dyn Fn(i32) -> String> = None;
-
-            let n = match args.first() {
-                Some(arg) => expect_u32(label, &"[n]".bright_magenta(), arg, f),
-                None => Ok(3),
-            }? as i32;
-
-            if state.exited {
+            if helper.state.exited {
                 return Err(CommandError::ProgramExited);
             }
 
-            let program = state.program.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-            let runtime = &state.runtime;
+            let program = helper
+                .state
+                .program
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
+            let runtime = &helper.state.runtime;
 
             let base_addr = runtime.timeline().state().pc();
-            for i in (-n)..=n {
+            for i in (-n)..n {
                 let addr = {
                     let addr = base_addr.wrapping_add((i * 4) as u32);
                     if addr < TEXT_BOT {
@@ -63,12 +79,12 @@ pub(crate) fn context_command() -> Command {
                     }
                 };
 
-                let parts = decompile::decompile_inst_into_parts(binary, &state.iset, inst, addr);
+                let parts =
+                    decompile::decompile_inst_into_parts(binary, &helper.state.iset, inst, addr);
                 util::print_inst_parts(binary, &Ok(parts), Some(program), i == 0);
             }
 
             println!();
             Ok("".into())
-        },
-    )
+        })
 }

@@ -5,27 +5,28 @@ use colored::*;
 
 use mipsy_lib::decompile::{decompile_into_parts, Decompiled, Uninit};
 
-pub(crate) fn disassemble_command() -> Command {
-    command(
-        "disassemble",
-        vec!["d", "dis", "disas", "disasm", "dec", "decompile"],
-        vec![],
-        vec![],
-        vec![],
-        "disassembles the currently loaded file",
-        |_, state, label, _args| {
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
-                        "step".bold(),
-                    ),
-                );
-            }
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("disassemble")
+        .with_name("d")
+        .with_name("dis")
+        .with_name("disas")
+        .with_name("disasm")
+        .with_name("dec")
+        .with_name("decompile")
+        .with_desc("disassembles the currently loaded file")
+        .with_help(format!(
+            "Disassembles the currently loaded file, similar to how `{}` displays instructions.",
+            "step".bold(),
+        ))
+        .with_exec(|_, helper, _| {
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
 
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
-
-            let mut decompiled = decompile_into_parts(binary, &state.iset)
+            let mut decompiled = decompile_into_parts(binary, &helper.state.iset)
                 .into_iter()
                 .collect::<Vec<(u32, Result<Decompiled, Uninit>)>>();
 
@@ -43,12 +44,11 @@ pub(crate) fn disassemble_command() -> Command {
             }
 
             for (_, inst) in decompiled {
-                util::print_inst_parts(binary, &inst, state.program.as_deref(), false);
+                util::print_inst_parts(binary, &inst, helper.state.program.as_deref(), false);
             }
 
             println!();
 
             Ok("".into())
-        },
-    )
+        })
 }

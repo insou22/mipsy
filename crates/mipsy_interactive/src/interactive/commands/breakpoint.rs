@@ -2,6 +2,7 @@ use crate::interactive::{error::CommandError, prompt};
 use std::iter::successors;
 
 use super::{commands::handle_commands, *};
+use crate::interactive::commands::watchpoint::args_text;
 use colored::*;
 use mipsy_lib::{compile::breakpoints::Breakpoint, Binary};
 use mipsy_parser::*;
@@ -26,132 +27,168 @@ enum MipsyArgType {
     Id,
 }
 
-pub(crate) fn breakpoint_command() -> Command {
-    let subcommands = vec![
-        command(
-            "list",
-            vec!["l"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_list(state, label, args),
-        ),
-        command(
-            "insert",
-            vec!["i", "in", "ins", "add"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Insert),
-        ),
-        command(
-            "remove",
-            vec!["del", "delete", "r", "rm"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Delete),
-        ),
-        command(
-            "temporary",
-            vec!["tmp", "temp"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_insert(state, label, args, InsertOp::Temporary),
-        ),
-        command(
-            "enable",
-            vec!["e"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Enable),
-        ),
-        command(
-            "disable",
-            vec!["d"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Disable),
-        ),
-        command(
-            "toggle",
-            vec!["t"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_toggle(state, label, args, EnableOp::Toggle),
-        ),
-        command(
-            "ignore",
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_ignore(state, label, args),
-        ),
-        command(
-            "commands",
-            vec!["com", "comms", "cmd", "cmds", "command"],
-            vec![],
-            vec![],
-            vec![],
-            "",
-            |_, state, label, args| breakpoint_commands(state, label, args),
-        ),
-    ];
-
-    command(
-        "breakpoint",
-        vec!["b", "bp", "br", "brk", "break"],
-        vec!["subcommand"],
-        vec![],
-        subcommands,
-        &format!(
-            "manage breakpoints ({} to list subcommands)",
-            "help breakpoint".bold()
-        ),
-        |cmd, state, label, args| {
-            if label == "__help__" && args.is_empty() {
-                return Ok(get_long_help());
-            }
-
-            let cmd = cmd
-                .subcommands
-                .iter()
-                .find(|c| c.name == args[0] || c.aliases.contains(&args[0]));
-            match cmd {
-                None if label == "__help__" => Ok(get_long_help()),
-                Some(cmd) => cmd.exec(state, label, &args[1..]),
-                None => breakpoint_insert(state, label, args, InsertOp::Insert),
-            }
-        },
-    )
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("breakpoint")
+        .with_name("b")
+        .with_name("bp")
+        .with_name("br")
+        .with_name("brk")
+        .with_name("break")
+        .with_desc(format!(
+                "manage breakpoints ({} to list subcommands)",
+                "help breakpoint".bold()
+        ))
+        .with_required_arg(Argument::Subcommand)
+        .with_subcommand(
+            Command::new()
+            .with_name("list")
+            .with_name("l")
+            .with_help(
+                format!(
+                    "Lists currently set breakpoints.\n\
+                    When running or stepping through your program, a breakpoint will cause execution to\n\
+                    pause temporarily, allowing you to debug the current state.\n\
+                    May error if provided a label that doesn't exist.\n\
+                    \n{}{} you can also use the `{}` mips instruction in your program's code!",
+                    "tip".yellow().bold(),
+                    ":".bold(),
+                    "break".bold(),
+                ),
+            )
+            .with_exec(|_, helper, _| breakpoint_list(&helper.state)),
+        )
+        .with_subcommand(
+            Command::new()
+            .with_name("insert")
+            .with_name("i")
+            .with_name("in")
+            .with_name("ins")
+            .with_name("add")
+            .with_help(breakpoint_insert_help())
+            .with_exec(|_, helper, args| {
+                breakpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert)
+            }),
+        )
+        .with_subcommand(
+            Command::new()
+            .with_name("remove")
+            .with_name("del")
+            .with_name("delete")
+            .with_name("r")
+            .with_name("rm")
+            .with_help(breakpoint_insert_help())
+            .with_exec(|_, helper, args| {
+                breakpoint_insert(&mut helper.state, &args_text(args), InsertOp::Delete)
+            }),
+        )
+        .with_subcommand(
+            Command::new()
+            .with_name("temporary")
+            .with_name("tmp")
+            .with_name("temp")
+            .with_help(breakpoint_insert_help())
+            .with_exec(|_, helper, args| {
+                breakpoint_insert(&mut helper.state, &args_text(args), InsertOp::Temporary)
+            }),
+        )
+        .with_subcommand(Command::new().with_name("enable").with_name("e").with_exec(
+                |_, helper, args| {
+                    breakpoint_toggle(&mut helper.state, &args_text(args), EnableOp::Enable)
+                },
+        ))
+        .with_subcommand(
+            Command::new()
+            .with_name("disable")
+            .with_name("d")
+            .with_exec(|_, helper, args| {
+                breakpoint_toggle(&mut helper.state, &args_text(args), EnableOp::Disable)
+            }),
+        )
+        .with_subcommand(Command::new().with_name("toggle").with_name("t").
+            with_help(breakpoint_toggle_help())
+            .with_exec(
+                |_, helper, args| {
+                    breakpoint_toggle(&mut helper.state, &args_text(args), EnableOp::Toggle)
+                },
+            ))
+        .with_subcommand(Command::new().with_name("ignore")
+            .with_help(
+                format!(
+                    "Usage: {6} {7} {1} {0}\n\
+                    {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
+                    {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
+                    \x20                 a label (`{3}`), a line number (`:14`, `prog.s:7`), or an id (`{4}`).\n\
+                    Breakpoints that are ignored do not trigger when they are hit.\n\
+                    Breakpoints caused by the `{5}` instruction in code cannot ignored.
+                    ",
+                    "<ignore count>".purple(),
+                    "<address>".purple(),
+                    "0x".yellow(),
+                    "main".yellow().bold(),
+                    "!3".blue(),
+                    "break".bold(),
+                    "breakpoint".yellow().bold(),
+                    "ignore".purple(),
+                )
+            )
+            .with_exec(
+                |_, helper, args| breakpoint_ignore(&mut helper.state, &args_text(args)),
+            ))
+                .with_subcommand(
+                    Command::new()
+                    .with_name("commands")
+                    .with_name("com")
+                    .with_name("comms")
+                    .with_name("cmd")
+                    .with_name("cmds")
+                    .with_name("command")
+                    .with_help(
+                        format!(
+                            "Takes in a list of commands seperated by newlines,\n\
+                            and attaches the commands to the specified {0}.\n\
+                            If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
+                            Whenever that breakpoint is hit, the commands will automatically be executed\n\
+                            in the provided order.\n\
+                            The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
+                            To view the commands attached to a particular breakpoint,\n\
+                            use {2} {0}
+                            ",
+                            "<breakpoint id>".purple(),
+                            "end".yellow().bold(),
+                            "commands list".bold().yellow(),
+                        )
+                    )
+                    .with_exec(|_, helper, args| {
+                        breakpoint_commands(&mut helper.state, &args_text(args))
+                    }),
+            )
+                .with_help(get_long_help())
+                .with_exec(|cmd, helper, args| {
+                    match cmd
+                        .subcommands
+                        .iter()
+                        .find(|c| c.names.contains(&args[0].to_owned().try_into().unwrap()))
+                        {
+                            Some(cmd) => (cmd._internal_exec)(cmd, helper, &args[1..]),
+                            None => breakpoint_insert(&mut helper.state, &args_text(args), InsertOp::Insert),
+                        }
+                })
 }
 
 fn get_long_help() -> String {
     format!(
         "A collection of commands for managing breakpoints. Available {10}s are:\n\n\
-         {0} {2}    : insert/delete a breakpoint\n\
-         {1} {3}\n\
-         {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
-         {0} {13}  : attach commands to a breakpoint\n\
-         {0} {5}    : enable/disable an existing breakpoint\n\
-         {1} {6}\n\
-         {1} {7}\n\
-         {0} {12}    : ignore a breakpoint for a specified number of hits\n\
-         {0} {4}      : list currently set breakpoints\n\n\
-         {8} {9} will provide more information about the specified subcommand.
+        {0} {2}    : insert/delete a breakpoint\n\
+        {1} {3}\n\
+        {0} {11} : insert a temporary breakpoint that deletes itself after being hit\n\
+        {0} {13}  : attach commands to a breakpoint\n\
+        {0} {5}    : enable/disable an existing breakpoint\n\
+        {1} {6}\n\
+        {1} {7}\n\
+        {0} {12}    : ignore a breakpoint for a specified number of hits\n\
+        {0} {4}      : list currently set breakpoints\n\n\
+        {8} {9} will provide more information about the specified subcommand.
         ",
         "breakpoint".yellow().bold(),
         "          ".yellow().bold(),
@@ -172,49 +209,14 @@ fn get_long_help() -> String {
 
 fn breakpoint_insert(
     state: &mut State,
-    label: &str,
     args: &[String],
     op: InsertOp,
 ) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(
-            format!(
-                "Usage: {10} {11} {2}\n\
-                 {0}s or {1}s a breakpoint at the specified {2}.\n\
-                 {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
-            \x20             a label (`{4}`), or a line number (`:14`, `prog.s:7`).\n\
-                 If you are removing a breakpoint, you can also use its id (`{5}`).\n\
-                 {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
-            \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
-                 If {12}, `tmp`, or `temp` is provided as the {6}, the breakpoint will\n\
-                 be created as a temporary breakpoint, which automatically deletes itself after being hit.\n\
-                 If {6} is none of these option, it defaults to inserting a breakpoint at {6}.\n\
-                 When running or stepping through your program, a breakpoint will cause execution to\n\
-                 pause temporarily, allowing you to debug the current state.\n\
-                 May error if provided a label that doesn't exist.\n\
-              \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
-                "<insert>".magenta(),
-                "<delete>".magenta(),
-                "<address>".magenta(),
-                "0x".yellow(),
-                "main".yellow().bold(),
-                "!3".blue(),
-                "<subcommand>".magenta(),
-                "tip".yellow().bold(),
-                ":".bold(),
-                "break".bold(),
-                "breakpoint".yellow().bold(),
-                "{insert, delete, temporary}".purple(),
-                "<temporary>".purple(),
-            )
-        );
-    }
-
     if args.is_empty() {
         return Err(generate_err(
             CommandError::MissingArguments {
                 args: vec!["addr".to_string()],
-                instead: args.to_vec(),
+                instead: vec![],
             },
             match op {
                 InsertOp::Insert => "insert",
@@ -305,22 +307,7 @@ fn breakpoint_insert(
     Ok("".into())
 }
 
-fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(
-            format!(
-                "Lists currently set breakpoints.\n\
-                 When running or stepping through your program, a breakpoint will cause execution to\n\
-                 pause temporarily, allowing you to debug the current state.\n\
-                 May error if provided a label that doesn't exist.\n\
-               \n{}{} you can also use the `{}` mips instruction in your program's code!",
-                 "tip".yellow().bold(),
-                 ":".bold(),
-                 "break".bold(),
-            ),
-        );
-    }
-
+fn breakpoint_list(state: &State) -> Result<String, CommandError> {
     let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
 
     if binary.breakpoints.is_empty() {
@@ -405,39 +392,14 @@ fn breakpoint_list(state: &State, label: &str, _args: &[String]) -> Result<Strin
 
 fn breakpoint_toggle(
     state: &mut State,
-    label: &str,
     args: &[String],
     op: EnableOp,
 ) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(
-            format!(
-                "Usage: {8} {9} {3}\n\
-                 {0}s, {1}s, or {2}s a breakpoint at the specified {3}.\n\
-                 {3} may be: a decimal address (`4194304`), a hex address (`{4}400000`),\n\
-        \x20                 a label (`{5}`), a line number (`:14`, `prog.s:7`), or an id (`{6}`).\n\
-                 Breakpoints that are disabled do not trigger when they are hit.\n\
-                 Breakpoints caused by the `{7}` instruction in code cannot be disabled.
-                ",
-                "<enable>".purple(),
-                "<disable>".purple(),
-                "<toggle>".purple(),
-                "<address>".purple(),
-                "0x".yellow(),
-                "main".yellow().bold(),
-                "!3".blue(),
-                "break".bold(),
-                "breakpoint".yellow().bold(),
-                "{enable, disable, toggle}".purple(),
-            )
-        );
-    }
-
     if args.is_empty() {
         return Err(generate_err(
             CommandError::MissingArguments {
                 args: vec!["addr".to_string()],
-                instead: args.to_vec(),
+                instead: vec![],
             },
             match op {
                 EnableOp::Enable => "enable",
@@ -516,38 +478,12 @@ fn breakpoint_toggle(
     Ok("".into())
 }
 
-fn breakpoint_ignore(
-    state: &mut State,
-    label: &str,
-    mut args: &[String],
-) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(
-            format!(
-                "Usage: {6} {7} {1} {0}\n\
-                 {7}s a breakpoint at the specified {1} for the next {0} hits.\n\
-                 {1} may be: a decimal address (`4194304`), a hex address (`{2}400000`),\n\
-        \x20                 a label (`{3}`), a line number (`:14`, `prog.s:7`), or an id (`{4}`).\n\
-                 Breakpoints that are ignored do not trigger when they are hit.\n\
-                 Breakpoints caused by the `{5}` instruction in code cannot ignored.
-                ",
-                "<ignore count>".purple(),
-                "<address>".purple(),
-                "0x".yellow(),
-                "main".yellow().bold(),
-                "!3".blue(),
-                "break".bold(),
-                "breakpoint".yellow().bold(),
-                "ignore".purple(),
-            )
-        );
-    }
-
+fn breakpoint_ignore(state: &mut State, args: &[String]) -> Result<String, CommandError> {
     if args.is_empty() {
         return Err(generate_err(
             CommandError::MissingArguments {
                 args: vec!["addr".to_string()],
-                instead: args.to_vec(),
+                instead: vec![],
             },
             "ignore",
         ));
@@ -560,7 +496,7 @@ fn breakpoint_ignore(
         return Ok("".into());
     }
 
-    args = &args[1..];
+    let args = &args[1..];
     if args.is_empty() {
         return Err(generate_err(
             CommandError::MissingArguments {
@@ -605,30 +541,8 @@ fn breakpoint_ignore(
     Ok("".into())
 }
 
-fn breakpoint_commands(
-    state: &mut State,
-    label: &str,
-    args: &[String],
-) -> Result<String, CommandError> {
-    if label == "__help__" {
-        return Ok(format!(
-            "Takes in a list of commands seperated by newlines,\n\
-                 and attaches the commands to the specified {0}.\n\
-                 If no breakpoint is specified, the most recently created breakpoint is chosen.\n\
-                 Whenever that breakpoint is hit, the commands will automatically be executed\n\
-                 in the provided order.\n\
-                 The list of commands can be ended using the {1} command, EOF, or an empty line.\n\
-                 To view the commands attached to a particular breakpoint,\n\
-                 use {2} {0}
-                ",
-            "<breakpoint id>".purple(),
-            "end".yellow().bold(),
-            "commands list".bold().yellow(),
-        ));
-    }
-
+fn breakpoint_commands(state: &mut State, args: &[String]) -> Result<String, CommandError> {
     let binary = state.binary.as_mut().ok_or(CommandError::MustLoadFile)?;
-    state.confirm_exit = true;
     handle_commands(args, &mut binary.breakpoints)
 }
 
@@ -732,4 +646,58 @@ fn parse_breakpoint_arg(state: &State, arg: &String) -> Result<(u32, MipsyArgTyp
     } else {
         Err(get_error("<addr>"))
     }
+}
+
+fn breakpoint_insert_help() -> String {
+    format!(
+        "Usage: {10} {11} {2}\n\
+        {0}s or {1}s a breakpoint at the specified {2}.\n\
+        {2} may be: a decimal address (`4194304`), a hex address (`{3}400000`),\n\
+        \x20             a label (`{4}`), or a line number (`:14`, `prog.s:7`).\n\
+        If you are removing a breakpoint, you can also use its id (`{5}`).\n\
+        {6} must be `i`, `in`, `ins`, `insert`, or `add` to insert the breakpoint, or\n\
+        \x20             `del`, `delete`, `rm` or `remove` to remove the breakpoint.\n\
+        If {12}, `tmp`, or `temp` is provided as the {6}, the breakpoint will\n\
+        be created as a temporary breakpoint, which automatically deletes itself after being hit.\n\
+        If {6} is none of these option, it defaults to inserting a breakpoint at {6}.\n\
+        When running or stepping through your program, a breakpoint will cause execution to\n\
+        pause temporarily, allowing you to debug the current state.\n\
+        May error if provided a label that doesn't exist.\n\
+        \n{7}{8} you can also use the `{9}` MIPS instruction in your program's code!",
+        "<insert>".magenta(),
+        "<delete>".magenta(),
+        "<address>".magenta(),
+        "0x".yellow(),
+        "main".yellow().bold(),
+        "!3".blue(),
+        "<subcommand>".magenta(),
+        "tip".yellow().bold(),
+        ":".bold(),
+        "break".bold(),
+        "breakpoint".yellow().bold(),
+        "{insert, delete, temporary}".purple(),
+        "<temporary>".purple(),
+    )
+}
+
+fn breakpoint_toggle_help() -> String {
+    format!(
+        "Usage: {8} {9} {3}\n\
+        {0}s, {1}s, or {2}s a breakpoint at the specified {3}.\n\
+        {3} may be: a decimal address (`4194304`), a hex address (`{4}400000`),\n\
+        \x20                 a label (`{5}`), a line number (`:14`, `prog.s:7`), or an id (`{6}`).\n\
+        Breakpoints that are disabled do not trigger when they are hit.\n\
+        Breakpoints caused by the `{7}` instruction in code cannot be disabled.
+        ",
+        "<enable>".purple(),
+        "<disable>".purple(),
+        "<toggle>".purple(),
+        "<address>".purple(),
+        "0x".yellow(),
+        "main".yellow().bold(),
+        "!3".blue(),
+        "break".bold(),
+        "breakpoint".yellow().bold(),
+        "{enable, disable, toggle}".purple(),
+    )
 }

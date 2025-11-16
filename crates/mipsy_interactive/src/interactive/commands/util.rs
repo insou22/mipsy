@@ -16,8 +16,8 @@ where
     F: Fn(i32) -> String,
 {
     match arg.parse::<u32>() {
-        Ok(num) => Ok(num),
-        Err(_) => Err({
+        Ok(num) if num != 0 => Ok(num),
+        _ => Err({
             let err = CommandError::ArgExpectedU32 {
                 arg: name.to_string(),
                 instead: arg.to_string(),

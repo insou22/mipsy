@@ -1,4 +1,4 @@
-use crate::interactive::{error::CommandError, prompt};
+use crate::interactive::{commands::watchpoint::args_text, error::CommandError, prompt};
 
 use super::*;
 use colored::*;
@@ -6,26 +6,30 @@ use mipsy_lib::compile::CompilerOptions;
 use mipsy_parser::TaggedFile;
 use mipsy_utils::expand_tilde;
 
-pub(crate) fn load_command() -> Command {
-    command_varargs(
-        "load",
-        vec!["l"],
-        vec!["files"],
-        "-- {args}".magenta().to_string(),
-        vec![],
-        "load a MIPS file to run",
-        |_, state, label, args| {
-            if label == "__help__" {
-                return Ok(
-                    format!(
-                        "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
-                         This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
-                        "run".bold(),
-                        "step".bold(),
-                        "print".bold(),
-                    ),
-                );
-            }
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("load")
+        .with_name("l")
+        .with_var_args(Argument::new(
+            "<files>".magenta().to_string(),
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |a, h| h.file_hints(a),
+        ))
+        .with_required_arg(Argument::new(
+            "files",
+            |a, _| Ok(ArgumentKind::String(a.to_owned())),
+            |a, h| h.file_hints(a),
+        ))
+        .with_desc("load a MIPS file to run")
+        .with_help(format!(
+            "Loads a MIPS file to run, overwriting whatever is currently loaded.\n\
+                This command must be run prior to many others, such as `{}`, `{}`, `{}`, ...",
+            "run".bold(),
+            "step".bold(),
+            "print".bold(),
+        ))
+        .with_exec(|_, helper, args| {
+            let args = &args_text(args)[..];
 
             let (files, arguments) = {
                 if let Some(index) = args.iter().position(|arg| arg == "--") {
@@ -40,48 +44,55 @@ pub(crate) fn load_command() -> Command {
             #[cfg(unix)]
             let stdin = String::from("/dev/stdin");
 
-            let program: Vec<_> = files
-                .iter()
-                .map(|name| {
-                    let mut path = name;
-
+            let program = {
+                let mut program = Vec::with_capacity(files.len());
+                for file in files.iter().map(|mut name| {
                     #[cfg(unix)]
-                    if path == "-" {
-                        path = &stdin;
+                    if name == "-" {
+                        name = &stdin;
                     }
 
-                    match std::fs::read_to_string(expand_tilde(path)) {
-                        Ok(content) => Ok((path.to_string(), content)),
+                    match std::fs::read_to_string(expand_tilde(name)) {
+                        Ok(content) => Ok((name.to_string(), content)),
                         Err(err) => Err(CommandError::CannotReadFile {
-                            path: path.clone(),
+                            path: name.to_string(),
                             os_error: err.to_string(),
                         }),
                     }
-                })
-                .collect::<Result<_, _>>()?;
+                }) {
+                    program.push(file?)
+                }
+                program
+            };
 
-            state.program = Some(program);
-            let program = state.program.as_ref().unwrap();
+            helper.state.program = Some(program);
+            let program = helper.state.program.as_ref().unwrap();
 
             let binary_files = program
                 .iter()
                 .map(|(path, file)| TaggedFile::new(Some(path), file))
-                .collect::<Vec<_>>();
+                .collect();
 
             let binary = mipsy_lib::compile(
-                &state.iset,
+                &helper.state.iset,
                 binary_files,
                 &CompilerOptions::default(),
-                &state.config,
+                &helper.state.config,
             )
             .map_err(|err| CommandError::CannotCompile { mipsy_error: err })?;
 
-            let runtime =
-                mipsy_lib::runtime(&binary, &arguments.iter().map(|x| &**x).collect::<Vec<_>>());
+            let runtime = mipsy_lib::runtime(
+                &binary,
+                arguments
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
 
-            state.binary = Some(binary);
-            state.runtime = runtime;
-            state.exited = false;
+            helper.state.binary = Some(binary);
+            helper.state.runtime = runtime;
+            helper.state.exited = false;
 
             let loaded = if program.len() == 1 {
                 "file loaded"
@@ -92,6 +103,5 @@ pub(crate) fn load_command() -> Command {
             prompt::success_nl(loaded);
 
             Ok("".into())
-        },
-    )
+        })
 }

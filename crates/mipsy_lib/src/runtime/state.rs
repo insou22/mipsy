@@ -17,7 +17,7 @@ pub const WRITE_MARKER_HI: u32 = 32;
 pub const TIMELINE_MAX_LEN: usize = 1_000_000;
 
 /// # A timeline of states
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Timeline {
     seed: State,
     timeline: VecDeque<State>,

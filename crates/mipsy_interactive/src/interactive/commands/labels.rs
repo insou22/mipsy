@@ -4,22 +4,20 @@ use mipsy_lib::DATA_BOT;
 use super::*;
 use colored::*;
 
-pub(crate) fn labels_command() -> Command {
-    command(
-        "labels",
-        vec!["ls", "las", "lbls"],
-        vec![],
-        vec![],
-        vec![],
-        "prints the addresses of all labels",
-        |_, state, label, _args| {
-            if label == "__help__" {
-                return Ok(
-                    "Prints the addresses of all labels in the currently loaded program.".into(),
-                );
-            }
-
-            let binary = state.binary.as_ref().ok_or(CommandError::MustLoadFile)?;
+pub(crate) fn command() -> Command {
+    Command::new()
+        .with_name("labels")
+        .with_name("ls")
+        .with_name("las")
+        .with_name("lbls")
+        .with_desc("prints the addresses of all labels")
+        .with_help("Prints the addresses of all labels in the currently loaded program.".to_owned())
+        .with_exec(|_, helper, _| {
+            let binary = helper
+                .state
+                .binary
+                .as_ref()
+                .ok_or(CommandError::MustLoadFile)?;
 
             let max_len = binary
                 .labels
@@ -59,6 +57,5 @@ pub(crate) fn labels_command() -> Command {
             println!();
 
             Ok("".into())
-        },
-    )
+        })
 }
